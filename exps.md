@@ -76,12 +76,9 @@ Command:
 ft bench bw --dtype nvfp4
 ```
 
-| Measurement | Bandwidth |
-|---|---:|
-| CPU streaming | ~28 GB/s |
-| Host to GPU | 12.08 GB/s |
-| Qwen NVFP4 CPU MoE | 23.28 GB/s |
-| Expert gather | 7.35 GB/s |
+| Method | CPU streaming | Host to GPU | Qwen NVFP4 CPU MoE | Expert gather |
+|---|---:|---:|---:|---:|
+| `ft bench bw` | ~28 GB/s | 12.08 GB/s | 23.28 GB/s | 7.35 GB/s |
 
 ## Experiment 2: Controlled RAM baseline
 
@@ -92,14 +89,9 @@ ft bench bw --dtype nvfp4
 | KV allocation | 16,384 tokens |
 | Decode mode | Batch size 1, greedy |
 
-| Metric | Value |
-|---|---:|
-| Decode throughput | 25.33 tok/s |
-| Time per token | 39.48 ms |
-| VRAM | 4.59 GiB |
-| Expert-cache miss rate | 63.31% |
-| Missing / active experts per layer | 5.07 / 8.00 |
-| Output SHA-1 prefix | `c85ab4fe14ee` |
+| Method | Decode | Time/token | VRAM | Cache miss | Missing / active per layer | Output hash |
+|---|---:|---:|---:|---:|---:|---|
+| RAM-backed FTW | 25.33 tok/s | 39.48 ms | 4.59 GiB | 63.31% | 5.07 / 8.00 | `c85ab4fe14ee` |
 
 Result: `/mnt/ssd/freetoken/results/baseline/controlled-cache512.json`
 
@@ -128,26 +120,17 @@ from NVMe, stages them in that buffer, and reuses the existing host-to-GPU cache
 
 ### Results
 
-| Metric | RAM | Synchronous disk | Disk / RAM |
-|---|---:|---:|---:|
-| Decode throughput | 18.16 tok/s | 2.14 tok/s | 0.12× |
-| Time per token | 55.06 ms | 466.90 ms | 8.48× |
-| Warm TTFT | 2.54 s | 23.68 s | 9.32× |
-| Prefill throughput | 16.17 tok/s | 1.78 tok/s | 0.11× |
-| Server VRAM | 4.35 GiB | 4.35 GiB | 1.00× |
-| Expert-cache miss rate | 63.81% | 63.81% | Same |
-| Missing / active experts per layer | 5.105 / 8.0 | 5.105 / 8.0 | Same |
-| Output SHA-1 prefix | `8400f78e0fc8` | `8400f78e0fc8` | Match |
+| Method | Decode | Time/token | Warm TTFT | Prefill | VRAM | Cache miss | Missing / active per layer | Output hash |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| RAM-backed FTW | 18.16 tok/s | 55.06 ms | 2.54 s | 16.17 tok/s | 4.35 GiB | 63.81% | 5.105 / 8.0 | `8400f78e0fc8` |
+| Synchronous disk | 2.14 tok/s | 466.90 ms | 23.68 s | 1.78 tok/s | 4.35 GiB | 63.81% | 5.105 / 8.0 | `8400f78e0fc8` |
+| Disk / RAM | 0.12× | 8.48× | 9.32× | 0.11× | 1.00× | Same | Same | Match |
 
 Disk I/O during the measured request:
 
-| Metric | Value |
-|---|---:|
-| Bank-row reads | 79,818 |
-| Logical bytes | 23,621,019,648 bytes |
-| Physical bytes | 23,648,264,192 bytes (22.02 GiB) |
-| Read-and-stage time | 26.63 s |
-| Effective physical throughput | 0.83 GiB/s |
+| Method | Bank-row reads | Logical bytes | Physical bytes | Read-and-stage time | Physical throughput |
+|---|---:|---:|---:|---:|---:|
+| Synchronous disk | 79,818 | 23,621,019,648 | 23,648,264,192 (22.02 GiB) | 26.63 s | 0.83 GiB/s |
 
 Result files:
 
@@ -169,3 +152,14 @@ this implementation is a correctness reference, not the performance target.
 5. Measure peak process RSS and verify the host-memory budget.
 6. Compare cold, warm, repeated, and distinct prompts.
 7. Run `ft bench bw --dtype nvfp4` on GB10 and fill in its `B_H` result.
+
+## Overall inference results
+
+Methods are rows and measured metrics are columns. The controlled baseline used a larger KV
+allocation than the matched comparison, so it should be treated as a separate configuration.
+
+| Method | Expert source | KV tokens | Decode | Time/token | Prefill | Warm TTFT | VRAM | Cache miss | Output hash | Disk read |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|
+| Controlled RAM baseline | Complete FTW banks in RAM | 16,384 | 25.33 tok/s | 39.48 ms | — | 1.53 s | 4.59 GiB | 63.31% | `c85ab4fe14ee` | — |
+| Matched RAM control | Complete FTW banks in RAM | 4,096 | 18.16 tok/s | 55.06 ms | 16.17 tok/s | 2.54 s | 4.35 GiB | 63.81% | `8400f78e0fc8` | — |
+| Synchronous disk | FTW rows from NVMe | 4,096 | 2.14 tok/s | 466.90 ms | 1.78 tok/s | 23.68 s | 4.35 GiB | 63.81% | `8400f78e0fc8` | 22.02 GiB |
