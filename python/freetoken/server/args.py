@@ -477,6 +477,13 @@ def parse_args(
         ),
     )
 
+    parser.add_argument(
+        "--moe-storage",
+        choices=("ram", "disk"),
+        default=ServerArgs.moe_storage,
+        help="Keep routed experts in pinned RAM or fetch FTW expert rows on demand.",
+    )
+
     moe_cache_group = parser.add_mutually_exclusive_group()
     moe_cache_group.add_argument(
         "--moe-cache-size",
@@ -512,6 +519,13 @@ def parse_args(
         default=ServerArgs.moe_cache_policy,
         choices=["lru"],
         help="The unified MoE cache eviction policy.",
+    )
+
+    parser.add_argument(
+        "--moe-collect-stats",
+        action="store_true",
+        default=ServerArgs.moe_collect_stats,
+        help="Collect cumulative GPU expert-cache miss counters and expose them via /v1/stats.",
     )
 
     parser.add_argument(

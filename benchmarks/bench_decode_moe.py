@@ -80,6 +80,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="comma list of offload|cpu|hybrid; one server per backend",
     )
     p.add_argument(
+        "--storage", choices=("ram", "disk"), default="ram",
+        help="routed-expert backing store",
+    )
+    p.add_argument(
         "--aime",
         default=os.environ.get("FREETOKEN_AIME25_JSONL"),
         help=f"local jsonl instead of downloading {AIME_REPO}; default $FREETOKEN_AIME25_JSONL",
@@ -100,6 +104,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="hybrid: max PCIe fetches/layer; -1 = auto (benched pcie/cpu bandwidth fraction)",
     )
     p.add_argument("--mem-ratio", type=float, default=0.9, help="target VRAM utilization")
+    p.add_argument(
+        "--num-tokens", type=int, default=0,
+        help="explicit KV capacity; 0 keeps server auto-sizing",
+    )
+    p.add_argument(
+        "--disable-prefill-overlap", action="store_true",
+        help="disable the two-layer prefill staging reservation (permits a one-layer cache)",
+    )
+    p.add_argument(
+        "--collect-moe-stats", action="store_true",
+        help="collect expert-cache counters and report the measured-request delta",
+    )
+    p.add_argument(
+        "--include-output", action="store_true",
+        help="include generated text in JSON output for first-divergence analysis",
+    )
     p.add_argument("--no-graph", action="store_true", help="eager decode instead of CUDA graph")
     p.add_argument(
         "--greedy",
@@ -177,12 +197,19 @@ def serve_cmd(args: argparse.Namespace, backend: str, port: int) -> list[str]:
         "--model", args.model,
         "--host", "127.0.0.1", "--port", str(port),
         "--moe-backend", backend,
+        "--moe-storage", args.storage,
         "--max-running-requests", "1",
         "--max-seq-len-override", str(8192 + args.decode),
         "--memory-ratio", str(args.mem_ratio),
         "--cuda-graph-max-bs", "0" if args.no_graph else "1",
         "--moe-hybrid-max-fetch", str(args.hybrid_fetch),
     ]
+    if args.num_tokens > 0:
+        cmd += ["--num-tokens", str(args.num_tokens)]
+    if args.disable_prefill_overlap:
+        cmd.append("--disable-moe-prefill-overlap")
+    if args.collect_moe_stats:
+        cmd.append("--moe-collect-stats")
     if args.cache > 0:
         cmd += ["--moe-cache-size", str(args.cache)]
     elif args.cache_rate is not None:
@@ -328,6 +355,7 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
 
             # Warm the expert cache to a steady-state decode working set.
             stream_generate(origin, model_id, problem, sampling, args)
+            stats_before = get_json(f"{origin}/v1/stats")
             r = stream_generate(origin, model_id, problem, sampling, args)
             stats = get_json(f"{origin}/v1/stats")
         finally:
@@ -361,6 +389,33 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
         "output_sha1": hashlib.sha1(r["text"].encode()).hexdigest()[:12],
         "server_log": log_path,
     }
+    if args.include_output:
+        row["output_text"] = r["text"]
+    before_moe = stats_before.get("moe") or {}
+    after_moe = stats.get("moe") or {}
+    if after_moe:
+        delta = {
+            key: int(after_moe.get(key, 0)) - int(before_moe.get(key, 0))
+            for key in ("active", "missing", "fetched", "calls")
+        }
+        active, missing, fetched, calls = (
+            delta["active"], delta["missing"], delta["fetched"], delta["calls"]
+        )
+        row["moe"] = {
+            **delta,
+            "active_per_layer": active / calls if calls else 0.0,
+            "missing_per_layer": missing / calls if calls else 0.0,
+            "miss_rate": missing / active if active else 0.0,
+            "fetched_per_layer": fetched / calls if calls else 0.0,
+            "fetch_rate": fetched / missing if missing else 0.0,
+        }
+        before_disk = before_moe.get("disk") or {}
+        after_disk = after_moe.get("disk") or {}
+        if after_disk:
+            row["moe"]["disk"] = {
+                key: after_disk.get(key, 0) - before_disk.get(key, 0)
+                for key in ("read_ops", "logical_bytes", "physical_bytes", "read_seconds")
+            }
 
     print(f"\n==== decode bs=1 [{backend}] via /v1/chat/completions ====", flush=True)
     print(f"  decode throughput : {row['decode_tok_s']:8.2f} tok/s  ({row['ms_per_token']:.3f} ms/token)")
@@ -372,6 +427,20 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
     sha_note = "greedy" if args.greedy else "sampled, per-server deterministic"
     print(f"  output sha1       : {row['output_sha1']}  ({sha_note}; compare across backends)")
     print(f"  output sample     : {r['text'][:240]!r}")
+    if row.get("moe"):
+        moe = row["moe"]
+        print(
+            f"  expert cache      : miss={moe['miss_rate']:.2%} "
+            f"({moe['missing_per_layer']:.2f}/{moe['active_per_layer']:.2f} per layer)"
+        )
+        if moe.get("disk"):
+            disk = moe["disk"]
+            seconds = disk["read_seconds"]
+            gib = disk["physical_bytes"] / 2**30
+            print(
+                f"  expert disk I/O   : {disk['read_ops']} reads, {gib:.2f} GiB physical, "
+                f"{gib / seconds if seconds else 0.0:.2f} GiB/s"
+            )
     return row
 
 

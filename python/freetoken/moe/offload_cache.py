@@ -182,6 +182,7 @@ class OffloadMoeCache:
         self.bank_schema = _BANK_SCHEMAS[self.quant_format]
         self.bank_sources: dict[str, list[torch.Tensor]] = {}
         self.bank_caches: dict[str, torch.Tensor] = {}
+        self.disk_source = None
         # Per-layer host residency (HostResidency values). The GPU movement paths
         # (fused gather, prefill DMA) require "pinned"; other residency classes
         # are not supported here and are rejected by set_bank_sources.
@@ -849,6 +850,10 @@ class OffloadMoeCache:
             active, missing, calls = (int(x) for x in self.lru_stats.sum(0))
         fetched = int(self.stat_fetched.item())
         return {
+            "active": active,
+            "missing": missing,
+            "fetched": fetched,
+            "calls": calls,
             "layer_calls": calls,
             "active_per_layer": (active / calls) if calls else 0.0,
             "missing_per_layer": (missing / calls) if calls else 0.0,
@@ -927,6 +932,10 @@ class OffloadMoeCache:
         assert self.banks, "set_bank_sources must register the banks first"
         layer_id = self._pending_src_layer
         assert layer_id is not None, "no staged misses (ensure_experts/materialize_layer first)"
+        if self.disk_source is not None:
+            count = int(self.num_indices.item())
+            expert_ids = self.src_indices[:count].cpu().tolist()
+            self.disk_source.stage(layer_id, expert_ids)
         if self._copy_fused_ok:
             from freetoken.kernel.fast_index_copy import fast_index_copy_multi_jit
 

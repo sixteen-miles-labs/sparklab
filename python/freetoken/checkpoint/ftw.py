@@ -40,6 +40,7 @@ import os
 import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 
 import torch
 
@@ -63,6 +64,57 @@ def layer_bank_entry_name(bank_name: str, layer_id: int) -> str:
     """Name of one per-layer ``experts_bank`` FTW entry; :func:`load_ftw_banks` groups
     entries matching ``_LAYER_ENTRY_RE`` back into a per-layer bank list by base name."""
     return f"{bank_name}#L{layer_id:05d}"
+
+
+@dataclass(frozen=True)
+class ExpertRowDescriptor:
+    """Byte address of one expert row inside an FTW expert-bank entry.
+
+    ``read_off``/``read_nbytes`` describe the aligned enclosing window required by
+    ``O_DIRECT``. The logical row begins at ``head_pad`` within that window.
+    """
+
+    bank_name: str
+    layer_id: int
+    expert_id: int
+    dtype: torch.dtype
+    shape: tuple[int, ...]
+    global_off: int
+    nbytes: int
+    read_off: int
+    read_nbytes: int
+    head_pad: int
+
+
+def _expert_row_descriptor(
+    entry: dict, *, bank_name: str, layer_id: int, expert_id: int
+) -> ExpertRowDescriptor:
+    num_experts, *row_shape = entry["shape"]
+    if not 0 <= expert_id < num_experts:
+        raise IndexError(
+            f"expert_id {expert_id} out of range for {bank_name!r} layer {layer_id} "
+            f"with {num_experts} experts"
+        )
+    dtype = _dtype_of(entry["dtype"])
+    row_bytes = (math.prod(row_shape) if row_shape else 1) * _elsize(dtype)
+    assert row_bytes * num_experts == entry["nbytes"], (
+        entry["name"], row_bytes, num_experts, entry["nbytes"]
+    )
+    off = entry["global_off"] + expert_id * row_bytes
+    read_off = (off // ALIGN) * ALIGN
+    read_end = _align_up(off + row_bytes)
+    return ExpertRowDescriptor(
+        bank_name=bank_name,
+        layer_id=layer_id,
+        expert_id=expert_id,
+        dtype=dtype,
+        shape=tuple(row_shape),
+        global_off=off,
+        nbytes=row_bytes,
+        read_off=read_off,
+        read_nbytes=read_end - read_off,
+        head_pad=off - read_off,
+    )
 
 
 def _pread_into(fd: int, mv: memoryview, offset: int) -> None:
@@ -222,6 +274,103 @@ class FTWReader:
         keep = set(kinds)
         return [t for t in self.index["tensors"] if not keep or t["kind"] in keep]
 
+    def expert_row_descriptors(
+        self, *, num_layers: int
+    ) -> dict[tuple[int, int, str], ExpertRowDescriptor]:
+        """Index every routed-expert row without reading weight data.
+
+        Supports both FTW expert layouts accepted by :func:`load_ftw_banks`: one flat
+        ``[layers * experts, ...]`` entry or independently aligned per-layer entries.
+        Alpha vectors are fixed-resident metadata and intentionally excluded.
+        """
+        entries = [
+            e for e in self.entries("experts_bank")
+            if e["name"] not in _ALPHA_NAMES
+        ]
+        flat: list[dict] = []
+        layered: dict[str, dict[int, dict]] = {}
+        for entry in entries:
+            match = _LAYER_ENTRY_RE.match(entry["name"])
+            if match is None:
+                flat.append(entry)
+            else:
+                layered.setdefault(match.group("base"), {})[
+                    int(match.group("layer"))
+                ] = entry
+
+        mixed = {e["name"] for e in flat} & layered.keys()
+        if mixed:
+            raise ValueError(f"FTW bank(s) mix flat and per-layer layouts: {sorted(mixed)}")
+
+        result: dict[tuple[int, int, str], ExpertRowDescriptor] = {}
+        for entry in flat:
+            total, *row_shape = entry["shape"]
+            if total % num_layers:
+                raise ValueError(
+                    f"FTW bank {entry['name']!r} has {total} rows, not divisible by "
+                    f"num_layers={num_layers}"
+                )
+            num_experts = total // num_layers
+            dtype = _dtype_of(entry["dtype"])
+            row_bytes = (math.prod(row_shape) if row_shape else 1) * _elsize(dtype)
+            for layer_id in range(num_layers):
+                layer_entry = {
+                    **entry,
+                    "shape": [num_experts, *row_shape],
+                    "global_off": entry["global_off"] + layer_id * num_experts * row_bytes,
+                    "nbytes": num_experts * row_bytes,
+                }
+                for expert_id in range(num_experts):
+                    desc = _expert_row_descriptor(
+                        layer_entry,
+                        bank_name=entry["name"],
+                        layer_id=layer_id,
+                        expert_id=expert_id,
+                    )
+                    result[(layer_id, expert_id, entry["name"])] = desc
+
+        for bank_name, by_layer in layered.items():
+            expected = list(range(num_layers))
+            if sorted(by_layer) != expected:
+                raise ValueError(
+                    f"FTW bank {bank_name!r} has layers {sorted(by_layer)}, expected {expected}"
+                )
+            for layer_id, entry in by_layer.items():
+                num_experts = entry["shape"][0]
+                for expert_id in range(num_experts):
+                    desc = _expert_row_descriptor(
+                        entry,
+                        bank_name=bank_name,
+                        layer_id=layer_id,
+                        expert_id=expert_id,
+                    )
+                    result[(layer_id, expert_id, bank_name)] = desc
+        return result
+
+    def read_expert_row(self, descriptor: ExpertRowDescriptor) -> torch.Tensor:
+        """Read one descriptor into an owning CPU tensor.
+
+        This correctness-oriented API performs one aligned FTW read and clones the logical
+        slice. The bounded host cache will reuse the descriptor with persistent pinned
+        staging buffers instead of allocating once per miss.
+        """
+        buf = _transient_buffer(descriptor.read_nbytes)
+        try:
+            self.read_into(
+                memoryview(buf),
+                {"global_off": descriptor.read_off, "nbytes": descriptor.read_nbytes},
+            )
+            raw = torch.frombuffer(
+                buf,
+                dtype=torch.uint8,
+                count=descriptor.nbytes,
+                offset=descriptor.head_pad,
+            ).clone()
+        finally:
+            buf.close()
+        row = raw.view(descriptor.dtype)
+        return row.view(*descriptor.shape) if descriptor.shape else row.view(())
+
     def _ensure_mode(self) -> None:
         """Resolve the read backend once: keep O_DIRECT if the filesystem accepts it, else
         drop to the mmap fallback. Thread-safe -- ``_probed`` is published only after
@@ -333,6 +482,92 @@ class FTWReader:
 
 def _transient_buffer(nbytes: int) -> mmap.mmap:
     return mmap.mmap(-1, _align_up(nbytes))
+
+
+class FTWDiskExpertSource:
+    """Synchronous, bounded staging source for correctness-first disk inference.
+
+    One pinned full-layer-shaped buffer per bank is shared by every model layer. Only rows
+    requested by the cache movement step are overwritten before the existing H2D gather.
+    This bounds host weight memory to one layer while retaining the established GPU copy
+    kernels and their fixed source pointers.
+    """
+
+    def __init__(self, reader: FTWReader, descriptors, staging) -> None:
+        self.reader = reader
+        self.descriptors = descriptors
+        self.staging = staging
+        self.read_ops = 0
+        self.logical_bytes = 0
+        self.physical_bytes = 0
+        self.read_seconds = 0.0
+
+    def stage(self, layer_id: int, expert_ids: list[int]) -> None:
+        import time
+
+        if not expert_ids:
+            return
+        start = time.perf_counter()
+        for expert_id in expert_ids:
+            for bank_name, bank in self.staging.items():
+                desc = self.descriptors[(layer_id, expert_id, bank_name)]
+                bank.tensor[expert_id].copy_(self.reader.read_expert_row(desc))
+                self.read_ops += 1
+                self.logical_bytes += desc.nbytes
+                self.physical_bytes += desc.read_nbytes
+        self.read_seconds += time.perf_counter() - start
+
+    def stats(self) -> dict:
+        return {
+            "read_ops": self.read_ops,
+            "logical_bytes": self.logical_bytes,
+            "physical_bytes": self.physical_bytes,
+            "read_seconds": self.read_seconds,
+        }
+
+
+def open_ftw_disk_banks(path: str, *, num_layers: int, num_experts: int):
+    """Open FTW routed experts with a one-layer pinned staging footprint."""
+    from freetoken.moe.host_banks import HostBank
+
+    reader = FTWReader(path)
+    descriptors = reader.expert_row_descriptors(num_layers=num_layers)
+    bank_names = sorted({key[2] for key in descriptors})
+    if not bank_names:
+        reader.close()
+        return None, None
+
+    staging = {}
+    for bank_name in bank_names:
+        desc = descriptors[(0, 0, bank_name)]
+        bank = HostBank((num_experts, *desc.shape), desc.dtype)
+        bank.tensor.zero_()  # fault pages before cudaHostRegister
+        bank.pin()
+        staging[bank_name] = bank
+
+    alpha_tensors = {}
+    for entry in reader.entries("experts_bank"):
+        if entry["name"] not in _ALPHA_NAMES:
+            continue
+        bank = HostBank(tuple(entry["shape"]), _dtype_of(entry["dtype"]))
+        reader.read_into(bank.memoryview(), entry)
+        bank.pin()
+        alpha_tensors[entry["name"]] = bank.tensor
+
+    from freetoken.moe.expert_banks import ExpertBanks
+
+    source = FTWDiskExpertSource(reader, descriptors, staging)
+    sources = {
+        name: [bank.tensor] * num_layers
+        for name, bank in staging.items()
+    }
+    banks = ExpertBanks(
+        reader.meta("quant_format"),
+        sources,
+        gate_up_alpha=alpha_tensors.get("gate_up_alpha"),
+        down_alpha=alpha_tensors.get("down_alpha"),
+    )
+    return banks, source
 
 
 def iter_ftw_weights(path: str, *, kinds=("weight",), workers: int = 8,
@@ -572,6 +807,6 @@ def load_ftw_banks(
 
 __all__ = [
     "INDEX_NAME", "FORMAT_TAG", "FORMAT_VERSION", "ALIGN", "DEFAULT_SHARD_LIMIT",
-    "is_ftw_checkpoint", "FTWWriter", "FTWReader",
-    "iter_ftw_weights", "load_ftw_banks", "layer_bank_entry_name",
+    "is_ftw_checkpoint", "FTWWriter", "FTWReader", "ExpertRowDescriptor",
+    "iter_ftw_weights", "load_ftw_banks", "layer_bank_entry_name", "open_ftw_disk_banks",
 ]

@@ -392,6 +392,12 @@ class Scheduler(SchedulerIOMixin):
         swa_tokens = self._swa_token_usage()
         if reply:
             mem = self._gpu_mem_bytes()
+            moe_stats = None
+            moe_cache = self.engine.moe_offload_cache
+            if moe_cache is not None and moe_cache.collect_stats and any(m.finished for m in reply):
+                moe_stats = moe_cache.decode_miss_stats()
+                if moe_cache.disk_source is not None:
+                    moe_stats["disk"] = moe_cache.disk_source.stats()
             mamba_used, mamba_total = mamba_slots or (0, 0)
             swa_used, swa_total = swa_tokens or (0, 0)
             for m in reply:
@@ -402,6 +408,8 @@ class Scheduler(SchedulerIOMixin):
                 m.swa_used_tokens = swa_used
                 m.swa_total_tokens = swa_total
                 m.gpu_mem_bytes = mem
+                if m.finished:
+                    m.moe_stats = moe_stats
         self.status_reporter.report_batch(
             batch,
             running_reqs=len(self.decode_manager.running_reqs),

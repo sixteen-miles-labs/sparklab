@@ -524,16 +524,37 @@ class Engine:
             # expert-tensor granularity. Both pin-after-fill.
             # --expert-load: serial/parallel force the read; auto (None) lets load_expert_banks
             # pick (parallel for scattered experts, with a low-RAM fallback to serial).
-            expert_parallel = {"serial": False, "parallel": True}.get(config.expert_load, None)
-            banks = load_expert_banks(
-                config.model_path,
-                config.model_config,
-                device=self.device,
-                dtype=self.dtype,
-                dummy=config.use_dummy_weight,
-                parallel=expert_parallel,
-                decode_target=("cpu" if decode_target in ("cpu", "hybrid") else "gpu"),
-            )
+            disk_source = None
+            if config.moe_storage == "disk":
+                from freetoken.checkpoint import is_ftw_checkpoint
+                from freetoken.checkpoint.ftw import open_ftw_disk_banks
+
+                if not is_ftw_checkpoint(config.model_path):
+                    raise ValueError("--moe-storage disk currently requires an FTW checkpoint")
+                if decode_target != "gpu":
+                    raise ValueError("--moe-storage disk currently supports only --moe-backend offload")
+                if config.moe_prefill_overlap:
+                    raise ValueError("--moe-storage disk requires --disable-moe-prefill-overlap")
+                if config.cuda_graph_max_bs not in (None, 0):
+                    raise ValueError("--moe-storage disk requires --cuda-graph-max-bs 0")
+                banks, disk_source = open_ftw_disk_banks(
+                    config.model_path,
+                    num_layers=config.model_config.num_moe_layers,
+                    num_experts=config.model_config.num_experts,
+                )
+                assert banks is not None
+                logger.info_rank0("expert banks: synchronous FTW disk source (one-layer staging)")
+            else:
+                expert_parallel = {"serial": False, "parallel": True}.get(config.expert_load, None)
+                banks = load_expert_banks(
+                    config.model_path,
+                    config.model_config,
+                    device=self.device,
+                    dtype=self.dtype,
+                    dummy=config.use_dummy_weight,
+                    parallel=expert_parallel,
+                    decode_target=("cpu" if decode_target in ("cpu", "hybrid") else "gpu"),
+                )
             if config.moe_cache_auto:
                 size, pages, overlap = self._resolve_auto_moe_cache_size(config, banks)
                 object.__setattr__(config, "moe_cache_size", size)
@@ -568,6 +589,7 @@ class Engine:
             )
             cache.set_bank_sources(banks.sources, layer_residency=banks.layer_residency)
             cache.set_alphas(banks.gate_up_alpha, banks.down_alpha)
+            cache.disk_source = disk_source
         else:
             cache = cache_factory(config, self.device)
             cache.decode_target = decode_target
