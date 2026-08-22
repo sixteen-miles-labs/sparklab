@@ -17,6 +17,33 @@ Date: 2026-08-22
 The checkpoint occupies approximately 22 GiB in its downloaded Hugging Face form and 20
 GiB after FTW conversion. FTW expert-row reads used the `O_DIRECT` path.
 
+### Paper Table 1 with local systems
+
+The first six rows reproduce Table 1 from the
+[FreeToken paper](https://arxiv.org/pdf/2608.16157). `B_P` is host-to-device expert-transfer
+bandwidth and `B_H` is effective CPU-side MoE expert-kernel bandwidth; the paper reports
+measurements on deployed tensor shapes, not hardware peak specifications. The final two
+rows add our systems and therefore are not paper results.
+
+| System | GPU (VRAM) | PCIe | B_P (GB/s) | CPU (threads) | DRAM (GiB) | B_H (GB/s) |
+|---|---|---:|---:|---|---:|---:|
+| 5090 | RTX 5090 (32 GB) | 5.0 ×16 | 52.7 | 2× Xeon Gold 6459C (32) | DDR5 180 | 77.3 |
+| 4090 | RTX 4090 (24 GB) | 4.0 ×16 | 25.1 | 2× Xeon Platinum 8358P (32) | DDR4 240 | 63.2 |
+| 3090 | RTX 3090 (24 GB) | 4.0 ×16 | 25.3 | 2× Xeon Gold 6330 (28) | DDR4 180 | 56.7 |
+| 5090 desktop | RTX 5090 (32 GB) | 5.0 ×16 | 49.0 | Ryzen 9 9950X3D (32) | DDR5 192 | 53.8 |
+| 4060 laptop | RTX 4060 Laptop (8 GB) | 4.0 ×8 | 11.8 | Core i9-13900H (20) | LPDDR5 32 | 47.5 |
+| PRO 6000 | RTX PRO 6000 (96 GB) | 5.0 ×16 | 51.5 | Xeon Platinum 8559C (48) | DDR5 512 | 178 |
+| **Current 3090** | **RTX 3090 (24 GiB)** | **3.0 ×16** | **12.08** | **Core i9-9900K (16)** | **DDR4 64** | **23.28** |
+| **GB10** | **GB10 Blackwell (128 GB unified)** | **Unified memory** | **N/A** | **20-core Arm (20)** | **LPDDR5x unified 128** | **TBD** |
+
+The current-system `B_P` and `B_H` values come from `ft bench bw --dtype nvfp4`; they are
+useful local measurements but are not directly interchangeable with every paper row because
+our benchmark used Qwen NVFP4 expert shapes. The GB10 has coherent CPU/GPU unified memory,
+so there is no discrete PCIe host-to-device expert-transfer stage to report as `B_P`. Its
+official [hardware specification](https://docs.nvidia.com/dgx/dgx-spark/hardware.html) is 128
+GB LPDDR5x at 273 GB/s, but that peak is not substituted for `B_H`; FreeToken still needs to
+measure the effective expert kernel on that machine.
+
 ### Initial bandwidth and RAM-backed baseline
 
 `ft bench bw --dtype nvfp4` measured approximately 28 GB/s CPU streaming bandwidth, 12.08
