@@ -127,3 +127,30 @@ def test_disk_expert_source_coalesces_concurrent_request(tmp_path):
         assert torch.equal(staging["weight"].tensor[2], values[2])
     finally:
         reader.close()
+
+
+def test_prefill_bypass_preserves_decode_lru(tmp_path):
+    values = torch.arange(2 * 3 * 513, dtype=torch.int16).view(6, 513)
+    _write_ftw(tmp_path, [("weight", values)])
+    reader = FTWReader(str(tmp_path))
+    staging = {"weight": SimpleNamespace(tensor=torch.empty(3, 513, dtype=torch.int16))}
+    cache = {"weight": SimpleNamespace(tensor=torch.empty(2, 513, dtype=torch.int16))}
+    source = FTWDiskExpertSource(
+        reader,
+        reader.expert_row_descriptors(num_layers=2),
+        staging,
+        cache,
+    )
+    try:
+        source.stage(0, [0, 1])  # decode admissions
+        source.stage(1, [0, 1, 2], admit=False)  # dense prefill scan
+        assert source.cache_bypasses == 3
+        assert source.cache_evictions == 0
+        assert source.stats()["cache_occupancy_entries"] == 2
+
+        reads = source.read_ops
+        source.stage(0, [0, 1])
+        assert source.read_ops == reads
+        assert source.cache_hits == 2
+    finally:
+        reader.close()

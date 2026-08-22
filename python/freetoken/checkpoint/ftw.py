@@ -512,12 +512,13 @@ class FTWDiskExpertSource:
         self.cache_hits = 0
         self.cache_misses = 0
         self.cache_evictions = 0
+        self.cache_bypasses = 0
         self.read_ops = 0
         self.logical_bytes = 0
         self.physical_bytes = 0
         self.read_seconds = 0.0
 
-    def stage(self, layer_id: int, expert_ids: list[int]) -> None:
+    def stage(self, layer_id: int, expert_ids: list[int], *, admit: bool = True) -> None:
         import time
 
         if not expert_ids:
@@ -532,28 +533,32 @@ class FTWDiskExpertSource:
                 slot = self._cache.get(key)
                 if slot is not None:
                     self.cache_hits += 1
-                    self._cache.move_to_end(key)
+                    if admit:
+                        self._cache.move_to_end(key)
                     for bank_name, bank in self.staging.items():
                         bank.tensor[expert_id].copy_(self.cache_banks[bank_name].tensor[slot])
                     continue
 
                 self.cache_misses += 1
-                if self.cache_capacity:
+                slot = None
+                if admit and self.cache_capacity:
                     if self._free_slots:
                         slot = self._free_slots.pop()
                     else:
                         _, slot = self._cache.popitem(last=False)
                         self.cache_evictions += 1
+                elif not admit:
+                    self.cache_bypasses += 1
 
                 for bank_name, bank in self.staging.items():
                     desc = self.descriptors[(layer_id, expert_id, bank_name)]
                     bank.tensor[expert_id].copy_(self.reader.read_expert_row(desc))
-                    if self.cache_capacity:
+                    if slot is not None:
                         self.cache_banks[bank_name].tensor[slot].copy_(bank.tensor[expert_id])
                     self.read_ops += 1
                     self.logical_bytes += desc.nbytes
                     self.physical_bytes += desc.read_nbytes
-                if self.cache_capacity:
+                if slot is not None:
                     self._cache[key] = slot
         self.read_seconds += time.perf_counter() - start
 
@@ -567,6 +572,7 @@ class FTWDiskExpertSource:
             "cache_hits": self.cache_hits,
             "cache_misses": self.cache_misses,
             "cache_evictions": self.cache_evictions,
+            "cache_bypasses": self.cache_bypasses,
             "read_ops": self.read_ops,
             "logical_bytes": self.logical_bytes,
             "physical_bytes": self.physical_bytes,

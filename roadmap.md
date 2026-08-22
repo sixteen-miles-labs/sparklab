@@ -41,10 +41,13 @@ logs, profiles, and benchmark results should live under `/mnt/ssd/freetoken`.
 - A 1 GiB host-cache smoke test held 604 experts, achieved a 1.65% hit rate, read 21.66 GiB,
   decoded at 2.11 tok/s, and preserved the same output hash. This validates bounded LRU
   operation but shows that prefill cache pollution must be addressed before sizing sweeps.
+- Prefill-aware admission raised the host-cache hit rate to 6.28%, reduced disk reads to
+  20.64 GiB, reduced warm TTFT by 9.3% to 22.89 s, decoded at 2.13 tok/s, and preserved the
+  output hash. Prefill can consume cache hits but cannot insert, refresh, or evict entries.
 
-The next implementation milestone is prefill-aware admission followed by coalesced
-asynchronous reads and prefetching. The synchronous prototype is the correctness reference,
-not the final performance design.
+The next implementation milestone is coalesced asynchronous reads followed by layer-aware
+prefetching. The synchronous prototype is the correctness reference, not the final
+performance design.
 
 Suggested layout:
 

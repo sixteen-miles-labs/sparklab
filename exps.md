@@ -12,8 +12,8 @@ Key findings:
 - Disk-backed inference works without loading the complete 16.9 GiB routed-expert pool into host RAM.
 - RAM and disk produced the same greedy output hash and expert-cache behavior.
 - The correctness-first disk path decoded at 2.14 tok/s versus 18.16 tok/s from RAM.
-- A 1 GiB bounded host expert LRU works correctly, but its 1.65% hit rate is too low to
-  improve throughput on this prefill-heavy smoke test.
+- A 1 GiB bounded host expert LRU with prefill admission bypass reaches a 6.28% hit rate,
+  reduces measured disk traffic to 20.64 GiB, and improves warm TTFT by 9.3%.
 
 ## Test system and model
 
@@ -85,6 +85,7 @@ results are columns.
 | Local matched control | FreeToken RAM | Qwen3.6-35B-A3B NVFP4 | AIME reasoning | Complete FTW expert banks in RAM | 18.16 tok/s |
 | Local disk prototype | FreeToken disk | Qwen3.6-35B-A3B NVFP4 | AIME reasoning | Synchronous FTW rows from NVMe | 2.14 tok/s |
 | Local bounded-cache prototype | FreeToken disk + 1 GiB LRU | Qwen3.6-35B-A3B NVFP4 | AIME reasoning | NVMe + 604-entry pinned RAM LRU | 2.11 tok/s |
+| Local prefill-aware prototype | FreeToken disk + prefill-aware LRU | Qwen3.6-35B-A3B NVFP4 | AIME reasoning | NVMe + decode-admitted 1 GiB LRU | 2.13 tok/s |
 
 These groups are not directly comparable. Figure 5 measures a coding-agent trajectory with
 BF16 weights on the paper's rented RTX 3090 server (25.3 GB/s host-to-GPU and 56.7 GB/s CPU
@@ -187,8 +188,12 @@ fixed overhead outside this byte budget.
 |---|---:|---:|---:|---:|---:|---:|---:|---|
 | Disk without host LRU | 0 GiB | 0 | — | — | 22.02 GiB | 2.14 tok/s | 23.68 s | `8400f78e0fc8` |
 | Disk with host LRU | 1 GiB | 604 / 604 | 1.65% (220 / 13,303) | 13,083 | 21.66 GiB | 2.11 tok/s | 25.24 s | `8400f78e0fc8` |
+| Prefill-aware host LRU | 1 GiB | 604 / 604 | 6.28% (836 / 13,303) | 2,831 | 20.64 GiB | 2.13 tok/s | 22.89 s | `8400f78e0fc8` |
 
-Result: `/mnt/ssd/freetoken/results/disk/host-lru-1g.json`
+Results:
+
+- Normal LRU: `/mnt/ssd/freetoken/results/disk/host-lru-1g.json`
+- Prefill-aware LRU: `/mnt/ssd/freetoken/results/disk/host-lru-1g-prefill-bypass.json`
 
 ### Conclusion
 
@@ -196,19 +201,23 @@ The byte limit, hit path, and repeated eviction path all worked while preserving
 RAM-control output. The cache avoided 220 expert reads and reduced physical disk traffic by
 0.36 GiB (1.6%), but throughput did not improve. The repeated prefill touches most experts
 in every layer and replaces the previous request's useful decode entries before they can be
-reused. The next policy should isolate or bypass prefill admissions, then add asynchronous
-reads so cache misses no longer serialize the inference stream.
+reused. This motivated isolating prefill admissions before adding asynchronous reads.
+
+With prefill admission bypass, prefill may consume a cached expert but cannot insert a new
+entry, refresh recency, or evict decode state. This raised the hit rate from 1.65% to 6.28%,
+cut another 1.02 GiB of physical reads, reduced evictions from 13,083 to 2,831, and improved
+warm TTFT by 9.3%. Decode improved only 0.8%, confirming that serialized NVMe misses remain
+the dominant decode cost.
 
 ## Next experiments
 
-1. Prevent prefill scans from polluting the host expert LRU.
-2. Coalesce duplicate expert reads.
-3. Add asynchronous, queue-depth-aware disk reads.
-4. Prefetch experts for upcoming layers.
-5. Sweep 0.5, 1, 2, 4, 8, and 16 GiB host-cache budgets.
-6. Measure peak process RSS and verify the host-memory budget.
-7. Compare cold, warm, repeated, and distinct prompts.
-8. Run `ft bench bw --dtype nvfp4` on GB10 and fill in its `B_H` result.
+1. Add asynchronous, queue-depth-aware disk reads.
+2. Coalesce duplicate expert reads across in-flight asynchronous requests.
+3. Prefetch experts for upcoming layers.
+4. Sweep 0.5, 1, 2, 4, 8, and 16 GiB host-cache budgets.
+5. Measure peak process RSS and verify the host-memory budget.
+6. Compare cold, warm, repeated, and distinct prompts.
+7. Run `ft bench bw --dtype nvfp4` on GB10 and fill in its `B_H` result.
 
 ## Overall inference results
 
@@ -221,3 +230,4 @@ allocation than the matched comparison, so it should be treated as a separate co
 | Matched RAM control | Complete FTW banks in RAM | 4,096 | 18.16 tok/s | 55.06 ms | 16.17 tok/s | 2.54 s | 4.35 GiB | 63.81% | `8400f78e0fc8` | — |
 | Synchronous disk | FTW rows from NVMe | 4,096 | 2.14 tok/s | 466.90 ms | 1.78 tok/s | 23.68 s | 4.35 GiB | 63.81% | `8400f78e0fc8` | 22.02 GiB |
 | Disk + 1 GiB host LRU | NVMe + 604-entry RAM LRU | 4,096 | 2.11 tok/s | 473.91 ms | 1.69 tok/s | 25.24 s | 4.35 GiB | 63.81% | `8400f78e0fc8` | 21.66 GiB |
+| Disk + prefill-aware LRU | NVMe + decode-admitted 1 GiB LRU | 4,096 | 2.13 tok/s | 470.26 ms | 1.83 tok/s | 22.89 s | 4.35 GiB | 63.81% | `8400f78e0fc8` | 20.64 GiB |

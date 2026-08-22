@@ -238,6 +238,7 @@ class OffloadMoeCache:
         # by copy_missing to pick the per-layer source (part of the same pending-copy
         # state as evict_slots/src_indices/num_indices).
         self._pending_src_layer: int | None = None
+        self._pending_is_prefill = False
         # Per-bank [2, num_experts, ...] double-buffer views over the slot cache's
         # first 2 * num_experts slots (set up when prefill_overlap is enabled).
         self.prefill_bank_buffers: list[torch.Tensor] = []
@@ -768,6 +769,7 @@ class OffloadMoeCache:
             ids = expert_ids.reshape(-1).long()
             self.decode_freq[layer_id].scatter_add_(0, ids, torch.ones_like(ids))
         self._pending_src_layer = layer_id
+        self._pending_is_prefill = False
         ensure_experts(self, layer_id, expert_ids)
 
     def ensure_experts_hybrid(self, layer_id: int, expert_ids: torch.Tensor) -> None:
@@ -786,6 +788,7 @@ class OffloadMoeCache:
             ids = expert_ids.reshape(-1).long()
             self.decode_freq[layer_id].scatter_add_(0, ids, torch.ones_like(ids))
         self._pending_src_layer = layer_id
+        self._pending_is_prefill = False
         ensure_experts_hybrid(
             self, layer_id, expert_ids, self.hybrid_max_fetch, self.hybrid_fetch_fraction
         )
@@ -794,6 +797,7 @@ class OffloadMoeCache:
         from freetoken.moe.offload_kernels import materialize_layer
 
         self._pending_src_layer = layer_id
+        self._pending_is_prefill = True
         materialize_layer(self, layer_id)
 
     def reset(self) -> None:
@@ -935,7 +939,7 @@ class OffloadMoeCache:
         if self.disk_source is not None:
             count = int(self.num_indices.item())
             expert_ids = self.src_indices[:count].cpu().tolist()
-            self.disk_source.stage(layer_id, expert_ids)
+            self.disk_source.stage(layer_id, expert_ids, admit=not self._pending_is_prefill)
         if self._copy_fused_ok:
             from freetoken.kernel.fast_index_copy import fast_index_copy_multi_jit
 

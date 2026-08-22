@@ -420,7 +420,7 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
             disk_delta = {
                 key: after_disk.get(key, 0) - before_disk.get(key, 0)
                 for key in (
-                    "cache_hits", "cache_misses", "cache_evictions", "read_ops",
+                    "cache_hits", "cache_misses", "cache_evictions", "cache_bypasses", "read_ops",
                     "logical_bytes", "physical_bytes", "read_seconds",
                 )
             }
@@ -459,7 +459,7 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
             print(
                 f"  host expert LRU   : {disk['cache_hits'] / requests if requests else 0.0:.2%} hit, "
                 f"{disk['cache_occupancy_entries']}/{disk['cache_capacity_entries']} entries, "
-                f"{disk['cache_evictions']} evictions"
+                f"{disk['cache_evictions']} evictions, {disk['cache_bypasses']} bypasses"
             )
     return row
 
