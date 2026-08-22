@@ -27,21 +27,24 @@ logs, profiles, and benchmark results should live under `/mnt/ssd/freetoken`.
 ## Implementation status (2026-08-22)
 
 - Phases 0-2: checkpoint downloaded and converted to FTW; RAM-backed baseline recorded.
-- Phase 3: GPU expert-cache and disk byte/operation/time counters are available in the
-  benchmark JSON. The remaining host-cache and asynchronous-I/O counters belong with the
-  bounded cache implementation.
+- Phase 3: GPU expert-cache, host expert-cache, and disk byte/operation/time counters are
+  available in the benchmark JSON. Asynchronous queue and prefetch counters remain.
 - Phase 4: FTW expert-row descriptors and aligned independent row reads are implemented and
   covered by focused tests.
-- Phase 5 correctness prototype: `--moe-storage disk` uses a single shared expert-layer
-  staging area instead of loading the complete 16.9 GiB host expert banks. It currently
-  requires FTW, the offload backend, eager execution, and disabled prefill overlap.
+- Phase 5 correctness prototype: `--moe-storage disk` uses a byte-budgeted pinned-host LRU
+  plus a shared expert-layer staging area instead of loading the complete 16.9 GiB host
+  expert banks. `--moe-host-cache-gb` controls the LRU budget. Disk mode currently requires
+  FTW, the offload backend, eager execution, and disabled prefill overlap.
 - Matching 16-token RAM/disk smoke tests produced the same greedy output hash
   (`8400f78e0fc8`) and cache-miss counts. RAM decoded at 18.16 tok/s; synchronous disk
   decoded at 2.14 tok/s and read 22.02 GiB physical at 0.83 GiB/s.
+- A 1 GiB host-cache smoke test held 604 experts, achieved a 1.65% hit rate, read 21.66 GiB,
+  decoded at 2.11 tok/s, and preserved the same output hash. This validates bounded LRU
+  operation but shows that prefill cache pollution must be addressed before sizing sweeps.
 
-The next implementation milestone is the byte-budgeted pinned-host LRU described in Phase
-5, followed by coalesced asynchronous reads and prefetching. The synchronous prototype is
-the correctness reference, not the final performance design.
+The next implementation milestone is prefill-aware admission followed by coalesced
+asynchronous reads and prefetching. The synchronous prototype is the correctness reference,
+not the final performance design.
 
 Suggested layout:
 

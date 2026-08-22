@@ -12,7 +12,8 @@ Key findings:
 - Disk-backed inference works without loading the complete 16.9 GiB routed-expert pool into host RAM.
 - RAM and disk produced the same greedy output hash and expert-cache behavior.
 - The correctness-first disk path decoded at 2.14 tok/s versus 18.16 tok/s from RAM.
-- The next optimization is a bounded host expert cache with asynchronous reads and prefetch.
+- A 1 GiB bounded host expert LRU works correctly, but its 1.65% hit rate is too low to
+  improve throughput on this prefill-heavy smoke test.
 
 ## Test system and model
 
@@ -143,15 +144,47 @@ The identical output hash and cache statistics validate the disk path against th
 control. The approximately 8.5× decode slowdown is expected because reads are serialized;
 this implementation is a correctness reference, not the performance target.
 
+## Experiment 4: Bounded host expert LRU
+
+### Goal
+
+Add a configurable RAM tier between NVMe and the GPU expert cache without allowing the
+complete expert pool to become resident in host memory.
+
+The cache is keyed by `(layer, expert)`, stores all six NVFP4 banks for each entry, and uses
+LRU eviction. `--moe-host-cache-gb 1` produced a capacity of 604 complete experts and
+1,072,472,064 logical cache bytes. Page-aligned pinned allocation is checked against the
+configured byte budget. The existing one-layer pinned staging buffer remains
+fixed overhead outside this byte budget.
+
+### Results
+
+| Method | Host-cache budget | Entries | Host hit | Evictions | Disk read | Decode | Warm TTFT | Output hash |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| Disk without host LRU | 0 GiB | 0 | — | — | 22.02 GiB | 2.14 tok/s | 23.68 s | `8400f78e0fc8` |
+| Disk with host LRU | 1 GiB | 604 / 604 | 1.65% (220 / 13,303) | 13,083 | 21.66 GiB | 2.11 tok/s | 25.24 s | `8400f78e0fc8` |
+
+Result: `/mnt/ssd/freetoken/results/disk/host-lru-1g.json`
+
+### Conclusion
+
+The byte limit, hit path, and repeated eviction path all worked while preserving the exact
+RAM-control output. The cache avoided 220 expert reads and reduced physical disk traffic by
+0.36 GiB (1.6%), but throughput did not improve. The repeated prefill touches most experts
+in every layer and replaces the previous request's useful decode entries before they can be
+reused. The next policy should isolate or bypass prefill admissions, then add asynchronous
+reads so cache misses no longer serialize the inference stream.
+
 ## Next experiments
 
-1. Add a byte-budgeted pinned-host expert LRU.
+1. Prevent prefill scans from polluting the host expert LRU.
 2. Coalesce duplicate expert reads.
 3. Add asynchronous, queue-depth-aware disk reads.
 4. Prefetch experts for upcoming layers.
-5. Measure peak process RSS and verify the host-memory budget.
-6. Compare cold, warm, repeated, and distinct prompts.
-7. Run `ft bench bw --dtype nvfp4` on GB10 and fill in its `B_H` result.
+5. Sweep 0.5, 1, 2, 4, 8, and 16 GiB host-cache budgets.
+6. Measure peak process RSS and verify the host-memory budget.
+7. Compare cold, warm, repeated, and distinct prompts.
+8. Run `ft bench bw --dtype nvfp4` on GB10 and fill in its `B_H` result.
 
 ## Overall inference results
 
@@ -163,3 +196,4 @@ allocation than the matched comparison, so it should be treated as a separate co
 | Controlled RAM baseline | Complete FTW banks in RAM | 16,384 | 25.33 tok/s | 39.48 ms | — | 1.53 s | 4.59 GiB | 63.31% | `c85ab4fe14ee` | — |
 | Matched RAM control | Complete FTW banks in RAM | 4,096 | 18.16 tok/s | 55.06 ms | 16.17 tok/s | 2.54 s | 4.35 GiB | 63.81% | `8400f78e0fc8` | — |
 | Synchronous disk | FTW rows from NVMe | 4,096 | 2.14 tok/s | 466.90 ms | 1.78 tok/s | 23.68 s | 4.35 GiB | 63.81% | `8400f78e0fc8` | 22.02 GiB |
+| Disk + 1 GiB host LRU | NVMe + 604-entry RAM LRU | 4,096 | 2.11 tok/s | 473.91 ms | 1.69 tok/s | 25.24 s | 4.35 GiB | 63.81% | `8400f78e0fc8` | 21.66 GiB |

@@ -483,6 +483,15 @@ def parse_args(
         default=ServerArgs.moe_storage,
         help="Keep routed experts in pinned RAM or fetch FTW expert rows on demand.",
     )
+    parser.add_argument(
+        "--moe-host-cache-gb",
+        type=float,
+        default=ServerArgs.moe_host_cache_gb,
+        help=(
+            "Disk mode: pinned host expert-LRU budget in GiB (default: 1). The fixed "
+            "one-layer staging buffer is additional overhead."
+        ),
+    )
 
     moe_cache_group = parser.add_mutually_exclusive_group()
     moe_cache_group.add_argument(

@@ -84,6 +84,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="routed-expert backing store",
     )
     p.add_argument(
+        "--host-cache-gb", type=float, default=1.0,
+        help="disk mode pinned host expert-LRU budget in GiB",
+    )
+    p.add_argument(
         "--aime",
         default=os.environ.get("FREETOKEN_AIME25_JSONL"),
         help=f"local jsonl instead of downloading {AIME_REPO}; default $FREETOKEN_AIME25_JSONL",
@@ -198,6 +202,7 @@ def serve_cmd(args: argparse.Namespace, backend: str, port: int) -> list[str]:
         "--host", "127.0.0.1", "--port", str(port),
         "--moe-backend", backend,
         "--moe-storage", args.storage,
+        "--moe-host-cache-gb", str(args.host_cache_gb),
         "--max-running-requests", "1",
         "--max-seq-len-override", str(8192 + args.decode),
         "--memory-ratio", str(args.mem_ratio),
@@ -412,10 +417,19 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
         before_disk = before_moe.get("disk") or {}
         after_disk = after_moe.get("disk") or {}
         if after_disk:
-            row["moe"]["disk"] = {
+            disk_delta = {
                 key: after_disk.get(key, 0) - before_disk.get(key, 0)
-                for key in ("read_ops", "logical_bytes", "physical_bytes", "read_seconds")
+                for key in (
+                    "cache_hits", "cache_misses", "cache_evictions", "read_ops",
+                    "logical_bytes", "physical_bytes", "read_seconds",
+                )
             }
+            for key in (
+                "cache_capacity_entries", "cache_capacity_bytes",
+                "cache_allocated_bytes", "cache_occupancy_entries", "cache_occupancy_bytes",
+            ):
+                disk_delta[key] = after_disk.get(key, 0)
+            row["moe"]["disk"] = disk_delta
 
     print(f"\n==== decode bs=1 [{backend}] via /v1/chat/completions ====", flush=True)
     print(f"  decode throughput : {row['decode_tok_s']:8.2f} tok/s  ({row['ms_per_token']:.3f} ms/token)")
@@ -440,6 +454,12 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
             print(
                 f"  expert disk I/O   : {disk['read_ops']} reads, {gib:.2f} GiB physical, "
                 f"{gib / seconds if seconds else 0.0:.2f} GiB/s"
+            )
+            requests = disk["cache_hits"] + disk["cache_misses"]
+            print(
+                f"  host expert LRU   : {disk['cache_hits'] / requests if requests else 0.0:.2%} hit, "
+                f"{disk['cache_occupancy_entries']}/{disk['cache_capacity_entries']} entries, "
+                f"{disk['cache_evictions']} evictions"
             )
     return row
 

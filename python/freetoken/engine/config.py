@@ -23,6 +23,9 @@ class EngineConfig:
     moe_backend: str = "auto"
     # Routed-expert backing store: complete pinned RAM banks or on-demand FTW rows.
     moe_storage: str = "ram"
+    # Byte budget for the disk mode's pinned host expert LRU. The fixed one-layer staging
+    # buffer is additional overhead. Ignored by RAM storage.
+    moe_host_cache_gb: float = 1.0
     # NVFP4 routed-expert GEMM backend (--nvfp4-backend): auto|marlin|flashinfer|triton.
     nvfp4_backend: str = "triton"
     # Expert-bank host load (--expert-load): auto|serial|parallel. "auto" reads scattered

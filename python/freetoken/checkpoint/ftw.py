@@ -39,6 +39,7 @@ import mmap
 import os
 import re
 import threading
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
@@ -493,10 +494,24 @@ class FTWDiskExpertSource:
     kernels and their fixed source pointers.
     """
 
-    def __init__(self, reader: FTWReader, descriptors, staging) -> None:
+    def __init__(self, reader: FTWReader, descriptors, staging, cache_banks=None) -> None:
         self.reader = reader
         self.descriptors = descriptors
         self.staging = staging
+        self.cache_banks = cache_banks or {}
+        self.cache_capacity = next(iter(self.cache_banks.values())).tensor.shape[0] if self.cache_banks else 0
+        self.cache_row_bytes = sum(bank.tensor[0].numel() * bank.tensor.element_size()
+                                   for bank in self.staging.values())
+        self.cache_allocated_bytes = sum(
+            _align_up(getattr(bank, "nbytes", bank.tensor.numel() * bank.tensor.element_size()))
+            for bank in self.cache_banks.values()
+        )
+        self._cache: OrderedDict[tuple[int, int], int] = OrderedDict()
+        self._free_slots = list(range(self.cache_capacity - 1, -1, -1))
+        self._lock = threading.Lock()
+        self.cache_hits = 0
+        self.cache_misses = 0
+        self.cache_evictions = 0
         self.read_ops = 0
         self.logical_bytes = 0
         self.physical_bytes = 0
@@ -508,17 +523,50 @@ class FTWDiskExpertSource:
         if not expert_ids:
             return
         start = time.perf_counter()
-        for expert_id in expert_ids:
-            for bank_name, bank in self.staging.items():
-                desc = self.descriptors[(layer_id, expert_id, bank_name)]
-                bank.tensor[expert_id].copy_(self.reader.read_expert_row(desc))
-                self.read_ops += 1
-                self.logical_bytes += desc.nbytes
-                self.physical_bytes += desc.read_nbytes
+        # The current disk path is synchronous. Holding one lock makes duplicate concurrent
+        # requests coalesce naturally and keeps LRU state deterministic; async I/O will
+        # replace this with explicit loading/ready entry states in the next phase.
+        with self._lock:
+            for expert_id in expert_ids:
+                key = (layer_id, expert_id)
+                slot = self._cache.get(key)
+                if slot is not None:
+                    self.cache_hits += 1
+                    self._cache.move_to_end(key)
+                    for bank_name, bank in self.staging.items():
+                        bank.tensor[expert_id].copy_(self.cache_banks[bank_name].tensor[slot])
+                    continue
+
+                self.cache_misses += 1
+                if self.cache_capacity:
+                    if self._free_slots:
+                        slot = self._free_slots.pop()
+                    else:
+                        _, slot = self._cache.popitem(last=False)
+                        self.cache_evictions += 1
+
+                for bank_name, bank in self.staging.items():
+                    desc = self.descriptors[(layer_id, expert_id, bank_name)]
+                    bank.tensor[expert_id].copy_(self.reader.read_expert_row(desc))
+                    if self.cache_capacity:
+                        self.cache_banks[bank_name].tensor[slot].copy_(bank.tensor[expert_id])
+                    self.read_ops += 1
+                    self.logical_bytes += desc.nbytes
+                    self.physical_bytes += desc.read_nbytes
+                if self.cache_capacity:
+                    self._cache[key] = slot
         self.read_seconds += time.perf_counter() - start
 
     def stats(self) -> dict:
         return {
+            "cache_capacity_entries": self.cache_capacity,
+            "cache_capacity_bytes": self.cache_capacity * self.cache_row_bytes,
+            "cache_allocated_bytes": self.cache_allocated_bytes,
+            "cache_occupancy_entries": len(self._cache),
+            "cache_occupancy_bytes": len(self._cache) * self.cache_row_bytes,
+            "cache_hits": self.cache_hits,
+            "cache_misses": self.cache_misses,
+            "cache_evictions": self.cache_evictions,
             "read_ops": self.read_ops,
             "logical_bytes": self.logical_bytes,
             "physical_bytes": self.physical_bytes,
@@ -526,7 +574,8 @@ class FTWDiskExpertSource:
         }
 
 
-def open_ftw_disk_banks(path: str, *, num_layers: int, num_experts: int):
+def open_ftw_disk_banks(path: str, *, num_layers: int, num_experts: int,
+                        host_cache_bytes: int = 0):
     """Open FTW routed experts with a one-layer pinned staging footprint."""
     from freetoken.moe.host_banks import HostBank
 
@@ -545,6 +594,30 @@ def open_ftw_disk_banks(path: str, *, num_layers: int, num_experts: int):
         bank.pin()
         staging[bank_name] = bank
 
+    row_bytes = sum(bank.tensor[0].numel() * bank.tensor.element_size()
+                    for bank in staging.values())
+    bank_row_bytes = [bank.tensor[0].numel() * bank.tensor.element_size()
+                      for bank in staging.values()]
+    total_experts = num_layers * num_experts
+    cache_capacity = min(total_experts, host_cache_bytes // row_bytes) if row_bytes else 0
+    while cache_capacity and sum(_align_up(cache_capacity * nbytes)
+                                 for nbytes in bank_row_bytes) > host_cache_bytes:
+        cache_capacity -= 1
+    if host_cache_bytes and cache_capacity < 1:
+        reader.close()
+        raise ValueError(
+            f"host expert cache budget {host_cache_bytes} bytes cannot hold one "
+            f"{row_bytes}-byte expert"
+        )
+    cache_banks = {}
+    if cache_capacity:
+        for bank_name, staging_bank in staging.items():
+            shape = (cache_capacity, *staging_bank.tensor.shape[1:])
+            bank = HostBank(shape, staging_bank.tensor.dtype)
+            bank.tensor.zero_()
+            bank.pin()
+            cache_banks[bank_name] = bank
+
     alpha_tensors = {}
     for entry in reader.entries("experts_bank"):
         if entry["name"] not in _ALPHA_NAMES:
@@ -556,7 +629,7 @@ def open_ftw_disk_banks(path: str, *, num_layers: int, num_experts: int):
 
     from freetoken.moe.expert_banks import ExpertBanks
 
-    source = FTWDiskExpertSource(reader, descriptors, staging)
+    source = FTWDiskExpertSource(reader, descriptors, staging, cache_banks)
     sources = {
         name: [bank.tensor] * num_layers
         for name, bank in staging.items()

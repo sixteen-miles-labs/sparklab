@@ -1,7 +1,15 @@
+from concurrent.futures import ThreadPoolExecutor
+from types import SimpleNamespace
+
 import pytest
 import torch
 
-from freetoken.checkpoint.ftw import FTWReader, FTWWriter, layer_bank_entry_name
+from freetoken.checkpoint.ftw import (
+    FTWDiskExpertSource,
+    FTWReader,
+    FTWWriter,
+    layer_bank_entry_name,
+)
 
 
 def _write_ftw(path, tensors):
@@ -61,5 +69,61 @@ def test_expert_row_index_rejects_missing_layer(tmp_path):
     try:
         with pytest.raises(ValueError, match=r"expected \[0, 1\]"):
             reader.expert_row_descriptors(num_layers=2)
+    finally:
+        reader.close()
+
+
+def test_disk_expert_source_uses_bounded_lru(tmp_path):
+    values = torch.arange(2 * 3 * 513, dtype=torch.int16).view(6, 513)
+    _write_ftw(tmp_path, [("weight", values)])
+    reader = FTWReader(str(tmp_path))
+    staging = {"weight": SimpleNamespace(tensor=torch.empty(3, 513, dtype=torch.int16))}
+    cache = {"weight": SimpleNamespace(tensor=torch.empty(2, 513, dtype=torch.int16))}
+    source = FTWDiskExpertSource(
+        reader,
+        reader.expert_row_descriptors(num_layers=2),
+        staging,
+        cache,
+    )
+    try:
+        source.stage(0, [0, 1])
+        assert source.read_ops == 2
+        assert torch.equal(staging["weight"].tensor[0], values[0])
+
+        # Refresh (0, 0), then insert (1, 0): (0, 1) must be the LRU victim.
+        source.stage(0, [0])
+        source.stage(1, [0])
+        source.stage(0, [1])
+        stats = source.stats()
+        assert stats["cache_capacity_entries"] == 2
+        assert stats["cache_occupancy_entries"] == 2
+        assert stats["cache_hits"] == 1
+        assert stats["cache_misses"] == 4
+        assert stats["cache_evictions"] == 2
+        assert source.read_ops == 4
+        assert torch.equal(staging["weight"].tensor[1], values[1])
+    finally:
+        reader.close()
+
+
+def test_disk_expert_source_coalesces_concurrent_request(tmp_path):
+    values = torch.arange(2 * 3 * 513, dtype=torch.int16).view(6, 513)
+    _write_ftw(tmp_path, [("weight", values)])
+    reader = FTWReader(str(tmp_path))
+    staging = {"weight": SimpleNamespace(tensor=torch.empty(3, 513, dtype=torch.int16))}
+    cache = {"weight": SimpleNamespace(tensor=torch.empty(1, 513, dtype=torch.int16))}
+    source = FTWDiskExpertSource(
+        reader,
+        reader.expert_row_descriptors(num_layers=2),
+        staging,
+        cache,
+    )
+    try:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            list(pool.map(lambda _: source.stage(0, [2]), range(2)))
+        assert source.read_ops == 1
+        assert source.cache_misses == 1
+        assert source.cache_hits == 1
+        assert torch.equal(staging["weight"].tensor[2], values[2])
     finally:
         reader.close()
