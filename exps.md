@@ -69,6 +69,30 @@ applicable. Its [official specification](https://docs.nvidia.com/dgx/dgx-spark/h
 lists 273 GB/s unified-memory bandwidth. We leave `B_H` as `TBD` until the FreeToken expert
 kernel is measured on that machine.
 
+## RTX 3090 method comparison
+
+The paper rows below transcribe the RTX 3090 bars from
+[Figure 5](https://arxiv.org/pdf/2608.16157). Methods are rows and experiment attributes and
+results are columns.
+
+| Result source | Method | Model format | Workload | Expert storage / execution | Decode |
+|---|---|---|---|---|---:|
+| Figure 5 | FreeToken | Qwen3.6-35B-A3B BF16 | W2 OpenCode + SWE | RAM hybrid GPU/CPU | 36.2 tok/s |
+| Figure 5 | KTransformers | Qwen3.6-35B-A3B BF16 | W2 OpenCode + SWE | RAM, prefill-updated placement | 27.4 tok/s |
+| Figure 5 | llama.cpp | Qwen3.6-35B-A3B BF16 | W2 OpenCode + SWE | RAM, static placement | 22.1 tok/s |
+| Figure 5 | Ollama | Qwen3.6-35B-A3B BF16 | W2 OpenCode + SWE | RAM, static placement | 18.2 tok/s |
+| Local controlled baseline | FreeToken RAM | Qwen3.6-35B-A3B NVFP4 | AIME reasoning | Complete FTW expert banks in RAM | 25.33 tok/s |
+| Local matched control | FreeToken RAM | Qwen3.6-35B-A3B NVFP4 | AIME reasoning | Complete FTW expert banks in RAM | 18.16 tok/s |
+| Local disk prototype | FreeToken disk | Qwen3.6-35B-A3B NVFP4 | AIME reasoning | Synchronous FTW rows from NVMe | 2.14 tok/s |
+| Local bounded-cache prototype | FreeToken disk + 1 GiB LRU | Qwen3.6-35B-A3B NVFP4 | AIME reasoning | NVMe + 604-entry pinned RAM LRU | 2.11 tok/s |
+
+These groups are not directly comparable. Figure 5 measures a coding-agent trajectory with
+BF16 weights on the paper's rented RTX 3090 server (25.3 GB/s host-to-GPU and 56.7 GB/s CPU
+MoE bandwidth). Our rows measure a short greedy AIME request with NVFP4 weights on the local
+i9-9900K system (12.08 GB/s host-to-GPU and 23.28 GB/s CPU MoE bandwidth). The two local RAM
+rows also use different KV allocations: 16,384 tokens for the controlled baseline and 4,096
+tokens for the matched RAM/disk comparison.
+
 ## Experiment 1: Bandwidth baseline
 
 Command:
