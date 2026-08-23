@@ -180,11 +180,32 @@ class FTWWriter:
         self._shard_start = 0  # FTW offset where the current shard began
         self._cur = 0  # bytes written to the current shard
 
+    def _finish_shard(self) -> None:
+        """Commit and evict the completed shard's buffered pages.
+
+        Conversion can write checkpoints larger than host RAM.  Merely closing a file
+        leaves its dirty pages in Linux's page cache, so a fast producer can accumulate
+        almost the entire checkpoint in memory and drive the machine into global OOM
+        reclaim.  Sync before POSIX_FADV_DONTNEED: the latter is only a hint and cannot
+        discard dirty pages reliably.
+        """
+        if self._f is None:
+            return
+        f = self._f
+        self._f = None
+        try:
+            f.flush()
+            os.fsync(f.fileno())
+            if hasattr(os, "posix_fadvise") and hasattr(os, "POSIX_FADV_DONTNEED"):
+                os.posix_fadvise(f.fileno(), 0, 0, os.POSIX_FADV_DONTNEED)
+        finally:
+            f.close()
+
     def _roll(self) -> None:
         if self._f is not None:
             self._shards.append({"file": _SHARD_FMT.format(self._shard_idx),
                                  "global_off": self._shard_start, "nbytes": self._cur})
-            self._f.close()
+            self._finish_shard()
         self._shard_idx += 1
         self._shard_start = self._global
         self._cur = 0
@@ -227,8 +248,7 @@ class FTWWriter:
         if self._f is not None:
             self._shards.append({"file": _SHARD_FMT.format(self._shard_idx),
                                  "global_off": self._shard_start, "nbytes": self._cur})
-            self._f.close()
-            self._f = None
+            self._finish_shard()
         index = {"format": FORMAT_TAG, "version": FORMAT_VERSION, "align": ALIGN,
                  "shard_limit": self.shard_limit, "total_bytes": self._global,
                  "tensors": self._tensors, "shards": self._shards, **meta}

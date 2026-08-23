@@ -531,8 +531,11 @@ class Engine:
 
                 if not is_ftw_checkpoint(config.model_path):
                     raise ValueError("--moe-storage disk currently requires an FTW checkpoint")
-                if decode_target != "gpu":
-                    raise ValueError("--moe-storage disk currently supports only --moe-backend offload")
+                if decode_target == "cpu":
+                    raise ValueError(
+                        "--moe-storage disk supports --moe-backend offload or hybrid, "
+                        "but not full CPU decode"
+                    )
                 if config.moe_prefill_overlap:
                     raise ValueError("--moe-storage disk requires --disable-moe-prefill-overlap")
                 if config.cuda_graph_max_bs not in (None, 0):

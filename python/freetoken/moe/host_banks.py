@@ -98,6 +98,18 @@ class HostBank:
         become undefined). Only for buffers that are done being read -- the
         converter releases each layer after writing it out."""
         assert not self._pinned, "cannot release a pinned bank"
+        # mmap(-1, ...) is a shared anonymous (shmem) mapping on Linux.  DONTNEED is
+        # allowed to leave shared pages resident until later reclaim, which let a fast
+        # DSV4 conversion retain tens of GiB and enter global OOM thrashing.  REMOVE
+        # punches the pages out of the shmem object immediately while preserving the
+        # virtual mapping; fall back for platforms/filesystems that do not support it.
+        remove = getattr(mmap, "MADV_REMOVE", None)
+        if remove is not None:
+            try:
+                self._buf.madvise(remove)
+                return
+            except OSError:
+                pass
         self._buf.madvise(mmap.MADV_DONTNEED)
 
     def lock(self) -> None:

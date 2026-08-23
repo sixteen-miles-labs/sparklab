@@ -347,6 +347,10 @@ class OffloadMoELayer(MoELayer):
         on_gpu = topk_ids >= 0
 
         cpu_ids = torch.where(on_gpu, raw.new_full((), -1), raw).contiguous()
+        # A disk-backed cache exposes a shared one-layer host staging bank rather than
+        # persistent per-layer banks. Populate every CPU overflow row before the worker
+        # pool reads its raw expert id. RAM-backed hybrid is a no-op here.
+        cache.stage_disk_experts(self.layer_id, cpu_ids)
         pending = executor.decode_submit(self.layer_id, hidden_states, topk_weights, cpu_ids)
 
         # Measurement knob: FREETOKEN_HYBRID_OVERLAP=0 syncs the CPU pool *before* the

@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+import os
 from types import SimpleNamespace
 
 import pytest
@@ -17,6 +18,37 @@ def _write_ftw(path, tensors):
     for name, tensor in tensors:
         writer.add_tensor(name, tensor, kind="experts_bank")
     writer.finalize({"expert_bank_num_layers": 2, "quant_format": "test"})
+
+
+def test_writer_syncs_and_evicts_each_completed_shard(tmp_path, monkeypatch):
+    calls = []
+    real_fsync = os.fsync
+    real_fadvise = getattr(os, "posix_fadvise", None)
+
+    def record_fsync(fd):
+        calls.append(("fsync", fd))
+        return real_fsync(fd)
+
+    monkeypatch.setattr(os, "fsync", record_fsync)
+    if real_fadvise is not None:
+        def record_fadvise(fd, offset, length, advice):
+            calls.append(("fadvise", fd, offset, length, advice))
+            return real_fadvise(fd, offset, length, advice)
+
+        monkeypatch.setattr(os, "posix_fadvise", record_fadvise)
+
+    # Each aligned 4096-byte tensor fills one shard, so the second add rolls the first
+    # and finalize completes the second.
+    writer = FTWWriter(str(tmp_path), shard_limit=4096)
+    writer.add_tensor("a", torch.zeros(4096, dtype=torch.uint8))
+    writer.add_tensor("b", torch.ones(4096, dtype=torch.uint8))
+    writer.finalize({})
+
+    assert len([call for call in calls if call[0] == "fsync"]) == 2
+    if real_fadvise is not None and hasattr(os, "POSIX_FADV_DONTNEED"):
+        advice = [call for call in calls if call[0] == "fadvise"]
+        assert len(advice) == 2
+        assert all(call[2:] == (0, 0, os.POSIX_FADV_DONTNEED) for call in advice)
 
 
 def test_per_layer_expert_rows_round_trip_across_shards(tmp_path):

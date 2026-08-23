@@ -968,6 +968,24 @@ class OffloadMoeCache:
                 self.num_indices,
             )
 
+    def stage_disk_experts(self, layer_id: int, expert_ids: torch.Tensor) -> None:
+        """Stage raw expert rows needed by disk-backed CPU/hybrid decode.
+
+        The disk source exposes one full-layer-shaped pinned staging bank to the CPU
+        executor.  Hybrid routing leaves CPU-assigned routes as raw expert ids, so those
+        rows must be present before ``decode_submit`` lets the worker pool dereference
+        its bank pointers.  Disk mode is deliberately eager/synchronous, making the
+        device-to-host id synchronization here part of its current correctness contract.
+        """
+        if self.disk_source is None:
+            return
+        ids = expert_ids.reshape(-1)
+        ids = ids[ids >= 0]
+        if ids.numel() == 0:
+            return
+        unique_ids = torch.unique(ids).cpu().tolist()
+        self.disk_source.stage(layer_id, unique_ids, admit=True)
+
 
 def iter_offload_moe_layers(model) -> Iterator:
     from freetoken.layers import BaseOP, OffloadMoELayer

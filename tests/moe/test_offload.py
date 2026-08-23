@@ -34,6 +34,33 @@ def _make_layer_and_cache():
     return layer, cache
 
 
+def test_stage_disk_experts_filters_deduplicates_and_admits():
+    from types import SimpleNamespace
+
+    _, cache = _make_layer_and_cache()
+    calls = []
+    cache.disk_source = SimpleNamespace(
+        stage=lambda layer_id, expert_ids, *, admit: calls.append(
+            (layer_id, expert_ids, admit)
+        )
+    )
+
+    cache.stage_disk_experts(0, torch.tensor([[3, -1], [1, 3]], dtype=torch.int32))
+
+    assert calls == [(0, [1, 3], True)]
+
+
+def test_stage_disk_experts_is_noop_without_source_or_cpu_routes():
+    from types import SimpleNamespace
+
+    _, cache = _make_layer_and_cache()
+    cache.stage_disk_experts(0, torch.tensor([[1, 2]], dtype=torch.int32))
+    cache.disk_source = SimpleNamespace(
+        stage=lambda *args, **kwargs: pytest.fail("empty CPU route set must not stage")
+    )
+    cache.stage_disk_experts(0, torch.full((1, 2), -1, dtype=torch.int32))
+
+
 def test_dummy_expert_sources_use_moe_layer_count(monkeypatch):
     from types import SimpleNamespace
 
