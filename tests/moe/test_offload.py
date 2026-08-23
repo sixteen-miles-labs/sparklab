@@ -61,6 +61,51 @@ def test_stage_disk_experts_is_noop_without_source_or_cpu_routes():
     cache.stage_disk_experts(0, torch.full((1, 2), -1, dtype=torch.int32))
 
 
+def test_stage_disk_hybrid_combines_cpu_and_gpu_routes_once():
+    from types import SimpleNamespace
+
+    _, cache = _make_layer_and_cache()
+    calls = []
+    cache.disk_source = SimpleNamespace(
+        stage=lambda layer_id, expert_ids, *, admit: calls.append(
+            (layer_id, expert_ids, admit)
+        )
+    )
+    cache.num_indices.fill_(2)
+    cache.src_indices[:2] = torch.tensor([2, 3], dtype=torch.int32)
+
+    cache.stage_disk_hybrid(
+        0, torch.tensor([[3, -1], [1, 3]], dtype=torch.int32)
+    )
+
+    assert calls == [(0, [1, 3, 2], True)]
+    assert cache._pending_disk_stage_layer == 0
+
+
+def test_copy_missing_skips_disk_stage_after_combined_hybrid_stage(monkeypatch):
+    from types import SimpleNamespace
+
+    _, cache = _make_layer_and_cache()
+    calls = []
+    cache.disk_source = SimpleNamespace(
+        stage=lambda layer_id, expert_ids, *, admit: calls.append(
+            (layer_id, expert_ids, admit)
+        )
+    )
+    cache._pending_src_layer = 0
+    cache.num_indices.fill_(1)
+    cache.src_indices[0] = 2
+    cache.stage_disk_hybrid(0, torch.tensor([1], dtype=torch.int32))
+    monkeypatch.setattr(
+        "freetoken.kernel.fast_index_copy_jit", lambda *args, **kwargs: None
+    )
+
+    cache.copy_missing()
+
+    assert calls == [(0, [1, 2], True)]
+    assert cache._pending_disk_stage_layer is None
+
+
 def test_dummy_expert_sources_use_moe_layer_count(monkeypatch):
     from types import SimpleNamespace
 
@@ -563,12 +608,12 @@ def test_nvfp4_materialize_keeps_bookkeeping_consistent_across_requests():
 
     def bank(out, inner, dtype):
         # one independently allocated [E, out, inner] tensor per layer (the per-layer host
-        # bank contract); row idx within layer l keeps the old flat fingerprint l*E+idx.
+        # bank contract); each row keeps the old flat fingerprint layer*E+idx.
         layers = []
-        for l in range(L):
+        for layer_index in range(L):
             t = torch.zeros(E, out, inner, dtype=dtype)
             for e in range(E):
-                t[e].view(torch.uint8).fill_(l * E + e)
+                t[e].view(torch.uint8).fill_(layer_index * E + e)
             layers.append(t)
         return layers
 

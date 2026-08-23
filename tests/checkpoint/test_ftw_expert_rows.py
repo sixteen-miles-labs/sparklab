@@ -11,6 +11,7 @@ from freetoken.checkpoint.ftw import (
     FTWReader,
     FTWWriter,
     layer_bank_entry_name,
+    open_ftw_disk_banks,
 )
 
 
@@ -139,6 +140,39 @@ def test_disk_expert_source_uses_bounded_lru(tmp_path):
         reader.close()
 
 
+def test_disk_expert_source_layer_lru_isolates_layer_capacity(tmp_path):
+    values = torch.arange(2 * 3 * 513, dtype=torch.int16).view(6, 513)
+    _write_ftw(tmp_path, [("weight", values)])
+    reader = FTWReader(str(tmp_path))
+    staging = {"weight": SimpleNamespace(tensor=torch.empty(3, 513, dtype=torch.int16))}
+    cache = {"weight": SimpleNamespace(tensor=torch.empty(3, 513, dtype=torch.int16))}
+    source = FTWDiskExpertSource(
+        reader,
+        reader.expert_row_descriptors(num_layers=2),
+        staging,
+        cache,
+        cache_policy="layer_lru",
+    )
+    try:
+        # Layer 0 may borrow layer 1's unused slot, so the cache still fills completely.
+        source.stage(0, [0, 1, 2])
+        source.stage(1, [0])
+        assert source.stats()["cache_occupancy_entries"] == 3
+
+        # Once layer 1 is resident, layer 0 churn must replace within its own partition.
+        source.stage(0, [0])
+        reads = source.read_ops
+        source.stage(1, [0])
+
+        assert source.read_ops == reads
+        assert source.cache_hits == 1
+        assert set(source._cache) == {(0, 0), (0, 2), (1, 0)}
+        assert source.stats()["cache_policy"] == "layer_lru"
+    finally:
+        source.close()
+        reader.close()
+
+
 def test_disk_expert_source_coalesces_concurrent_request(tmp_path):
     values = torch.arange(2 * 3 * 513, dtype=torch.int16).view(6, 513)
     _write_ftw(tmp_path, [("weight", values)])
@@ -187,6 +221,59 @@ def test_prefill_bypass_preserves_decode_lru(tmp_path):
         assert source.cache_hits == 2
     finally:
         reader.close()
+
+
+def test_disk_expert_source_prefetches_into_layer_parity_buffers():
+    class Reader:
+        def read_expert_row(self, desc):
+            return torch.tensor([desc.value], dtype=torch.int16)
+
+    descriptors = {
+        (layer, expert, "weight"): SimpleNamespace(
+            nbytes=2, read_nbytes=4096, value=10 * layer + expert
+        )
+        for layer in range(2)
+        for expert in range(2)
+    }
+    buffers = [
+        {"weight": SimpleNamespace(tensor=torch.empty(2, 1, dtype=torch.int16))}
+        for _ in range(2)
+    ]
+    source = FTWDiskExpertSource(
+        Reader(),
+        descriptors,
+        buffers[0],
+        staging_buffers=buffers,
+        read_workers=2,
+    )
+    try:
+        source.prefetch_prefill_layer(0)
+        source.prefetch_prefill_layer(1)
+        source.wait_prefill_layer(0)
+        source.wait_prefill_layer(1)
+
+        assert buffers[0]["weight"].tensor.flatten().tolist() == [0, 1]
+        assert buffers[1]["weight"].tensor.flatten().tolist() == [10, 11]
+        assert source.stats()["staging_buffers"] == 2
+        assert source.cache_bypasses == 4
+    finally:
+        source.close()
+
+
+def test_disk_prefill_overlap_rejects_budget_smaller_than_second_staging(tmp_path):
+    values = torch.arange(2 * 3 * 513, dtype=torch.int16).view(6, 513)
+    _write_ftw(tmp_path, [("weight", values)])
+
+    # The full three-row staging bank occupies one aligned 4096-byte mapping.
+    # Reject before HostBank allocation/pinning rather than exceeding the bound.
+    with pytest.raises(ValueError, match="second staging layer"):
+        open_ftw_disk_banks(
+            str(tmp_path),
+            num_layers=2,
+            num_experts=3,
+            host_cache_bytes=4095,
+            prefill_overlap=True,
+        )
 
 
 def test_disk_expert_source_reads_banks_concurrently():

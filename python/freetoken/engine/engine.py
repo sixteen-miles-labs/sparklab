@@ -536,8 +536,6 @@ class Engine:
                         "--moe-storage disk supports --moe-backend offload or hybrid, "
                         "but not full CPU decode"
                     )
-                if config.moe_prefill_overlap:
-                    raise ValueError("--moe-storage disk requires --disable-moe-prefill-overlap")
                 if config.cuda_graph_max_bs not in (None, 0):
                     raise ValueError("--moe-storage disk requires --cuda-graph-max-bs 0")
                 banks, disk_source = open_ftw_disk_banks(
@@ -545,11 +543,13 @@ class Engine:
                     num_layers=config.model_config.num_moe_layers,
                     num_experts=config.model_config.num_experts,
                     host_cache_bytes=int(config.moe_host_cache_gb * 2**30),
+                    prefill_overlap=config.moe_prefill_overlap,
                 )
                 assert banks is not None
                 logger.info_rank0(
-                    "expert banks: synchronous FTW disk source "
-                    f"(one-layer staging + {disk_source.cache_capacity} host-LRU entries)"
+                    "expert banks: bounded FTW disk source "
+                    f"({disk_source.num_staging_buffers}-layer staging + "
+                    f"{disk_source.cache_capacity} host-LRU entries)"
                 )
             else:
                 expert_parallel = {"serial": False, "parallel": True}.get(config.expert_load, None)

@@ -8,6 +8,8 @@ from typing import Iterator
 import torch
 from flashlib.kernels.slot_cache import N_STATS, Stat
 
+from freetoken.utils import init_logger
+
 # Fuse the per-bank expert copies into a single multi-bank launch (one per copy_missing
 # instead of one per bank). Set FREETOKEN_FUSED_COPY=0 to force the legacy per-bank path
 # (kept for A/B profiling). Falls back to per-bank automatically if a bank's row bytes or
@@ -24,8 +26,6 @@ _FUSED_COPY = os.getenv("FREETOKEN_FUSED_COPY", "1").strip().lower() not in {"0"
 # whole layer is tiny) and are excluded from the hit gather, so every per-run
 # entry the batch sees is >= this size.
 _SMALL_BANK_FEAT_BYTES = 256 * 1024
-
-from freetoken.utils import init_logger
 
 logger = init_logger(__name__)
 
@@ -239,6 +239,11 @@ class OffloadMoeCache:
         # state as evict_slots/src_indices/num_indices).
         self._pending_src_layer: int | None = None
         self._pending_is_prefill = False
+        # Disk-backed hybrid decode needs both the CPU-overflow rows and the capped
+        # GPU-fetch rows in the shared one-layer staging banks.  ``stage_disk_hybrid``
+        # loads them as one batch and records the layer here so ``copy_missing`` does
+        # not issue a second, smaller disk staging pass for the GPU subset.
+        self._pending_disk_stage_layer: int | None = None
         # Per-bank [2, num_experts, ...] double-buffer views over the slot cache's
         # first 2 * num_experts slots (set up when prefill_overlap is enabled).
         self.prefill_bank_buffers: list[torch.Tensor] = []
@@ -601,6 +606,21 @@ class OffloadMoeCache:
                 "Prefill overlap buffer is being reused before release"
             )
 
+        if self.disk_source is not None:
+            assert self.disk_source.num_staging_buffers == 2
+            # The previous H2D from this parity host buffer must finish before the
+            # background O_DIRECT read overwrites it. In normal layer order this event
+            # is already complete because the prior layer waited on it before GEMM.
+            if (
+                self._prefill_buffer_layer[buffer_id] is not None
+                and self.prefill_ready_events
+            ):
+                self.prefill_ready_events[buffer_id].synchronize()
+            self.disk_source.prefetch_prefill_layer(layer_id)
+            self._prefill_buffer_layer[buffer_id] = layer_id
+            self._prefill_buffer_released[buffer_id] = False
+            return
+
         def copy() -> None:
             self._invalidate_prefill_buffer(buffer_id)
             for (per_layer, _), buffer in zip(self.banks, self.prefill_bank_buffers):
@@ -745,6 +765,28 @@ class OffloadMoeCache:
         self.prefetch_prefill_layer(layer_id)
         buffer_id = layer_id % 2
         assert self._prefill_buffer_layer[buffer_id] == layer_id
+        if self.disk_source is not None:
+            self.disk_source.wait_prefill_layer(layer_id)
+
+            def copy() -> None:
+                self._invalidate_prefill_buffer(buffer_id)
+                for (per_layer, _), buffer in zip(
+                    self.banks, self.prefill_bank_buffers
+                ):
+                    buffer[buffer_id].copy_(per_layer[layer_id], non_blocking=True)
+
+            if self.prefill_copy_stream is None:
+                copy()
+            else:
+                with torch.cuda.stream(self.prefill_copy_stream):
+                    if self._prefill_buffer_has_release_event[buffer_id]:
+                        self.prefill_copy_stream.wait_event(
+                            self.prefill_release_events[buffer_id]
+                        )
+                    copy()
+                    self.prefill_ready_events[buffer_id].record(
+                        self.prefill_copy_stream
+                    )
         if self.prefill_ready_events:
             torch.cuda.current_stream(self.device).wait_event(self.prefill_ready_events[buffer_id])
         return tuple(buffer[buffer_id] for buffer in self.prefill_bank_buffers)
@@ -770,6 +812,7 @@ class OffloadMoeCache:
             self.decode_freq[layer_id].scatter_add_(0, ids, torch.ones_like(ids))
         self._pending_src_layer = layer_id
         self._pending_is_prefill = False
+        self._pending_disk_stage_layer = None
         ensure_experts(self, layer_id, expert_ids)
 
     def ensure_experts_hybrid(self, layer_id: int, expert_ids: torch.Tensor) -> None:
@@ -789,6 +832,7 @@ class OffloadMoeCache:
             self.decode_freq[layer_id].scatter_add_(0, ids, torch.ones_like(ids))
         self._pending_src_layer = layer_id
         self._pending_is_prefill = False
+        self._pending_disk_stage_layer = None
         ensure_experts_hybrid(
             self, layer_id, expert_ids, self.hybrid_max_fetch, self.hybrid_fetch_fraction
         )
@@ -798,6 +842,7 @@ class OffloadMoeCache:
 
         self._pending_src_layer = layer_id
         self._pending_is_prefill = True
+        self._pending_disk_stage_layer = None
         materialize_layer(self, layer_id)
 
     def reset(self) -> None:
@@ -937,9 +982,12 @@ class OffloadMoeCache:
         layer_id = self._pending_src_layer
         assert layer_id is not None, "no staged misses (ensure_experts/materialize_layer first)"
         if self.disk_source is not None:
-            count = int(self.num_indices.item())
-            expert_ids = self.src_indices[:count].cpu().tolist()
-            self.disk_source.stage(layer_id, expert_ids, admit=not self._pending_is_prefill)
+            if self._pending_disk_stage_layer == layer_id:
+                self._pending_disk_stage_layer = None
+            else:
+                count = int(self.num_indices.item())
+                expert_ids = self.src_indices[:count].cpu().tolist()
+                self.disk_source.stage(layer_id, expert_ids, admit=not self._pending_is_prefill)
         if self._copy_fused_ok:
             from freetoken.kernel.fast_index_copy import fast_index_copy_multi_jit
 
@@ -985,6 +1033,30 @@ class OffloadMoeCache:
             return
         unique_ids = torch.unique(ids).cpu().tolist()
         self.disk_source.stage(layer_id, unique_ids, admit=True)
+
+    def stage_disk_hybrid(self, layer_id: int, cpu_expert_ids: torch.Tensor) -> None:
+        """Stage one combined CPU-overflow + GPU-fetch batch for hybrid decode.
+
+        Combining the two route sets lets the disk source deduplicate them, coalesce
+        adjacent cache misses, and submit one larger batch to its persistent read pool.
+        The staging bank is shared by both consumers, so it is safe to populate all rows
+        before the CPU worker pool and GPU cache copy begin reading it.
+        """
+        if self.disk_source is None:
+            return
+
+        cpu_ids = cpu_expert_ids.reshape(-1)
+        cpu_ids = cpu_ids[cpu_ids >= 0]
+        cpu_unique = torch.unique(cpu_ids).cpu().tolist() if cpu_ids.numel() else []
+
+        count = int(self.num_indices.item())
+        gpu_ids = self.src_indices[:count].cpu().tolist()
+        combined_ids = list(dict.fromkeys([*cpu_unique, *gpu_ids]))
+        if not combined_ids:
+            return
+
+        self.disk_source.stage(layer_id, combined_ids, admit=True)
+        self._pending_disk_stage_layer = layer_id
 
 
 def iter_offload_moe_layers(model) -> Iterator:

@@ -85,7 +85,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     p.add_argument(
         "--host-cache-gb", type=float, default=1.0,
-        help="disk mode pinned host expert-LRU budget in GiB",
+        help="disk mode pageable host expert-LRU budget in GiB",
+    )
+    p.add_argument(
+        "--cpu-threads", type=int, default=0,
+        help="CPU MoE worker threads; 0 keeps server auto-selection",
     )
     p.add_argument(
         "--aime",
@@ -211,6 +215,8 @@ def serve_cmd(args: argparse.Namespace, backend: str, port: int) -> list[str]:
     ]
     if args.num_tokens > 0:
         cmd += ["--num-tokens", str(args.num_tokens)]
+    if args.cpu_threads > 0:
+        cmd += ["--moe-cpu-threads", str(args.cpu_threads)]
     if args.disable_prefill_overlap:
         cmd.append("--disable-moe-prefill-overlap")
     if args.collect_moe_stats:
@@ -284,7 +290,7 @@ def stream_generate(origin: str, model_id: str, problem: str, sampling: dict,
         "model": model_id,
         "messages": [{"role": "user", "content": problem}],
         "max_tokens": args.decode,
-        "ignore_eos": True,
+        "ignore_eos": not getattr(args, "normal_eos", False),
         "stream": True,
         "stream_options": {"include_usage": True},
         "chat_template_kwargs": {"enable_thinking": True},
@@ -298,9 +304,10 @@ def stream_generate(origin: str, model_id: str, problem: str, sampling: dict,
     stamps: list[float] = []
     pieces: list[str] = []
     usage: dict | None = None
+    finish_reason: str | None = None
     t0 = time.perf_counter()
     try:
-        resp = urllib.request.urlopen(req, timeout=1800)
+        resp = urllib.request.urlopen(req, timeout=max(1800, args.decode * 3))
     except urllib.error.HTTPError as e:
         sys.exit(f"[bench] request failed: HTTP {e.code}: {e.read()[:500]!r}")
     # Iterate the SSE stream line by line as bytes; json.loads decodes UTF-8 itself.
@@ -319,6 +326,8 @@ def stream_generate(origin: str, model_id: str, problem: str, sampling: dict,
             if chunk.get("usage"):
                 usage = chunk["usage"]
             for choice in chunk.get("choices", []):
+                if choice.get("finish_reason") is not None:
+                    finish_reason = choice["finish_reason"]
                 delta = choice.get("delta") or {}
                 text = delta.get("reasoning_content") or delta.get("content")
                 if text:
@@ -326,7 +335,13 @@ def stream_generate(origin: str, model_id: str, problem: str, sampling: dict,
                     pieces.append(text)
     if usage is None:
         sys.exit("[bench] stream ended without a usage chunk; is this a FreeToken server?")
-    return {"t0": t0, "stamps": stamps, "text": "".join(pieces), "usage": usage}
+    return {
+        "t0": t0,
+        "stamps": stamps,
+        "text": "".join(pieces),
+        "usage": usage,
+        "finish_reason": finish_reason,
+    }
 
 
 def run_one(args: argparse.Namespace, backend: str) -> dict:

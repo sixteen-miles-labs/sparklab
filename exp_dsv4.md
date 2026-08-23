@@ -1,6 +1,6 @@
 # DeepSeek-V4 Inference Experiments
 
-Last updated: 2026-08-22
+Last updated: 2026-08-23
 
 ## Summary
 
@@ -22,6 +22,17 @@ Key findings:
 - For sustained generation, a safe 40 GiB pageable host cache reaches 1.87 tok/s
   over 62 measured decode intervals. A 44 GiB trial caused swap pressure and was
   rejected.
+- Combined hybrid staging plus a borrowable per-layer host LRU raises the matched
+  64-token result to 1.982 tok/s, 6.1% above the previous hybrid result and 10.4%
+  above the matched optimized offload control, without changing output.
+- Memory-bounded double-buffered disk prefill cuts warm TTFT by 35.7%, but its
+  smaller host LRU reduces sustained decode to 1.860 tok/s. It is useful for short
+  requests but is not selected for the long-CoT AIME evaluation.
+- The selected single-buffer configuration completed all 30 AIME-25 problems in
+  one long-lived server at 1.910 mean decode tok/s (1.902 token-weighted), only
+  3.7% below the matched 64-token probe. It scored 9/30 pass@1 with a 1,024-token
+  output limit; 21 answers reached that limit, so this is a bounded systems run
+  rather than a full-length quality ceiling.
 
 ## Test system and model
 
@@ -193,8 +204,9 @@ from another layer.
 
 The hybrid decode path now extracts the unique CPU-overflow IDs after routing and
 synchronously stages those rows before `decode_submit`. GPU-assigned misses retain
-the existing `copy_missing` path. Disk mode remains eager-only and still requires
-prefill overlap to be disabled.
+the existing `copy_missing` path. Disk mode remains eager-only. At this experiment
+stage it still required prefill overlap to be disabled; Experiment 8 adds a bounded
+overlap implementation.
 
 Validation:
 
@@ -325,10 +337,178 @@ Key result files:
 - `/mnt/ssd/freetoken/results/dsv4/disk-hybrid-coalesced16-f3-cache32-decode64.json`
 - `/mnt/ssd/freetoken/results/dsv4/disk-hybrid-coalesced16-pageable-cache40-decode64.json`
 
+## Experiment 8: Combined staging, layer-aware LRU, and bounded prefill overlap
+
+Hybrid decode previously staged CPU-overflow experts, submitted the CPU work, and
+then issued a separate disk staging call for GPU cache misses. The new path merges
+both ID sets into one deduplicated disk request before CPU submission. This gives
+the disk source one larger coalescing/read-pool batch and prevents `copy_missing`
+from restaging the GPU subset.
+
+The optional `FREETOKEN_DISK_CACHE_POLICY=layer_lru` policy protects a fair cache
+floor for each of the 43 MoE layers. Capacity that a layer is not using remains
+borrowable, and eviction first targets the oldest entry from a layer above its
+floor. This avoids both the cross-layer churn of a single unconstrained LRU and the
+125 unused entries observed with an initial hard-partition prototype.
+
+All rows below use the same AIME-25 problem 0 prompt, greedy sampling, 64 requested
+tokens (63 returned; 62 measured intervals), a 40 GiB host-cache setting,
+automatic 726-slot GPU expert cache, eager decode, memory ratio 0.90, 16 disk-read
+workers, and fetch cap 3 unless noted.
+
+| Configuration | Decode tok/s | ms/token | Warm TTFT | Host hit | Physical reads | Host evictions | Output hash |
+|---|---:|---:|---:|---:|---:|---:|---|
+| Matched optimized offload control | 1.795 | 557.15 | 57.70 s | 46.31% | 122.82 GiB | 2,068 | `fbf178b2bde5` |
+| Previous hybrid baseline | 1.868 | 535.46 | 58.02 s | 46.11% | 122.30 GiB | 2,026 | `fbf178b2bde5` |
+| Combined hybrid staging | 1.881 | 531.74 | 57.73 s | 46.11% | 122.30 GiB | 2,026 | `fbf178b2bde5` |
+| Hard per-layer LRU prototype | 1.923 | 520.07 | 58.08 s | 46.54% | 121.32 GiB | 1,797 | `fbf178b2bde5` |
+| Borrowable per-layer LRU, 7 CPU workers | 1.965 | 508.90 | 57.78 s | 48.57% | 116.73 GiB | 1,579 | `fbf178b2bde5` |
+| Borrowable per-layer LRU, 8 CPU workers | **1.982** | **504.43** | 57.90 s | **48.57%** | **116.73 GiB** | **1,579** | `fbf178b2bde5` |
+| Same, fetch cap 2 | 1.963 | 509.44 | 57.74 s | 48.11% | 118.14 GiB | 1,692 | `fbf178b2bde5` |
+| Two-buffer prefill, 8 CPU workers | 1.860 | 537.59 | **37.25 s** | 44.08% | 126.93 GiB | 2,142 | `fbf178b2bde5` |
+
+The selected sustained-decode configuration improves on the previous hybrid
+baseline by 6.1% and on the matched offload control by 10.4%. Fetch cap 2 loses
+1.0%, so cap 3 remains selected. Eight CPU workers improve 0.9% over seven without
+changing memory usage or output.
+
+For disk prefill overlap, the source owns two parity-selected pinned layer buffers.
+Layer N+1 begins its O_DIRECT read while layer N's GPU work executes. The second
+approximately 3.2 GiB pinned layer is deducted from the pageable host LRU budget,
+reducing capacity from 3,212 to 2,956 entries and keeping total host allocation at
+the previously validated level. If the configured LRU budget is smaller than the
+second staging layer, startup now rejects overlap before allocating or pinning that
+buffer. The 64-token trial caused no meaningful swap-out growth and cut TTFT by
+35.7%, but reduced sustained throughput by 6.2% relative to the selected
+single-buffer configuration. Therefore:
+
+- use single-buffer mode (`--disable-prefill-overlap`) for Figure-3-style long-CoT
+  AIME requests;
+- use bounded two-buffer prefill only when TTFT dominates short requests;
+- do not exceed the tested 40 GiB setting on this 62 GiB host. The rejected 44 GiB
+  configuration remains unsafe.
+
+Selected long-CoT command:
+
+```bash
+CUDA_HOME=$PWD/.venv/lib/python3.12/site-packages/nvidia/cu13 \
+PATH="$CUDA_HOME/bin:$PATH" \
+FREETOKEN_DISK_READ_WORKERS=16 \
+FREETOKEN_DISK_CACHE_POLICY=layer_lru \
+.venv/bin/python benchmarks/bench_decode_moe.py \
+  --model /mnt/ssd/freetoken/ftw/DeepSeek-V4-Flash-0731 \
+  --backend hybrid --storage disk --host-cache-gb 40 \
+  --hybrid-fetch 3 --cpu-threads 8 --mem-ratio 0.90 \
+  --decode 64 --num-tokens 2048 --disable-prefill-overlap \
+  --collect-moe-stats --greedy --no-graph
+```
+
+Focused validation: 38 checkpoint/MoE tests passed. The 16-token overlap pilot
+also retained the established `03c286207d6b` greedy output hash and completed with
+zero additional swap-out.
+
+Key result files:
+
+- `/mnt/ssd/freetoken/results/dsv4/disk-offload-coalesced16-pageable-cache40-decode64.json`
+- `/mnt/ssd/freetoken/results/dsv4/disk-hybrid-combined-stage-cache40-decode64.json`
+- `/mnt/ssd/freetoken/results/dsv4/disk-hybrid-combined-stage-layer-lru-soft-cache40-cpu8-decode64.json`
+- `/mnt/ssd/freetoken/results/dsv4/disk-hybrid-double-prefill-layer-lru-cache40-cpu8-decode64.json`
+- `/mnt/ssd/freetoken/results/dsv4/disk-hybrid-layer-lru-cache40-cpu8-fetch2-decode64.json`
+
+## Experiment 9: Full Figure-3-style AIME-25 evaluation
+
+[Figure 3 of the FreeToken paper](https://arxiv.org/pdf/2608.16157) defines W1 as
+single-turn AIME math reasoning with long chain-of-thought decoding and no tools.
+It reports per-request mean decode throughput and mean TTFT. This local run uses
+that evaluation shape, including the paper's eight CPU threads for DSV4, but it is
+not a reproduction of the paper's hardware result. The paper uses an RTX 5090 with
+the model resident in 180 GiB of host DRAM; this machine has an RTX 3090, 62 GiB of
+RAM, and serves most routed expert traffic from NVMe.
+
+Protocol:
+
+- all 30 problems from `math-ai/aime25`, in dataset order, exactly once (pass@1);
+- dataset SHA-256
+  `b4e273c02d3e7fe1b74b59eae768fc8230bfb0f79539890cb56f4361caac0331`;
+- one long-lived server, one request at a time, thinking enabled, normal EOS, no
+  tools, and a 1,024-token maximum output;
+- checkpoint temperature 1.0 and top-p 1.0, plus the runner's top-k 64 fallback;
+- selected Experiment 8 configuration: hybrid execution, 40 GiB host-cache
+  budget, borrowable layer-aware LRU, fetch cap 3, eight CPU workers, 16 disk-read
+  workers, single-buffer prefill, eager decode, and memory ratio 0.90;
+- each request row was appended, flushed, and `fsync`ed immediately. The final
+  JSONL contains problem indices 0 through 29 once each, followed by one summary.
+
+Exact command:
+
+```bash
+CUDA_HOME=$PWD/.venv/lib/python3.12/site-packages/nvidia/cu13 \
+PATH="$CUDA_HOME/bin:$PATH" \
+FREETOKEN_DISK_READ_WORKERS=16 \
+FREETOKEN_DISK_CACHE_POLICY=layer_lru \
+.venv/bin/python benchmarks/bench_aime_suite.py \
+  --model /mnt/ssd/freetoken/ftw/DeepSeek-V4-Flash-0731 \
+  --aime /home/lidaiqing/.cache/huggingface/hub/datasets--math-ai--aime25/snapshots/563bb8404243c5f09de6ec262f2db674fe5bce9b/test.jsonl \
+  --problems all --decode 1024 \
+  --backend hybrid --storage disk --host-cache-gb 40 \
+  --hybrid-fetch 3 --cpu-threads 8 --mem-ratio 0.90 \
+  --num-tokens 2048 --disable-prefill-overlap --no-graph \
+  --include-output \
+  --json /mnt/ssd/freetoken/results/dsv4/aime25-figure3-full-max1024.jsonl
+```
+
+Results:
+
+| Metric | Result |
+|---|---:|
+| AIME-25 pass@1 | **9 / 30 (30.0%)** |
+| Natural EOS / output-cap finishes | 9 / 21 |
+| Completion tokens | 27,311 total; 910.4 mean; 1,023 median |
+| Mean decode throughput | **1.910 tok/s** (523.54 ms/token) |
+| Token-weighted decode throughput | **1.902 tok/s** over 27,281 intervals |
+| First request / subsequent-request mean | 1.925 / 1.910 tok/s |
+| Mean / p50 / p95 TTFT | 67.36 / 58.46 / 116.48 s |
+| Mean per-request inter-token p50 / p95 | 515.09 / 691.40 ms |
+| Host-cache hit rate | 67.47% |
+| Physical expert reads | 13.43 TiB across 4,417,848 read operations |
+| Effective physical disk-read rate | 1.519 GiB/s |
+| Host-cache evictions / bypasses | 832,974 / 268,276 |
+| Maximum reported VRAM | 19.03 GiB |
+
+The long-run mean is 3.65% below the selected 1.982 tok/s 64-token result. That is
+a small long-context penalty, and the almost identical first-request and
+subsequent-request means show no sustained throughput decay across the suite. The
+TTFT median remains close to the 64-token probe's 57.9 seconds; the 67.4-second
+mean and 116.5-second p95 are driven by longer prompts (48 to 804 prompt tokens).
+
+All nine correct responses ended naturally. Every incorrect capped response used
+the server's full local length budget: a requested limit of 1,024 is reported by
+the current API as 1,023 completion tokens, giving 1,022 measured inter-token
+intervals. Because 21/30 requests were capped, 30.0% is a lower-bound quality
+measurement for this protocol, not evidence that the model's full-length AIME-25
+accuracy is 30.0%. A quality-oriented follow-up should use the normal 16k-scale
+reasoning budget and multiple samples; that is much more expensive and is not
+needed to validate this machine's sustained serving performance.
+
+The paper reports 22--25 tok/s for DSV4 across its RTX 5090 workloads. The local
+1.910 tok/s result must not be read as a direct regression against that number:
+the paper keeps the expert pool in a much larger host-memory system, whereas this
+run moved 13.43 TiB from NVMe. The full-suite evidence instead confirms that the
+Experiment 8 setting is the best safe configuration tested on this 62 GiB host:
+it preserves almost all of its short-probe throughput, held 13.6 GiB of memory
+available, caused no additional swap-out, and stayed below 20 GiB reported VRAM.
+Further large gains require reducing NVMe expert traffic (more host memory or a
+smaller/more aggressively quantized expert pool), not raising the already-rejected
+44 GiB host-cache allocation.
+
+Raw result:
+
+- `/mnt/ssd/freetoken/results/dsv4/aime25-figure3-full-max1024.jsonl`
+
 ## Next experiments
 
-1. Double-buffer disk staging so layer N+1 reads can overlap layer N GPU/CPU work.
-2. Add workload-aware host-cache admission or per-layer quotas to reduce the 2,026
-   evictions still observed at 40 GiB.
-3. Confirm the requested/actual completion-token accounting convention.
-4. Compare disk-backed output against a trusted external DeepSeek-V4 reference.
+1. Reconcile the observed 1,024-requested / 1,023-reported completion-token
+   convention with the OpenAI-compatible API contract.
+2. Run a quality-oriented AIME evaluation with a 16k-scale output budget and
+   multiple samples if accuracy, rather than systems performance, is the target.
+3. Compare disk-backed output against a trusted external DeepSeek-V4 reference.
