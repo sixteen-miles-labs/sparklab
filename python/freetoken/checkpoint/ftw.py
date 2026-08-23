@@ -55,6 +55,7 @@ DEFAULT_SHARD_LIMIT = 8 << 30  # 8 GiB; must be a multiple of ALIGN
 _SHARD_FMT = "freetoken-{:05d}.ftw"
 _DEFAULT_CHUNK = 8 << 20
 _BANK_CONCURRENCY = 4
+_DISK_EXPERT_READ_WORKERS = 16
 _ALPHA_NAMES = ("gate_up_alpha", "down_alpha")
 # Per-layer expert-bank entry name (converter streaming path, see checkpoint/convert.py):
 # each layer of a bank is its own FTW tensor instead of one flat [num_layers*E, ...] region.
@@ -514,7 +515,8 @@ class FTWDiskExpertSource:
     kernels and their fixed source pointers.
     """
 
-    def __init__(self, reader: FTWReader, descriptors, staging, cache_banks=None) -> None:
+    def __init__(self, reader: FTWReader, descriptors, staging, cache_banks=None,
+                 *, read_workers: int | None = None) -> None:
         self.reader = reader
         self.descriptors = descriptors
         self.staging = staging
@@ -529,6 +531,16 @@ class FTWDiskExpertSource:
         self._cache: OrderedDict[tuple[int, int], int] = OrderedDict()
         self._free_slots = list(range(self.cache_capacity - 1, -1, -1))
         self._lock = threading.Lock()
+        if read_workers is None:
+            read_workers = int(os.getenv(
+                "FREETOKEN_DISK_READ_WORKERS", str(_DISK_EXPERT_READ_WORKERS)
+            ))
+        self.read_workers = max(1, int(read_workers))
+        # A persistent pool avoids creating threads for every MoE layer. Each task owns
+        # only one aligned expert-bank row, so peak transient memory stays bounded by
+        # read_workers rather than the number of rows in a full-layer prefill.
+        self._read_pool = ThreadPoolExecutor(max_workers=self.read_workers,
+                                             thread_name_prefix="ftw-expert")
         self.cache_hits = 0
         self.cache_misses = 0
         self.cache_evictions = 0
@@ -538,16 +550,98 @@ class FTWDiskExpertSource:
         self.physical_bytes = 0
         self.read_seconds = 0.0
 
+    def _stage_bank_row(self, job) -> tuple[int, int]:
+        layer_id, expert_id, bank_name, slot = job
+        bank = self.staging[bank_name]
+        desc = self.descriptors[(layer_id, expert_id, bank_name)]
+        # InferenceMode is thread-local. Engine construction creates the host banks under
+        # inference mode, so pool workers must enter it explicitly before mutating them.
+        with torch.inference_mode():
+            bank.tensor[expert_id].copy_(self.reader.read_expert_row(desc))
+            if slot is not None:
+                self.cache_banks[bank_name].tensor[slot].copy_(bank.tensor[expert_id])
+        return desc.nbytes, desc.read_nbytes
+
+    def _stage_cached_row(self, job) -> None:
+        expert_id, bank_name, slot = job
+        with torch.inference_mode():
+            self.staging[bank_name].tensor[expert_id].copy_(
+                self.cache_banks[bank_name].tensor[slot]
+            )
+
+    def _cache_staged_row(self, job) -> None:
+        expert_id, bank_name, slot = job
+        with torch.inference_mode():
+            self.cache_banks[bank_name].tensor[slot].copy_(
+                self.staging[bank_name].tensor[expert_id]
+            )
+
+    def _read_staging_extent(self, job) -> tuple[int, int, int]:
+        layer_id, bank_name, first_expert, count, row_bytes = job
+        bank = self.staging[bank_name]
+        desc = self.descriptors[(layer_id, first_expert, bank_name)]
+        whole = bank.memoryview()
+        dest = whole[first_expert * row_bytes:(first_expert + count) * row_bytes]
+        try:
+            self.reader.read_into(
+                dest,
+                {"global_off": desc.global_off, "nbytes": count * row_bytes},
+                workers=1,
+            )
+        finally:
+            dest.release()
+            whole.release()
+        return count * row_bytes, count * row_bytes, count
+
+    def _direct_extent_jobs(self, layer_id: int, misses) -> list | None:
+        """Coalesce aligned consecutive rows directly into the pinned staging banks.
+
+        Returns ``None`` when a bank/row layout cannot satisfy O_DIRECT alignment; the
+        caller then keeps the general transient-buffer row path.
+        """
+        expert_ids = sorted(expert_id for expert_id, _ in misses)
+        jobs = []
+        for bank_name, bank in self.staging.items():
+            if not callable(getattr(bank, "memoryview", None)):
+                return None
+            rows = [self.descriptors[(layer_id, expert_id, bank_name)]
+                    for expert_id in expert_ids]
+            if any(
+                row.head_pad or row.nbytes != row.read_nbytes
+                or row.global_off % ALIGN or row.nbytes % ALIGN
+                for row in rows
+            ):
+                return None
+            start = previous = expert_ids[0]
+            row_bytes = rows[0].nbytes
+            if any(row.nbytes != row_bytes for row in rows):
+                return None
+            for expert_id in expert_ids[1:]:
+                if expert_id != previous + 1:
+                    jobs.append((layer_id, bank_name, start,
+                                 previous - start + 1, row_bytes))
+                    start = expert_id
+                previous = expert_id
+            jobs.append((layer_id, bank_name, start, previous - start + 1, row_bytes))
+        return jobs
+
     def stage(self, layer_id: int, expert_ids: list[int], *, admit: bool = True) -> None:
         import time
 
         if not expert_ids:
             return
+        # Cache kernels already emit unique source indices, but CPU-overflow routing can
+        # repeat an expert. Coalesce it before reserving cache slots or issuing I/O.
+        expert_ids = list(dict.fromkeys(expert_ids))
         start = time.perf_counter()
         # The current disk path is synchronous. Holding one lock makes duplicate concurrent
         # requests coalesce naturally and keeps LRU state deterministic; async I/O will
         # replace this with explicit loading/ready entry states in the next phase.
         with self._lock:
+            read_jobs = []
+            misses = []
+            cached_jobs = []
+            admitted = []
             for expert_id in expert_ids:
                 key = (layer_id, expert_id)
                 slot = self._cache.get(key)
@@ -555,8 +649,9 @@ class FTWDiskExpertSource:
                     self.cache_hits += 1
                     if admit:
                         self._cache.move_to_end(key)
-                    for bank_name, bank in self.staging.items():
-                        bank.tensor[expert_id].copy_(self.cache_banks[bank_name].tensor[slot])
+                    cached_jobs.extend(
+                        (expert_id, bank_name, slot) for bank_name in self.staging
+                    )
                     continue
 
                 self.cache_misses += 1
@@ -570,16 +665,48 @@ class FTWDiskExpertSource:
                 elif not admit:
                     self.cache_bypasses += 1
 
-                for bank_name, bank in self.staging.items():
-                    desc = self.descriptors[(layer_id, expert_id, bank_name)]
-                    bank.tensor[expert_id].copy_(self.reader.read_expert_row(desc))
-                    if slot is not None:
-                        self.cache_banks[bank_name].tensor[slot].copy_(bank.tensor[expert_id])
-                    self.read_ops += 1
-                    self.logical_bytes += desc.nbytes
-                    self.physical_bytes += desc.read_nbytes
                 if slot is not None:
                     self._cache[key] = slot
+                    admitted.append((key, slot))
+                misses.append((expert_id, slot))
+
+            try:
+                # Use one bounded pool for cache copies and reads. For DSV4 this turns four
+                # serial bank reads per expert into enough independent O_DIRECT work to
+                # reach the NVMe queue-depth plateau.
+                if cached_jobs:
+                    list(self._read_pool.map(self._stage_cached_row, cached_jobs))
+                direct_jobs = self._direct_extent_jobs(layer_id, misses) if misses else []
+                if direct_jobs is None:
+                    read_jobs = [
+                        (layer_id, expert_id, bank_name, slot)
+                        for expert_id, slot in misses
+                        for bank_name in self.staging
+                    ]
+                if direct_jobs:
+                    sizes = list(self._read_pool.map(self._read_staging_extent, direct_jobs))
+                    self.read_ops += sum(ops for _, _, ops in sizes)
+                    self.logical_bytes += sum(logical for logical, _, _ in sizes)
+                    self.physical_bytes += sum(physical for _, physical, _ in sizes)
+                    cache_jobs = [
+                        (expert_id, bank_name, slot)
+                        for expert_id, slot in misses if slot is not None
+                        for bank_name in self.staging
+                    ]
+                    if cache_jobs:
+                        list(self._read_pool.map(self._cache_staged_row, cache_jobs))
+                elif read_jobs:
+                    sizes = list(self._read_pool.map(self._stage_bank_row, read_jobs))
+                    self.read_ops += len(sizes)
+                    self.logical_bytes += sum(logical for logical, _ in sizes)
+                    self.physical_bytes += sum(physical for _, physical in sizes)
+            except BaseException:
+                # Do not advertise partially-filled cache slots after a failed batch.
+                for key, slot in admitted:
+                    if self._cache.get(key) == slot:
+                        del self._cache[key]
+                        self._free_slots.append(slot)
+                raise
         self.read_seconds += time.perf_counter() - start
 
     def stats(self) -> dict:
@@ -597,7 +724,11 @@ class FTWDiskExpertSource:
             "logical_bytes": self.logical_bytes,
             "physical_bytes": self.physical_bytes,
             "read_seconds": self.read_seconds,
+            "read_workers": self.read_workers,
         }
+
+    def close(self) -> None:
+        self._read_pool.shutdown(wait=True)
 
 
 def open_ftw_disk_banks(path: str, *, num_layers: int, num_experts: int,
@@ -641,7 +772,10 @@ def open_ftw_disk_banks(path: str, *, num_layers: int, num_experts: int,
             shape = (cache_capacity, *staging_bank.tensor.shape[1:])
             bank = HostBank(shape, staging_bank.tensor.dtype)
             bank.tensor.zero_()
-            bank.pin()
+            # The host LRU is copied into the one-layer staging banks by the CPU; neither
+            # CUDA DMA nor the CPU MoE executor holds pointers to it. Pinning tens of GiB
+            # here needlessly forces unrelated system pages into swap. Only ``staging``
+            # above must remain cudaHostRegister'd.
             cache_banks[bank_name] = bank
 
     alpha_tensors = {}

@@ -16,11 +16,12 @@ Key findings:
 - The fixed conversion completed in 154.3 seconds without meaningful swap growth.
 - Disk-backed hybrid inference now works. Staging CPU-overflow rows before CPU
   submission fixed the previously unsupported disk/hybrid combination.
-- A 32 GiB host expert cache plus a three-expert hybrid fetch cap is the fastest
-  measured hybrid configuration: 2.15 tok/s, 3.33x the original 1 GiB disk
-  baseline, with the same greedy output hash.
-- Prefill remains synchronous and I/O-bound. Even the best decode setting has a
-  warm TTFT of about 104.5 seconds for the 48-token test prompt.
+- Parallel, coalesced direct reads raise effective disk throughput from about
+  1.35 to 2.83 GiB/s. The optimized 16-token run reaches 2.26 tok/s and cuts warm
+  TTFT from 104.5 to 60.3 seconds, with the same greedy output hash.
+- For sustained generation, a safe 40 GiB pageable host cache reaches 1.87 tok/s
+  over 62 measured decode intervals. A 44 GiB trial caused swap pressure and was
+  rejected.
 
 ## Test system and model
 
@@ -229,7 +230,9 @@ routes remains valid hybrid mode but loses performance to its bookkeeping withou
 getting useful CPU/GPU co-compute. Plain offload is 9.9% faster at the same cache
 budget, but does not exercise CPU/GPU hybrid execution.
 
-Recommended maximum-throughput disk-hybrid command on this machine:
+The original synchronous-reader recommendation below is superseded by Experiment 7.
+
+Recommended maximum-throughput disk-hybrid command on this machine at this point:
 
 ```bash
 CUDA_HOME=$PWD/.venv/lib/python3.12/site-packages/nvidia/cu13 \
@@ -238,7 +241,7 @@ PATH="$CUDA_HOME/bin:$PATH" \
   --model /mnt/ssd/freetoken/ftw/DeepSeek-V4-Flash-0731 \
   --backend hybrid \
   --storage disk \
-  --host-cache-gb 32 \
+  --host-cache-gb 40 \
   --hybrid-fetch 3 \
   --decode 16 \
   --num-tokens 2048 \
@@ -256,11 +259,76 @@ Result files:
 - `/mnt/ssd/freetoken/results/dsv4/disk-hybrid-f6-cache32-decode16.json`
 - `/mnt/ssd/freetoken/results/dsv4/disk-offload-cache32-decode16.json`
 
+## Experiment 7: Parallel/coalesced FTW reads and sustained decode
+
+Profiling showed that the synchronous staging loop read the four independent
+DeepSeek expert banks serially and delivered only about 1.35 GiB/s from the SN850X.
+An isolated full-layer FTW test measured 1.65 GiB/s with one reader and a plateau
+near 3.07 GiB/s with 12-16 readers.
+
+The disk source now:
+
+- owns a persistent, bounded 16-worker read pool;
+- coalesces consecutive aligned expert rows into direct reads targeting the pinned
+  staging banks, avoiding transient allocation and an extra CPU copy;
+- falls back to the general aligned-row path for formats whose rows cannot be read
+  directly;
+- explicitly enters PyTorch inference mode in worker threads;
+- leaves the large CPU-only host LRU pageable while keeping only the GPU-facing
+  one-layer staging banks pinned.
+
+The pageable LRU matters operationally. A pinned 40 GiB cache forced approximately
+5.5 GiB of unrelated pages into swap. Repeating the workload with the pageable LRU
+held about 12 GiB available RAM and did not increase `pswpout`. A 44 GiB pageable
+trial still caused about 2.5 GiB of additional swap-out during initialization, so
+40 GiB is the maximum safe tested budget on this 62 GiB machine.
+
+### End-to-end results
+
+| Reader/cache configuration | Requested / actual | Decode tok/s | ms/token | Warm TTFT | Host hit rate | Physical reads | Disk rate | Output hash |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| serial rows, 32 GiB | 16 / 15 | 2.146 | 465.98 | 104.49 s | 28.48% | 115.36 GiB | 1.35 GiB/s | `03c286207d6b` |
+| parallel rows, 32 GiB | 16 / 15 | 1.999 | 500.22 | 66.39 s | 28.48% | 115.36 GiB | 2.45 GiB/s | `03c286207d6b` |
+| parallel + coalesced, 32 GiB | 16 / 15 | **2.260** | **442.39** | **60.29 s** | 28.48% | 115.36 GiB | **2.83 GiB/s** | `03c286207d6b` |
+| parallel + coalesced, 32 GiB | 64 / 63 | 1.702 | 587.49 | 59.40 s | 38.20% | 140.25 GiB | 2.39 GiB/s | `fbf178b2bde5` |
+| parallel + coalesced, pageable 40 GiB | 64 / 63 | **1.868** | **535.46** | **58.02 s** | **46.11%** | **122.30 GiB** | 2.26 GiB/s | `fbf178b2bde5` |
+
+The short-run result improves hybrid decode by 5.3% and TTFT by 42.3% relative to
+the previous best. The 64-token run is the more representative sustained result:
+40 GiB improves throughput by 9.7% over 32 GiB and removes 17.95 GiB of physical
+reads. All comparable runs retain identical greedy hashes.
+
+Final recommended command:
+
+```bash
+CUDA_HOME=$PWD/.venv/lib/python3.12/site-packages/nvidia/cu13 \
+PATH="$CUDA_HOME/bin:$PATH" \
+.venv/bin/python benchmarks/bench_decode_moe.py \
+  --model /mnt/ssd/freetoken/ftw/DeepSeek-V4-Flash-0731 \
+  --backend hybrid \
+  --storage disk \
+  --host-cache-gb 40 \
+  --hybrid-fetch 3 \
+  --mem-ratio 0.90 \
+  --decode 64 \
+  --num-tokens 2048 \
+  --disable-prefill-overlap \
+  --collect-moe-stats \
+  --greedy \
+  --no-graph \
+  --json /mnt/ssd/freetoken/results/dsv4/final-disk-hybrid.json
+```
+
+Key result files:
+
+- `/mnt/ssd/freetoken/results/dsv4/disk-hybrid-coalesced16-f3-cache32-decode16.json`
+- `/mnt/ssd/freetoken/results/dsv4/disk-hybrid-coalesced16-f3-cache32-decode64.json`
+- `/mnt/ssd/freetoken/results/dsv4/disk-hybrid-coalesced16-pageable-cache40-decode64.json`
+
 ## Next experiments
 
-1. Add asynchronous, queue-depth-aware expert reads; synchronous prefill still
-   dominates TTFT.
-2. Run 64+ decode tokens and multiple prompts to characterize steady-state cache
-   reuse and tail latency.
+1. Double-buffer disk staging so layer N+1 reads can overlap layer N GPU/CPU work.
+2. Add workload-aware host-cache admission or per-layer quotas to reduce the 2,026
+   evictions still observed at 40 GiB.
 3. Confirm the requested/actual completion-token accounting convention.
 4. Compare disk-backed output against a trusted external DeepSeek-V4 reference.

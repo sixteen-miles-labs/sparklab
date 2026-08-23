@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 import os
+import threading
 from types import SimpleNamespace
 
 import pytest
@@ -186,3 +187,74 @@ def test_prefill_bypass_preserves_decode_lru(tmp_path):
         assert source.cache_hits == 2
     finally:
         reader.close()
+
+
+def test_disk_expert_source_reads_banks_concurrently():
+    barrier = threading.Barrier(2, timeout=1)
+
+    class Reader:
+        def read_expert_row(self, desc):
+            barrier.wait()
+            return torch.tensor([desc.value], dtype=torch.int16)
+
+    descriptors = {
+        (0, 0, "a"): SimpleNamespace(nbytes=2, read_nbytes=4096, value=11),
+        (0, 0, "b"): SimpleNamespace(nbytes=2, read_nbytes=4096, value=22),
+    }
+    with torch.inference_mode():
+        staging = {
+            "a": SimpleNamespace(tensor=torch.empty(1, 1, dtype=torch.int16)),
+            "b": SimpleNamespace(tensor=torch.empty(1, 1, dtype=torch.int16)),
+        }
+    source = FTWDiskExpertSource(
+        Reader(), descriptors, staging, read_workers=2,
+    )
+    try:
+        source.stage(0, [0], admit=False)
+        assert staging["a"].tensor.item() == 11
+        assert staging["b"].tensor.item() == 22
+        assert source.stats()["read_workers"] == 2
+        assert source.read_ops == 2
+    finally:
+        source.close()
+
+
+def test_disk_expert_source_coalesces_aligned_rows_into_staging():
+    class Bank:
+        def __init__(self):
+            self.buf = bytearray(3 * 4096)
+            self.tensor = torch.frombuffer(self.buf, dtype=torch.uint8).view(3, 4096)
+
+        def memoryview(self):
+            return memoryview(self.buf)
+
+    class Reader:
+        def __init__(self):
+            self.calls = []
+
+        def read_into(self, dest, entry, *, workers):
+            self.calls.append((entry.copy(), workers, len(dest)))
+            dest[:] = bytes([7]) * len(dest)
+
+    reader = Reader()
+    descriptors = {
+        (0, expert, "weight"): SimpleNamespace(
+            head_pad=0,
+            nbytes=4096,
+            read_nbytes=4096,
+            global_off=expert * 4096,
+        )
+        for expert in range(3)
+    }
+    staging = {"weight": Bank()}
+    source = FTWDiskExpertSource(
+        reader, descriptors, staging, read_workers=2,
+    )
+    try:
+        source.stage(0, [0, 1], admit=False)
+        assert reader.calls == [({"global_off": 0, "nbytes": 8192}, 1, 8192)]
+        assert bool((staging["weight"].tensor[:2] == 7).all())
+        assert source.read_ops == 2
+        assert source.physical_bytes == 8192
+    finally:
+        source.close()
