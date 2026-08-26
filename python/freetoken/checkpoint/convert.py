@@ -5,7 +5,7 @@ no per-model conversion code is needed.
 
 * dense weights = exactly what ``load_weight(include_moe_experts=...)`` yields (post
   fusion/TP-shard) -> ``kind="weight"``; at load they feed ``model.load_state_dict``.
-* offload experts = exactly what ``load_expert_banks(parallel=True)`` produces (post
+* offload experts = exactly what ``load_expert_banks()`` produces (post
   backend-repack pinned banks + alpha scale vectors) -> ``kind="experts_bank"`` (alphas are
   told apart at load by their reserved names, so they need no separate kind).
 
@@ -231,12 +231,11 @@ def convert_checkpoint(
     quant_format = None
     num_layers = None
     if offload:
-        # Streamable formats (bf16, ds_fp4, nvfp4 on the triton backend, gpt-oss mxfp4, q4_0,
-        # qwen3_5 fp8/bf16-dequant) write each layer to its own FTW entry as it completes (via
-        # the sink) instead of materializing the whole bank set first; the non-streamable ones
-        # (nvfp4 marlin/b12x -- repack mutates the whole bank set in place after load) ignore
-        # the sink. Which happened is per-provider (e.g. nvfp4's backend pick), so it's read
-        # back from ExpertBanks.streamed, not guessed here.
+        # Streamable formats (bf16, ds_fp4, every nvfp4 backend, gpt-oss mxfp4, q4_0,
+        # qwen3_5 fp8/bf16-dequant) write each layer to its own FTW entry as it completes.
+        # Marlin/b12x use a wrapper sink that repacks one completed native NVFP4 layer before
+        # forwarding it, so those large layouts remain bounded too. Which path a provider
+        # actually took is reported by ExpertBanks.streamed rather than guessed here.
         sink = _ConvertSink(writer)
         banks = load_expert_banks(model_path, mc, device=dev, dtype=dtype, layer_sink=sink)
         quant_format = banks.quant_format
