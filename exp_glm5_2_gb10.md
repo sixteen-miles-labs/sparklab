@@ -8,6 +8,39 @@ The full checkpoint transfer, FTW conversion, and serving measurements are in
 progress. This report is complete only when the selected 64-token result and a
 stable 256-token confirmation have been recorded and audited.
 
+This experiment has two distinct outcomes:
+
+1. **Research bring-up:** prove that the complete official checkpoint converts,
+   loads, and produces validated output with bounded unified memory and no swap
+   growth.
+2. **Spark Lab Frontier certification:** additionally pass the product latency,
+   context, endurance, API, and agent gates below.
+
+A successful bring-up does not by itself make GLM-5.2 a Frontier model.
+
+## Spark Lab tier gate
+
+GLM-5.2 is the fallback Frontier candidate if GLM-5.3 is not ready for Spark Lab
+1.0. Assign the result according to the exact checkpoint and recipe tested:
+
+| Status | Required result on one GB10 |
+|---|---|
+| Research / bring-up | Full official checkpoint; at least 64 validated greedy tokens; bounded memory; no swap growth from the recorded pre-run baseline; all limitations and physical I/O reported |
+| Experiment usability | At least 0.5 tok/s sustained over the 256-token confirmation, or a measured SSD/cache-locality bound explaining a lower result |
+| Frontier candidate | At least 5 tok/s and warm TTFT at most 20 s on `GB10-INTERACTIVE-001` |
+| Frontier certified | Frontier candidate performance, at least 64K usable context, a stable 60-minute agent trace, reasoning/tool-parser correctness, fixed coding-agent task completion, and the complete benchmark evidence contract |
+
+Interpretation:
+
+- Below 0.5 tok/s: correct feasibility result, but not yet usable.
+- From 0.5 to below 5 tok/s: Spark Lab Research tier.
+- At least 5 tok/s: eligible for Frontier only after every other certification
+  gate passes.
+
+The 64-token AIME probe in this report is the tuning and correctness workload.
+It is not a substitute for the separate 4K-input/512-output
+`GB10-INTERACTIVE-001` tier benchmark.
+
 ## Target and system
 
 | Component | Configuration |
