@@ -76,36 +76,76 @@ BOXED_INSTRUCTION = (
 
 
 class GpuTelemetry:
-    """Low-rate nvidia-smi sampling scoped to one request (best effort)."""
+    """Low-rate GPU and host telemetry scoped to one request (best effort)."""
 
-    def __init__(self, interval: float = 0.5):
+    def __init__(self, interval: float = 1.0):
         self.interval = interval
         self.samples: list[tuple[float, float, float, float]] = []
+        self.system_samples: list[tuple[float, float, float | None]] = []
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._started = 0.0
+        self._vm_start: dict[str, int] = {}
+
+    @staticmethod
+    def _vmstat() -> dict[str, int]:
+        try:
+            return {
+                key: int(value)
+                for key, value in (
+                    line.split() for line in Path("/proc/vmstat").read_text().splitlines()
+                )
+                if key in {"pswpin", "pswpout", "pgfault", "pgmajfault"}
+            }
+        except (OSError, ValueError):
+            return {}
+
+    @staticmethod
+    def _system_sample() -> tuple[float, float | None]:
+        available_gib = 0.0
+        try:
+            for line in Path("/proc/meminfo").read_text().splitlines():
+                if line.startswith("MemAvailable:"):
+                    available_gib = int(line.split()[1]) / 2**20
+                    break
+        except (OSError, ValueError):
+            pass
+        nvme_temp = None
+        for name in Path("/sys/class/hwmon").glob("hwmon*/name"):
+            try:
+                if name.read_text().strip() != "nvme":
+                    continue
+                value = name.parent / "temp1_input"
+                nvme_temp = int(value.read_text().strip()) / 1000
+                break
+            except (OSError, ValueError):
+                continue
+        return available_gib, nvme_temp
 
     def start(self) -> None:
-        if shutil.which("nvidia-smi") is None:
-            return
         self._started = time.perf_counter()
+        self._vm_start = self._vmstat()
+        have_nvidia_smi = shutil.which("nvidia-smi") is not None
 
         def sample() -> None:
             while not self._stop.is_set():
-                try:
-                    raw = subprocess.check_output(
-                        [
-                            "nvidia-smi",
-                            "--query-gpu=power.draw,temperature.gpu,utilization.gpu",
-                            "--format=csv,noheader,nounits",
-                        ],
-                        text=True,
-                        timeout=5,
-                    ).splitlines()[0]
-                    power, temp, util = (float(value.strip()) for value in raw.split(","))
-                    self.samples.append((time.perf_counter(), power, temp, util))
-                except (OSError, ValueError, subprocess.SubprocessError, IndexError):
-                    pass
+                if have_nvidia_smi:
+                    try:
+                        raw = subprocess.check_output(
+                            [
+                                "nvidia-smi",
+                                "--query-gpu=power.draw,temperature.gpu,utilization.gpu",
+                                "--format=csv,noheader,nounits",
+                            ],
+                            text=True,
+                            timeout=5,
+                        ).splitlines()[0]
+                        power, temp, util = (float(value.strip()) for value in raw.split(","))
+                        self.samples.append((time.perf_counter(), power, temp, util))
+                    except (OSError, ValueError, subprocess.SubprocessError, IndexError):
+                        pass
+                available_gib, nvme_temp = self._system_sample()
+                self.system_samples.append((time.perf_counter(), available_gib, nvme_temp))
                 self._stop.wait(self.interval)
 
         self._thread = threading.Thread(target=sample, name="bench-gpu-telemetry", daemon=True)
@@ -116,21 +156,37 @@ class GpuTelemetry:
         self._stop.set()
         if self._thread is not None:
             self._thread.join(timeout=6)
-        if not self.samples:
-            return {}
-        powers = [sample[1] for sample in self.samples]
-        temperatures = [sample[2] for sample in self.samples]
-        utilization = [sample[3] for sample in self.samples]
-        average_power = fmean(powers)
-        return {
-            "samples": len(self.samples),
+        result = {
+            "samples": len(self.system_samples),
             "duration_s": elapsed,
-            "power_w_avg": average_power,
-            "power_w_peak": max(powers),
-            "temperature_c_peak": max(temperatures),
-            "utilization_pct_avg": fmean(utilization),
-            "request_energy_j_est": average_power * elapsed,
         }
+        if self.samples:
+            powers = [sample[1] for sample in self.samples]
+            temperatures = [sample[2] for sample in self.samples]
+            utilization = [sample[3] for sample in self.samples]
+            average_power = fmean(powers)
+            result.update({
+                "power_w_avg": average_power,
+                "power_w_peak": max(powers),
+                "temperature_c_peak": max(temperatures),
+                "utilization_pct_avg": fmean(utilization),
+                "request_energy_j_est": average_power * elapsed,
+            })
+        if self.system_samples:
+            result["mem_available_gib_min"] = min(sample[1] for sample in self.system_samples)
+            nvme = [sample[2] for sample in self.system_samples if sample[2] is not None]
+            if nvme:
+                result["nvme_temperature_c_peak"] = max(nvme)
+        vm_end = self._vmstat()
+        for key, label in (
+            ("pswpin", "swap_in_pages_delta"),
+            ("pswpout", "swap_out_pages_delta"),
+            ("pgfault", "page_faults_delta"),
+            ("pgmajfault", "major_faults_delta"),
+        ):
+            if key in self._vm_start and key in vm_end:
+                result[label] = vm_end[key] - self._vm_start[key]
+        return result
 
 
 def runtime_provenance() -> dict:
@@ -606,7 +662,7 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
           f"(event p50 {row['event_ms_p50']:.3f} / p99 {row['event_ms_p99']:.3f} ms, "
           f"{len(stamps)} events)")
     print(f"  vram (server)     : {row['vram_gib']:8.2f} GiB")
-    if row["gpu_telemetry"]:
+    if "power_w_avg" in row["gpu_telemetry"]:
         gpu = row["gpu_telemetry"]
         print(
             f"  board power/temp  : {gpu['power_w_avg']:.1f} W avg / "

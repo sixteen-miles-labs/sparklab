@@ -225,7 +225,11 @@ def summarize(args, results: list[dict], sampling: dict) -> dict:
         for key in disk_keys
     }
     requests = disk["cache_hits"] + disk["cache_misses"]
-    gpu_rows = [row["gpu_telemetry"] for row in results if row.get("gpu_telemetry")]
+    gpu_rows = [
+        row["gpu_telemetry"]
+        for row in results
+        if "power_w_avg" in row.get("gpu_telemetry", {})
+    ]
     summary = {
         "kind": "summary",
         "model": args.model,
