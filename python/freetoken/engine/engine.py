@@ -466,7 +466,9 @@ class Engine:
             device=self.device,
         )
 
-    def _resolve_auto_moe_cache_size(self, config: EngineConfig, banks) -> tuple[int, int, bool]:
+    def _resolve_auto_moe_cache_size(
+        self, config: EngineConfig, banks, disk_source=None
+    ) -> tuple[int, int, bool]:
         """Resolve --moe-cache-auto into (moe_cache_size, num_pages, prefill_overlap).
 
         Pure glue over the Phase-1 budget policy; isolated here so it is unit-testable
@@ -476,6 +478,21 @@ class Engine:
 
         cache_per_page, fixed_cache_size, page_tokens, min_reserve = self._pool_cls.kv_cost(config)
         fixed_cache_size += state_pool_bytes(config)  # sibling GDN state pool, engine-summed
+        host_reserved = 0
+        integrated = False
+        if disk_source is not None:
+            props = torch.cuda.get_device_properties(self.device)
+            integrated = bool(getattr(props, "is_integrated", False))
+        if disk_source is not None and integrated:
+            # GB10 and other integrated CUDA devices share one physical memory pool with
+            # Linux. Pinned staging + pageable host LRU therefore compete directly with
+            # weights, expert slots, and KV; charge them once to the same auto budget.
+            host_reserved = int(disk_source.host_allocated_bytes)
+            fixed_cache_size += host_reserved
+            logger.info_rank0(
+                "unified-memory cache plan: charging "
+                f"{host_reserved / 2**30:.2f} GiB of disk host allocations"
+            )
         num_experts = config.model_config.num_experts
         total_experts = config.model_config.num_moe_layers * num_experts
         return resolve_moe_cache_auto(
@@ -544,6 +561,7 @@ class Engine:
                     num_experts=config.model_config.num_experts,
                     host_cache_bytes=int(config.moe_host_cache_gb * 2**30),
                     prefill_overlap=config.moe_prefill_overlap,
+                    cache_policy=config.moe_cache_policy,
                 )
                 assert banks is not None
                 logger.info_rank0(
@@ -563,7 +581,9 @@ class Engine:
                     decode_target=("cpu" if decode_target in ("cpu", "hybrid") else "gpu"),
                 )
             if config.moe_cache_auto:
-                size, pages, overlap = self._resolve_auto_moe_cache_size(config, banks)
+                size, pages, overlap = self._resolve_auto_moe_cache_size(
+                    config, banks, disk_source
+                )
                 object.__setattr__(config, "moe_cache_size", size)
                 object.__setattr__(config, "moe_prefill_overlap", overlap)
                 if config.num_page_override is None:
@@ -590,6 +610,8 @@ class Engine:
                 cache_policy=config.moe_cache_policy,
                 prefill_overlap=config.moe_prefill_overlap,
                 prefill_hit_d2d=config.moe_prefill_hit_d2d,
+                prefill_sparse_max_tokens=config.moe_prefill_sparse_max_tokens,
+                shared_expert_overlap=config.moe_shared_expert_overlap,
                 quant_format=banks.quant_format,
                 decode_target=decode_target,
                 hybrid_max_fetch=config.moe_hybrid_max_fetch,
@@ -1106,11 +1128,14 @@ _DENSE_MOE_SETTINGS = {
     "moe_cache_size": 0,
     "moe_cache_rate": None,
     "moe_cache_auto": False,
+    "moe_cache_policy": "lru",
     "moe_cpu_layers": None,
     "moe_cpu_threads": 0,
     "moe_hybrid_max_fetch": -1,
     "moe_prefill_overlap": True,
     "moe_prefill_hit_d2d": False,
+    "moe_prefill_sparse_max_tokens": 0,
+    "moe_shared_expert_overlap": False,
     "expert_load": "auto",
 }
 
@@ -1126,6 +1151,16 @@ def _adjust_config(config: EngineConfig):
     has_linear_attention = getattr(model_config, "has_linear_attention", False)
     is_moe = getattr(model_config, "is_moe", False)
     expert_quant = getattr(model_config, "expert_quant", "none")
+
+    cache_policy = getattr(config, "moe_cache_policy", "lru")
+    prefill_overlap = getattr(config, "moe_prefill_overlap", True)
+    if getattr(config, "moe_prefill_sparse_max_tokens", 0) < 0:
+        raise ValueError("moe_prefill_sparse_max_tokens must be >= 0")
+    if is_moe and cache_policy == "layer_lru" and prefill_overlap:
+        raise ValueError(
+            "--moe-cache-policy layer_lru protects persistent GPU slots and cannot "
+            "borrow them for prefill; pass --disable-moe-prefill-overlap"
+        )
 
     if not is_moe:
         # A dense model has no routed experts: the MoE knobs are inert, and the offload family
@@ -1320,6 +1355,12 @@ def _adjust_config(config: EngineConfig):
                 "No MoE cache sizing flag given; defaulting to --moe-cache-auto for "
                 f"auto-selected backend {config.moe_backend!r}"
             )
+
+    if is_moe and cache_policy == "layer_lru" and config.moe_backend == "hybrid":
+        raise ValueError(
+            "--moe-cache-policy layer_lru currently supports GPU-only offload; "
+            "hybrid uses capped-fetch admission"
+        )
 
     if is_moe and config.moe_backend == "fused":
         # An explicit 'fused' keeps the experts resident, so there is no slot cache to size. The

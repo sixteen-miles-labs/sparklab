@@ -65,11 +65,14 @@ See [models.md](models.md#moe-backends) for what each backend does.
 |---|---|---|
 | `--moe-backend` | auto | `fused`/`offload`/`cpu`/`hybrid`; auto → offload, or hybrid with a `ft bench bw` profile |
 | `--moe-cache-size` / `--moe-cache-rate` / `--moe-cache-auto` | auto | GPU expert-cache size as slots / fraction of all experts / sized from free VRAM (mutually exclusive; auto is enabled by default for offload-family backends) |
+| `--moe-cache-policy` | `lru` | `lru`, or borrowable `layer_lru` protection applied to both the GPU slot cache and disk host LRU |
 | `--kv-reserve-tokens` | 8192 | KV token floor reserved before `--moe-cache-auto` fills experts |
 | `--moe-cpu-threads` | physical cores | CPU worker threads for the cpu/hybrid executor |
 | `--moe-cpu-layers` | all on GPU | With `offload`: which MoE layers decode on CPU (`3,7,11`, a count, or a fraction) |
 | `--moe-hybrid-max-fetch` | auto | With `hybrid`: max experts fetched over PCIe per layer per step; rest computed on CPU |
 | `--moe-prefill-hit-d2d` | off | Prefill: copy cache-hit experts device-side, stream only misses (CUDA >= 13) |
+| `--moe-prefill-sparse-max-tokens N` | 0/off | For short prefills up to `N` tokens, route first and stage only unique active experts through the persistent cache |
+| `--moe-shared-expert-overlap` | off | Disk mode: overlap supported models' resident shared-expert CUDA work with routed-row staging |
 | `--disable-moe-prefill-overlap` | overlap on | Disable the two-buffer prefill copy overlap |
 
 ### API behaviour

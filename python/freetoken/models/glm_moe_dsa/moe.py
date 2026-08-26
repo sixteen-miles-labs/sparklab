@@ -79,8 +79,31 @@ class GlmMoeDsaSparseBlock(BaseOP):
         num_tokens, hidden_dim = hidden_states.shape
         hidden_states = hidden_states.view(-1, hidden_dim)
         topk_weights, topk_ids = self._route(hidden_states)
-        out = self.experts.routed_forward(hidden_states, topk_weights, topk_ids)
-        out = out + self.shared_experts.forward(hidden_states)
+        cache = getattr(self.experts, "offload_cache", None)
+        overlap = bool(
+            cache is not None
+            and cache.shared_expert_overlap
+            and cache.disk_source is not None
+            and hidden_states.is_cuda
+        )
+        if overlap:
+            current = torch.cuda.current_stream(hidden_states.device)
+            if cache.shared_expert_stream is None:
+                cache.shared_expert_stream = torch.cuda.Stream(device=hidden_states.device)
+            shared_stream = cache.shared_expert_stream
+            shared_stream.wait_stream(current)
+            with torch.cuda.stream(shared_stream):
+                shared = self.shared_experts.forward(hidden_states)
+            # routed_forward synchronously stages disk rows on the host. The auxiliary
+            # stream can execute the resident shared MLP during that wait; join only
+            # before the elementwise sum consumes its output.
+            out = self.experts.routed_forward(hidden_states, topk_weights, topk_ids)
+            current.wait_stream(shared_stream)
+            cache.shared_expert_overlap_calls += 1
+            out = out + shared
+        else:
+            out = self.experts.routed_forward(hidden_states, topk_weights, topk_ids)
+            out = out + self.shared_experts.forward(hidden_states)
         return out.view(num_tokens, hidden_dim)
 
 

@@ -23,10 +23,12 @@ from bench_decode_moe import (
     AIME_FILE,
     AIME_REPO,
     BOXED_INSTRUCTION,
+    GpuTelemetry,
     free_port,
     get_json,
     pump_output,
     resolve_sampling,
+    runtime_provenance,
     serve_cmd,
     stop_server,
     stream_generate,
@@ -50,11 +52,15 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--host-cache-gb", type=float, default=40.0)
     p.add_argument("--cache", type=int, default=0)
     p.add_argument("--cache-rate", type=float, default=None)
+    p.add_argument("--cache-policy", choices=("lru", "layer_lru"), default="lru")
     p.add_argument("--hybrid-fetch", type=int, default=3)
     p.add_argument("--cpu-threads", type=int, default=8)
     p.add_argument("--mem-ratio", type=float, default=0.9)
     p.add_argument("--num-tokens", type=int, default=2048)
     p.add_argument("--disable-prefill-overlap", action="store_true")
+    p.add_argument("--prefill-hit-d2d", action="store_true")
+    p.add_argument("--prefill-sparse-max-tokens", type=int, default=0)
+    p.add_argument("--shared-expert-overlap", action="store_true")
     p.add_argument("--no-graph", action="store_true")
     p.add_argument("--greedy", action="store_true")
     p.add_argument("--server-timeout", type=float, default=1800)
@@ -138,7 +144,12 @@ def existing_results(path: str) -> list[dict]:
 
 def measure_request(args, origin: str, model_id: str, index: int, row: dict, sampling: dict) -> dict:
     before = get_json(f"{origin}/v1/stats")
-    result = stream_generate(origin, model_id, row["_eval_prompt"], sampling, args)
+    telemetry = GpuTelemetry()
+    telemetry.start()
+    try:
+        result = stream_generate(origin, model_id, row["_eval_prompt"], sampling, args)
+    finally:
+        gpu_telemetry = telemetry.stop()
     after = get_json(f"{origin}/v1/stats")
     stamps = result["stamps"]
     usage = result["usage"]
@@ -166,6 +177,7 @@ def measure_request(args, origin: str, model_id: str, index: int, row: dict, sam
         "finish_reason": result["finish_reason"],
         "ended_by_eos": result["finish_reason"] == "stop",
         "vram_gib": after.get("vram_bytes", 0) / 2**30,
+        "gpu_telemetry": gpu_telemetry,
     }
     if args.include_output:
         measured["output_text"] = result["text"]
@@ -173,7 +185,13 @@ def measure_request(args, origin: str, model_id: str, index: int, row: dict, sam
     before_moe, after_moe = before.get("moe") or {}, after.get("moe") or {}
     if after_moe:
         measured["moe"] = counter_delta(
-            before_moe, after_moe, ("active", "missing", "fetched", "calls")
+            before_moe,
+            after_moe,
+            (
+                "active", "missing", "fetched", "calls", "sparse_prefill_layers",
+                "sparse_prefill_routes", "sparse_prefill_unique_rows",
+                "sparse_prefill_fallback_layers", "shared_expert_overlap_calls",
+            ),
         )
         before_disk, after_disk = before_moe.get("disk") or {}, after_moe.get("disk") or {}
         if after_disk:
@@ -183,6 +201,13 @@ def measure_request(args, origin: str, model_id: str, index: int, row: dict, sam
                 ("cache_hits", "cache_misses", "cache_evictions", "cache_bypasses",
                  "read_ops", "logical_bytes", "physical_bytes", "read_seconds"),
             )
+            for key in (
+                "cache_capacity_entries", "cache_capacity_bytes", "cache_allocated_bytes",
+                "cache_occupancy_entries", "cache_occupancy_bytes",
+                "staging_allocated_bytes", "host_allocated_bytes", "read_workers",
+                "cache_policy", "staging_buffers",
+            ):
+                measured["moe"]["disk"][key] = after_disk.get(key, 0)
     return measured
 
 
@@ -200,6 +225,7 @@ def summarize(args, results: list[dict], sampling: dict) -> dict:
         for key in disk_keys
     }
     requests = disk["cache_hits"] + disk["cache_misses"]
+    gpu_rows = [row["gpu_telemetry"] for row in results if row.get("gpu_telemetry")]
     summary = {
         "kind": "summary",
         "model": args.model,
@@ -234,17 +260,29 @@ def summarize(args, results: list[dict], sampling: dict) -> dict:
             ),
             "host_cache_hit_rate": disk["cache_hits"] / requests if requests else 0.0,
         },
+        "gpu_telemetry": {
+            "power_w_avg": statistics.mean(row["power_w_avg"] for row in gpu_rows),
+            "power_w_peak": max(row["power_w_peak"] for row in gpu_rows),
+            "temperature_c_peak": max(row["temperature_c_peak"] for row in gpu_rows),
+            "request_energy_j_total_est": sum(
+                row["request_energy_j_est"] for row in gpu_rows
+            ),
+        } if gpu_rows else {},
         "config": {
             "host_cache_gb": args.host_cache_gb,
             "nvfp4_backend": args.nvfp4_backend,
             "hybrid_fetch": args.hybrid_fetch,
             "cpu_threads": args.cpu_threads,
             "disk_read_workers": int(os.getenv("FREETOKEN_DISK_READ_WORKERS", "16")),
-            "disk_cache_policy": os.getenv("FREETOKEN_DISK_CACHE_POLICY", "lru"),
+            "cache_policy": args.cache_policy,
             "prefill_overlap": not args.disable_prefill_overlap,
+            "prefill_hit_d2d": args.prefill_hit_d2d,
+            "prefill_sparse_max_tokens": args.prefill_sparse_max_tokens,
+            "shared_expert_overlap": args.shared_expert_overlap,
             "memory_ratio": args.mem_ratio,
             "cuda_graph": not args.no_graph,
         },
+        "provenance": runtime_provenance(),
     }
     return summary
 

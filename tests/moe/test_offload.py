@@ -34,6 +34,70 @@ def _make_layer_and_cache():
     return layer, cache
 
 
+def _exercise_layer_lru(cache):
+    plans = []
+    for layer_id, experts in (
+        (0, [0, 1]),
+        (0, [2]),       # borrow one still-empty slot above layer 0's quota
+        (1, [0, 1]),
+        (2, [0, 1]),    # fill the last empty slot, then reclaim layer 0's loan
+        (0, [3]),       # all layers at quota: replace within layer 0
+    ):
+        ids = torch.tensor(experts, dtype=torch.int32, device=cache.device)
+        cache.ensure_experts(layer_id, ids)
+        n = int(cache.num_indices.item())
+        plans.append((ids.cpu().tolist(), cache.src_indices[:n].cpu().tolist()))
+    return plans
+
+
+def test_layer_lru_borrows_then_protects_each_layers_quota_cpu():
+    from freetoken.moe.offload_cache import OffloadMoeCache
+
+    cache = OffloadMoeCache(
+        num_layers=3,
+        num_experts=4,
+        cache_size=6,
+        device=torch.device("cpu"),
+        cache_policy="layer_lru",
+    )
+
+    _exercise_layer_lru(cache)
+
+    assert cache.layer_counts.tolist() == [2, 2, 2]
+    assert (cache.slot_for_id[1, :2] >= 0).all()
+    assert (cache.slot_for_id[2, :2] >= 0).all()
+    assert int((cache.slot_for_id[0] >= 0).sum()) == 2
+    assert cache.slot_for_id[0, 3] >= 0
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
+def test_layer_lru_cuda_matches_cpu_reference():
+    from freetoken.moe.offload_cache import OffloadMoeCache
+
+    cpu = OffloadMoeCache(3, 4, 6, torch.device("cpu"), cache_policy="layer_lru")
+    gpu = OffloadMoeCache(3, 4, 6, torch.device("cuda"), cache_policy="layer_lru")
+
+    assert _exercise_layer_lru(gpu) == _exercise_layer_lru(cpu)
+    assert torch.equal(gpu.slot_for_id.cpu(), cpu.slot_for_id)
+    assert torch.equal(gpu.id_of_slot.cpu(), cpu.id_of_slot)
+    assert torch.equal(gpu.usage.cpu(), cpu.usage)
+    assert torch.equal(gpu.layer_counts.cpu(), cpu.layer_counts)
+
+
+def test_layer_lru_rejects_prefill_buffer_slot_borrowing():
+    from freetoken.moe.offload_cache import OffloadMoeCache
+
+    with pytest.raises(AssertionError, match="incompatible with prefill overlap"):
+        OffloadMoeCache(
+            3,
+            4,
+            8,
+            torch.device("cpu"),
+            cache_policy="layer_lru",
+            prefill_overlap=True,
+        )
+
+
 def test_stage_disk_experts_filters_deduplicates_and_admits():
     from types import SimpleNamespace
 
@@ -181,6 +245,58 @@ def test_offload_moe_layer_prefill_forward_uses_single_layer_cache_view(monkeypa
     assert calls["topk_ids"].dtype == torch.int32
     # slot == expert id after materialize, so the routing ids pass through unmapped
     assert calls["topk_ids"].tolist() == [[2, 1]]
+
+
+def test_offload_moe_layer_sparse_prefill_routes_through_persistent_cache(monkeypatch):
+    layer, cache = _make_layer_and_cache()
+    cache.prefill_sparse_max_tokens = 4
+    topk_weights = torch.tensor([[0.7, 0.3]], dtype=torch.float32)
+    topk_ids = torch.tensor([[2, 1]], dtype=torch.int32)
+    hidden_states = torch.randn(1, 8)
+    calls = {}
+
+    monkeypatch.setattr(
+        cache,
+        "materialize_layer",
+        lambda *_: pytest.fail("sparse prefill must not materialize a full layer"),
+    )
+
+    def fake_ensure(layer_id, ids, *, is_prefill=False):
+        calls["ensure"] = (layer_id, is_prefill)
+        assert ids.tolist() == [1, 2]
+        cache.slot_for_id[layer_id, 1] = 4
+        cache.slot_for_id[layer_id, 2] = 5
+        cache.num_indices.fill_(2)
+
+    monkeypatch.setattr(cache, "ensure_experts", fake_ensure)
+    monkeypatch.setattr(cache, "copy_missing", lambda: calls.setdefault("copied", True))
+
+    def fake_fused(
+        hidden_states,
+        w1,
+        w2,
+        got_topk_weights,
+        got_topk_ids,
+        activation,
+        apply_router_weight_on_input,
+    ):
+        calls["w1_rows"] = w1.shape[0]
+        calls["topk_ids"] = got_topk_ids.clone()
+        return hidden_states
+
+    monkeypatch.setattr("freetoken.layers.moe.fused_experts_impl", fake_fused)
+
+    out = layer._prefill_routed(hidden_states, topk_weights, topk_ids.clone())
+
+    assert out is hidden_states
+    assert calls["w1_rows"] == cache.cache_size
+    assert calls["topk_ids"].tolist() == [[5, 4]]
+    assert calls["ensure"] == (0, True)
+    assert calls["copied"] is True
+    assert cache.sparse_prefill_layers == 1
+    assert cache.sparse_prefill_routes == 2
+    assert cache.sparse_prefill_unique_rows == 2
+    assert int(cache.num_indices.item()) == 2
 
 
 def test_offload_moe_layer_prefill_overlap_prefetches_layers_into_two_buffers(monkeypatch):

@@ -387,6 +387,39 @@ class OffloadMoELayer(MoELayer):
         pass through unmapped."""
         cache = self.offload_cache
         assert cache is not None
+        if (
+            cache.prefill_sparse_max_tokens > 0
+            and hidden_states.size(0) <= cache.prefill_sparse_max_tokens
+        ):
+            # The cache ensure kernel deduplicates all routes in this chunk, rewrites
+            # them to slot ids, and schedules only missing rows. This avoids the legacy
+            # E-row layer scan for short prompts while retaining the same fused GEMM.
+            raw_ids = topk_ids.clone()
+            # lru_ensure's query-space dedup is intentionally optimized for decode-sized
+            # K. Prefill can have hundreds of repeated routes, so compact to <= E ids
+            # first, then map the original route matrix through slot_for_id.
+            unique_ids = torch.unique(raw_ids).to(torch.int32).contiguous()
+            quota = cache.cache_size // cache.num_layers + (
+                self.layer_id < cache.cache_size % cache.num_layers
+            )
+            if cache.cache_policy != "layer_lru" or unique_ids.numel() <= quota:
+                cache.ensure_experts(self.layer_id, unique_ids, is_prefill=True)
+                topk_ids.copy_(cache.slot_for_id[self.layer_id][raw_ids.long()])
+                cache.sparse_prefill_layers += 1
+                cache.sparse_prefill_routes += raw_ids.numel()
+                cache.sparse_prefill_unique_rows += unique_ids.numel()
+                cache.copy_missing()
+                return self._expert_gemm(
+                    cache,
+                    hidden_states,
+                    topk_weights,
+                    topk_ids,
+                    views=cache.bank_views(),
+                    n=None,
+                    alphas=cache.alphas_for_slots(self.layer_id),
+                    is_prefill=True,
+                )
+            cache.sparse_prefill_fallback_layers += 1
         if cache.prefill_overlap:
             views = self._wait_prefill_overlap(cache)
             out = self._expert_gemm(

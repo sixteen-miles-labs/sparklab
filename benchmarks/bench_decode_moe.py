@@ -45,8 +45,11 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.metadata
 import json
 import os
+import platform
+import shutil
 import signal
 import socket
 import subprocess
@@ -57,6 +60,7 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from statistics import fmean
 
 # Applied for every field the checkpoint's generation_config.json does not specify.
 FALLBACK_SAMPLING = {"temperature": 1.0, "top_p": 0.95, "top_k": 64}
@@ -69,6 +73,95 @@ AIME_FILE = "test.jsonl"
 BOXED_INSTRUCTION = (
     "Please reason step by step, and put your final answer within \\boxed{}."
 )
+
+
+class GpuTelemetry:
+    """Low-rate nvidia-smi sampling scoped to one request (best effort)."""
+
+    def __init__(self, interval: float = 0.5):
+        self.interval = interval
+        self.samples: list[tuple[float, float, float, float]] = []
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._started = 0.0
+
+    def start(self) -> None:
+        if shutil.which("nvidia-smi") is None:
+            return
+        self._started = time.perf_counter()
+
+        def sample() -> None:
+            while not self._stop.is_set():
+                try:
+                    raw = subprocess.check_output(
+                        [
+                            "nvidia-smi",
+                            "--query-gpu=power.draw,temperature.gpu,utilization.gpu",
+                            "--format=csv,noheader,nounits",
+                        ],
+                        text=True,
+                        timeout=5,
+                    ).splitlines()[0]
+                    power, temp, util = (float(value.strip()) for value in raw.split(","))
+                    self.samples.append((time.perf_counter(), power, temp, util))
+                except (OSError, ValueError, subprocess.SubprocessError, IndexError):
+                    pass
+                self._stop.wait(self.interval)
+
+        self._thread = threading.Thread(target=sample, name="bench-gpu-telemetry", daemon=True)
+        self._thread.start()
+
+    def stop(self) -> dict:
+        elapsed = time.perf_counter() - self._started if self._started else 0.0
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join(timeout=6)
+        if not self.samples:
+            return {}
+        powers = [sample[1] for sample in self.samples]
+        temperatures = [sample[2] for sample in self.samples]
+        utilization = [sample[3] for sample in self.samples]
+        average_power = fmean(powers)
+        return {
+            "samples": len(self.samples),
+            "duration_s": elapsed,
+            "power_w_avg": average_power,
+            "power_w_peak": max(powers),
+            "temperature_c_peak": max(temperatures),
+            "utilization_pct_avg": fmean(utilization),
+            "request_energy_j_est": average_power * elapsed,
+        }
+
+
+def runtime_provenance() -> dict:
+    """Versions and tracked-worktree identity needed to reproduce a result row."""
+    repo = Path(__file__).resolve().parents[1]
+
+    def command(*args: str) -> str:
+        try:
+            return subprocess.check_output(args, cwd=repo, text=True, timeout=10).strip()
+        except (OSError, subprocess.SubprocessError):
+            return ""
+
+    packages = {}
+    for name in ("torch", "triton", "flashinfer-python", "sglang-kernel", "transformers"):
+        try:
+            packages[name] = importlib.metadata.version(name)
+        except importlib.metadata.PackageNotFoundError:
+            pass
+    gpu = command(
+        "nvidia-smi",
+        "--query-gpu=name,driver_version",
+        "--format=csv,noheader,nounits",
+    )
+    return {
+        "git_revision": command("git", "rev-parse", "HEAD"),
+        "git_tracked_dirty": bool(command("git", "status", "--porcelain", "--untracked-files=no")),
+        "python": platform.python_version(),
+        "platform": platform.platform(),
+        "packages": packages,
+        "gpu_driver": gpu,
+    }
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -111,6 +204,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="GPU expert cache slots; 0 = auto-size from free VRAM",
     )
     p.add_argument("--cache-rate", type=float, default=None, help="cache slots as a fraction of L*E")
+    p.add_argument("--cache-policy", choices=("lru", "layer_lru"), default="lru")
     p.add_argument(
         "--hybrid-fetch",
         type=int,
@@ -125,6 +219,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--disable-prefill-overlap", action="store_true",
         help="disable the two-layer prefill staging reservation (permits a one-layer cache)",
+    )
+    p.add_argument(
+        "--prefill-hit-d2d", action="store_true",
+        help="copy prefill cache hits device-side and stream only misses (CUDA >= 13)",
+    )
+    p.add_argument(
+        "--prefill-sparse-max-tokens", type=int, default=0,
+        help="route-first sparse prefill threshold; 0 keeps full-layer staging",
+    )
+    p.add_argument(
+        "--shared-expert-overlap", action="store_true",
+        help="overlap supported resident shared experts with disk staging",
     )
     p.add_argument(
         "--collect-moe-stats", action="store_true",
@@ -219,6 +325,7 @@ def serve_cmd(args: argparse.Namespace, backend: str, port: int) -> list[str]:
         "--memory-ratio", str(args.mem_ratio),
         "--cuda-graph-max-bs", "0" if args.no_graph else "1",
         "--moe-hybrid-max-fetch", str(args.hybrid_fetch),
+        "--moe-cache-policy", args.cache_policy,
     ]
     if args.num_tokens > 0:
         cmd += ["--num-tokens", str(args.num_tokens)]
@@ -226,6 +333,12 @@ def serve_cmd(args: argparse.Namespace, backend: str, port: int) -> list[str]:
         cmd += ["--moe-cpu-threads", str(args.cpu_threads)]
     if args.disable_prefill_overlap:
         cmd.append("--disable-moe-prefill-overlap")
+    if args.prefill_hit_d2d:
+        cmd.append("--moe-prefill-hit-d2d")
+    if args.prefill_sparse_max_tokens > 0:
+        cmd += ["--moe-prefill-sparse-max-tokens", str(args.prefill_sparse_max_tokens)]
+    if args.shared_expert_overlap:
+        cmd.append("--moe-shared-expert-overlap")
     if args.collect_moe_stats:
         cmd.append("--moe-collect-stats")
     if args.cache > 0:
@@ -384,7 +497,12 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
             # Warm the expert cache to a steady-state decode working set.
             stream_generate(origin, model_id, problem, sampling, args)
             stats_before = get_json(f"{origin}/v1/stats")
-            r = stream_generate(origin, model_id, problem, sampling, args)
+            telemetry = GpuTelemetry()
+            telemetry.start()
+            try:
+                r = stream_generate(origin, model_id, problem, sampling, args)
+            finally:
+                gpu_telemetry = telemetry.stop()
             stats = get_json(f"{origin}/v1/stats")
         finally:
             stop_server(proc)
@@ -413,8 +531,11 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
             "cpu_threads": args.cpu_threads,
             "hybrid_fetch": args.hybrid_fetch,
             "disk_read_workers": int(os.getenv("FREETOKEN_DISK_READ_WORKERS", "16")),
-            "disk_cache_policy": os.getenv("FREETOKEN_DISK_CACHE_POLICY", "lru"),
+            "cache_policy": args.cache_policy,
             "prefill_overlap": not args.disable_prefill_overlap,
+            "prefill_hit_d2d": args.prefill_hit_d2d,
+            "prefill_sparse_max_tokens": args.prefill_sparse_max_tokens,
+            "shared_expert_overlap": args.shared_expert_overlap,
             "cuda_graph": not args.no_graph,
         },
         "cache_geometry": cache_status.get("geometry", {}),
@@ -432,6 +553,8 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
         "sampling": sampling,
         "output_sha1": hashlib.sha1(r["text"].encode()).hexdigest()[:12],
         "server_log": log_path,
+        "gpu_telemetry": gpu_telemetry,
+        "provenance": runtime_provenance(),
     }
     if args.include_output:
         row["output_text"] = r["text"]
@@ -440,7 +563,11 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
     if after_moe:
         delta = {
             key: int(after_moe.get(key, 0)) - int(before_moe.get(key, 0))
-            for key in ("active", "missing", "fetched", "calls")
+            for key in (
+                "active", "missing", "fetched", "calls", "sparse_prefill_layers",
+                "sparse_prefill_routes", "sparse_prefill_unique_rows",
+                "sparse_prefill_fallback_layers", "shared_expert_overlap_calls",
+            )
         }
         active, missing, fetched, calls = (
             delta["active"], delta["missing"], delta["fetched"], delta["calls"]
@@ -466,6 +593,7 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
             for key in (
                 "cache_capacity_entries", "cache_capacity_bytes",
                 "cache_allocated_bytes", "cache_occupancy_entries", "cache_occupancy_bytes",
+                "staging_allocated_bytes", "host_allocated_bytes",
                 "read_workers", "cache_policy", "staging_buffers",
             ):
                 disk_delta[key] = after_disk.get(key, 0)
@@ -478,6 +606,12 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
           f"(event p50 {row['event_ms_p50']:.3f} / p99 {row['event_ms_p99']:.3f} ms, "
           f"{len(stamps)} events)")
     print(f"  vram (server)     : {row['vram_gib']:8.2f} GiB")
+    if row["gpu_telemetry"]:
+        gpu = row["gpu_telemetry"]
+        print(
+            f"  board power/temp  : {gpu['power_w_avg']:.1f} W avg / "
+            f"{gpu['power_w_peak']:.1f} W peak, {gpu['temperature_c_peak']:.0f} C peak"
+        )
     sha_note = "greedy" if args.greedy else "sampled, per-server deterministic"
     print(f"  output sha1       : {row['output_sha1']}  ({sha_note}; compare across backends)")
     print(f"  output sample     : {r['text'][:240]!r}")

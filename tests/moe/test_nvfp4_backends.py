@@ -472,6 +472,56 @@ def test_b12x_decode_matches_dequant_reference():
 
 
 @cuda
+def test_b12x_sparse_prefill_slot_ids_match_dequant_reference():
+    """A multi-token route-first prefill can use arbitrary persistent-cache slots.
+
+    This is the numerical half of ``--moe-prefill-sparse-max-tokens``: lru_ensure
+    deduplicates a chunk's expert ids, rewrites every route to a slot, and the same
+    b12x kernel must agree with the native NVFP4 dequant reference.
+    """
+    from freetoken.moe.nvfp4_backends import (
+        _b12x_unusable_reason,
+        b12x_fused_experts,
+        b12x_repack_sources_inplace,
+    )
+    from freetoken.moe.offload_cache import OffloadMoeCache
+
+    device = torch.device("cuda")
+    reason = _b12x_unusable_reason(torch.cuda.get_device_capability(device))
+    if reason is not None:
+        pytest.skip(f"b12x not runnable here: {reason}")
+
+    sources = _make_native_sources(device, seed=9)
+    ref_sources = {k: [t.clone() for t in v] for k, v in sources.items()}
+    cfg = types.SimpleNamespace(hidden_size=H, moe_intermediate_size=I)
+    packed = b12x_repack_sources_inplace(sources, cfg, device, chunk=6)
+    cache = OffloadMoeCache(
+        num_layers=L, num_experts=E, cache_size=S, device=device, quant_format="nvfp4_b12x"
+    )
+    cache.set_bank_sources({name: packed[name] for name in cache.bank_schema})
+    cache.set_alphas(packed["gate_up_alpha"], packed["down_alpha"])
+    cache.reset()
+
+    torch.manual_seed(4)
+    hidden = torch.randn(3, H, dtype=torch.bfloat16, device=device) / 4
+    weights = torch.rand(3, TOPK, dtype=torch.float32, device=device)
+    raw_ids = torch.tensor([[3, 5], [1, 3], [4, 5]], dtype=torch.int32, device=device)
+    ref = _ref_moe(ref_sources, 0, hidden, weights, raw_ids)
+    unique_ids = torch.unique(raw_ids).to(torch.int32).contiguous()
+    cache.ensure_experts(0, unique_ids, is_prefill=True)
+    slot_ids = cache.slot_for_id[0][raw_ids.long()].to(torch.int32).contiguous()
+    cache.copy_missing()
+    g1, g2 = cache.alphas_for_slots(0)
+    gu_p, gu_s, dn_p, dn_s = cache.bank_views()
+    out = b12x_fused_experts(
+        hidden, gu_p, gu_s, g1, dn_p, dn_s, g2, weights, slot_ids, "silu", False
+    )
+
+    assert int(cache.num_indices.item()) == 4
+    _assert_close(out, ref)
+
+
+@cuda
 def test_dummy_nvfp4_sources_match_loader_contract():
     """--use-dummy-weight banks must match the real loader's shapes/dtypes/pinning so the
     engine repack/offload path is exercised unchanged. The marlin repack + offload gather

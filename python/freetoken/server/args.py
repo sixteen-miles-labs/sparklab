@@ -526,8 +526,11 @@ def parse_args(
     parser.add_argument(
         "--moe-cache-policy",
         default=ServerArgs.moe_cache_policy,
-        choices=["lru"],
-        help="The unified MoE cache eviction policy.",
+        choices=["lru", "layer_lru"],
+        help=(
+            "Expert-cache eviction policy for both GPU and disk host tiers. layer_lru "
+            "protects each layer's fair share while allowing unused slots to be borrowed."
+        ),
     )
 
     parser.add_argument(
@@ -609,6 +612,27 @@ def parse_args(
             "the double buffer and stream only the misses over PCIe "
             "(cudaMemcpyBatchAsync, CUDA >= 13.0). Effective with "
             "--moe-cache-size > 2 * num_experts."
+        ),
+    )
+
+    parser.add_argument(
+        "--moe-prefill-sparse-max-tokens",
+        type=_positive_int,
+        default=ServerArgs.moe_prefill_sparse_max_tokens,
+        help=(
+            "For prefills up to this many tokens, stage only uniquely routed experts "
+            "through the persistent cache instead of scanning each full expert layer. "
+            "Disabled by default (0)."
+        ),
+    )
+
+    parser.add_argument(
+        "--moe-shared-expert-overlap",
+        action="store_true",
+        default=ServerArgs.moe_shared_expert_overlap,
+        help=(
+            "Disk mode: overlap supported models' resident shared-expert compute with "
+            "routed-expert staging on an auxiliary CUDA stream."
         ),
     )
 

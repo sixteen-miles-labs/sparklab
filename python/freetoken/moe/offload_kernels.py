@@ -16,7 +16,9 @@ _HYBRID_FETCH_BY_RECENCY = (
 )
 
 
-def ensure_experts(cache, layer_id: int, expert_ids: torch.Tensor) -> None:
+def ensure_experts(
+    cache, layer_id: int, expert_ids: torch.Tensor, *, collect_stats: bool = True
+) -> None:
     """Make this layer's routed experts resident; rewrite ``expert_ids`` to slot ids.
 
     Delegates to flashlib's slot cache. ``id_base`` maps this layer's expert ids into the
@@ -25,19 +27,221 @@ def ensure_experts(cache, layer_id: int, expert_ids: torch.Tensor) -> None:
     tensor. ``out_indices`` aliases the input, preserving the in-place rewrite every
     downstream GEMM depends on.
     """
-    lru_ensure(
+    stats = cache.lru_stats[layer_id] if cache.collect_stats and collect_stats else None
+    if cache.cache_policy == "layer_lru":
+        layer_lru_ensure(cache, layer_id, expert_ids, stats=stats)
+    else:
+        lru_ensure(
+            expert_ids,
+            cache.slot_for_id.view(-1),
+            cache.id_of_slot,
+            cache.usage,
+            cache.step,
+            expert_ids,
+            cache.src_indices,
+            cache.evict_slots,
+            cache.num_indices,
+            stats=stats,
+            id_base=layer_id * cache.num_experts,
+        )
+
+
+def layer_lru_ensure(cache, layer_id: int, expert_ids: torch.Tensor, *, stats=None) -> None:
+    """Borrowable per-layer LRU admission, with the same plan contract as lru_ensure.
+
+    Every layer owns ``cache_size // num_layers`` protected slots (the remainder is
+    distributed to the first layers). Empty slots are freely borrowed. Once full,
+    victims come from layers above quota; when none is above quota, a request replaces
+    within its own layer. Counts stay device-side, so decode remains graph-capturable.
+    """
+    if not expert_ids.is_cuda:
+        return _layer_lru_ensure_cpu(cache, layer_id, expert_ids, stats=stats)
+    K = expert_ids.numel()
+    C = cache.cache_size
+    assert K <= C and (not __debug__ or int(torch.unique(expert_ids).numel()) <= C)
+    _layer_lru_ensure_kernel[(1,)](
         expert_ids,
-        cache.slot_for_id.view(-1),
+        cache.slot_for_id,
         cache.id_of_slot,
         cache.usage,
         cache.step,
+        cache.layer_counts,
         expert_ids,
         cache.src_indices,
         cache.evict_slots,
         cache.num_indices,
-        stats=cache.lru_stats[layer_id] if cache.collect_stats else None,
-        id_base=layer_id * cache.num_experts,
+        stats,
+        layer_id,
+        K,
+        cache.num_layers,
+        cache.num_experts,
+        C,
+        BLOCK_K=triton.next_power_of_2(K),
+        BLOCK_L=triton.next_power_of_2(cache.num_layers),
+        BLOCK_C=triton.next_power_of_2(C),
+        USAGE_MAX=torch.iinfo(cache.usage.dtype).max,
+        COLLECT_STATS=stats is not None,
+        num_warps=8 if C >= 2048 else 4,
     )
+
+
+def _layer_lru_ensure_cpu(cache, layer_id: int, expert_ids: torch.Tensor, *, stats=None) -> None:
+    raw = expert_ids.view(-1).tolist()
+    unique = list(dict.fromkeys(raw))
+    step = int(cache.step.item()) + 1
+    cache.step.fill_(step)
+    base = layer_id * cache.num_experts
+    missing = []
+    for expert in unique:
+        slot = int(cache.slot_for_id[layer_id, expert].item())
+        if slot >= 0:
+            cache.usage[slot] = step
+        else:
+            missing.append(expert)
+    cache.num_indices.fill_(len(missing))
+    quotas = [
+        cache.cache_size // cache.num_layers + (lid < cache.cache_size % cache.num_layers)
+        for lid in range(cache.num_layers)
+    ]
+    for index, expert in enumerate(sorted(missing)):
+        counts = cache.layer_counts.tolist()
+        over = {lid for lid, count in enumerate(counts) if count > quotas[lid]}
+        candidates = []
+        for slot, old in enumerate(cache.id_of_slot.tolist()):
+            if int(cache.usage[slot]) == step:
+                continue
+            owner = old // cache.num_experts if old >= 0 else -1
+            if old < 0 or owner in over or (not over and owner == layer_id):
+                candidates.append(slot)
+        assert candidates, "layer-LRU has no evictable slot for this query"
+        victim = min(candidates, key=lambda slot: (int(cache.usage[slot]), slot))
+        old = int(cache.id_of_slot[victim])
+        if old >= 0:
+            old_layer = old // cache.num_experts
+            cache.slot_for_id.view(-1)[old] = -1
+            cache.layer_counts[old_layer] -= 1
+        cache.id_of_slot[victim] = base + expert
+        cache.slot_for_id[layer_id, expert] = victim
+        cache.layer_counts[layer_id] += 1
+        cache.usage[victim] = step
+        cache.src_indices[index] = expert
+        cache.evict_slots[index] = victim
+    flat = expert_ids.view(-1)
+    for i, expert in enumerate(raw):
+        flat[i] = cache.slot_for_id[layer_id, expert]
+    if stats is not None:
+        stats[Stat.ACTIVE] += len(unique)
+        stats[Stat.MISS] += len(missing)
+        stats[Stat.CALLS] += 1
+
+
+@triton.jit(do_not_specialize=["layer_id", "K"])
+def _layer_lru_ensure_kernel(
+    query_ptr,
+    slot_for_id_ptr,
+    id_of_slot_ptr,
+    usage_ptr,
+    step_ptr,
+    layer_counts_ptr,
+    out_ptr,
+    src_ptr,
+    dst_ptr,
+    num_copy_ptr,
+    stats_ptr,
+    layer_id,
+    K,
+    num_layers: tl.constexpr,
+    num_experts: tl.constexpr,
+    cache_size: tl.constexpr,
+    BLOCK_K: tl.constexpr,
+    BLOCK_L: tl.constexpr,
+    BLOCK_C: tl.constexpr,
+    USAGE_MAX: tl.constexpr,
+    COLLECT_STATS: tl.constexpr,
+):
+    k = tl.arange(0, BLOCK_K)
+    kmask = k < K
+    base = layer_id * num_experts
+    local = tl.load(query_ptr + k, mask=kmask, other=-1)
+    q = local + base
+    slot = tl.load(slot_for_id_ptr + q, mask=kmask, other=-1)
+    hit = kmask & (slot >= 0)
+    miss = kmask & (slot < 0)
+    same_before = (
+        (q[:, None] == q[None, :])
+        & (k[:, None] > k[None, :])
+        & kmask[:, None]
+        & kmask[None, :]
+    )
+    first = kmask & (tl.sum(same_before.to(tl.int32), axis=1) == 0)
+    first_miss = first & miss
+    smaller = (q[None, :] < q[:, None]) & first_miss[None, :]
+    rank = tl.sum(smaller.to(tl.int32), axis=1)
+    num_missing = tl.sum(first_miss.to(tl.int32))
+    tl.store(num_copy_ptr, num_missing.to(tl.int64))
+
+    step = tl.load(step_ptr) + 1
+    tl.store(step_ptr, step)
+    tl.store(usage_ptr + slot, step, mask=hit)
+    out = tl.where(hit, slot, -1)
+
+    if num_missing > 0:
+        tl.debug_barrier()
+        c = tl.arange(0, BLOCK_C)
+        cmask = c < cache_size
+        owners = tl.load(id_of_slot_ptr + c, mask=cmask, other=-1)
+        usage = tl.load(usage_ptr + c, mask=cmask, other=USAGE_MAX)
+        usage = tl.where(cmask & (usage != step), usage, USAGE_MAX)
+        lids = tl.arange(0, BLOCK_L)
+        lmask = lids < num_layers
+        counts = tl.load(layer_counts_ptr + lids, mask=lmask, other=0)
+        quota_base: tl.constexpr = cache_size // num_layers
+        quota_extra: tl.constexpr = cache_size % num_layers
+        quotas = quota_base + (lids < quota_extra).to(tl.int32)
+
+        for i in tl.range(num_missing):
+            owner = owners // num_experts
+            owner_valid = cmask & (owners >= 0)
+            owner_count = tl.load(layer_counts_ptr + owner, mask=owner_valid, other=0)
+            owner_quota = quota_base + (owner < quota_extra).to(tl.int32)
+            any_over = tl.sum((lmask & (counts > quotas)).to(tl.int32)) > 0
+            eligible = (
+                cmask
+                & ((owners < 0) | (owner_count > owner_quota) | ((~any_over) & (owner == layer_id)))
+            )
+            score = tl.where(eligible, usage, USAGE_MAX)
+            victim = tl.argmin(score, axis=0).to(tl.int32)
+            old = tl.load(id_of_slot_ptr + victim)
+            old_layer = old // num_experts
+            if old >= 0:
+                tl.store(slot_for_id_ptr + old, -1)
+                old_count = tl.load(layer_counts_ptr + old_layer) - 1
+                tl.store(layer_counts_ptr + old_layer, old_count)
+                counts = tl.where(lids == old_layer, old_count, counts)
+            incoming = tl.sum(tl.where((rank == i) & first_miss, q, 0))
+            tl.store(id_of_slot_ptr + victim, incoming)
+            tl.store(slot_for_id_ptr + incoming, victim)
+            current_count = tl.sum(tl.where(lids == layer_id, counts, 0))
+            new_count = current_count + 1
+            tl.store(layer_counts_ptr + layer_id, new_count)
+            counts = tl.where(lids == layer_id, new_count, counts)
+            tl.store(usage_ptr + victim, step)
+            tl.store(dst_ptr + i, victim)
+            tl.store(src_ptr + i, incoming - base)
+            out = tl.where((rank == i) & miss, victim, out)
+            owners = tl.where(c == victim, incoming, owners)
+            usage = tl.where(c == victim, USAGE_MAX, usage)
+            tl.debug_barrier()
+
+    tl.store(out_ptr + k, out, mask=kmask)
+    if COLLECT_STATS:
+        si = tl.arange(0, 4)
+        value = tl.where(
+            si == 0,
+            tl.sum(first.to(tl.int32)),
+            tl.where(si == 1, num_missing, 1),
+        )
+        tl.atomic_add(stats_ptr + si, value.to(tl.int64), mask=si < 3)
 
 
 def ensure_experts_hybrid(

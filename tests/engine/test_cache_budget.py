@@ -331,6 +331,63 @@ def test_engine_resolve_auto_moe_cache_size_maps_kwargs():
     assert (size, pages, overlap) == expected
 
 
+def test_engine_auto_budget_charges_disk_host_memory_on_integrated_gpu(monkeypatch):
+    import torch
+
+    from freetoken.engine.engine import Engine
+
+    class Pool:
+        @staticmethod
+        def kv_cost(config):
+            return 64, 128, 16, 0
+
+    class Model:
+        num_experts = 4
+        num_moe_layers = 2
+
+        @staticmethod
+        def linear_attention_group():
+            return None
+
+    class Config:
+        model_config = Model()
+        memory_ratio = 0.9
+        moe_prefill_overlap = False
+        kv_reserve_tokens = 0
+        page_size = 16
+
+    class Banks:
+        quant_format = "bf16"
+        sources = {"gate_up": [torch.zeros(4, 2, dtype=torch.float16)]}
+
+    captured = {}
+
+    def fake_resolve(**kwargs):
+        captured.update(kwargs)
+        return 4, 2, False
+
+    monkeypatch.setattr(
+        "freetoken.engine.cache_budget.resolve_moe_cache_auto", fake_resolve
+    )
+    monkeypatch.setattr(
+        torch.cuda,
+        "get_device_properties",
+        lambda device: SimpleNamespace(is_integrated=True),
+    )
+    engine = Engine.__new__(Engine)
+    engine.device = torch.device("cuda")
+    engine._baseline_free = 10_000
+    engine._weights_bytes = 1_000
+    engine._pool_cls = Pool
+
+    result = engine._resolve_auto_moe_cache_size(
+        Config(), Banks(), SimpleNamespace(host_allocated_bytes=2_048)
+    )
+
+    assert result == (4, 2, False)
+    assert captured["fixed_cache_size"] == 128 + 2_048
+
+
 # ---------------------------------------------------------------------------
 # offload-cache sizing guard + auto-resolution (_require_offload_cache_size / _adjust_config),
 # the floor rule compute_cache_floors documents above.

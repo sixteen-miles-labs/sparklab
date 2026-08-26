@@ -15,6 +15,50 @@ H_IDX, D_IDX, ROPE_DIM, Q_LORA, HIDDEN = 32, 128, 64, 256, 512
 THETA = 8_000_000.0
 
 
+def test_shared_expert_disk_overlap_launches_before_routed_staging():
+    from types import SimpleNamespace
+
+    from freetoken.models.glm_moe_dsa.moe import GlmMoeDsaSparseBlock
+
+    order = []
+    cache = SimpleNamespace(
+        shared_expert_overlap=True,
+        disk_source=object(),
+        shared_expert_stream=None,
+        shared_expert_overlap_calls=0,
+    )
+
+    class Experts:
+        offload_cache = cache
+
+        @staticmethod
+        def routed_forward(hidden, weights, ids):
+            order.append("routed")
+            return torch.ones_like(hidden)
+
+    class Shared:
+        @staticmethod
+        def forward(hidden):
+            order.append("shared")
+            return hidden * 2
+
+    block = object.__new__(GlmMoeDsaSparseBlock)
+    block.experts = Experts()
+    block.shared_experts = Shared()
+    block._route = lambda hidden: (
+        torch.ones(hidden.size(0), 1, dtype=torch.float32, device=hidden.device),
+        torch.zeros(hidden.size(0), 1, dtype=torch.int32, device=hidden.device),
+    )
+    hidden = torch.randn(3, 8, dtype=torch.bfloat16, device="cuda")
+
+    out = block.forward(hidden)
+    torch.cuda.synchronize()
+
+    torch.testing.assert_close(out, torch.ones_like(hidden) + hidden * 2)
+    assert order == ["shared", "routed"]
+    assert cache.shared_expert_overlap_calls == 1
+
+
 def _hf_indexer(seq: int, topk: int):
     """Run the HF reference indexer on random tensors; returns everything needed to
     replicate it (weights, inputs, expected topk indices)."""

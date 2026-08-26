@@ -43,6 +43,12 @@ class EngineConfig:
     # prefetch instead of re-streaming the full layer over PCIe. Needs CUDA >= 12.8
     # (cudaMemcpyBatchAsync); no-op unless moe_cache_size > 2 * num_experts.
     moe_prefill_hit_d2d: bool = False
+    # Optional short-prefill path: route first and materialize only the unique active
+    # experts through the persistent slot cache. 0 keeps the full-layer prefill path.
+    moe_prefill_sparse_max_tokens: int = 0
+    # Disk mode: run a model's resident shared expert on an auxiliary CUDA stream while
+    # the routed-expert rows are staged from storage. Models opt in at their MoE block.
+    moe_shared_expert_overlap: bool = False
     moe_collect_stats: bool = False  # capture decode miss-rate counters into the cuda graph
     # CPU MoE backend (--moe-backend cpu): number of CPU worker threads computing
     # the decode experts. 0 = auto (physical cores). Ignored by other backends.

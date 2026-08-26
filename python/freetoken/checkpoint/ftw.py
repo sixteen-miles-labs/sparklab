@@ -532,6 +532,12 @@ class FTWDiskExpertSource:
             _align_up(getattr(bank, "nbytes", bank.tensor.numel() * bank.tensor.element_size()))
             for bank in self.cache_banks.values()
         )
+        self.staging_allocated_bytes = sum(
+            _align_up(getattr(bank, "nbytes", bank.tensor.numel() * bank.tensor.element_size()))
+            for buffers in self.staging_buffers
+            for bank in buffers.values()
+        )
+        self.host_allocated_bytes = self.staging_allocated_bytes + self.cache_allocated_bytes
         self._cache: OrderedDict[tuple[int, int], int] = OrderedDict()
         self._free_slots = list(range(self.cache_capacity - 1, -1, -1))
         if cache_policy is None:
@@ -812,6 +818,8 @@ class FTWDiskExpertSource:
             "cache_capacity_entries": self.cache_capacity,
             "cache_capacity_bytes": self.cache_capacity * self.cache_row_bytes,
             "cache_allocated_bytes": self.cache_allocated_bytes,
+            "staging_allocated_bytes": self.staging_allocated_bytes,
+            "host_allocated_bytes": self.host_allocated_bytes,
             "cache_occupancy_entries": len(self._cache),
             "cache_occupancy_bytes": len(self._cache) * self.cache_row_bytes,
             "cache_hits": self.cache_hits,
@@ -835,7 +843,8 @@ class FTWDiskExpertSource:
 
 def open_ftw_disk_banks(path: str, *, num_layers: int, num_experts: int,
                         host_cache_bytes: int = 0,
-                        prefill_overlap: bool = False):
+                        prefill_overlap: bool = False,
+                        cache_policy: str = "lru"):
     """Open FTW routed experts with one or two pinned staging layers.
 
     When overlap is enabled, the second staging layer is charged against the requested
@@ -927,7 +936,12 @@ def open_ftw_disk_banks(path: str, *, num_layers: int, num_experts: int,
     from freetoken.moe.expert_banks import ExpertBanks
 
     source = FTWDiskExpertSource(
-        reader, descriptors, staging, cache_banks, staging_buffers=staging_buffers
+        reader,
+        descriptors,
+        staging,
+        cache_banks,
+        cache_policy=cache_policy,
+        staging_buffers=staging_buffers,
     )
     sources = {
         name: [staging_buffers[layer_id % len(staging_buffers)][name].tensor

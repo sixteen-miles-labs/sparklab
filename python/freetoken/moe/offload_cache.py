@@ -96,6 +96,12 @@ class OffloadMoeCache:
     # coalesced runs). Requires prefill_overlap, cache_size > 2 * num_experts and
     # the fused copy plan; silently falls back to the full-layer copy otherwise.
     prefill_hit_d2d: bool = False
+    # Route-first sparse prefill is selected by OffloadMoELayer for chunks at or below
+    # this token count. It uses the persistent slot cache and reads only active rows.
+    prefill_sparse_max_tokens: int = 0
+    # Model-owned shared experts may use this to overlap their resident CUDA work with
+    # synchronous disk staging in routed_forward (currently GLM-5.2).
+    shared_expert_overlap: bool = False
     # "bf16" (default, dense expert weights) or one of the NVFP4 bank layouts:
     # "nvfp4" (native ModelOpt rows, FreeToken Triton kernels), "nvfp4_marlin"
     # (Marlin-tiled, vLLM W4A16 GEMM, sm_80-99) or "nvfp4_b12x" (flashinfer SM12x
@@ -125,9 +131,10 @@ class OffloadMoeCache:
     hybrid_fetch_fraction: float = 0.0
 
     def __post_init__(self) -> None:
-        policy_ids = {"lru": 0}
+        policy_ids = {"lru": 0, "layer_lru": 1}
         assert self.cache_policy in policy_ids
         assert self.decode_target in ("gpu", "cpu", "hybrid"), self.decode_target
+        assert self.prefill_sparse_max_tokens >= 0
         assert self.quant_format in _BANK_SCHEMAS, f"unknown quant_format {self.quant_format!r}"
         # Attached by the engine for decode_target == "cpu" (CpuMoeExecutor); None
         # for the GPU decode path.
@@ -142,6 +149,14 @@ class OffloadMoeCache:
             "Prefill overlap borrows two full expert-layer buffers from the unified MoE "
             "cache, so cache_size must be at least 2 * num_experts "
             "(raise moe_cache_size or disable moe_prefill_overlap)"
+        )
+        assert not (self.cache_policy == "layer_lru" and self.prefill_overlap), (
+            "layer_lru protects persistent GPU slots and is incompatible with prefill "
+            "overlap borrowing; disable prefill overlap"
+        )
+        assert not (self.cache_policy == "layer_lru" and self.decode_target == "hybrid"), (
+            "layer_lru currently applies to GPU-only offload; hybrid has its own "
+            "capped-fetch admission policy"
         )
         self.cache_policy_id = policy_ids[self.cache_policy]
         self.slot_for_id = torch.full(
@@ -161,6 +176,9 @@ class OffloadMoeCache:
         )
         self.usage = torch.zeros((self.cache_size,), dtype=torch.int64, device=self.device)
         self.step = torch.zeros((), dtype=torch.int64, device=self.device)
+        self.layer_counts = torch.zeros(
+            (self.num_layers,), dtype=torch.int32, device=self.device
+        )
         self.active_mask = torch.zeros((self.num_experts,), dtype=torch.int32, device=self.device)
         self.evict_slots = torch.empty((self.num_experts,), dtype=torch.int32, device=self.device)
         self.src_indices = torch.empty((self.num_experts,), dtype=torch.int32, device=self.device)
@@ -183,6 +201,7 @@ class OffloadMoeCache:
         self.bank_sources: dict[str, list[torch.Tensor]] = {}
         self.bank_caches: dict[str, torch.Tensor] = {}
         self.disk_source = None
+        self.shared_expert_stream: torch.cuda.Stream | None = None
         # Per-layer host residency (HostResidency values). The GPU movement paths
         # (fused gather, prefill DMA) require "pinned"; other residency classes
         # are not supported here and are rejected by set_bank_sources.
@@ -266,6 +285,11 @@ class OffloadMoeCache:
         self._batch_memcpy = None
         self.prefill_hit_rows = 0
         self.prefill_total_rows = 0
+        self.sparse_prefill_layers = 0
+        self.sparse_prefill_routes = 0
+        self.sparse_prefill_unique_rows = 0
+        self.sparse_prefill_fallback_layers = 0
+        self.shared_expert_overlap_calls = 0
 
     def set_bank_sources(
         self,
@@ -437,6 +461,7 @@ class OffloadMoeCache:
         self.id_of_slot = torch.full((cache_size,), -1, dtype=torch.int32, device=self.device)
         self.usage = torch.zeros((cache_size,), dtype=torch.int64, device=self.device)
         self.step.zero_()
+        self.layer_counts.zero_()
         self.active_mask.zero_()
         self.num_indices.zero_()
         self.num_missing_full.zero_()
@@ -452,6 +477,11 @@ class OffloadMoeCache:
         self.decode_freq.zero_()
         self.prefill_hit_rows = 0
         self.prefill_total_rows = 0
+        self.sparse_prefill_layers = 0
+        self.sparse_prefill_routes = 0
+        self.sparse_prefill_unique_rows = 0
+        self.sparse_prefill_fallback_layers = 0
+        self.shared_expert_overlap_calls = 0
         self._hit_d2d_fallback_logged = False  # geometry changed; re-log if still unusable
         # 5. Re-evaluate prefill overlap against the new size.
         if self.prefill_overlap and cache_size < 2 * self.num_experts:
@@ -802,18 +832,20 @@ class OffloadMoeCache:
             self._prefill_buffer_has_release_event[buffer_id] = True
         self._prefill_buffer_released[buffer_id] = True
 
-    def ensure_experts(self, layer_id: int, expert_ids: torch.Tensor) -> None:
+    def ensure_experts(
+        self, layer_id: int, expert_ids: torch.Tensor, *, is_prefill: bool = False
+    ) -> None:
         from freetoken.moe.offload_kernels import ensure_experts
 
-        if self.collect_decode_freq:
+        if self.collect_decode_freq and not is_prefill:
             # ``expert_ids`` still holds raw expert ids here (the kernel rewrites them to
             # slot ids in place), so snapshot the routing histogram before that happens.
             ids = expert_ids.reshape(-1).long()
             self.decode_freq[layer_id].scatter_add_(0, ids, torch.ones_like(ids))
         self._pending_src_layer = layer_id
-        self._pending_is_prefill = False
+        self._pending_is_prefill = is_prefill
         self._pending_disk_stage_layer = None
-        ensure_experts(self, layer_id, expert_ids)
+        ensure_experts(self, layer_id, expert_ids, collect_stats=not is_prefill)
 
     def ensure_experts_hybrid(self, layer_id: int, expert_ids: torch.Tensor) -> None:
         """Capped-fetch LRU for the hybrid backend.
@@ -844,11 +876,17 @@ class OffloadMoeCache:
         self._pending_is_prefill = True
         self._pending_disk_stage_layer = None
         materialize_layer(self, layer_id)
+        if self.cache_policy == "layer_lru":
+            owners = self.id_of_slot[self.id_of_slot >= 0] // self.num_experts
+            self.layer_counts.copy_(
+                torch.bincount(owners.long(), minlength=self.num_layers).to(torch.int32)
+            )
 
     def reset(self) -> None:
         from freetoken.moe.offload_kernels import reset_cache
 
         reset_cache(self)
+        self.layer_counts.zero_()
         # Per-expert recency is not cache_size-shaped, so reset_cache leaves it alone; wipe
         # it here so a new sequence starts with cold hybrid fetch priorities.
         self.expert_recency.fill_(-1)
@@ -856,6 +894,11 @@ class OffloadMoeCache:
     def reset_stats(self) -> None:
         self.prefill_hit_rows = 0
         self.prefill_total_rows = 0
+        self.sparse_prefill_layers = 0
+        self.sparse_prefill_routes = 0
+        self.sparse_prefill_unique_rows = 0
+        self.sparse_prefill_fallback_layers = 0
+        self.shared_expert_overlap_calls = 0
         self.lru_stats.zero_()
         self.stat_missing.zero_()
         self.stat_active.zero_()
@@ -915,6 +958,11 @@ class OffloadMoeCache:
             # rows prefetched into the double buffer since the last reset.
             "prefill_hit_rows": self.prefill_hit_rows,
             "prefill_rows": self.prefill_total_rows,
+            "sparse_prefill_layers": self.sparse_prefill_layers,
+            "sparse_prefill_routes": self.sparse_prefill_routes,
+            "sparse_prefill_unique_rows": self.sparse_prefill_unique_rows,
+            "sparse_prefill_fallback_layers": self.sparse_prefill_fallback_layers,
+            "shared_expert_overlap_calls": self.shared_expert_overlap_calls,
         }
 
     def decode_miss_stats_per_layer(self) -> dict:
