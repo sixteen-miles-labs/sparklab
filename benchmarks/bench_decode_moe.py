@@ -565,13 +565,13 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
             pump.join(timeout=10)
 
     stamps, usage = r["stamps"], r["usage"]
-    if len(stamps) < 2:
+    if len(stamps) < 2 and args.decode > 1:
         sys.exit(f"[bench] need >=2 token events to measure decode, got {len(stamps)}")
     completion = usage["completion_tokens"]
     if completion != args.decode:
         print(f"[bench] WARNING: completion_tokens={completion} != --decode {args.decode}", flush=True)
-    steps = completion - 1
-    decode_time = stamps[-1] - stamps[0]
+    steps = max(0, completion - 1)
+    decode_time = stamps[-1] - stamps[0] if len(stamps) >= 2 else 0.0
     gaps = sorted((b - a) * 1e3 for a, b in zip(stamps, stamps[1:]))
     row = {
         "model": args.model,
@@ -600,8 +600,8 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
         "decode_steps": steps,
         "decode_tok_s": steps / decode_time if decode_time > 0 else 0.0,
         "ms_per_token": decode_time / steps * 1e3 if steps > 0 else 0.0,
-        "event_ms_p50": gaps[len(gaps) // 2],
-        "event_ms_p99": gaps[min(len(gaps) - 1, int(len(gaps) * 0.99))],
+        "event_ms_p50": gaps[len(gaps) // 2] if gaps else 0.0,
+        "event_ms_p99": gaps[min(len(gaps) - 1, int(len(gaps) * 0.99))] if gaps else 0.0,
         "ttft_ms": (stamps[0] - r["t0"]) * 1e3,
         "events": len(stamps),
         "completion_tokens": completion,
