@@ -114,6 +114,7 @@ WORKLOADS: dict[str, Workload] = {
                             activation="gpt_oss_swiglu", swiglu_limit=7.0),
     "dsv4": Workload("dsv4", 4096, 2048, 256, 6, ("ds_fp4",), swiglu_limit=7.0),
     "glm4.7-nvfp4": Workload("glm4.7-nvfp4", 5120, 1536, 160, 8, ("nvfp4",)),
+    "glm5.2-nvfp4": Workload("glm5.2-nvfp4", 6144, 2048, 256, 8, ("nvfp4",)),
     "minimax-m2.5": Workload("minimax-m2.5", 3072, 1536, 256, 8, ("nvfp4",)),
 }
 

@@ -84,6 +84,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="routed-expert backing store",
     )
     p.add_argument(
+        "--nvfp4-backend",
+        choices=("auto", "marlin", "flashinfer", "triton"),
+        default="triton",
+        help="NVFP4 expert kernel/layout; must match an FTW checkpoint's converted layout",
+    )
+    p.add_argument(
         "--host-cache-gb", type=float, default=1.0,
         help="disk mode pageable host expert-LRU budget in GiB",
     )
@@ -205,6 +211,7 @@ def serve_cmd(args: argparse.Namespace, backend: str, port: int) -> list[str]:
         "--model", args.model,
         "--host", "127.0.0.1", "--port", str(port),
         "--moe-backend", backend,
+        "--nvfp4-backend", args.nvfp4_backend,
         "--moe-storage", args.storage,
         "--moe-host-cache-gb", str(args.host_cache_gb),
         "--max-running-requests", "1",
@@ -397,6 +404,7 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
         "backend": backend,
         "configuration": {
             "storage": args.storage,
+            "nvfp4_backend": args.nvfp4_backend,
             "host_cache_gb": args.host_cache_gb,
             "requested_cache_size": args.cache,
             "requested_cache_rate": args.cache_rate,

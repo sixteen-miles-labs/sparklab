@@ -166,6 +166,7 @@ def convert_checkpoint(
     *,
     dtype: torch.dtype = torch.bfloat16,
     moe_backend: str = "offload",
+    nvfp4_backend: str = "triton",
     shard_limit: int = DEFAULT_SHARD_LIMIT,
     device: str | None = None,
 ) -> dict:
@@ -194,9 +195,19 @@ def convert_checkpoint(
     torch.cuda.set_device(dev)
     torch.zeros(1, device=dev)  # init CUDA context (needed by nvfp4 backend pick / pinning)
 
-    cfg = EngineConfig(model_path=model_path, tp_info=DistributedInfo(tp.rank, tp.size),
-                       dtype=dtype, moe_backend=moe_backend)
+    cfg = EngineConfig(
+        model_path=model_path,
+        tp_info=DistributedInfo(tp.rank, tp.size),
+        dtype=dtype,
+        moe_backend=moe_backend,
+        nvfp4_backend=nvfp4_backend,
+    )
     mc = cfg.model_config
+    # Conversion bypasses Engine._adjust_config(), which normally copies this runtime
+    # choice onto the parsed ModelConfig before expert-bank construction. Do it here so
+    # FTW is written in the requested backend-owned layout (for example SM12x b12x), not
+    # silently in ModelConfig's portable Triton default.
+    object.__setattr__(mc, "nvfp4_backend", cfg.nvfp4_backend)
     offload = moe_backend == "offload" and getattr(mc, "is_moe", False)
     include_moe_experts = not offload
 

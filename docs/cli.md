@@ -130,14 +130,16 @@ environment so the agent cannot silently fall back to a paid endpoint.
 ## ft checkpoint
 
 ```bash
-ft checkpoint --model <hf_dir> --out <ftw_dir> [--dtype bfloat16] [--moe-backend offload] [--shard-gib 8] [--device cuda:0]
+ft checkpoint --model <hf_dir> --out <ftw_dir> [--dtype bfloat16] [--moe-backend offload] [--nvfp4-backend triton] [--shard-gib 8] [--device cuda:0]
 ```
 
 Converts an HF safetensors checkpoint to FTW, FreeToken's self-contained
 fast-load format; point `ft serve --model` at the output dir. `--moe-backend
 offload` (default) packs experts into offload banks; `--moe-backend triton`
 keeps them dense for resident serving. See the FTW caveats in
-[models.md](models.md#notes).
+[models.md](models.md#notes). NVFP4 layouts are backend-owned, so choose the
+same `--nvfp4-backend` at conversion and serve time; `auto` selects by GPU,
+while `flashinfer` forces the SM12x b12x layout.
 
 ## ft bench bw
 
@@ -153,4 +155,3 @@ expert format + GPU name, so a profile from different hardware is ignored
 rather than misapplied. Selection flags: `--dtype`, `--model`, `--formats`,
 `--isa`; decision rule: `--threshold` (default 2.0 — recommend hybrid when CPU
 bandwidth > 2× PCIe).
-

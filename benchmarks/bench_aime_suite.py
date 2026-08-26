@@ -42,6 +42,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--decode", type=int, default=1024, help="maximum output tokens per problem")
     p.add_argument("--backend", default="hybrid", choices=("offload", "cpu", "hybrid"))
     p.add_argument("--storage", default="disk", choices=("ram", "disk"))
+    p.add_argument(
+        "--nvfp4-backend",
+        choices=("auto", "marlin", "flashinfer", "triton"),
+        default="triton",
+    )
     p.add_argument("--host-cache-gb", type=float, default=40.0)
     p.add_argument("--cache", type=int, default=0)
     p.add_argument("--cache-rate", type=float, default=None)
@@ -231,6 +236,7 @@ def summarize(args, results: list[dict], sampling: dict) -> dict:
         },
         "config": {
             "host_cache_gb": args.host_cache_gb,
+            "nvfp4_backend": args.nvfp4_backend,
             "hybrid_fetch": args.hybrid_fetch,
             "cpu_threads": args.cpu_threads,
             "disk_read_workers": int(os.getenv("FREETOKEN_DISK_READ_WORKERS", "16")),

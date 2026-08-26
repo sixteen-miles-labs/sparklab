@@ -43,6 +43,9 @@ MODELS = {
     # Bank sizes match the nsys fast_index_copy kernels: gate_up_packed=2*1536*2560=7.86M,
     # down_packed=5120*768=3.93M, gate_up_scale=0.98M, down_scale=0.49M.
     "glm4.7-nvfp4": ModelProfile(89, 160, 8, "nvfp4", 5120, 1536),
+    # GLM-5.2-NVFP4: 78 layers, first_k_dense_replace=3 -> 75 MoE layers;
+    # 256 experts, top-8, H=6144, I=2048. GB10 uses the SM12x b12x-packed layout.
+    "glm5.2-nvfp4-b12x": ModelProfile(75, 256, 8, "nvfp4_b12x", 6144, 2048),
     # gpt-oss MXFP4 (block-32 e2m1 codes + e8m0 scales), H == I == 2880, top-4 routing
     "gpt-oss-20b": ModelProfile(24, 32, 4, "mxfp4_triton", 2880, 2880),
     "gpt-oss-120b": ModelProfile(36, 128, 4, "mxfp4_triton", 2880, 2880),
