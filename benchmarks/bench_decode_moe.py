@@ -14,8 +14,8 @@ which stays correct even when the detokenizer coalesces a few tokens into one ev
 (multibyte characters): the window is still anchored on the first and last token's
 arrival. ``ignore_eos`` keeps the step count at exactly ``D`` regardless of sampling.
 TTFT is the measured run's warm first-token latency (template rendering + prefill
-included). Engine-internal diagnostics (expert-cache miss rate, hybrid fetch split) are
-not exposed over the API and are not reported; VRAM is the server's live /v1/stats figure.
+included). Expert-cache, hybrid-fetch, and disk-I/O diagnostics come from the measured
+delta of the server's /v1/stats counters; VRAM is the same endpoint's live figure.
 
 Prompt: an AIME-25 problem sent as a chat message with thinking enabled -- a real
 reasoning workload, so expert routing is representative. The server renders the chat
@@ -369,6 +369,7 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
         pump.start()
         try:
             wait_ready(origin, proc, log_path, args.server_timeout)
+            cache_status = get_json(f"{origin}/v1/cache/status")
             model_id = get_json(f"{origin}/v1/models")["data"][0]["id"]
             print(f"[bench] model_id={model_id}", flush=True)
             print(f"[bench] AIME25 #{args.problem} (answer {answer})", flush=True)
@@ -394,6 +395,21 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
     row = {
         "model": args.model,
         "backend": backend,
+        "configuration": {
+            "storage": args.storage,
+            "host_cache_gb": args.host_cache_gb,
+            "requested_cache_size": args.cache,
+            "requested_cache_rate": args.cache_rate,
+            "memory_ratio": args.mem_ratio,
+            "requested_num_tokens": args.num_tokens,
+            "cpu_threads": args.cpu_threads,
+            "hybrid_fetch": args.hybrid_fetch,
+            "disk_read_workers": int(os.getenv("FREETOKEN_DISK_READ_WORKERS", "16")),
+            "disk_cache_policy": os.getenv("FREETOKEN_DISK_CACHE_POLICY", "lru"),
+            "prefill_overlap": not args.disable_prefill_overlap,
+            "cuda_graph": not args.no_graph,
+        },
+        "cache_geometry": cache_status.get("geometry", {}),
         "problem": args.problem,
         "prompt_tokens": usage["prompt_tokens"],
         "decode_steps": steps,
@@ -442,6 +458,7 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
             for key in (
                 "cache_capacity_entries", "cache_capacity_bytes",
                 "cache_allocated_bytes", "cache_occupancy_entries", "cache_occupancy_bytes",
+                "read_workers", "cache_policy", "staging_buffers",
             ):
                 disk_delta[key] = after_disk.get(key, 0)
             row["moe"]["disk"] = disk_delta
