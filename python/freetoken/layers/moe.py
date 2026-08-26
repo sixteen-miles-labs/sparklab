@@ -513,12 +513,17 @@ class OffloadMoELayer(MoELayer):
             if is_prefill:
                 from freetoken.moe.fused_nvfp4 import fused_experts_nvfp4
 
+                # Route-first prefill rewrites expert ids to persistent-cache slot
+                # ids and passes the whole slot bank (``n`` is otherwise reserved
+                # for full-layer materialization).  The grouped Triton kernel still
+                # needs the row-domain size when it pads/sorts those slot ids.
+                kernel_num_experts = views[0].shape[0] if n is None else n
                 return fused_experts_nvfp4(
                     hidden_states,
                     *views,
                     topk_weights,
                     topk_ids,
-                    n,
+                    kernel_num_experts,
                     self.activation,
                     self.apply_router_weight_on_input,
                     act_alpha,
