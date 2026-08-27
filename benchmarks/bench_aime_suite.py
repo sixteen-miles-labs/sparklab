@@ -90,6 +90,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--no-graph", action="store_true")
     p.add_argument("--greedy", action="store_true")
     p.add_argument("--server-timeout", type=float, default=1800)
+    p.add_argument(
+        "--minimum-duration-minutes",
+        type=float,
+        default=0.0,
+        help="after scored problems, repeat selected prompts until this serving duration",
+    )
     p.add_argument("--json", dest="json_out", required=True)
     p.add_argument("--include-output", action="store_true")
     p.set_defaults(collect_moe_stats=True, normal_eos=True)
@@ -344,6 +350,7 @@ def summarize(
             "shared_expert_overlap": args.shared_expert_overlap,
             "memory_ratio": args.mem_ratio,
             "cuda_graph": not args.no_graph,
+            "minimum_duration_minutes": args.minimum_duration_minutes,
         },
         "provenance": runtime_provenance(),
     }
@@ -364,6 +371,7 @@ def swap_used_bytes() -> int:
 def stability_summary(
     *, log_path: str, serving_seconds: float, swap_before: int,
     resumed_requests: int, completed_requests: int, selected_requests: int,
+    soak_requests: int, parser_failures: int,
 ) -> dict:
     swap_after = swap_used_bytes()
     log = Path(log_path).read_text(encoding="utf-8", errors="replace")
@@ -379,7 +387,10 @@ def stability_summary(
         "swap_growth_bytes": max(0, swap_after - swap_before),
         "oom_count": sum(len(re.findall(pattern, log, re.I)) for pattern in oom_patterns),
         "service_restarts": 0,
-        "completed_requests": completed_requests,
+        "completed_requests": completed_requests + soak_requests,
+        "scored_requests": completed_requests,
+        "soak_requests": soak_requests,
+        "parser_failures": parser_failures,
         "uninterrupted": resumed_requests == 0 and completed_requests == selected_requests,
         "eligible_for_endurance_gate": (
             resumed_requests == 0 and completed_requests == selected_requests
@@ -438,6 +449,22 @@ def main() -> int:
                     f"ttft={measured['ttft_ms'] / 1000:.1f}s",
                     flush=True,
                 )
+            soak_results = []
+            minimum_seconds = max(0.0, args.minimum_duration_minutes * 60)
+            while time.monotonic() - serving_started < minimum_seconds:
+                index = selected[len(soak_results) % len(selected)]
+                measured = measure_request(args, origin, model_id, index, rows[index], sampling)
+                measured["kind"] = "soak_request"
+                measured["soak_iteration"] = len(soak_results)
+                append_jsonl(args.json_out, measured)
+                soak_results.append(measured)
+                print(
+                    f"[suite] soak={len(soak_results)} problem={index} "
+                    f"answer={measured['answer']!r}/{measured['expected']!r} "
+                    f"tokens={measured['completion_tokens']} "
+                    f"tps={measured['decode_tok_s']:.3f}",
+                    flush=True,
+                )
             serving_seconds = time.monotonic() - serving_started
         finally:
             stop_server(proc)
@@ -449,6 +476,11 @@ def main() -> int:
         resumed_requests=resumed_requests,
         completed_requests=len(results),
         selected_requests=len(selected),
+        soak_requests=len(soak_results),
+        parser_failures=sum(
+            not row.get("reasoning_parser_ok", False)
+            for row in [*results, *soak_results]
+        ),
     )
     summary = summarize(args, results, sampling, stability)
     summary["server_log"] = log_path
