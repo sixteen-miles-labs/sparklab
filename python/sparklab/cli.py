@@ -43,6 +43,25 @@ def _gib(value: int | None) -> str:
     return "unknown" if value is None else f"{value / (1 << 30):.1f} GiB"
 
 
+def _performance_text(recipe) -> str:
+    performance = recipe.performance
+    if performance is None:
+        return "Not yet measured"
+    throughput = f"{performance.decode_tokens_per_second:.2f} tok/s"
+    ttft = f"{performance.warm_ttft_seconds:.3f} s TTFT"
+    details = [throughput, ttft]
+    if performance.context_tokens is not None:
+        details.append(f"{performance.context_tokens // 1024}K context")
+    if performance.endurance_minutes is not None:
+        details.append(f"{performance.endurance_minutes:.1f} min")
+    return " · ".join(details)
+
+
+def _quantization_text(recipe) -> str:
+    quantization = recipe.deployment.quantization
+    return quantization.upper() if quantization is not None else "—"
+
+
 def _run_doctor(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="sparklab doctor",
@@ -136,12 +155,27 @@ def _run_models(argv: list[str]) -> int:
     if not recipes:
         print("No recipes match the selected filters.")
         return 0
-    print(f"{'TIER':<10} {'ROLE':<9} {'STATUS':<13} {'RECIPE':<24} MODEL")
+    tier_descriptions = {
+        "fast": "Routine chat, editing, and short agent loops",
+        "frontier": "Hard coding, reasoning, and long agent work",
+        "research": "Complete or novel models outside the interactive envelope",
+    }
+    print(
+        f"{'MODEL':<25} {'QUANTIZATION':<13} {'RECIPE':<24} {'ROLE':<9} "
+        f"{'STATUS':<13} PERFORMANCE"
+    )
+    current_tier = None
     for recipe in recipes:
+        if recipe.intended_tier != current_tier:
+            current_tier = recipe.intended_tier
+            print(
+                f"\n{current_tier.upper()} — {tier_descriptions[current_tier]}"
+            )
         print(
-            f"{recipe.intended_tier.upper():<10} {recipe.portfolio_role.upper():<9} "
-            f"{recipe.status.upper():<13} "
-            f"{recipe.slug:<24} {recipe.model}"
+            f"{recipe.name:<25} {_quantization_text(recipe):<13} "
+            f"{recipe.slug:<24} "
+            f"{recipe.portfolio_role.upper():<9} {recipe.status.upper():<13} "
+            f"{_performance_text(recipe)}"
         )
     if not any(recipe.status == "certified" for recipe in recipes):
         print("\nNo recipe is certified yet; current labels are admission status, not promises.")

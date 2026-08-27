@@ -28,14 +28,20 @@ coding-agent task, and versioned benchmark evidence. Status means:
 
 ## Current recipes
 
-| Intended tier | Recipe | Checkpoint | Current status |
-|---|---|---|---|
-| Fast | `qwen3.6-35b-a3b` | [nvidia/Qwen3.6-35B-A3B-NVFP4](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | Experimental; primary Fast certification target |
-| Frontier | `qwen3.8-flash-next` | [Qwen/Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | Certified; text-only NVFP4/NVMe recipe, 12.51 tok/s, 0.870 s warm TTFT, exact 64K context, and 60.50-minute endurance |
-| Frontier | `deepseek-v4` | [deepseek-ai/DeepSeek-V4-Flash-0731](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | Preview; measured baseline, product gates still open |
-| Frontier | `glm-5.3-flash` | [zai-org/GLM-5.3-Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | Experimental; text runtime implemented, complete-checkpoint GB10 validation in progress |
-| Frontier fallback | `glm-5.2` | [nvidia/GLM-5.2-NVFP4](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | Experimental fallback outside the primary lineup |
-| Research | `kimi-k3` | [moonshotai/Kimi-K3](https://huggingface.co/moonshotai/Kimi-K3) | Experimental; text architecture implemented, full run pending |
+| Model | Quantization | Recipe | Status | GB10 performance |
+|---|---|---|---|---|
+| **Fast — routine chat, editing, and short agent loops** |  |  |  |  |
+| [Qwen3.6-35B-A3B](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | NVFP4 | `qwen3.6-35b-a3b` | Experimental; primary target | Not yet measured |
+| **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |
+| [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | NVFP4 | `qwen3.8-flash-next` | Certified | 12.51 decode tok/s · 0.870 s warm TTFT · exact 64K context · 60.5 min endurance |
+| [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | DS-FP4 | `deepseek-v4` | Preview | 9.217 decode tok/s · 14.045 s warm TTFT on the fixed baseline probe |
+| [GLM-5.3 Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | FP8 | `glm-5.3-flash` | Experimental | Not yet measured |
+| [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | NVFP4 | `glm-5.2` | Experimental fallback | Not yet measured |
+| **Research — complete or novel models outside the interactive envelope** |  |  |  |  |
+| [Kimi K3](https://huggingface.co/moonshotai/Kimi-K3) | MXFP4 | `kimi-k3` | Experimental | Not yet measured |
+
+Measured values are copied from the evidence named by the recipe. “Not yet measured”
+means no accepted complete-checkpoint GB10 performance evidence is attached.
 
 The primary lineup is Qwen3.6 NVFP4 for Fast; Qwen3.8 Flash Next, GLM-5.3 Flash,
 and DeepSeek V4 Flash for Frontier; and Kimi K3 for Research. Qwen3.8's Frontier

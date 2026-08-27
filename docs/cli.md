@@ -44,7 +44,9 @@ sparklab models [--tier fast|frontier|research] \
 ```
 
 Tier is the intended product layer. Portfolio role separates the primary lineup from
-retained fallbacks. Status records how much of the target layer has been proven.
+retained fallbacks. Status records how much of the target layer has been proven. Human
+output groups models under one tier-description separator row and reports accepted GB10
+performance; JSON output includes the underlying evidence-bound performance fields.
 
 ## sparklab plan
 

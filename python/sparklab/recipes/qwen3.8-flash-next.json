@@ -39,6 +39,13 @@
   "runtime_memory": {
     "total_bytes": 106837311488
   },
+  "performance": {
+    "decode_tokens_per_second": 12.506321669070305,
+    "warm_ttft_seconds": 0.8704300159588456,
+    "context_tokens": 65536,
+    "endurance_minutes": 60.5,
+    "evidence": "GB10-QWEN38-FRONTIER-001"
+  },
   "description": "Certified text-only Frontier recipe for long agent sessions on one NVIDIA GB10.",
   "evidence": ["GB10-QWEN38-FRONTIER-001"],
   "limitations": [

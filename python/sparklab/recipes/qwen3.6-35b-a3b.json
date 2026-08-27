@@ -2,7 +2,7 @@
   "schema_version": "2.0",
   "recipe_version": "0.1.0",
   "slug": "qwen3.6-35b-a3b",
-  "name": "Qwen3.6 35B A3B NVFP4",
+  "name": "Qwen3.6 35B A3B",
   "model": "nvidia/Qwen3.6-35B-A3B-NVFP4",
   "intended_tier": "fast",
   "status": "experimental",

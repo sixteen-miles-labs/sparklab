@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from sparklab.catalog import get_recipe, load_catalog, select_recipes
+from sparklab.catalog import PerformanceSummary, get_recipe, load_catalog, select_recipes
 
 
 def test_catalog_has_unique_versioned_three_tier_recipes():
@@ -22,6 +22,8 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert get_recipe("kimi-k3").model == "moonshotai/Kimi-K3"
     assert get_recipe("glm-5.3-flash").model == "zai-org/GLM-5.3-Flash"
     assert get_recipe("qwen3.8-flash-next").model == "Qwen/Qwen3.8-Flash-Next"
+    assert get_recipe("qwen3.6-35b-a3b").name == "Qwen3.6 35B A3B"
+    assert get_recipe("glm-5.2").name == "GLM-5.2"
     assert get_recipe("deepseek-v4").status == "preview"
     assert get_recipe("kimi-k3").status == "experimental"
     assert {item.slug for item in select_recipes(load_catalog(), tier="fast")} == {
@@ -35,6 +37,12 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert qwen.backend == "native"
     assert qwen.deployment.runtime_format == "ftw-nvfp4"
     assert qwen.deployment.backend_options["attention_backend"] == "qsa"
+    assert qwen.deployment.quantization == "nvfp4"
+    assert qwen.performance is not None
+    assert qwen.performance.decode_tokens_per_second == pytest.approx(12.50632)
+    assert qwen.performance.context_tokens == 65_536
+    assert get_recipe("deepseek-v4").performance.warm_ttft_seconds == 14.045
+    assert get_recipe("qwen3.6-35b-a3b").performance is None
     primary = select_recipes(load_catalog(), portfolio_role="primary")
     assert {(item.intended_tier, item.slug) for item in primary} == {
         ("fast", "qwen3.6-35b-a3b"),
@@ -92,11 +100,21 @@ def test_preview_and_certified_statuses_fail_closed_without_evidence_or_memory()
 
     base = get_recipe("qwen3.8-flash-next")
     with pytest.raises(ValueError, match="must cite versioned evidence"):
-        replace(base, status="preview", evidence=()).validate()
+        replace(base, status="preview", evidence=(), performance=None).validate()
     with pytest.raises(ValueError, match="runtime-memory budget"):
         replace(
             base,
             status="certified",
             evidence=("GB10-QWEN-001",),
             runtime_memory=None,
+            performance=None,
+        ).validate()
+    with pytest.raises(ValueError, match="performance evidence"):
+        replace(
+            base,
+            performance=PerformanceSummary(
+                decode_tokens_per_second=10,
+                warm_ttft_seconds=1,
+                evidence="GB10-UNKNOWN",
+            ),
         ).validate()

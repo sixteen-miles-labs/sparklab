@@ -401,7 +401,7 @@ The first backend-boundary implementation slice is complete in the working tree:
   reach the engine only through the native adapter;
 - a static architecture test rejects direct engine imports in Spark Lab modules outside
   `sparklab.backends.native*`;
-- the non-slow regression suite passes: 1,464 passed, 8 skipped, and 11 deselected.
+- the non-slow regression suite passes: 1,465 passed, 8 skipped, and 11 deselected.
 
 The local Qwen3.8 prepared checkpoint also passes the new adapter validator with fingerprint
 `dff6c5fd14658727`, 10 FTW shards, 1,175 tensors, 78,032,617,472 physical FTW bytes,

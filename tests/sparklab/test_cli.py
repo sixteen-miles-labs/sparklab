@@ -40,6 +40,19 @@ def test_models_can_select_primary_portfolio(capsys):
     assert all(recipe["portfolio_role"] == "primary" for recipe in payload["recipes"])
 
 
+def test_models_human_table_groups_tiers_and_shows_performance(capsys):
+    assert cli.main(["models", "--role", "primary"]) == 0
+    output = capsys.readouterr().out
+    assert "MODEL" in output and "QUANTIZATION" in output and "PERFORMANCE" in output
+    assert "FAST — Routine chat, editing, and short agent loops" in output
+    assert "FRONTIER — Hard coding, reasoning, and long agent work" in output
+    assert "RESEARCH — Complete or novel models" in output
+    assert "12.51 tok/s · 0.870 s TTFT · 64K context · 60.5 min" in output
+    assert "Qwen3.6 35B A3B" in output and "NVFP4" in output
+    assert "Qwen3.6 35B A3B NVFP4" not in output
+    assert "Not yet measured" in output
+
+
 def test_legacy_engine_command_is_delegated_unchanged(monkeypatch):
     seen = []
     monkeypatch.setitem(cli.COMMANDS, "serve", lambda args: seen.append(args) or 7)
