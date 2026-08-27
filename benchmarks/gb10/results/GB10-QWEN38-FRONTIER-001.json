@@ -1,0 +1,106 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWEN38-FRONTIER-001",
+  "status": "certified",
+  "tier": "frontier",
+  "recipe": {
+    "slug": "qwen3.8-flash-next",
+    "recipe_version": "0.3.0",
+    "revision": "f5d08274bafd880402bd16f5e3e6c514136ec06c"
+  },
+  "engine": {
+    "name": "FreeToken",
+    "product_identity": "Spark Lab",
+    "git_revision": "096af67d3cfb8bfaf239563a130c2e88db17084f"
+  },
+  "platform": {
+    "device": "NVIDIA GB10",
+    "memory_bytes": 130663591936,
+    "machine": "aarch64",
+    "driver": "580.126.09",
+    "cuda": "13.0",
+    "torch": "2.11.0+cu130",
+    "triton": "3.6.0"
+  },
+  "checkpoint": {
+    "full_model": true,
+    "format": "ftw-nvfp4",
+    "fingerprint": "dff6c5fd14658727",
+    "bytes": 180433108992,
+    "external_ngram_bytes": 102400491520
+  },
+  "metrics": {
+    "decode_tokens_per_second": 12.506321669070305,
+    "warm_ttft_seconds": 0.8704300159588456,
+    "endurance_steady_decode_tokens_per_second": 12.416907404908196,
+    "endurance_steady_ttft_seconds": 1.1058286095503718,
+    "device_allocation_gib": 88.69140625
+  },
+  "validation": {
+    "output_correctness": true,
+    "reasoning_parser": true,
+    "tool_parser": true,
+    "coding_agent_task": true,
+    "memory_bounded": true,
+    "context_tokens": 65536,
+    "context_exact": true,
+    "context_recall": true,
+    "nvme_behavior": "bounded"
+  },
+  "quality": {
+    "workload": "AIME-25 fixed five-problem sample",
+    "correct": 3,
+    "problems": 5,
+    "accuracy": 0.6,
+    "ended_by_eos": 3,
+    "hit_token_cap": 2,
+    "max_output_tokens": 2048
+  },
+  "stability": {
+    "duration_minutes": 60.496721332706514,
+    "oom_count": 0,
+    "service_restarts": 0,
+    "swap_start_bytes": 3868688384,
+    "swap_end_bytes": 3746594816,
+    "swap_growth_bytes": 0,
+    "parser_failures": 0,
+    "completed_requests": 29,
+    "scored_requests": 5,
+    "soak_requests": 24,
+    "uninterrupted": true
+  },
+  "sources": [
+    {
+      "kind": "performance",
+      "path": "/home/lidaiqing/results/qwen3.8-gb10/frontier-speed-72e4ef7.jsonl",
+      "git_revision": "72e4ef7c3f1765aa9f9295b95428e7b7b9801400",
+      "git_tracked_dirty": false
+    },
+    {
+      "kind": "capabilities",
+      "path": "/home/lidaiqing/results/qwen3.8-gb10/capabilities-1a6bbac.json",
+      "git_revision": "1a6bbaca178ddf6091e79edc4b7d41c5a42073b6",
+      "git_tracked_dirty": false
+    },
+    {
+      "kind": "context_recall",
+      "path": "/home/lidaiqing/results/qwen3.8-gb10/context-65536-d40270d.json",
+      "git_revision": "d40270da70547ccd70f0e20f6051691985e5cb68",
+      "git_tracked_dirty": false,
+      "physical_disk_bytes": 550827560960
+    },
+    {
+      "kind": "correctness_and_endurance",
+      "path": "/home/lidaiqing/results/qwen3.8-gb10/aime-endurance-5-096af67.jsonl",
+      "git_revision": "096af67d3cfb8bfaf239563a130c2e88db17084f",
+      "git_tracked_dirty": false,
+      "physical_disk_bytes": 65520963584
+    }
+  ],
+  "limitations": [
+    "The measured 12.51 decode tok/s is Frontier-class and does not satisfy Spark Lab's 20 tok/s Fast gate.",
+    "The fixed five-problem AIME sample scored 3/5; two runs exhausted the 2048-token reasoning budget before emitting a final answer.",
+    "Certification covers text inference only; the checkpoint's multimodal path is outside this evidence.",
+    "Unrelated host processes had swap pages resident before testing. Swap use declined during endurance and model-attributed swap growth was zero, but certified launches still require a zero-swap platform preflight."
+  ]
+}

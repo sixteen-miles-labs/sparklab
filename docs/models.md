@@ -30,13 +30,16 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | Intended tier | Recipe | Checkpoint | Current status |
 |---|---|---|---|
 | Fast | `qwen3.6-35b-a3b` | [nvidia/Qwen3.6-35B-A3B-NVFP4](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | Experimental; first Fast certification target |
-| Fast | `qwen3.8-flash-next` | [Qwen/Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | Experimental; text runtime implemented, full-checkpoint GB10 certification in progress |
+| Frontier | `qwen3.8-flash-next` | [Qwen/Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | Certified; text-only NVFP4/NVMe recipe, 12.51 tok/s, 0.870 s warm TTFT, exact 64K context, and 60.50-minute endurance |
 | Frontier | `deepseek-v4` | [deepseek-ai/DeepSeek-V4-Flash-0731](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | Preview; measured baseline, product gates still open |
 | Frontier | `glm-5.2` | [nvidia/GLM-5.2-NVFP4](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | Experimental; fallback retained in the catalog, not the current enablement priority |
 | Frontier | `glm-5.3-flash` | [zai-org/GLM-5.3-Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | Experimental; desired second Frontier model |
 | Research | `kimi-k3` | [moonshotai/Kimi-K3](https://huggingface.co/moonshotai/Kimi-K3) | Experimental; text architecture implemented, full run pending |
 
-No recipe is Certified yet.
+Qwen3.8-Flash-Next is the first Certified recipe. The evidence records a 3/5
+fixed AIME sample, two reasoning-budget cap cases, bounded NVMe behavior, and
+zero model-attributed swap growth; multimodal input remains outside the text
+certification.
 
 ## Engine architecture support
 

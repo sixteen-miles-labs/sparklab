@@ -8,8 +8,8 @@
   "source_bytes": 360000192888,
   "prepared_bytes": 180500000000,
   "minimum_free_bytes": 677939339248,
-  "intended_tier": "fast",
-  "status": "experimental",
+  "intended_tier": "frontier",
+  "status": "certified",
   "implementation": "text-architecture",
   "checkpoint_format": "ftw-nvfp4",
   "expert_quantization": "nvfp4",
@@ -32,13 +32,14 @@
   "runtime_memory": {
     "total_bytes": 106837311488
   },
-  "description": "Highest-priority Fast candidate for long agent sessions.",
+  "description": "Certified text-only Frontier recipe for long agent sessions on one NVIDIA GB10.",
+  "evidence": ["GB10-QWEN38-FRONTIER-001"],
   "limitations": [
     "The official BF16 checkpoint measured 2.15 decode tok/s and 24.3 s warm TTFT on the first complete-checkpoint probe, so the promotion candidate uses conversion-time NVFP4 routed experts.",
     "The full NVFP4 checkpoint measured 12.58 decode tok/s and 0.833 s warm TTFT with route-first sparse prefill; this is Frontier-class performance, not Fast-class throughput.",
-    "The NVFP4 recipe must pass complete-checkpoint output, parser, agent, context, memory, and endurance gates before promotion.",
+    "The certified five-problem AIME sample scored 3/5; two requests exhausted the 2048-token reasoning budget before emitting a final answer.",
     "QSA selection currently runs eagerly, so CUDA graph capture is disabled.",
     "The published checkpoint is multimodal; initial Spark Lab certification is text-only.",
-    "Final tier is determined by measured recipe performance."
+    "The certified endurance run added no swap, but unrelated host processes already occupied swap; sparklab plan/run still require a zero-swap platform preflight."
   ]
 }

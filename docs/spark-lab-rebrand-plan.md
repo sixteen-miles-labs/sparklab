@@ -539,7 +539,7 @@ its recipe cannot be reproduced, or a better model occupies the same product rol
 | Intended tier | Candidate | GB10 rationale | Admission status |
 |---|---|---|---|
 | Fast | [Qwen3.6-35B-A3B-NVFP4](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | Native low precision, about 3B active parameters, existing model implementation | Fast certification candidate |
-| Fast or Frontier | [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | 125B language-model parameters with 6B active, plus a 51B n-gram embedding and 4B MTP; hybrid Gated DeltaNet/QSA architecture is attractive for long agent sessions | Research until the new architecture and a GB10-sized low-precision recipe are validated; tier determined by measured recipe |
+| Frontier | [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | 125B language-model parameters with 6B active, plus a 51B n-gram embedding and 4B MTP; the certified NVFP4/NVMe recipe sustains 12.51 tok/s with exact 64K context | Certified for text inference by `GB10-QWEN38-FRONTIER-001`; multimodal input remains out of scope |
 | Frontier | [DeepSeek-V4-Flash-0731](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | Strong coding/reasoning story and an existing reproducible GB10 result | Baseline proven; Frontier recipe not yet productized |
 | Frontier | [GLM-5.3-Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 320B total and 18B active parameters, native multimodality, FP8 weights, and hybrid sparse/linear attention | Research until `glm5_next`, multimodal input, and GB10 storage policy pass; intended Frontier candidate |
 | Frontier fallback | [GLM-5.2-NVFP4](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | Existing implementation, NVIDIA-format checkpoint, and lower enablement risk | Certification candidate retained until GLM-5.3-Flash passes |
@@ -551,7 +551,7 @@ The planned launch lineup is:
 
 ```text
 Fast       Qwen3.6-35B-A3B-NVFP4
-Frontier   DeepSeek-V4-Flash-0731
+Frontier   Qwen3.8-Flash-Next
 Frontier   GLM-5.3-Flash
 Research   Kimi K3
 ```
@@ -563,9 +563,9 @@ gate. In particular:
 - **Qwen3.6-35B-A3B-NVFP4** is the first Fast certification target because its existing
   implementation, native low precision, and approximately 3B active parameters give it the
   shortest path to the Fast latency and stability gates.
-- **DeepSeek-V4-Flash-0731** is the first Frontier certification target. Its measured 9.217
-  tok/s clears the Frontier decode threshold, but it still needs a versioned recipe, 64K
-  capacity validation, the 60-minute endurance run, and the fixed agent task.
+- **Qwen3.8-Flash-Next** is the first certified Frontier recipe. Its text-only NVFP4/NVMe
+  result records 12.51 tok/s, 0.870 s warm TTFT, exact 64K recall, and an uninterrupted
+  60.50-minute endurance run. It remains outside Fast because it misses the 20 tok/s gate.
 - **GLM-5.3-Flash** is the desired second Frontier model. If it misses the 1.0 schedule or
   any Frontier gate, ship **GLM-5.2-NVFP4** in its place and keep 5.3 in Research.
 - **Kimi K3** is the flagship beyond-memory demonstration and does not block the daily-use
@@ -573,24 +573,23 @@ gate. In particular:
 
 ### Active promotion queue
 
-1. **Qwen3.8-Flash-Next** is the highest-priority Fast candidate. First validate the
-   official checkpoint for reference correctness, then evaluate a GB10-sized
-   lower-precision recipe if the BF16/NVMe result misses its product gate. Promote it directly to Fast only if that exact recipe passes the
-   Fast speed, TTFT, context, stability, quality, and agent gates; otherwise certify it as
-   Frontier or retain it as Research.
+1. **GLM-5.3-Flash text inference** is next. Implement `glm5_next`, KDA/mHC, FP8 loading,
+   and a bounded GB10 NVMe policy, then run the complete Frontier gate.
 2. **GLM-5.3-Flash multimodality** follows text-only Frontier certification. Vision support
    must pass separate image preprocessing, memory, correctness, and agent-tool tests and
    cannot inherit the text recipe's certification.
-3. **GPT-OSS 120B** remains a comparison candidate. Add it only if it displaces an existing
+3. **Kimi K3** runs after Qwen and GLM-5.3 so its much larger artifacts cannot displace the
+   daily-use certification work.
+4. **GPT-OSS 120B** remains a comparison candidate. Add it only if it displaces an existing
    recipe on measured quality, speed, tool reliability, or maintenance cost.
-4. **GPT-OSS 20B**, **Qwen3-30B-A3B**, and smaller Gemma variants are Fast-tier fallback
+5. **GPT-OSS 20B**, **Qwen3-30B-A3B**, and smaller Gemma variants are Fast-tier fallback
    candidates, not additional 1.0 commitments.
 
-Qwen3.8-Flash-Next should be tested in two forms: the official BF16 checkpoint for reference
-correctness and, if needed, a GB10-oriented lower-precision recipe for capacity/performance. The latter
-must preserve agreed output and agent-quality tolerances; otherwise only the official
-checkpoint can be certified. Its large offload-friendly n-gram embedding deserves a
-dedicated resident-versus-NVMe benchmark rather than being treated as ordinary MoE weights.
+Qwen3.8-Flash-Next was tested in both official BF16 and GB10-oriented NVFP4 forms. The
+certified NVFP4 recipe keeps routed experts independently addressable and uses a bounded
+page-cached n-gram artifact rather than treating that embedding as ordinary MoE weights.
+Its five-problem AIME sample scored 3/5, with two reasoning-budget caps recorded as an
+explicit quality limitation.
 
 GLM-5.3-Flash supersedes GLM-5.2 as the desired Frontier candidate, but it does not inherit
 GLM-5.2's status. Its `glm5_next` architecture, hybrid linear/sparse attention, mHC, FP8
@@ -598,9 +597,10 @@ format, and native multimodal path each require explicit implementation and vali
 Keep GLM-5.2-NVFP4 as the release fallback until 5.3 passes the complete Frontier gate.
 
 The release still requires one Fast and two Frontier recipes to pass rather than merely
-exist in the target lineup. If GLM-5.3 is not ready, GLM-5.2 is the default substitution. If
-either Qwen3.6 or DeepSeek V4 misses its gate, Stage 0 must select a replacement from the
-fallback queue using benchmark evidence rather than model popularity.
+exist in the target lineup. Qwen3.8 now fills the first Frontier slot. If GLM-5.3 is not
+ready, GLM-5.2 is the default substitution. If Qwen3.6 misses the Fast gate, Stage 0 must
+select a replacement from the fallback queue using benchmark evidence rather than model
+popularity.
 
 ### Stage dependency and release order
 
