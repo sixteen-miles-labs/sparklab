@@ -28,17 +28,17 @@ coding-agent task, and versioned benchmark evidence. Status means:
 
 ## Current recipes
 
-| Model | Quantization | Recipe | Status | GB10 performance |
-|---|---|---|---|---|
-| **Fast — routine chat, editing, and short agent loops** |  |  |  |  |
-| [Qwen3.6-35B-A3B](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | NVFP4 | `qwen3.6-35b-a3b` | Experimental; primary target | Not yet measured |
-| **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |
-| [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | NVFP4 · FTW upload pending | `qwen3.8-flash-next` | Certified | 12.51 tok/s · 0.870 s TTFT · exact 64K context · 60.5 min endurance |
-| [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | DS-FP4 | `deepseek-v4` | Preview | 9.22 tok/s · 14.045 s TTFT (fixed baseline probe) |
-| [GLM-5.3 Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | FP8 | `glm-5.3-flash` | Experimental | Not yet measured |
-| [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | NVFP4 | `glm-5.2` | Experimental fallback | Not yet measured |
-| **Research — complete or novel models outside the interactive envelope** |  |  |  |  |
-| [Kimi K3](https://huggingface.co/moonshotai/Kimi-K3) | MXFP4 | `kimi-k3` | Experimental | Not yet measured |
+| Model | Quantization | Recipe | Status | tok/s | TTFT |
+|---|---|---|---|---:|---:|
+| **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |
+| [Qwen3.6-35B-A3B](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | NVFP4 | `qwen3.6-35b-a3b` | Experimental; primary target | — | — |
+| **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |
+| [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | NVFP4 · FTW upload pending | `qwen3.8-flash-next` | Certified | 12.51 | 0.870 s |
+| [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | DS-FP4 | `deepseek-v4` | Preview | 9.22 | 14.045 s |
+| [GLM-5.3 Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | FP8 | `glm-5.3-flash` | Experimental | — | — |
+| [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | NVFP4 | `glm-5.2` | Experimental fallback | — | — |
+| **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |
+| [Kimi K3](https://huggingface.co/moonshotai/Kimi-K3) | MXFP4 | `kimi-k3` | Experimental | — | — |
 
 Model links point to the original publisher checkpoints. Quantization links point to
 Spark Lab's converted FTW checkpoints when those artifacts are published. The Qwen3.8

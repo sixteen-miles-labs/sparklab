@@ -43,18 +43,18 @@ def _gib(value: int | None) -> str:
     return "unknown" if value is None else f"{value / (1 << 30):.1f} GiB"
 
 
-def _performance_text(recipe) -> str:
+def _throughput_text(recipe) -> str:
     performance = recipe.performance
     if performance is None:
-        return "Not yet measured"
-    throughput = f"{performance.decode_tokens_per_second:.2f} tok/s"
-    ttft = f"{performance.warm_ttft_seconds:.3f} s TTFT"
-    details = [throughput, ttft]
-    if performance.context_tokens is not None:
-        details.append(f"{performance.context_tokens // 1024}K context")
-    if performance.endurance_minutes is not None:
-        details.append(f"{performance.endurance_minutes:.1f} min")
-    return " · ".join(details)
+        return "—"
+    return f"{performance.decode_tokens_per_second:.2f}"
+
+
+def _ttft_text(recipe) -> str:
+    performance = recipe.performance
+    if performance is None:
+        return "—"
+    return f"{performance.warm_ttft_seconds:.3f} s"
 
 
 def _quantization_text(recipe) -> str:
@@ -162,7 +162,7 @@ def _run_models(argv: list[str]) -> int:
     }
     print(
         f"{'MODEL':<25} {'QUANTIZATION':<13} {'RECIPE':<24} {'ROLE':<9} "
-        f"{'STATUS':<13} PERFORMANCE"
+        f"{'STATUS':<13} {'TOK/S':>7} {'TTFT':>9}"
     )
     current_tier = None
     for recipe in recipes:
@@ -175,7 +175,7 @@ def _run_models(argv: list[str]) -> int:
             f"{recipe.name:<25} {_quantization_text(recipe):<13} "
             f"{recipe.slug:<24} "
             f"{recipe.portfolio_role.upper():<9} {recipe.status.upper():<13} "
-            f"{_performance_text(recipe)}"
+            f"{_throughput_text(recipe):>7} {_ttft_text(recipe):>9}"
         )
     if not any(recipe.status == "certified" for recipe in recipes):
         print("\nNo recipe is certified yet; current labels are admission status, not promises.")

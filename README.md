@@ -66,16 +66,16 @@ Messages API on `http://127.0.0.1:1919` by default.
 
 Spark Lab has three recipe tiers:
 
-| Model | Quantization | Status | GB10 performance |
-|---|---|---|---|
-| **Fast — routine chat, editing, and short agent loops** |  |  |  |
-| [Qwen3.6-35B-A3B](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | NVFP4 | Experimental | Not yet measured |
-| **Frontier — quality-first coding, reasoning, and long agent work** |  |  |  |
-| [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | NVFP4 · FTW upload pending | Certified | 12.51 tok/s · 0.870 s TTFT · exact 64K context · 60.5 min endurance |
-| [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | DS-FP4 | Preview | 9.22 tok/s · 14.045 s TTFT (fixed baseline probe) |
-| [GLM-5.3 Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | FP8 | Experimental | Not yet measured |
-| **Research — correct, bounded execution beyond the interactive envelope** |  |  |  |
-| [Kimi K3](https://huggingface.co/moonshotai/Kimi-K3) | MXFP4 | Experimental | Not yet measured |
+| Model | Quantization | Status | tok/s | TTFT |
+|---|---|---|---:|---:|
+| **Fast — routine chat, editing, and short agent loops** |  |  |  |  |
+| [Qwen3.6-35B-A3B](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | NVFP4 | Experimental | — | — |
+| **Frontier — quality-first coding, reasoning, and long agent work** |  |  |  |  |
+| [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | NVFP4 · FTW upload pending | Certified | 12.51 | 0.870 s |
+| [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | DS-FP4 | Preview | 9.22 | 14.045 s |
+| [GLM-5.3 Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | FP8 | Experimental | — | — |
+| **Research — correct, bounded execution beyond the interactive envelope** |  |  |  |  |
+| [Kimi K3](https://huggingface.co/moonshotai/Kimi-K3) | MXFP4 | Experimental | — | — |
 
 Model links point to the original publisher checkpoints. When Spark Lab publishes a
 converted FTW checkpoint, its Hugging Face link appears in the Quantization column; the
