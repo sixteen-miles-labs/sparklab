@@ -393,7 +393,11 @@ class Scheduler(SchedulerIOMixin):
         if reply:
             mem = self._gpu_mem_bytes()
             moe_stats = None
-            moe_cache = self.engine.moe_offload_cache
+            # Lightweight scheduler harnesses and non-engine embedders may not
+            # provide an engine object. MoE stats are optional response metadata;
+            # absence must not break terminal-token delivery.
+            engine = getattr(self, "engine", None)
+            moe_cache = getattr(engine, "moe_offload_cache", None)
             if moe_cache is not None and moe_cache.collect_stats and any(m.finished for m in reply):
                 moe_stats = moe_cache.decode_miss_stats()
                 if moe_cache.disk_source is not None:

@@ -80,9 +80,13 @@ class DSAAttnBackend(DSAIndexerMixin, BaseAttnBackend):
         self.kv_lora_rank = args.kv_lora_rank
         self.qk_rope_head_dim = args.qk_rope_head_dim
         self.latent_dim = self.kv_lora_rank + self.qk_rope_head_dim
-        qk_head_dim = getattr(
-            args, "qk_head_dim", args.qk_nope_head_dim + args.qk_rope_head_dim
-        )
+        # Do not put attribute reads in getattr's default expression: Python
+        # evaluates that expression eagerly even when qk_head_dim exists. GLM's
+        # compact DSA args expose the combined dimension directly, while Kimi's
+        # MLA args expose the nope/rope parts.
+        qk_head_dim = getattr(args, "qk_head_dim", None)
+        if qk_head_dim is None:
+            qk_head_dim = args.qk_nope_head_dim + args.qk_rope_head_dim
         self.sm_scale = config.attn_sm_scale or (qk_head_dim**-0.5)
         self.kvcache = get_global_ctx().kv_cache
         self.device = self.kvcache.device

@@ -100,6 +100,12 @@ class ModelRecipe:
                 raise ValueError(f"unknown runtime-memory keys for {self.slug}: {sorted(unknown)}")
             if any(value < 0 for value in self.runtime_memory.values()):
                 raise ValueError(f"runtime-memory values must be non-negative for {self.slug}")
+        if self.status in {"preview", "certified"} and not self.evidence:
+            raise ValueError(f"{self.status} recipe {self.slug} must cite versioned evidence")
+        if self.status == "certified" and self.runtime_memory is None:
+            raise ValueError(
+                f"certified recipe {self.slug} must include a measured runtime-memory budget"
+            )
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "recipe_version": "0.1.0",
+  "recipe_version": "0.2.0",
   "slug": "qwen3.8-flash-next",
   "name": "Qwen3.8 Flash Next",
   "model": "Qwen/Qwen3.8-Flash-Next",
@@ -24,7 +24,7 @@
     "--page-size", "16",
     "--max-running-req", "1"
   ],
-  "description": "Highest-priority post-1.0 Fast candidate for long agent sessions.",
+  "description": "Highest-priority Fast candidate for long agent sessions.",
   "limitations": [
     "The qwen4_exp text architecture, QSA, Hyper-Connections, PLE disk table, and FTW NVMe expert path are implemented but not yet GB10-certified.",
     "QSA selection currently runs eagerly, so CUDA graph capture is disabled.",

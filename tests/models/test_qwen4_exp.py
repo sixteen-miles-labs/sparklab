@@ -235,10 +235,20 @@ def test_qsa_selects_complete_blocks_and_always_keeps_tail():
     logical = torch.cat((
         (blocks[:, None] * 4 + torch.arange(4)).flatten(),
         torch.tensor([12, 13]),
-    ))
+    )).sort().values
     torch.testing.assert_close(got, physical.index_select(0, logical))
     # The incomplete suffix bypasses top-k selection by definition.
     torch.testing.assert_close(got[-2:], physical[-2:])
+
+
+def test_qsa_dense_budget_fast_path_does_not_need_index_keys():
+    backend = QSAAttnBackend.__new__(QSAAttnBackend)
+    backend.args = SimpleNamespace(index_compress_ratio=4, index_block_topk=512)
+    physical = torch.arange(2051, dtype=torch.int32) * 2 + 1
+    got = backend._selected_rows(
+        torch.empty(4, 128), None, physical, 2051, torch.empty(128), None
+    )
+    torch.testing.assert_close(got, physical)
 
 
 def test_registry_has_qwen_wrapper_and_text_architectures():

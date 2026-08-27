@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from sparklab.catalog import get_recipe, load_catalog, select_recipes
 
 
@@ -49,3 +51,13 @@ def test_deepseek_recipe_points_to_checked_in_baseline():
     assert result["status"] == "measured"
     assert result["metrics"]["decode_tokens_per_second"] == 9.217
     assert result["validation"]["output_hash"] == "fbf178b2bde5"
+
+
+def test_preview_and_certified_statuses_fail_closed_without_evidence_or_memory():
+    from dataclasses import replace
+
+    base = get_recipe("qwen3.8-flash-next")
+    with pytest.raises(ValueError, match="must cite versioned evidence"):
+        replace(base, status="preview").validate()
+    with pytest.raises(ValueError, match="runtime-memory budget"):
+        replace(base, status="certified", evidence=("GB10-QWEN-001",)).validate()

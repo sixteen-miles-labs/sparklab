@@ -69,11 +69,20 @@ class QSAAttnBackend(BaseAttnBackend):
         raise RuntimeError("Qwen4 QSA layers must call qsa_forward with index projections")
 
     def _selected_rows(
-        self, index_q: torch.Tensor, raw_keys: torch.Tensor, physical_rows: torch.Tensor,
+        self, index_q: torch.Tensor, raw_keys: torch.Tensor | None, physical_rows: torch.Tensor,
         visible: int, k_norm_weight: torch.Tensor, rotary,
     ) -> torch.Tensor:
         ratio = self.args.index_compress_ratio
         complete = visible // ratio
+        # Until there are more complete blocks than the budget, QSA selects every
+        # complete block and the uncompressed tail. Scoring/top-k can only permute
+        # that same set, and attention is permutation invariant. This covers the
+        # ordinary <=2051-token agent path and avoids index-K gather, pooling,
+        # norm, RoPE, matmul and top-k entirely.
+        if complete <= self.args.index_block_topk:
+            return physical_rows[:visible]
+        if raw_keys is None:
+            raise RuntimeError("QSA raw index keys are required beyond the dense budget")
         if complete:
             pooled = raw_keys[: complete * ratio].view(complete, ratio, -1).float().mean(1)
             pooled = _plus_one_rms(pooled.to(raw_keys.dtype), k_norm_weight, self.config.rms_norm_eps)
@@ -92,7 +101,10 @@ class QSAAttnBackend(BaseAttnBackend):
         else:
             logical = torch.empty(0, dtype=torch.long, device=raw_keys.device)
         tail = torch.arange(complete * ratio, visible, device=raw_keys.device)
-        logical = torch.cat((logical, tail)).to(torch.long)
+        # HF applies the selected mask to the original chronological K/V axis.
+        # Sort the packed equivalent so floating-point reduction order follows
+        # that reference too (topk itself does not promise score order).
+        logical = torch.sort(torch.cat((logical, tail)).to(torch.long)).values
         return physical_rows.index_select(0, logical)
 
     def qsa_forward(
@@ -112,7 +124,15 @@ class QSAAttnBackend(BaseAttnBackend):
         for req_idx, req in enumerate(reqs):
             q0, q1 = md.qo_indptr[req_idx : req_idx + 2]
             physical = ctx.page_table[req.table_idx, : req.device_len].to(torch.int32)
-            raw = self.kvcache.index_k_cache(slot).index_select(0, physical.to(torch.long))
+            largest_visible = req.cached_len + (q1 - q0)
+            sparse = (
+                largest_visible // self.args.index_compress_ratio
+                > self.args.index_block_topk
+            )
+            raw = (
+                self.kvcache.index_k_cache(slot).index_select(0, physical.to(torch.long))
+                if sparse else None
+            )
             for local, iq in enumerate(index_q[q0:q1]):
                 selected.append(self._selected_rows(
                     iq, raw, physical, req.cached_len + local + 1,
