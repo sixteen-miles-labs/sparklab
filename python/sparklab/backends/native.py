@@ -172,6 +172,7 @@ class NativeBackend(RuntimeBackend):
         migrated = dict(value)
         old_format = str(migrated.pop("checkpoint_format"))
         quantization = migrated.pop("expert_quantization", None)
+        migrated.setdefault("parameters", "Unknown")
         migrated["schema_version"] = "2.0"
         migrated["deployment"] = {
             "backend": self.backend_id,

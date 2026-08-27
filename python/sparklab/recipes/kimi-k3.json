@@ -1,9 +1,14 @@
 {
   "schema_version": "2.0",
-  "recipe_version": "0.1.0",
+  "recipe_version": "0.2.0",
   "slug": "kimi-k3",
   "name": "Kimi K3",
-  "model": "moonshotai/Kimi-K3",
+  "model": "nvidia/Kimi-K3-NVFP4",
+  "parameters": "2.8T total / 16 of 896 experts",
+  "revision": "f8c5234a0a880bcc6cbf779a315e7ee2f405b812",
+  "source_bytes": 1610038482254,
+  "prepared_bytes": 1610038482254,
+  "minimum_free_bytes": 3357515917980,
   "intended_tier": "research",
   "status": "experimental",
   "implementation": "text-architecture",
@@ -12,15 +17,17 @@
     "backend": "native",
     "backend_api": "1.0",
     "source_format": "safetensors",
-    "runtime_format": "ftw-mxfp4",
-    "quantization": "mxfp4",
+    "runtime_format": "ftw-nvfp4",
+    "quantization": "nvfp4",
     "execution_policy": "nvme-moe",
     "backend_options": {}
   },
   "profile": "research",
-  "description": "The 2.8T flagship demonstration for inference beyond physical memory.",
+  "description": "The 2.8T NVIDIA NVFP4 flagship demonstration for inference beyond physical memory.",
   "limitations": [
-    "Full-checkpoint conversion and GPU parity are not yet validated.",
+    "Beta FTW preparation must preserve the checkpoint's mixed representation: NVFP4 routed experts, 128x128 block-FP8 attention projections, and the original precision of remaining tensors.",
+    "The native Kimi loader currently supports Moonshot's compressed-tensors MXFP4 layout; NVIDIA's ModelOpt mixed NVFP4/FP8 tensor layout still requires a dedicated precision-preserving mapping.",
+    "Full-checkpoint FTW preparation and GPU parity are not yet validated.",
     "No latency promise and no vision support."
   ]
 }

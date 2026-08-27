@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-GLM52-RESEARCH-001",
+  "status": "measured",
+  "recipe": {
+    "slug": "glm-5.2",
+    "recipe_version": "0.2.0",
+    "revision": "aec724e8c7b8ee9db3b48c01c320f63f9cdaf8aa"
+  },
+  "engine": {
+    "git_revision": "b5db743d4d5103c452835fc25af9e178a8c1c523"
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "os": "Ubuntu NVIDIA kernel 6.17.0-1014-nvidia",
+    "cuda": "13.0"
+  },
+  "checkpoint": {
+    "full_model": true,
+    "format": "ftw-nvfp4-b12x",
+    "fingerprint": "d3affa2cd69360b1",
+    "bytes": 428713099264,
+    "source_bytes": 464874323992
+  },
+  "metrics": {
+    "decode_tokens_per_second": 0.802,
+    "decode_milliseconds_per_token": 1247.3,
+    "warm_ttft_seconds": 2.57,
+    "latency_p50_milliseconds": 1243,
+    "latency_p99_milliseconds": 1490,
+    "expert_cache_miss_rate_percent": 73.5,
+    "physical_io_gib": 2236.02,
+    "minimum_mem_available_gib": 72.48,
+    "swap_growth_bytes": 696320
+  },
+  "stability": {
+    "requested_completion_tokens": 256,
+    "returned_completion_tokens": 255,
+    "timed_decode_steps": 254,
+    "swap_out_pages": 170,
+    "swap_growth_bytes": 696320
+  },
+  "validation": {
+    "output_correctness": true,
+    "output_hash_algorithm": "sha1-prefix",
+    "output_hash": "9571e64d566e",
+    "output_hash_probe_tokens": 64,
+    "matched_native_control": true,
+    "memory_bounded": true,
+    "nvme_behavior": "bounded",
+    "reasoning_parser": false,
+    "tool_parser": false,
+    "coding_agent_task": false
+  },
+  "admission": {
+    "tier": "research",
+    "passed": false,
+    "reasons": [
+      "The selected 256-token trial swapped out 170 pages (680 KiB).",
+      "Reasoning parser, tool parser, and coding-agent gates were not run."
+    ]
+  },
+  "source_report": "exps/exp_glm5_2_gb10.md",
+  "limitations": [
+    "This is the selected 256-token tuning and stability trial, not the separate GB10-INTERACTIVE-001 benchmark.",
+    "The prepared artifact preserves routed experts as NVFP4 but converts large resident BF16 projections to per-row W8A16 FP8.",
+    "No context, endurance, API, reasoning-parser, tool-parser, or coding-agent certification is claimed."
+  ]
+}

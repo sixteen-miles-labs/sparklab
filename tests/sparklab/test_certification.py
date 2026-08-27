@@ -62,6 +62,17 @@ def test_gate_rejects_reduced_model_and_recipe_mismatch():
     assert any("recipe_version mismatch" in reason for reason in result.reasons)
 
 
+def test_research_rejects_swap_growth_without_requiring_latency_or_endurance():
+    recipe = get_recipe("qwen3.8-flash-next")
+    evidence = _evidence(recipe)
+    evidence["stability"] = {"swap_growth_bytes": 4096}
+    result = evaluate_tier(recipe, evidence, "research")
+    assert not result.passed
+    assert result.reasons == (
+        "stability.swap_growth_bytes must be <= 0, found 4096",
+    )
+
+
 def test_frontier_allows_bounded_nvme_but_fast_does_not():
     recipe = get_recipe("qwen3.8-flash-next")
     evidence = _evidence(recipe)

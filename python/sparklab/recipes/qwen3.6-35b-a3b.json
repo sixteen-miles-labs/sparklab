@@ -4,6 +4,7 @@
   "slug": "qwen3.6-35b-a3b",
   "name": "Qwen3.6 35B A3B",
   "model": "nvidia/Qwen3.6-35B-A3B-NVFP4",
+  "parameters": "35B total / 3B active",
   "intended_tier": "fast",
   "status": "experimental",
   "implementation": "available",

@@ -127,6 +127,7 @@ class ModelRecipe:
     slug: str
     name: str
     model: str
+    parameters: str
     intended_tier: str
     status: str
     implementation: str
@@ -160,6 +161,7 @@ class ModelRecipe:
             slug=str(value["slug"]),
             name=str(value["name"]),
             model=str(value["model"]),
+            parameters=str(value["parameters"]),
             intended_tier=str(value["intended_tier"]),
             status=str(value["status"]),
             implementation=str(value["implementation"]),
@@ -223,8 +225,15 @@ class ModelRecipe:
             raise ValueError(
                 f"invalid portfolio role {self.portfolio_role!r} for {self.slug}"
             )
-        if not self.slug or not self.model or not self.recipe_version:
-            raise ValueError("recipe slug, model, and recipe_version are required")
+        if (
+            not self.slug
+            or not self.model
+            or not self.parameters
+            or not self.recipe_version
+        ):
+            raise ValueError(
+                "recipe slug, model, parameters, and recipe_version are required"
+            )
         self.deployment.validate()
         for name in ("source_bytes", "prepared_bytes", "minimum_free_bytes"):
             value = getattr(self, name)
@@ -275,6 +284,7 @@ class ModelRecipe:
             "slug": self.slug,
             "name": self.name,
             "model": self.model,
+            "parameters": self.parameters,
             "intended_tier": self.intended_tier,
             "status": self.status,
             "implementation": self.implementation,

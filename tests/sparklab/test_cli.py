@@ -23,8 +23,9 @@ def test_models_json_exposes_tier_and_admission_status(capsys):
     assert cli.main(["models", "--tier", "research", "--json"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["product"] == "Spark Lab" and payload["platform"] == "gb10"
-    assert [recipe["slug"] for recipe in payload["recipes"]] == ["kimi-k3"]
-    assert payload["recipes"][0]["status"] == "experimental"
+    assert [recipe["slug"] for recipe in payload["recipes"]] == ["glm-5.2", "kimi-k3"]
+    assert all(recipe["status"] == "experimental" for recipe in payload["recipes"])
+    assert payload["recipes"][0]["parameters"] == "753B total / 40B active"
 
 
 def test_models_can_select_primary_portfolio(capsys):
@@ -43,16 +44,29 @@ def test_models_can_select_primary_portfolio(capsys):
 def test_models_human_table_groups_tiers_and_shows_performance_metrics(capsys):
     assert cli.main(["models", "--role", "primary"]) == 0
     output = capsys.readouterr().out
-    assert "MODEL" in output and "QUANTIZATION" in output
-    assert "TOK/S" in output and "TTFT" in output
+    assert "MODEL" in output and "PARAMETER" in output and "QUANTIZATION" in output
+    assert "TOK/S" in output and "TTFT(s)" in output
     assert "FAST — Routine chat, editing, and short agent loops" in output
     assert "FRONTIER — Hard coding, reasoning, and long agent work" in output
     assert "RESEARCH — Complete or novel models" in output
-    assert "12.51" in output and "0.870 s" in output
+    assert "9.22" in output and "14.045" in output
     assert "Qwen3.6 35B A3B" in output and "NVFP4" in output
+    assert "35B total / 3B active" in output
     assert "Qwen3.6 35B A3B NVFP4" not in output
     qwen36_row = next(line for line in output.splitlines() if line.startswith("Qwen3.6"))
     assert qwen36_row.split()[-2:] == ["—", "—"]
+    qwen38_row = next(line for line in output.splitlines() if line.startswith("Qwen3.8"))
+    assert qwen38_row.split()[-2:] == ["—", "—"]
+    assert "No recipe is certified yet" in output
+
+
+def test_models_research_table_includes_measured_glm52_fallback(capsys):
+    assert cli.main(["models", "--tier", "research"]) == 0
+    output = capsys.readouterr().out
+    glm52_row = next(line for line in output.splitlines() if line.startswith("GLM-5.2"))
+    assert "NVFP4" in glm52_row and "EXPERIMENTAL" in glm52_row
+    assert glm52_row.split()[-2:] == ["0.80", "2.570"]
+    assert "Kimi K3" in output
 
 
 def test_legacy_engine_command_is_delegated_unchanged(monkeypatch):
@@ -82,6 +96,6 @@ def test_pull_dry_run_delegates_to_pinned_acquisition(monkeypatch, capsys):
 
     monkeypatch.setattr("sparklab.acquire.acquire_recipe", fake_acquire)
     assert cli.main(["pull", "qwen3.8-flash-next", "--dry-run"]) == 0
-    assert seen["recipe"].revision == "f5d08274bafd880402bd16f5e3e6c514136ec06c"
+    assert seen["recipe"].revision == "970c569adaca6b35532111fd6b27351b2baefe50"
     assert seen["dry_run"] is True and seen["prepare"] is False
     assert "would acquire" in capsys.readouterr().out

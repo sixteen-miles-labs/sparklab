@@ -1,23 +1,24 @@
 {
   "schema_version": "2.0",
-  "recipe_version": "0.3.0",
+  "recipe_version": "0.4.0",
   "slug": "qwen3.8-flash-next",
   "name": "Qwen3.8 Flash Next",
-  "model": "Qwen/Qwen3.8-Flash-Next",
-  "revision": "f5d08274bafd880402bd16f5e3e6c514136ec06c",
-  "source_bytes": 360000192888,
-  "prepared_bytes": 180500000000,
-  "minimum_free_bytes": 677939339248,
+  "model": "Qwen/Qwen3.8-Flash-Next-FP8",
+  "parameters": "125B LM + 55B aux / 6B active",
+  "revision": "970c569adaca6b35532111fd6b27351b2baefe50",
+  "source_bytes": 185553536918,
+  "prepared_bytes": 185553536918,
+  "minimum_free_bytes": 508546220196,
   "intended_tier": "frontier",
-  "status": "certified",
+  "status": "experimental",
   "implementation": "text-architecture",
   "portfolio_role": "primary",
   "deployment": {
     "backend": "native",
     "backend_api": "1.0",
     "source_format": "safetensors",
-    "runtime_format": "ftw-nvfp4",
-    "quantization": "nvfp4",
+    "runtime_format": "ftw-fp8",
+    "quantization": "fp8",
     "execution_policy": "nvme-moe",
     "backend_options": {
       "attention_backend": "qsa",
@@ -25,35 +26,23 @@
       "moe_storage": "disk",
       "moe_host_cache_gb": 2,
       "moe_cache_auto": true,
-      "nvfp4_backend": "triton",
       "moe_prefill_sparse_max_tokens": 512,
       "moe_prefill_hit_d2d": true,
       "cuda_graph_max_bs": 0,
       "cache_type": "naive",
       "page_size": 16,
-      "max_running_req": 1,
-      "convert_expert_quantization": "nvfp4"
+      "max_running_req": 1
     }
   },
-  "profile": "balanced",
-  "runtime_memory": {
-    "total_bytes": 106837311488
-  },
-  "performance": {
-    "decode_tokens_per_second": 12.506321669070305,
-    "warm_ttft_seconds": 0.8704300159588456,
-    "context_tokens": 65536,
-    "endurance_minutes": 60.5,
-    "evidence": "GB10-QWEN38-FRONTIER-001"
-  },
-  "description": "Certified text-only Frontier recipe for long agent sessions on one NVIDIA GB10.",
-  "evidence": ["GB10-QWEN38-FRONTIER-001"],
+  "profile": "quality",
+  "description": "Precision-preserving text-only recipe for Qwen's official Qwen3.8 FP8 checkpoint on one NVIDIA GB10.",
+  "evidence": [],
   "limitations": [
-    "The official BF16 checkpoint measured 2.15 decode tok/s and 24.3 s warm TTFT on the first complete-checkpoint probe, so the promotion candidate uses conversion-time NVFP4 routed experts.",
-    "The full NVFP4 checkpoint measured 12.58 decode tok/s and 0.833 s warm TTFT with route-first sparse prefill; this is Frontier-class performance, not Fast-class throughput.",
-    "The certified five-problem AIME sample scored 3/5; two requests exhausted the 2048-token reasoning budget before emitting a final answer.",
+    "Beta 0.1 FTW preparation preserves the official checkpoint's native 128x128 block-FP8 weights and scales and does not perform conversion-time requantization.",
+    "The Qwen4-Exp loader must be extended and validated against the official per-expert FP8 tensor layout before this recipe can prepare or serve a complete checkpoint.",
+    "GB10-QWEN38-FRONTIER-001 certifies the superseded NVFP4-converted 0.3.0 artifact and does not transfer to this official FP8 0.4.0 recipe.",
     "QSA selection currently runs eagerly, so CUDA graph capture is disabled.",
     "The published checkpoint is multimodal; initial Spark Lab certification is text-only.",
-    "The certified endurance run added no swap, but unrelated host processes already occupied swap; sparklab plan/run still require a zero-swap platform preflight."
+    "The official FP8 runtime-memory budget, performance, exact 64K recall, endurance, and quality gates have not yet been measured on GB10."
   ]
 }

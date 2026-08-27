@@ -70,16 +70,17 @@ def evaluate_tier(recipe: ModelRecipe, evidence: dict[str, Any], tier: str) -> T
         if validation.get(key) is not True:
             reasons.append(f"validation.{key} must be true")
 
-    # Research is the admission floor: complete, correct, bounded execution,
-    # with no latency/context/endurance promise.
+    stability = evidence.get("stability") or {}
+    _at_most(stability.get("swap_growth_bytes"), 0, "stability.swap_growth_bytes", reasons)
+
+    # Research is the admission floor: complete, correct, bounded execution with
+    # no swap growth, but no latency, context, or endurance promise.
     if tier == "research":
         return TierGate(tier=tier, passed=not reasons, reasons=tuple(reasons))
 
     metrics = evidence.get("metrics") or {}
-    stability = evidence.get("stability") or {}
     _at_least(stability.get("duration_minutes"), 60, "stability.duration_minutes", reasons)
     _at_most(stability.get("oom_count"), 0, "stability.oom_count", reasons)
-    _at_most(stability.get("swap_growth_bytes"), 0, "stability.swap_growth_bytes", reasons)
     _at_most(stability.get("parser_failures"), 0, "stability.parser_failures", reasons)
 
     if tier == "fast":

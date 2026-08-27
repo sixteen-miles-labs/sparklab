@@ -1,6 +1,6 @@
 # GLM-5.2 NVFP4 on NVIDIA GB10
 
-Last updated: 2026-08-26
+Last updated: 2026-08-27
 
 ## Experiment status
 
@@ -16,15 +16,15 @@ This experiment has two distinct outcomes:
 1. **Research bring-up:** prove that the complete official checkpoint converts,
    loads, and produces validated output with bounded unified memory and no swap
    growth.
-2. **Spark Lab Frontier certification:** additionally pass the product latency,
-   context, endurance, API, and agent gates below.
+2. **Promotion beyond Research:** additionally pass the product latency, context,
+   endurance, API, and agent gates below.
 
 A successful bring-up does not by itself make GLM-5.2 a Frontier model.
 
 ## Spark Lab tier gate
 
-GLM-5.2 is the fallback Frontier candidate if GLM-5.3 is not ready for Spark Lab
-1.0. Assign the result according to the exact checkpoint and recipe tested:
+GLM-5.2 is retained as an Experimental Research fallback rather than a Frontier
+fallback. Assign the result according to the exact checkpoint and recipe tested:
 
 | Status | Required result on one GB10 |
 |---|---|
@@ -259,6 +259,10 @@ these distinct prompts. The suite read 2,755.78 GiB at an effective 9.71 GiB/s.
   cap so invalid larger allocations fail at configuration time.
 - Server shutdown consistently reports four leaked multiprocessing semaphores;
   this did not affect request results but remains cleanup work.
+
+The compact catalog evidence is checked in as
+[`GB10-GLM52-RESEARCH-001`](../benchmarks/gb10/results/GB10-GLM52-RESEARCH-001.json).
+It records the measured performance and failed admission separately.
 
 Primary serving results are in
 `/home/lidaiqing/results/glm5.2-gb10/selected-b12x-cache675-decode64.jsonl`,

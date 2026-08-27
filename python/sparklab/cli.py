@@ -54,7 +54,7 @@ def _ttft_text(recipe) -> str:
     performance = recipe.performance
     if performance is None:
         return "—"
-    return f"{performance.warm_ttft_seconds:.3f} s"
+    return f"{performance.warm_ttft_seconds:.3f}"
 
 
 def _quantization_text(recipe) -> str:
@@ -161,8 +161,8 @@ def _run_models(argv: list[str]) -> int:
         "research": "Complete or novel models outside the interactive envelope",
     }
     print(
-        f"{'MODEL':<25} {'QUANTIZATION':<13} {'RECIPE':<24} {'ROLE':<9} "
-        f"{'STATUS':<13} {'TOK/S':>7} {'TTFT':>9}"
+        f"{'MODEL':<25} {'PARAMETER':<31} {'QUANTIZATION':<13} {'RECIPE':<24} {'ROLE':<9} "
+        f"{'STATUS':<13} {'TOK/S':>7} {'TTFT(s)':>9}"
     )
     current_tier = None
     for recipe in recipes:
@@ -172,7 +172,8 @@ def _run_models(argv: list[str]) -> int:
                 f"\n{current_tier.upper()} — {tier_descriptions[current_tier]}"
             )
         print(
-            f"{recipe.name:<25} {_quantization_text(recipe):<13} "
+            f"{recipe.name:<25} {recipe.parameters:<31} "
+            f"{_quantization_text(recipe):<13} "
             f"{recipe.slug:<24} "
             f"{recipe.portfolio_role.upper():<9} {recipe.status.upper():<13} "
             f"{_throughput_text(recipe):>7} {_ttft_text(recipe):>9}"

@@ -66,24 +66,32 @@ Messages API on `http://127.0.0.1:1919` by default.
 
 Spark Lab has three recipe tiers:
 
-| Model | Quantization | Status | tok/s | TTFT |
-|---|---|---|---:|---:|
-| **Fast — routine chat, editing, and short agent loops** |  |  |  |  |
-| [Qwen3.6-35B-A3B](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | NVFP4 | Experimental | — | — |
-| **Frontier — quality-first coding, reasoning, and long agent work** |  |  |  |  |
-| [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | NVFP4 · FTW upload pending | Certified | 12.51 | 0.870 s |
-| [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | DS-FP4 | Preview | 9.22 | 14.045 s |
-| [GLM-5.3 Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | FP8 | Experimental | — | — |
-| **Research — correct, bounded execution beyond the interactive envelope** |  |  |  |  |
-| [Kimi K3](https://huggingface.co/moonshotai/Kimi-K3) | MXFP4 | Experimental | — | — |
+| Model | Parameter | Quantization | Status | tok/s | TTFT(s) |
+|---|---|---|---|---:|---:|
+| **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |
+| [Qwen3.6-35B-A3B](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | 35B total / 3B active | NVFP4 | Experimental | — | — |
+| **Frontier — quality-first coding, reasoning, and long agent work** |  |  |  |  |  |
+| [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next-FP8) | 125B LM + 55B auxiliary / 6B active | FP8 · FTW upload pending | Experimental | — | — |
+| [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | Preview | 9.22 | 14.045 |
+| [GLM-5.3 Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 320B total / 18B active | FP8 | Experimental | — | — |
+| **Research — correct, bounded execution beyond the interactive envelope** |  |  |  |  |  |
+| [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | 753B total / 40B active | NVFP4 | Experimental | 0.80 | 2.570 |
+| [Kimi K3](https://huggingface.co/nvidia/Kimi-K3-NVFP4) | 2.8T total / 16 of 896 experts | NVFP4 · FTW upload pending | Experimental | — | — |
 
 Model links point to the original publisher checkpoints. When Spark Lab publishes a
 converted FTW checkpoint, its Hugging Face link appears in the Quantization column; the
-Qwen3.8 FTW-NVFP4 link will be added after that artifact is uploaded.
+Qwen3.8 FP8 and Kimi K3 NVFP4 FTW links will be added after those artifacts are uploaded.
 
-GLM-5.2 remains an Experimental fallback outside the primary lineup. A target remains
-Preview or Experimental until its complete checkpoint passes the published gate;
-architecture smoke tests alone do not change status.
+GLM-5.2 remains an Experimental Research fallback outside the primary lineup. Its measured
+0.802 tok/s and 2.57 s TTFT come from the selected 256-token GB10 trial, which failed the
+strict Research admission gate because swap-out grew by 680 KiB; see the
+[`GLM-5.2 GB10 experiment`](exps/exp_glm5_2_gb10.md). A target remains Preview or
+Experimental until its complete checkpoint passes the published gate; architecture smoke
+tests alone do not change status.
+
+Parameter values use the publishers' architecture counts. Qwen3.8's 55B auxiliary
+parameters are its 51B n-gram embedding plus 4B MTP module; Kimi K3's publisher reports
+expert activation count rather than an active-parameter total.
 
 Run `sparklab models --json` for exact checkpoint IDs, recipe versions,
 implementation state, evidence IDs, and limitations. Tier names describe intended
@@ -95,10 +103,13 @@ The compact evidence is checked in as
 [`GB10-BASELINE-001`](benchmarks/gb10/results/GB10-BASELINE-001.json); it is a
 Preview result, not yet a complete Frontier certification.
 
-Qwen3.8-Flash-Next is certified for the text-only Frontier tier at 12.51 decode
-tok/s, 0.870 s warm TTFT, exact 65,536-token recall, and a 60.50-minute
-uninterrupted endurance run. Its compact evidence is
-[`GB10-QWEN38-FRONTIER-001`](benchmarks/gb10/results/GB10-QWEN38-FRONTIER-001.json).
+The Beta 0.1 Qwen3.8 recipe uses Qwen's official FP8 checkpoint and preserves its
+block-FP8 weights and scales in FTW without conversion-time requantization. It is
+Experimental until that exact artifact completes the performance, context, quality, and
+endurance gates. The archived
+[`GB10-QWEN38-FRONTIER-001`](benchmarks/gb10/results/GB10-QWEN38-FRONTIER-001.json)
+result belongs to the superseded NVFP4-converted recipe and does not certify the official
+FP8 Beta artifact.
 
 ## Why Spark Lab
 

@@ -1,10 +1,15 @@
 {
   "schema_version": "2.0",
-  "recipe_version": "0.1.0",
+  "recipe_version": "0.2.0",
   "slug": "glm-5.2",
   "name": "GLM-5.2",
   "model": "nvidia/GLM-5.2-NVFP4",
-  "intended_tier": "frontier",
+  "parameters": "753B total / 40B active",
+  "revision": "aec724e8c7b8ee9db3b48c01c320f63f9cdaf8aa",
+  "source_bytes": 464874323992,
+  "prepared_bytes": 428713099264,
+  "minimum_free_bytes": 1031026376728,
+  "intended_tier": "research",
   "status": "experimental",
   "implementation": "available",
   "portfolio_role": "fallback",
@@ -17,10 +22,18 @@
     "execution_policy": "nvme-moe",
     "backend_options": {}
   },
-  "profile": "quality",
-  "description": "Lower-risk Frontier fallback while GLM-5.3 is enabled.",
+  "profile": "research",
+  "description": "Measured 753B Research fallback for complete-model NVMe inference.",
+  "performance": {
+    "decode_tokens_per_second": 0.802,
+    "warm_ttft_seconds": 2.57,
+    "evidence": "GB10-GLM52-RESEARCH-001",
+    "note": "Selected 256-token b12x trial; the small nonzero swap-out delta failed the strict Research admission gate."
+  },
+  "evidence": ["GB10-GLM52-RESEARCH-001"],
   "limitations": [
-    "The active GB10 correctness and performance experiment is not complete.",
-    "No Frontier latency, context, or endurance certification is claimed."
+    "The selected 256-token trial swapped out 680 KiB, so this measured result did not pass the strict Research admission gate.",
+    "The prepared experiment artifact converted resident BF16 projections to per-row W8A16 FP8; it is Experimental research evidence, not precision-preserving Beta certification evidence.",
+    "No Frontier latency, context, endurance, API, parser, or coding-agent certification is claimed."
   ]
 }

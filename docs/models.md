@@ -17,7 +17,7 @@ sparklab models --json
 |---|---|---|
 | Fast | Routine chat, editing, and short agent loops | ≥20 decode tok/s, ≤5 s warm TTFT, ≥32K usable context, no normal-operation NVMe stalls, and a stable 60-minute agent trace |
 | Frontier | Hard coding, reasoning, and long agent work | ≥5 decode tok/s, ≤20 s warm TTFT, ≥64K usable context, bounded NVMe traffic, and the same 60-minute stability gate |
-| Research | Complete or novel models outside the interactive envelope | Correct full-model output and bounded memory; no latency promise |
+| Research | Complete or novel models outside the interactive envelope | Correct full-model output, bounded memory, and no swap growth; no latency promise |
 
 Every tier also requires output correctness, reasoning/tool parsing, a fixed
 coding-agent task, and versioned benchmark evidence. Status means:
@@ -28,29 +28,42 @@ coding-agent task, and versioned benchmark evidence. Status means:
 
 ## Current recipes
 
-| Model | Quantization | Recipe | Status | tok/s | TTFT |
-|---|---|---|---|---:|---:|
-| **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |
-| [Qwen3.6-35B-A3B](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | NVFP4 | `qwen3.6-35b-a3b` | Experimental; primary target | — | — |
-| **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |
-| [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | NVFP4 · FTW upload pending | `qwen3.8-flash-next` | Certified | 12.51 | 0.870 s |
-| [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | DS-FP4 | `deepseek-v4` | Preview | 9.22 | 14.045 s |
-| [GLM-5.3 Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | FP8 | `glm-5.3-flash` | Experimental | — | — |
-| [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | NVFP4 | `glm-5.2` | Experimental fallback | — | — |
-| **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |
-| [Kimi K3](https://huggingface.co/moonshotai/Kimi-K3) | MXFP4 | `kimi-k3` | Experimental | — | — |
+| Model | Parameter | Quantization | Recipe | Status | tok/s | TTFT(s) |
+|---|---|---|---|---|---:|---:|
+| **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |  |
+| [Qwen3.6-35B-A3B](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | 35B total / 3B active | NVFP4 | `qwen3.6-35b-a3b` | Experimental; primary target | — | — |
+| **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |  |
+| [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next-FP8) | 125B LM + 55B auxiliary / 6B active | FP8 · FTW upload pending | `qwen3.8-flash-next` | Experimental | — | — |
+| [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | `deepseek-v4` | Preview | 9.22 | 14.045 |
+| [GLM-5.3 Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 320B total / 18B active | FP8 | `glm-5.3-flash` | Experimental | — | — |
+| **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
+| [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | 753B total / 40B active | NVFP4 | `glm-5.2` | Experimental fallback | 0.80 | 2.570 |
+| [Kimi K3](https://huggingface.co/nvidia/Kimi-K3-NVFP4) | 2.8T total / 16 of 896 experts | NVFP4 · FTW upload pending | `kimi-k3` | Experimental | — | — |
 
 Model links point to the original publisher checkpoints. Quantization links point to
 Spark Lab's converted FTW checkpoints when those artifacts are published. The Qwen3.8
-FTW-NVFP4 link is intentionally marked pending until its Hugging Face upload exists.
+FP8 and Kimi K3 NVFP4 FTW links are intentionally marked pending until their Hugging Face
+uploads exist.
+
+Parameter values use publisher-reported architecture counts. Qwen3.8's auxiliary total is
+the 51B n-gram embedding plus its 4B MTP module. NVIDIA reports Kimi K3 activation as 16 of
+896 experts rather than as an active-parameter count.
 
 Measured values are copied from the evidence named by the recipe. “Not yet measured”
 means no accepted complete-checkpoint GB10 performance evidence is attached.
 
 The primary lineup is Qwen3.6 NVFP4 for Fast; Qwen3.8 Flash Next, GLM-5.3 Flash,
-and DeepSeek V4 Flash for Frontier; and Kimi K3 for Research. Qwen3.8's Frontier
-evidence records a 3/5 fixed AIME sample, two reasoning-budget cap cases, bounded
-NVMe behavior, and zero model-attributed swap growth.
+and DeepSeek V4 Flash for Frontier; and Kimi K3 for Research. The Beta Qwen3.8
+recipe preserves its official checkpoint's FP8 precision and is not yet certified. Its
+historical NVFP4 result does not transfer across the quantization and recipe-version boundary.
+The Kimi K3 recipe similarly preserves NVIDIA's mixed checkpoint: routed experts remain
+NVFP4, supported attention projections remain block FP8, and other tensors retain their
+source precision.
+
+GLM-5.2 is listed in Research because its selected GB10 experiment sustained 0.802 tok/s,
+below the 5 tok/s Frontier threshold. The displayed 2.57 s TTFT and throughput are measured,
+but the result remains Experimental because the 256-token trial swapped out 680 KiB and did
+not pass the strict Research gate. See the [full experiment](../exps/exp_glm5_2_gb10.md).
 
 ## Engine architecture support
 
@@ -72,3 +85,8 @@ sparklab checkpoint --model /path/to/hf-checkpoint --out /path/to/model-ftw
 Recipe-backed `sparklab pull <recipe> --prepare` performs this conversion at the
 pinned revision. Direct conversion and serving flags remain an expert interface
 documented in [cli.md](cli.md).
+
+For Beta 0.1 recipes, FTW preparation is precision-preserving: it may align, shard,
+fuse, or repack tensors for the native backend, but it must retain the source
+checkpoint's dtype and quantization. Any precision-changing transform is a separately
+named experimental artifact and cannot inherit the source recipe's certification.

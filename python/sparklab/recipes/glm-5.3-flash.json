@@ -4,6 +4,7 @@
   "slug": "glm-5.3-flash",
   "name": "GLM-5.3 Flash",
   "model": "zai-org/GLM-5.3-Flash",
+  "parameters": "320B total / 18B active",
   "revision": "3f1971b7b5f7a528c9c4ef6212c8785298a8c24a",
   "source_bytes": 328337455672,
   "prepared_bytes": 328337455672,
