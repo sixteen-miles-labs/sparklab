@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "recipe_version": "0.1.0",
   "slug": "deepseek-v4",
   "name": "DeepSeek V4 Flash",
@@ -7,8 +7,16 @@
   "intended_tier": "frontier",
   "status": "preview",
   "implementation": "available",
-  "checkpoint_format": "ftw",
-  "execution_policy": "nvme-moe",
+  "portfolio_role": "primary",
+  "deployment": {
+    "backend": "native",
+    "backend_api": "1.0",
+    "source_format": "safetensors",
+    "runtime_format": "ftw-ds-fp4",
+    "quantization": "ds-fp4",
+    "execution_policy": "nvme-moe",
+    "backend_options": {}
+  },
   "profile": "balanced",
   "description": "The measured GB10 baseline and first Frontier certification target.",
   "evidence": ["GB10-BASELINE-001"],

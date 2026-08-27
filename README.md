@@ -68,14 +68,14 @@ Spark Lab has three recipe tiers:
 
 | Tier | Product role | Current targets |
 |---|---|---|
-| Fast | Routine chat, editing, and short agent loops | Qwen3.6-35B-A3B-NVFP4 |
-| Frontier | Quality-first coding, reasoning, and long agent work | Qwen3.8-Flash-Next (Certified); DeepSeek V4 Flash; GLM-5.3 Flash |
+| Fast | Routine chat, editing, and short agent loops | Qwen3.8-Flash-Next (Preview) |
+| Frontier | Quality-first coding, reasoning, and long agent work | DeepSeek V4 Flash (Preview); GLM-5.3 Flash |
 | Research | Correct, bounded execution beyond the interactive envelope | Kimi K3 |
 
-Qwen3.8-Flash-Next is the first certified recipe. The remaining enablement order
-is GLM-5.3-Flash, then Kimi K3. A target remains Experimental until its complete
-checkpoint passes the published gate; architecture smoke tests alone do not
-change status.
+Qwen3.6 and GLM-5.2 remain Experimental fallback candidates outside the primary
+four-model lineup. A target remains Preview or Experimental until its complete
+checkpoint passes the published gate; architecture smoke tests alone do not change
+status.
 
 Run `sparklab models --json` for exact checkpoint IDs, recipe versions,
 implementation state, evidence IDs, and limitations. Tier names describe intended
@@ -87,9 +87,10 @@ The compact evidence is checked in as
 [`GB10-BASELINE-001`](benchmarks/gb10/results/GB10-BASELINE-001.json); it is a
 Preview result, not yet a complete Frontier certification.
 
-Qwen3.8-Flash-Next is certified for the text-only Frontier tier at 12.51 decode
-tok/s, 0.870 s warm TTFT, exact 65,536-token recall, and a 60.50-minute
-uninterrupted endurance run. Its compact evidence is
+Qwen3.8-Flash-Next version 0.4.0 is the Fast-layer target and remains Preview.
+Its prior 0.3.0 deployment earned text-only Frontier certification at 12.51 decode
+tok/s, 0.870 s warm TTFT, exact 65,536-token recall, and 60.50 minutes of endurance.
+That historical compact evidence is
 [`GB10-QWEN38-FRONTIER-001`](benchmarks/gb10/results/GB10-QWEN38-FRONTIER-001.json).
 
 ## Why Spark Lab

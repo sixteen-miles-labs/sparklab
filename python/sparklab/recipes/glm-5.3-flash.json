@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "recipe_version": "0.2.0",
   "slug": "glm-5.3-flash",
   "name": "GLM-5.3 Flash",
@@ -11,22 +11,29 @@
   "intended_tier": "frontier",
   "status": "experimental",
   "implementation": "text-architecture",
-  "checkpoint_format": "ftw-fp8",
-  "execution_policy": "nvme-moe",
+  "portfolio_role": "primary",
+  "deployment": {
+    "backend": "native",
+    "backend_api": "1.0",
+    "source_format": "safetensors",
+    "runtime_format": "ftw-fp8",
+    "quantization": "fp8",
+    "execution_policy": "nvme-moe",
+    "backend_options": {
+      "attention_backend": "dsa",
+      "moe_backend": "offload",
+      "moe_storage": "disk",
+      "moe_host_cache_gb": 2,
+      "moe_cache_auto": true,
+      "moe_prefill_sparse_max_tokens": 512,
+      "moe_prefill_hit_d2d": true,
+      "cuda_graph_max_bs": 0,
+      "cache_type": "naive",
+      "page_size": 1,
+      "max_running_req": 1
+    }
+  },
   "profile": "quality",
-  "runtime_args": [
-    "--attention-backend", "dsa",
-    "--moe-backend", "offload",
-    "--moe-storage", "disk",
-    "--moe-host-cache-gb", "2",
-    "--moe-cache-auto",
-    "--moe-prefill-sparse-max-tokens", "512",
-    "--moe-prefill-hit-d2d",
-    "--cuda-graph-max-bs", "0",
-    "--cache-type", "naive",
-    "--page-size", "1",
-    "--max-running-req", "1"
-  ],
   "runtime_memory": {
     "total_bytes": 106837311488
   },

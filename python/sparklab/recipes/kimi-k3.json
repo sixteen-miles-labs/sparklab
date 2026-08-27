@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "recipe_version": "0.1.0",
   "slug": "kimi-k3",
   "name": "Kimi K3",
@@ -7,8 +7,16 @@
   "intended_tier": "research",
   "status": "experimental",
   "implementation": "text-architecture",
-  "checkpoint_format": "ftw-mxfp4",
-  "execution_policy": "nvme-moe",
+  "portfolio_role": "primary",
+  "deployment": {
+    "backend": "native",
+    "backend_api": "1.0",
+    "source_format": "safetensors",
+    "runtime_format": "ftw-mxfp4",
+    "quantization": "mxfp4",
+    "execution_policy": "nvme-moe",
+    "backend_options": {}
+  },
   "profile": "research",
   "description": "The 2.8T flagship demonstration for inference beyond physical memory.",
   "limitations": [

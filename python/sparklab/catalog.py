@@ -1,14 +1,74 @@
-"""Versioned Spark Lab model-recipe catalog."""
+"""Versioned, backend-qualified Spark Lab model-recipe catalog."""
 
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass
 from importlib.resources import files
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 TIERS = ("fast", "frontier", "research")
 STATUSES = ("certified", "preview", "experimental")
+PORTFOLIO_ROLES = ("primary", "fallback")
+RECIPE_SCHEMA_VERSION = "2.0"
+
+
+@dataclass(frozen=True)
+class DeploymentRecipe:
+    backend: str
+    backend_api: str
+    source_format: str
+    runtime_format: str
+    quantization: str | None
+    execution_policy: str
+    backend_options: Mapping[str, Any]
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "DeploymentRecipe":
+        options = value.get("backend_options", {})
+        if not isinstance(options, dict):
+            raise ValueError("deployment.backend_options must be an object")
+        deployment = cls(
+            backend=str(value["backend"]),
+            backend_api=str(value["backend_api"]),
+            source_format=str(value["source_format"]),
+            runtime_format=str(value["runtime_format"]),
+            quantization=(
+                str(value["quantization"]) if value.get("quantization") else None
+            ),
+            execution_policy=str(value["execution_policy"]),
+            backend_options={str(key): item for key, item in options.items()},
+        )
+        deployment.validate()
+        return deployment
+
+    def validate(self) -> None:
+        for name in (
+            "backend",
+            "backend_api",
+            "source_format",
+            "runtime_format",
+            "execution_policy",
+        ):
+            if not getattr(self, name):
+                raise ValueError(f"deployment.{name} is required")
+        from sparklab.backends import BackendError, get_backend
+
+        try:
+            get_backend(self.backend).validate_deployment(self)
+        except BackendError as exc:
+            raise ValueError(str(exc)) from exc
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "backend": self.backend,
+            "backend_api": self.backend_api,
+            "source_format": self.source_format,
+            "runtime_format": self.runtime_format,
+            "quantization": self.quantization,
+            "execution_policy": self.execution_policy,
+            "backend_options": dict(self.backend_options),
+        }
 
 
 @dataclass(frozen=True)
@@ -21,24 +81,31 @@ class ModelRecipe:
     intended_tier: str
     status: str
     implementation: str
-    checkpoint_format: str
-    expert_quantization: str | None
-    execution_policy: str
+    portfolio_role: str
+    deployment: DeploymentRecipe
     profile: str
     description: str
     revision: str | None = None
     source_bytes: int | None = None
     prepared_bytes: int | None = None
     minimum_free_bytes: int | None = None
-    runtime_args: tuple[str, ...] = ()
     runtime_memory: dict[str, int] | None = None
     evidence: tuple[str, ...] = ()
     limitations: tuple[str, ...] = ()
 
     @classmethod
-    def from_dict(cls, value: dict) -> "ModelRecipe":
+    def from_dict(cls, raw_value: Mapping[str, Any]) -> "ModelRecipe":
+        value = dict(raw_value)
+        schema_version = str(value.get("schema_version", ""))
+        if schema_version == "1.0":
+            from sparklab.backends import get_backend
+
+            value = get_backend("native").migrate_v1_recipe(value)
+            schema_version = str(value["schema_version"])
+        if schema_version != RECIPE_SCHEMA_VERSION:
+            raise ValueError(f"unsupported recipe schema {schema_version!r}")
         recipe = cls(
-            schema_version=str(value["schema_version"]),
+            schema_version=schema_version,
             recipe_version=str(value["recipe_version"]),
             slug=str(value["slug"]),
             name=str(value["name"]),
@@ -46,17 +113,14 @@ class ModelRecipe:
             intended_tier=str(value["intended_tier"]),
             status=str(value["status"]),
             implementation=str(value["implementation"]),
-            checkpoint_format=str(value["checkpoint_format"]),
-            expert_quantization=(
-                str(value["expert_quantization"])
-                if value.get("expert_quantization")
-                else None
-            ),
-            execution_policy=str(value["execution_policy"]),
+            portfolio_role=str(value.get("portfolio_role", "primary")),
+            deployment=DeploymentRecipe.from_dict(value["deployment"]),
             profile=str(value["profile"]),
             description=str(value["description"]),
             revision=(str(value["revision"]) if value.get("revision") else None),
-            source_bytes=(int(value["source_bytes"]) if value.get("source_bytes") else None),
+            source_bytes=(
+                int(value["source_bytes"]) if value.get("source_bytes") else None
+            ),
             prepared_bytes=(
                 int(value["prepared_bytes"]) if value.get("prepared_bytes") else None
             ),
@@ -65,38 +129,56 @@ class ModelRecipe:
                 if value.get("minimum_free_bytes")
                 else None
             ),
-            runtime_args=tuple(str(item) for item in value.get("runtime_args", ())),
             runtime_memory=(
                 {str(key): int(size) for key, size in value["runtime_memory"].items()}
                 if value.get("runtime_memory")
                 else None
             ),
-            evidence=tuple(value.get("evidence", ())),
-            limitations=tuple(value.get("limitations", ())),
+            evidence=tuple(str(item) for item in value.get("evidence", ())),
+            limitations=tuple(str(item) for item in value.get("limitations", ())),
         )
         recipe.validate()
         return recipe
 
+    @property
+    def checkpoint_format(self) -> str:
+        """Compatibility name for the backend-qualified runtime artifact format."""
+        return self.deployment.runtime_format
+
+    @property
+    def expert_quantization(self) -> str | None:
+        return self.deployment.quantization
+
+    @property
+    def execution_policy(self) -> str:
+        return self.deployment.execution_policy
+
+    @property
+    def backend(self) -> str:
+        return self.deployment.backend
+
     def validate(self) -> None:
-        if self.schema_version != "1.0":
+        if self.schema_version != RECIPE_SCHEMA_VERSION:
             raise ValueError(f"unsupported recipe schema {self.schema_version!r}")
         if self.intended_tier not in TIERS:
             raise ValueError(f"invalid tier {self.intended_tier!r} for {self.slug}")
         if self.status not in STATUSES:
             raise ValueError(f"invalid status {self.status!r} for {self.slug}")
+        if self.portfolio_role not in PORTFOLIO_ROLES:
+            raise ValueError(
+                f"invalid portfolio role {self.portfolio_role!r} for {self.slug}"
+            )
         if not self.slug or not self.model or not self.recipe_version:
             raise ValueError("recipe slug, model, and recipe_version are required")
-        if self.expert_quantization not in {None, "nvfp4"}:
-            raise ValueError(
-                f"unsupported expert quantization {self.expert_quantization!r} "
-                f"for {self.slug}"
-            )
+        self.deployment.validate()
         for name in ("source_bytes", "prepared_bytes", "minimum_free_bytes"):
             value = getattr(self, name)
             if value is not None and value <= 0:
                 raise ValueError(f"{name} must be positive for {self.slug}")
         if self.revision is not None and len(self.revision) != 40:
-            raise ValueError(f"recipe revision must be a full 40-character commit for {self.slug}")
+            raise ValueError(
+                f"recipe revision must be a full 40-character commit for {self.slug}"
+            )
         if self.runtime_memory is not None:
             allowed = {
                 "resident_weights_bytes",
@@ -108,18 +190,24 @@ class ModelRecipe:
             }
             unknown = set(self.runtime_memory) - allowed
             if unknown:
-                raise ValueError(f"unknown runtime-memory keys for {self.slug}: {sorted(unknown)}")
+                raise ValueError(
+                    f"unknown runtime-memory keys for {self.slug}: {sorted(unknown)}"
+                )
             if any(value < 0 for value in self.runtime_memory.values()):
-                raise ValueError(f"runtime-memory values must be non-negative for {self.slug}")
+                raise ValueError(
+                    f"runtime-memory values must be non-negative for {self.slug}"
+                )
         if self.status in {"preview", "certified"} and not self.evidence:
-            raise ValueError(f"{self.status} recipe {self.slug} must cite versioned evidence")
+            raise ValueError(
+                f"{self.status} recipe {self.slug} must cite versioned evidence"
+            )
         if self.status == "certified" and self.runtime_memory is None:
             raise ValueError(
                 f"certified recipe {self.slug} must include a measured runtime-memory budget"
             )
 
     def to_dict(self) -> dict[str, Any]:
-        result: dict[str, Any] = {
+        return {
             "schema_version": self.schema_version,
             "recipe_version": self.recipe_version,
             "slug": self.slug,
@@ -128,21 +216,18 @@ class ModelRecipe:
             "intended_tier": self.intended_tier,
             "status": self.status,
             "implementation": self.implementation,
-            "checkpoint_format": self.checkpoint_format,
-            "expert_quantization": self.expert_quantization,
-            "execution_policy": self.execution_policy,
+            "portfolio_role": self.portfolio_role,
+            "deployment": self.deployment.to_dict(),
             "profile": self.profile,
             "description": self.description,
             "revision": self.revision,
             "source_bytes": self.source_bytes,
             "prepared_bytes": self.prepared_bytes,
             "minimum_free_bytes": self.minimum_free_bytes,
-            "runtime_args": list(self.runtime_args),
             "runtime_memory": self.runtime_memory,
             "evidence": list(self.evidence),
             "limitations": list(self.limitations),
         }
-        return result
 
 
 def load_catalog() -> tuple[ModelRecipe, ...]:
@@ -150,12 +235,16 @@ def load_catalog() -> tuple[ModelRecipe, ...]:
     recipes = []
     for resource in sorted(root.iterdir(), key=lambda item: item.name):
         if resource.name.endswith(".json"):
-            recipes.append(ModelRecipe.from_dict(json.loads(resource.read_text(encoding="utf-8"))))
+            recipes.append(
+                ModelRecipe.from_dict(json.loads(resource.read_text(encoding="utf-8")))
+            )
     slugs = [recipe.slug for recipe in recipes]
     if len(slugs) != len(set(slugs)):
         raise ValueError("duplicate Spark Lab model recipe slug")
     order = {tier: index for index, tier in enumerate(TIERS)}
-    return tuple(sorted(recipes, key=lambda item: (order[item.intended_tier], item.slug)))
+    return tuple(
+        sorted(recipes, key=lambda item: (order[item.intended_tier], item.slug))
+    )
 
 
 def select_recipes(
@@ -163,12 +252,14 @@ def select_recipes(
     *,
     tier: str | None = None,
     status: str | None = None,
+    portfolio_role: str | None = None,
 ) -> tuple[ModelRecipe, ...]:
     return tuple(
         recipe
         for recipe in recipes
         if (tier is None or recipe.intended_tier == tier)
         and (status is None or recipe.status == status)
+        and (portfolio_role is None or recipe.portfolio_role == portfolio_role)
     )
 
 
@@ -180,7 +271,10 @@ def get_recipe(slug: str) -> ModelRecipe:
 
 
 __all__ = [
+    "DeploymentRecipe",
     "ModelRecipe",
+    "PORTFOLIO_ROLES",
+    "RECIPE_SCHEMA_VERSION",
     "STATUSES",
     "TIERS",
     "get_recipe",

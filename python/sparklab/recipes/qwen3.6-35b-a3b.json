@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "recipe_version": "0.1.0",
   "slug": "qwen3.6-35b-a3b",
   "name": "Qwen3.6 35B A3B NVFP4",
@@ -7,10 +7,18 @@
   "intended_tier": "fast",
   "status": "experimental",
   "implementation": "available",
-  "checkpoint_format": "safetensors-nvfp4",
-  "execution_policy": "resident",
+  "portfolio_role": "fallback",
+  "deployment": {
+    "backend": "native",
+    "backend_api": "1.0",
+    "source_format": "safetensors-nvfp4",
+    "runtime_format": "safetensors-nvfp4",
+    "quantization": "nvfp4",
+    "execution_policy": "resident",
+    "backend_options": {}
+  },
   "profile": "balanced",
-  "description": "First Fast certification target for routine chat and short agent loops.",
+  "description": "Experimental Fast fallback retained outside the primary four-model lineup.",
   "limitations": [
     "The Fast speed, TTFT, context, and 60-minute stability gates have not passed."
   ]

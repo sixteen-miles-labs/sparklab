@@ -4,10 +4,10 @@ from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
-from freetoken.platform.gb10 import GB10Snapshot
 from sparklab.acquire import acquire_recipe
 from sparklab.catalog import get_recipe
 from sparklab.planner import plan_artifacts, plan_runtime
+from sparklab.platform import GB10Snapshot
 
 GIB = 1 << 30
 
@@ -99,4 +99,6 @@ def test_acquisition_is_pinned_and_manifest_marks_only_completed_download(tmp_pa
     assert calls[0]["revision"] == recipe.revision
     assert calls[0]["repo_id"] == recipe.model
     assert result["manifest"]["revision"] == recipe.revision
-    assert Path(result["manifest"]["source_path"], "config.json").is_file()
+    source = result["manifest"]["artifacts"]["source"]
+    assert Path(source["path"], "config.json").is_file()
+    assert result["manifest"]["deployment"]["backend"] == "native"

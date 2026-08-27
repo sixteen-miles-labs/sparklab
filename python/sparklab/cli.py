@@ -1,9 +1,4 @@
-"""Spark Lab's GB10 product CLI.
-
-Legacy engine commands delegate to the compatibility-stable ``freetoken``
-implementation. Product commands live here and avoid importing torch unless the
-requested operation needs hardware inspection or inference.
-"""
+"""Spark Lab's GB10 product CLI."""
 
 from __future__ import annotations
 
@@ -29,7 +24,7 @@ Product commands:
   gate        Evaluate versioned evidence against Fast/Frontier/Research gates
   status      Show the persistent engine status
 
-Engine commands (FreeToken-compatible):
+Advanced runtime commands:
   serve       Start the OpenAI/Anthropic-compatible API server
   shell       Chat with a running server
   ctl         Query and manage a running server
@@ -66,7 +61,7 @@ def _run_doctor(argv: list[str]) -> int:
     )
     args = parser.parse_args(argv)
 
-    from freetoken.platform import assess_gb10, collect_gb10_snapshot
+    from sparklab.platform import assess_gb10, collect_gb10_snapshot
 
     report = assess_gb10(collect_gb10_snapshot(args.storage_path))
     if args.json:
@@ -99,7 +94,13 @@ def _run_doctor(argv: list[str]) -> int:
 
 
 def _run_models(argv: list[str]) -> int:
-    from sparklab.catalog import STATUSES, TIERS, load_catalog, select_recipes
+    from sparklab.catalog import (
+        PORTFOLIO_ROLES,
+        STATUSES,
+        TIERS,
+        load_catalog,
+        select_recipes,
+    )
 
     parser = argparse.ArgumentParser(
         prog="sparklab models",
@@ -107,14 +108,20 @@ def _run_models(argv: list[str]) -> int:
     )
     parser.add_argument("--tier", choices=TIERS)
     parser.add_argument("--status", choices=STATUSES)
+    parser.add_argument("--role", choices=PORTFOLIO_ROLES)
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
-    recipes = select_recipes(load_catalog(), tier=args.tier, status=args.status)
+    recipes = select_recipes(
+        load_catalog(),
+        tier=args.tier,
+        status=args.status,
+        portfolio_role=args.role,
+    )
     if args.json:
         print(
             json.dumps(
                 {
-                    "schema_version": "1.0",
+                    "schema_version": "2.0",
                     "product": "Spark Lab",
                     "platform": "gb10",
                     "recipes": [recipe.to_dict() for recipe in recipes],
@@ -129,10 +136,11 @@ def _run_models(argv: list[str]) -> int:
     if not recipes:
         print("No recipes match the selected filters.")
         return 0
-    print(f"{'TIER':<10} {'STATUS':<13} {'RECIPE':<24} MODEL")
+    print(f"{'TIER':<10} {'ROLE':<9} {'STATUS':<13} {'RECIPE':<24} MODEL")
     for recipe in recipes:
         print(
-            f"{recipe.intended_tier.upper():<10} {recipe.status.upper():<13} "
+            f"{recipe.intended_tier.upper():<10} {recipe.portfolio_role.upper():<9} "
+            f"{recipe.status.upper():<13} "
             f"{recipe.slug:<24} {recipe.model}"
         )
     if not any(recipe.status == "certified" for recipe in recipes):
@@ -160,13 +168,13 @@ def _run_plan(argv: list[str]) -> int:
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
 
-    from freetoken.platform import collect_gb10_snapshot
+    from sparklab.platform import collect_gb10_snapshot
     from sparklab.planner import plan_artifacts, plan_runtime
 
     artifacts = plan_artifacts(args.recipe, root=args.root, include_prepared=args.prepare)
     memory = plan_runtime(args.recipe, collect_gb10_snapshot(artifacts.root))
     payload = {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "recipe": args.recipe.slug,
         "artifacts": artifacts.to_dict(),
         "runtime": memory.to_dict(),
@@ -243,7 +251,7 @@ def _run_recipe(argv: list[str]) -> int:
     if extra and extra[0] == "--":
         extra = extra[1:]
 
-    from freetoken.platform import collect_gb10_snapshot
+    from sparklab.platform import collect_gb10_snapshot
     from sparklab.runtime import RuntimePlanError, plan_invocation
 
     try:
@@ -263,14 +271,16 @@ def _run_recipe(argv: list[str]) -> int:
             print("sparklab serve " + " ".join(invocation.arguments))
         return 0
 
-    from freetoken.server import launch_server
+    from sparklab.backends import get_backend
 
     if args.recipe.status != "certified":
         print(
             f"WARNING: {args.recipe.slug} is {args.recipe.status}, not certified.",
             file=sys.stderr,
         )
-    launch_server(argv=list(invocation.arguments), prog=f"sparklab run {args.recipe.slug}")
+    get_backend(invocation.backend).launch(
+        invocation.plan, prog=f"sparklab run {args.recipe.slug}"
+    )
     return 0
 
 
@@ -317,47 +327,44 @@ def _run_gate(argv: list[str]) -> int:
     return 0 if next(gate for gate in gates if gate.tier == requested).passed else 1
 
 
-def _run_serve(argv: list[str]) -> int:
-    from freetoken.server import launch_server
+def _run_native_compat(command: str, argv: list[str]) -> int:
+    from sparklab.backends import BackendError, get_backend
 
-    launch_server(argv=argv, prog="sparklab serve")
-    return 0
+    try:
+        return get_backend("native").run_compat_command(
+            command, argv, prog=f"sparklab {command}"
+        )
+    except BackendError as exc:
+        print(f"sparklab {command}: {exc}", file=sys.stderr)
+        return 1
+
+
+def _run_serve(argv: list[str]) -> int:
+    return _run_native_compat("serve", argv)
 
 
 def _run_shell(argv: list[str]) -> int:
-    from freetoken.shell import main
-
-    return main(argv, prog="sparklab shell")
+    return _run_native_compat("shell", argv)
 
 
 def _run_ctl(argv: list[str]) -> int:
-    from freetoken.control_cli import main
-
-    return main(argv, prog="sparklab ctl")
+    return _run_native_compat("ctl", argv)
 
 
 def _run_daemon(argv: list[str]) -> int:
-    from freetoken.daemon import main
-
-    return main(argv, prog="sparklab daemon")
+    return _run_native_compat("daemon", argv)
 
 
 def _run_status(argv: list[str]) -> int:
-    from freetoken.daemon.client import main
-
-    return main(["status", *argv], prog="sparklab status")
+    return _run_native_compat("status", argv)
 
 
 def _run_launch(argv: list[str]) -> int:
-    from freetoken.launch import main
-
-    return main(argv, prog="sparklab launch")
+    return _run_native_compat("launch", argv)
 
 
 def _run_checkpoint(argv: list[str]) -> int:
-    from freetoken.checkpoint.__main__ import main
-
-    return main(argv, prog="sparklab checkpoint")
+    return _run_native_compat("checkpoint", argv)
 
 
 def _run_bench(argv: list[str]) -> int:
@@ -368,9 +375,7 @@ def _run_bench(argv: list[str]) -> int:
     if argv[0] != "bw":
         print(f"unknown sparklab bench subcommand: {argv[0]}", file=sys.stderr)
         return 2
-    from freetoken.moe.benchbw import main
-
-    return main(argv[1:], prog="sparklab bench bw")
+    return _run_native_compat("bench-bw", argv[1:])
 
 
 COMMANDS = {
@@ -402,7 +407,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args[0] in {"-V", "--version"}:
         from sparklab import __version__
 
-        print(f"Spark Lab {__version__} (FreeToken engine)")
+        print(f"Spark Lab {__version__}")
         return 0
     command = COMMANDS.get(args[0])
     if command is None:

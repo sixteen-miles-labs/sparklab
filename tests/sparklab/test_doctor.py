@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from freetoken.platform.gb10 import GB10Snapshot, assess_gb10
+from sparklab.platform import GB10Snapshot, assess_gb10
 
 GIB = 1 << 30
 

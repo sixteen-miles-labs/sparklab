@@ -1,6 +1,6 @@
 {
-  "schema_version": "1.0",
-  "recipe_version": "0.3.0",
+  "schema_version": "2.0",
+  "recipe_version": "0.4.0",
   "slug": "qwen3.8-flash-next",
   "name": "Qwen3.8 Flash Next",
   "model": "Qwen/Qwen3.8-Flash-Next",
@@ -8,38 +8,45 @@
   "source_bytes": 360000192888,
   "prepared_bytes": 180500000000,
   "minimum_free_bytes": 677939339248,
-  "intended_tier": "frontier",
-  "status": "certified",
+  "intended_tier": "fast",
+  "status": "preview",
   "implementation": "text-architecture",
-  "checkpoint_format": "ftw-nvfp4",
-  "expert_quantization": "nvfp4",
-  "execution_policy": "nvme-moe",
+  "portfolio_role": "primary",
+  "deployment": {
+    "backend": "native",
+    "backend_api": "1.0",
+    "source_format": "safetensors",
+    "runtime_format": "ftw-nvfp4",
+    "quantization": "nvfp4",
+    "execution_policy": "nvme-moe",
+    "backend_options": {
+      "attention_backend": "qsa",
+      "moe_backend": "offload",
+      "moe_storage": "disk",
+      "moe_host_cache_gb": 2,
+      "moe_cache_auto": true,
+      "nvfp4_backend": "triton",
+      "moe_prefill_sparse_max_tokens": 512,
+      "moe_prefill_hit_d2d": true,
+      "cuda_graph_max_bs": 0,
+      "cache_type": "naive",
+      "page_size": 16,
+      "max_running_req": 1,
+      "convert_expert_quantization": "nvfp4"
+    }
+  },
   "profile": "balanced",
-  "runtime_args": [
-    "--attention-backend", "qsa",
-    "--moe-backend", "offload",
-    "--moe-storage", "disk",
-    "--moe-host-cache-gb", "2",
-    "--moe-cache-auto",
-    "--nvfp4-backend", "triton",
-    "--moe-prefill-sparse-max-tokens", "512",
-    "--moe-prefill-hit-d2d",
-    "--cuda-graph-max-bs", "0",
-    "--cache-type", "naive",
-    "--page-size", "16",
-    "--max-running-req", "1"
-  ],
   "runtime_memory": {
     "total_bytes": 106837311488
   },
-  "description": "Certified text-only Frontier recipe for long agent sessions on one NVIDIA GB10.",
+  "description": "Primary Fast-layer candidate for routine chat, editing, and agent loops on one NVIDIA GB10.",
   "evidence": ["GB10-QWEN38-FRONTIER-001"],
   "limitations": [
     "The official BF16 checkpoint measured 2.15 decode tok/s and 24.3 s warm TTFT on the first complete-checkpoint probe, so the promotion candidate uses conversion-time NVFP4 routed experts.",
-    "The full NVFP4 checkpoint measured 12.58 decode tok/s and 0.833 s warm TTFT with route-first sparse prefill; this is Frontier-class performance, not Fast-class throughput.",
-    "The certified five-problem AIME sample scored 3/5; two requests exhausted the 2048-token reasoning budget before emitting a final answer.",
+    "The version 0.3.0 NVFP4 deployment earned Frontier certification at 12.51 decode tok/s, but version 0.4.0 targets Fast and remains Preview until it reaches 20 tok/s with no normal-operation NVMe stalls.",
+    "The version 0.3.0 Frontier evidence scored 3/5 on the five-problem AIME sample; two requests exhausted the 2048-token reasoning budget before emitting a final answer.",
     "QSA selection currently runs eagerly, so CUDA graph capture is disabled.",
     "The published checkpoint is multimodal; initial Spark Lab certification is text-only.",
-    "The certified endurance run added no swap, but unrelated host processes already occupied swap; sparklab plan/run still require a zero-swap platform preflight."
+    "The version 0.3.0 Frontier endurance run added no swap, but unrelated host processes already occupied swap; sparklab plan/run still require a zero-swap platform preflight."
   ]
 }

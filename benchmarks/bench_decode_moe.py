@@ -619,7 +619,7 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
             "revision": recipe.revision,
             "intended_tier": recipe.intended_tier,
             "status_at_run": recipe.status,
-            "runtime_args": list(recipe.runtime_args),
+            "deployment": recipe.deployment.to_dict(),
         }
     port = free_port()
     origin = f"http://127.0.0.1:{port}"

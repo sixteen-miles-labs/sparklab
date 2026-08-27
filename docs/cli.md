@@ -39,10 +39,12 @@ available.
 
 ```bash
 sparklab models [--tier fast|frontier|research] \
-  [--status certified|preview|experimental] [--json]
+  [--status certified|preview|experimental] \
+  [--role primary|fallback] [--json]
 ```
 
-Tier is the intended product role. Status records how much of that role has been
+Tier is the intended product layer. Portfolio role separates the primary four-model
+lineup from retained fallbacks. Status records how much of the target layer has been
 proven; the current catalog deliberately has no Certified recipe.
 
 ## sparklab plan

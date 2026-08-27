@@ -1,5 +1,5 @@
-"""Spark Lab product layer over the compatibility-stable FreeToken engine."""
+"""Spark Lab's NVIDIA GB10 model-serving product layer."""
 
-from freetoken.version import __version__
+from .version import __version__
 
 __all__ = ["__version__"]

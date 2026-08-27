@@ -7,9 +7,9 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from freetoken.platform.gb10 import GB10_SAFETY_RESERVE_BYTES, GB10Snapshot
 from sparklab.catalog import ModelRecipe
 from sparklab.paths import prepared_path, source_path, state_root
+from sparklab.platform import GB10_SAFETY_RESERVE_BYTES, GB10Snapshot
 
 
 @dataclass(frozen=True)

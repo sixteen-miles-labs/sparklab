@@ -287,7 +287,7 @@ def summarize(
             "revision": model_recipe.revision,
             "intended_tier": model_recipe.intended_tier,
             "status_at_run": model_recipe.status,
-            "runtime_args": list(model_recipe.runtime_args),
+            "deployment": model_recipe.deployment.to_dict(),
         }
     summary = {
         "kind": "summary",

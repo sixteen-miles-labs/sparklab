@@ -41,8 +41,9 @@ open.
 The current machine work is deliberately serial to preserve NVMe and unified
 memory headroom:
 
-1. Qwen3.8-Flash-Next is complete: its text-only FTW/NVMe recipe earned Frontier
-   certification in `GB10-QWEN38-FRONTIER-001`.
+1. Qwen3.8-Flash-Next 0.4.0 is the Fast-layer target. Its 0.3.0 text-only FTW/NVMe
+   recipe earned historical Frontier certification in `GB10-QWEN38-FRONTIER-001`,
+   but the new target remains Preview until it passes the stricter Fast gate.
 2. Finish the pinned GLM-5.3-Flash acquisition, convert FTW, and validate the new
    text runtime against the complete checkpoint. The implementation now includes
    KDA, NoPE MLA/KPool, four-stream mHC, FP32-scaled block FP8, and NVMe experts;
@@ -285,10 +286,9 @@ Target: Week 0-1
 - Freeze new non-GB10 optimization work.
 - Record the current DeepSeek V4 GB10 result as baseline `GB10-BASELINE-001`.
 - Define a standard benchmark prompt set and artifact schema.
-- Confirm the target lineup: Qwen3.6-35B-A3B-NVFP4 for Fast,
-  Qwen3.8-Flash-Next and GLM-5.3-Flash for Frontier, DeepSeek-V4-Flash-0731 as a
-  measured comparison, GLM-5.2-NVFP4 as the Frontier fallback, and Kimi K3 as
-  the research target.
+- Confirm the primary lineup: Qwen3.8-Flash-Next for Fast, GLM-5.3-Flash and
+  DeepSeek-V4-Flash-0731 for Frontier, and Kimi K3 for Research. Retain
+  Qwen3.6-35B-A3B-NVFP4 and GLM-5.2-NVFP4 only as Experimental fallbacks.
 
 #### Exit gate
 
@@ -344,7 +344,7 @@ Target: Week 3-7
 - Repeated 30-minute runs show no swap growth, CUDA OOM, or unbounded page-cache growth.
 - Startup explains every material allocation and the selected execution policy.
 
-### Stage 3: Optimize the daily-use frontier tier
+### Stage 3: Optimize the daily-use Fast and Frontier tiers
 
 Target: Week 5-10
 
@@ -356,9 +356,9 @@ Target: Week 5-10
   admission on the built-in NVMe.
 - Tune MXFP4 and NVFP4 kernels specifically for SM121.
 - Add long-running agent traces, repeated-prefix traces, and cold/warm prompt suites.
-- Certify Qwen3.6-35B-A3B-NVFP4 for Fast and GLM-5.3-Flash for Frontier;
-  preserve Qwen3.8-Flash-Next's existing Frontier certification and substitute
-  GLM-5.2-NVFP4 if 5.3 misses its gate.
+- Certify Qwen3.8-Flash-Next 0.4.0 for Fast and GLM-5.3-Flash plus DeepSeek V4
+  for Frontier. Preserve Qwen3.8 0.3.0's evidence as historical Frontier evidence;
+  do not transfer it to the Fast recipe.
 - Validate reasoning and tool-call parsers with real coding-agent sessions.
 
 #### Initial performance objectives
@@ -542,10 +542,10 @@ its recipe cannot be reproduced, or a better model occupies the same product rol
 
 | Intended tier | Candidate | GB10 rationale | Admission status |
 |---|---|---|---|
-| Fast | [Qwen3.6-35B-A3B-NVFP4](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | Native low precision, about 3B active parameters, existing model implementation | Fast certification candidate |
-| Frontier | [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | 125B language-model parameters with 6B active, plus a 51B n-gram embedding and 4B MTP; the certified NVFP4/NVMe recipe sustains 12.51 tok/s with exact 64K context | Certified for text inference by `GB10-QWEN38-FRONTIER-001`; multimodal input remains out of scope |
+| Fast | [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | 125B language-model parameters with 6B active, plus a 51B n-gram embedding and 4B MTP; 0.3.0 established a 12.51 tok/s Frontier baseline | Version 0.4.0 is Preview until the Fast throughput and no-stall gates pass |
 | Frontier | [DeepSeek-V4-Flash-0731](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | Strong coding/reasoning story and an existing reproducible GB10 result | Baseline proven; Frontier recipe not yet productized |
 | Frontier | [GLM-5.3-Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 320B total and 18B active parameters, native multimodality, FP8 weights, and hybrid sparse/linear attention | Text architecture implemented; Experimental until the complete checkpoint and GB10 gates pass; multimodality remains separate |
+| Fast fallback | [Qwen3.6-35B-A3B-NVFP4](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | Native low precision, about 3B active parameters, existing model implementation | Experimental fallback outside the primary lineup |
 | Frontier fallback | [GLM-5.2-NVFP4](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | Existing implementation, NVIDIA-format checkpoint, and lower enablement risk | Certification candidate retained until GLM-5.3-Flash passes |
 | Research | [Kimi K3](https://huggingface.co/moonshotai/Kimi-K3) | 2.8T flagship that demonstrates inference beyond physical memory | Architecture and performance work required |
 
@@ -554,24 +554,22 @@ its recipe cannot be reproduced, or a better model occupies the same product rol
 The planned launch lineup is:
 
 ```text
-Fast       Qwen3.6-35B-A3B-NVFP4
-Frontier   Qwen3.8-Flash-Next
+Fast       Qwen3.8-Flash-Next
 Frontier   GLM-5.3-Flash
+Frontier   DeepSeek-V4-Flash-0731
 Research   Kimi K3
 ```
 
-These labels are target product roles, not certification claims. Each checkpoint keeps
-**Research** admission status until its complete checkpoint recipe passes the required GB10
-gate. In particular:
+These labels are target product roles, not certification claims. Each recipe keeps its
+independent Certified, Preview, or Experimental admission status until its complete
+checkpoint passes the required GB10 gate. In particular:
 
-- **Qwen3.6-35B-A3B-NVFP4** is the first Fast certification target because its existing
-  implementation, native low precision, and approximately 3B active parameters give it the
-  shortest path to the Fast latency and stability gates.
-- **Qwen3.8-Flash-Next** is the first certified Frontier recipe. Its text-only NVFP4/NVMe
+- **Qwen3.8-Flash-Next** is the primary Fast target. Its 0.3.0 text-only NVFP4/NVMe
   result records 12.51 tok/s, 0.870 s warm TTFT, exact 64K recall, and an uninterrupted
-  60.50-minute endurance run. It remains outside Fast because it misses the 20 tok/s gate.
-- **GLM-5.3-Flash** is the desired second Frontier model. If it misses the 1.0 schedule or
-  any Frontier gate, ship **GLM-5.2-NVFP4** in its place and keep 5.3 in Research.
+  60.50-minute endurance run. Version 0.4.0 remains Preview until it reaches the 20 tok/s
+  floor with no normal-operation NVMe stalls.
+- **GLM-5.3-Flash** and **DeepSeek V4 Flash** are the two Frontier targets. Each must
+  independently pass the complete Frontier gate.
 - **Kimi K3** is the flagship beyond-memory demonstration and does not block the daily-use
   1.0 release. It stays Research unless it independently satisfies every Frontier gate.
 
@@ -603,10 +601,9 @@ native multimodal path remains a separate later milestone. Keep GLM-5.2-NVFP4 as
 release fallback until 5.3 passes the complete Frontier gate.
 
 The release still requires one Fast and two Frontier recipes to pass rather than merely
-exist in the target lineup. Qwen3.8 now fills the first Frontier slot. If GLM-5.3 is not
-ready, GLM-5.2 is the default substitution. If Qwen3.6 misses the Fast gate, Stage 0 must
-select a replacement from the fallback queue using benchmark evidence rather than model
-popularity.
+exist in the target lineup. Qwen3.8 is the Fast target; GLM-5.3 and DeepSeek V4 fill the
+Frontier slots. Qwen3.6 and GLM-5.2 remain fallbacks and cannot replace a primary target
+without benchmark evidence and an explicit portfolio decision.
 
 ### Stage dependency and release order
 

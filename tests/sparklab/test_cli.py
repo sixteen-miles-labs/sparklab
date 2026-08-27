@@ -11,9 +11,12 @@ def test_help_and_version_are_spark_lab_branded(capsys):
     assert "usage: sparklab" in help_text
     assert "NVIDIA GB10" in help_text
     assert "legacy `ft`" in help_text
+    assert "FreeToken" not in help_text
 
     assert cli.main(["--version"]) == 0
-    assert "Spark Lab" in capsys.readouterr().out
+    version = capsys.readouterr().out
+    assert "Spark Lab" in version
+    assert "FreeToken" not in version
 
 
 def test_models_json_exposes_tier_and_admission_status(capsys):
@@ -22,6 +25,18 @@ def test_models_json_exposes_tier_and_admission_status(capsys):
     assert payload["product"] == "Spark Lab" and payload["platform"] == "gb10"
     assert [recipe["slug"] for recipe in payload["recipes"]] == ["kimi-k3"]
     assert payload["recipes"][0]["status"] == "experimental"
+
+
+def test_models_can_select_primary_portfolio(capsys):
+    assert cli.main(["models", "--role", "primary", "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert [recipe["slug"] for recipe in payload["recipes"]] == [
+        "qwen3.8-flash-next",
+        "deepseek-v4",
+        "glm-5.3-flash",
+        "kimi-k3",
+    ]
+    assert all(recipe["portfolio_role"] == "primary" for recipe in payload["recipes"])
 
 
 def test_legacy_engine_command_is_delegated_unchanged(monkeypatch):
