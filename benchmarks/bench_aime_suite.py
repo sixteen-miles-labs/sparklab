@@ -17,6 +17,7 @@ import statistics
 import subprocess
 import tempfile
 import threading
+import time
 from pathlib import Path
 
 from bench_decode_moe import (
@@ -236,7 +237,9 @@ def measure_request(args, origin: str, model_id: str, index: int, row: dict, sam
     return measured
 
 
-def summarize(args, results: list[dict], sampling: dict) -> dict:
+def summarize(
+    args, results: list[dict], sampling: dict, stability: dict | None = None
+) -> dict:
     tps = [row["decode_tok_s"] for row in results if row["decode_steps"]]
     ttft = [row["ttft_ms"] for row in results]
     total_steps = sum(row["decode_steps"] for row in results)
@@ -335,7 +338,44 @@ def summarize(args, results: list[dict], sampling: dict) -> dict:
         },
         "provenance": runtime_provenance(),
     }
+    if stability is not None:
+        summary["stability"] = stability
     return summary
+
+
+def swap_used_bytes() -> int:
+    values = {}
+    for line in Path("/proc/meminfo").read_text(encoding="utf-8").splitlines():
+        key, value = line.split(":", 1)
+        if key in {"SwapTotal", "SwapFree"}:
+            values[key] = int(value.strip().split()[0]) * 1024
+    return max(0, values.get("SwapTotal", 0) - values.get("SwapFree", 0))
+
+
+def stability_summary(
+    *, log_path: str, serving_seconds: float, swap_before: int,
+    resumed_requests: int, completed_requests: int, selected_requests: int,
+) -> dict:
+    swap_after = swap_used_bytes()
+    log = Path(log_path).read_text(encoding="utf-8", errors="replace")
+    oom_patterns = (
+        r"CUDA out of memory",
+        r"torch\.OutOfMemoryError",
+        r"CUDNN_STATUS_ALLOC_FAILED",
+    )
+    return {
+        "duration_minutes": serving_seconds / 60,
+        "swap_start_bytes": swap_before,
+        "swap_end_bytes": swap_after,
+        "swap_growth_bytes": max(0, swap_after - swap_before),
+        "oom_count": sum(len(re.findall(pattern, log, re.I)) for pattern in oom_patterns),
+        "service_restarts": 0,
+        "completed_requests": completed_requests,
+        "uninterrupted": resumed_requests == 0 and completed_requests == selected_requests,
+        "eligible_for_endurance_gate": (
+            resumed_requests == 0 and completed_requests == selected_requests
+        ),
+    }
 
 
 def main() -> int:
@@ -343,6 +383,7 @@ def main() -> int:
     rows = load_rows(args.aime)
     selected = select_problems(args.problems, len(rows))
     results = existing_results(args.json_out)
+    resumed_requests = len(results)
     completed = {row["problem"] for row in results}
     remaining = [index for index in selected if index not in completed]
     if completed - set(selected):
@@ -360,6 +401,7 @@ def main() -> int:
     origin = f"http://127.0.0.1:{port}"
     fd, log_path = tempfile.mkstemp(prefix="bench-aime-suite-", suffix=".log")
     cmd = serve_cmd(args, args.backend, port)
+    swap_before = swap_used_bytes()
     print(
         f"[suite] {len(selected)} AIME25 problems ({len(remaining)} remaining), "
         f"max_tokens={args.decode}, "
@@ -374,6 +416,7 @@ def main() -> int:
         pump.start()
         try:
             wait_ready(origin, proc, log_path, args.server_timeout)
+            serving_started = time.monotonic()
             model_id = get_json(f"{origin}/v1/models")["data"][0]["id"]
             for position, index in enumerate(remaining, len(completed) + 1):
                 measured = measure_request(args, origin, model_id, index, rows[index], sampling)
@@ -386,10 +429,19 @@ def main() -> int:
                     f"ttft={measured['ttft_ms'] / 1000:.1f}s",
                     flush=True,
                 )
+            serving_seconds = time.monotonic() - serving_started
         finally:
             stop_server(proc)
             pump.join(timeout=10)
-    summary = summarize(args, results, sampling)
+    stability = stability_summary(
+        log_path=log_path,
+        serving_seconds=serving_seconds,
+        swap_before=swap_before,
+        resumed_requests=resumed_requests,
+        completed_requests=len(results),
+        selected_requests=len(selected),
+    )
+    summary = summarize(args, results, sampling, stability)
     summary["server_log"] = log_path
     append_jsonl(args.json_out, summary)
     print(json.dumps(summary, indent=2), flush=True)
