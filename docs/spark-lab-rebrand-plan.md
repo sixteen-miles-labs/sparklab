@@ -1,10 +1,10 @@
 # Spark Lab Rebrand and GB10 Execution Plan
 
 Status: implementation started
-Date: 2026-08-26
+Date: 2026-08-27
 Scope: NVIDIA GB10 only
 
-## Implementation status — 2026-08-26
+## Implementation status — 2026-08-27
 
 The first compatibility-preserving product slice has landed in the worktree:
 
@@ -17,11 +17,11 @@ The first compatibility-preserving product slice has landed in the worktree:
 - `sparklab plan`, `sparklab pull`, and `sparklab run` provide fail-closed
   artifact planning, immutable resumable acquisition, optional FTW preparation,
   and recipe-owned launch arguments;
-- Qwen3.8-Flash-Next now has a text runtime for Hyper-Connections, PLE with a
-  disk-backed 95 GiB n-gram table, hybrid GDN/QSA attention, stacked BF16
-  experts, and bounded-memory FTW conversion. Its four-layer GB10 dummy-weight
-  architecture smoke test passes; full-checkpoint correctness and performance
-  gates remain open;
+- Qwen3.8-Flash-Next now has a certified text runtime for Hyper-Connections, PLE
+  with a disk-backed 95 GiB n-gram table, hybrid GDN/QSA attention, stacked BF16
+  experts, and bounded-memory FTW conversion. The full checkpoint passed output,
+  capability, exact 64K-context, performance, and 60-minute endurance gates in
+  `GB10-QWEN38-FRONTIER-001`;
 - `SPARKLAB_*` values take precedence in the central environment configuration,
   while corresponding `FREETOKEN_*` values remain fallbacks;
 - new bandwidth profiles write under `~/.cache/sparklab`, with read-only discovery
@@ -33,7 +33,8 @@ The first compatibility-preserving product slice has landed in the worktree:
 
 This does not complete Stage 1 or the public rebrand gate. In particular, the
 ARM64 release artifact, daemon state migration, visual identity, calibrated
-runtime-memory measurements, and all model certification gates remain open.
+runtime-memory measurements, and the remaining model certification gates remain
+open.
 
 ### Active certification sequence
 
@@ -284,9 +285,10 @@ Target: Week 0-1
 - Freeze new non-GB10 optimization work.
 - Record the current DeepSeek V4 GB10 result as baseline `GB10-BASELINE-001`.
 - Define a standard benchmark prompt set and artifact schema.
-- Confirm the target lineup: Qwen3.6-35B-A3B-NVFP4 for Fast, DeepSeek-V4-Flash-0731 and
-  GLM-5.3-Flash for Frontier, GLM-5.2-NVFP4 as the Frontier fallback, Qwen3.8-Flash-Next as
-  the post-1.0 Fast priority, and Kimi K3 as the research target.
+- Confirm the target lineup: Qwen3.6-35B-A3B-NVFP4 for Fast,
+  Qwen3.8-Flash-Next and GLM-5.3-Flash for Frontier, DeepSeek-V4-Flash-0731 as a
+  measured comparison, GLM-5.2-NVFP4 as the Frontier fallback, and Kimi K3 as
+  the research target.
 
 #### Exit gate
 
@@ -354,8 +356,9 @@ Target: Week 5-10
   admission on the built-in NVMe.
 - Tune MXFP4 and NVFP4 kernels specifically for SM121.
 - Add long-running agent traces, repeated-prefix traces, and cold/warm prompt suites.
-- Certify Qwen3.6-35B-A3B-NVFP4 for Fast and GLM-5.3-Flash for Frontier; substitute
-  GLM-5.2-NVFP4 if 5.3 misses its gate, and keep Qwen3.8-Flash-Next in the next-Fast track.
+- Certify Qwen3.6-35B-A3B-NVFP4 for Fast and GLM-5.3-Flash for Frontier;
+  preserve Qwen3.8-Flash-Next's existing Frontier certification and substitute
+  GLM-5.2-NVFP4 if 5.3 misses its gate.
 - Validate reasoning and tool-call parsers with real coding-agent sessions.
 
 #### Initial performance objectives
