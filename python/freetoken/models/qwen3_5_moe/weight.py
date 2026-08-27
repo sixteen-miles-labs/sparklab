@@ -911,11 +911,12 @@ def _build_fp8_expert_banks(
 
     B = 128
     L, E, H, I, dense = _moe_dims(config)
+    scale_dtype = getattr(torch, getattr(config, "fp8_block_scale_dtype", "bfloat16"))
     specs = {
         "gate_up": ((E, 2 * I, H), FP8),
-        "gate_up_scale": ((E, 2 * I // B, H // B), torch.bfloat16),
+        "gate_up_scale": ((E, 2 * I // B, H // B), scale_dtype),
         "down": ((E, H, I), FP8),
-        "down_scale": ((E, H // B, I // B), torch.bfloat16),
+        "down_scale": ((E, H // B, I // B), scale_dtype),
     }
     hb = None
     if pin:
@@ -945,6 +946,11 @@ def _build_fp8_expert_banks(
         if m is None:
             return None
         li, e = int(m["layer"]) - dense, int(m["expert"])
+        # Some wrapper checkpoints append their MTP decoder as
+        # ``model.language_model.layers.<num_hidden_layers>`` instead of under an
+        # ``mtp.`` prefix (GLM-5.3). It is outside the served text tower.
+        if li < 0 or li >= L:
+            return None
         proj, kind = m["proj"], m["kind"]
         if kind == "weight":
             (gate_up[li][e, :I] if proj == "gate" else
@@ -953,6 +959,10 @@ def _build_fp8_expert_banks(
             (gate_up_scale[li][e, : I // B] if proj == "gate" else
              gate_up_scale[li][e, I // B:] if proj == "up" else down_scale[li][e]).copy_(t)
         return li
+
+    def is_served_expert(raw_name: str) -> bool:
+        match = _FP8_EXPERT_RE.match(raw_name)
+        return match is not None and dense <= int(match["layer"]) < dense + L
 
     if parallel is None:
         parallel = experts_scattered(model_path)
@@ -964,7 +974,7 @@ def _build_fp8_expert_banks(
         tracker = LayerCompletionTracker(E * 6, hb, sink) if sink is not None else None
         if parallel:
             for raw_name, t in iter_expert_tensors_parallel(
-                model_path, lambda n: _FP8_EXPERT_RE.match(n) is not None, workers=workers, chunk=chunk
+                model_path, is_served_expert, workers=workers, chunk=chunk
             ):
                 li = place(raw_name, t)
                 if tracker is not None and li is not None:

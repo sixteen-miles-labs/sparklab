@@ -132,6 +132,17 @@ _MODEL_REGISTRY: dict[str, ModelSpec] = {
         "freetoken.models.glm_moe_dsa",
         "GlmMoeDsaForCausalLM",
     ),
+    # GLM-5.3-Flash: text-only tower of the multimodal wrapper.  It alternates
+    # KDA linear attention with NoPE MLA + KPool DSA, carries four mHC residual
+    # streams, and serves the block-FP8 MoE checkpoint through NVMe offload.
+    "Glm5NextForConditionalGeneration": ModelSpec(
+        "freetoken.models.glm5_next",
+        "Glm5NextForCausalLM",
+    ),
+    "Glm5NextForCausalLM": ModelSpec(
+        "freetoken.models.glm5_next",
+        "Glm5NextForCausalLM",
+    ),
     # Kimi K3: text-only tower for the multimodal wrapper.  The 93-layer decoder
     # alternates KDA linear attention with gated NoPE MLA and uses Attention
     # Residuals plus latent MXFP4 MoE experts.

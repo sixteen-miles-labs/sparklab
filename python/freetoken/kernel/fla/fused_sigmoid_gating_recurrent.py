@@ -53,6 +53,7 @@ def fused_sigmoid_gating_delta_rule_update_kernel(
     USE_QK_L2NORM_IN_KERNEL: tl.constexpr,
     IS_VARLEN: tl.constexpr,
     IS_KDA: tl.constexpr,
+    KDA_A_LOG_PER_HEAD: tl.constexpr,
     HAS_GATE_LOWER_BOUND: tl.constexpr,
     gate_lower_bound,
     # Optional flags for target_verify support (default False for decode)
@@ -89,10 +90,9 @@ def fused_sigmoid_gating_delta_rule_update_kernel(
 
     # Gating computation pointers
     if IS_KDA:
-        # Released Kimi K3 checkpoints store A_log per key coordinate [K]
-        # (128 values), shared by all heads.  GDN keeps the original per-value-
-        # head scalar layout [HV].
-        p_A_log = A_log + o_k
+        # Kimi K3 stores A_log per key coordinate [K], shared by all heads;
+        # GLM-5.3 stores one scalar per KDA head [H].
+        p_A_log = A_log + (i_hv if KDA_A_LOG_PER_HEAD else o_k)
         p_a = a + bos * stride_a + i_hv * K + o_k
         p_dt_bias = dt_bias + i_hv * K + o_k
     else:
@@ -164,7 +164,10 @@ def fused_sigmoid_gating_delta_rule_update_kernel(
         # Compute sigmoid gating
         # Load gating parameters
         if IS_KDA:
-            b_A_log = tl.load(p_A_log, mask=mask_k, other=0).to(tl.float32)
+            if KDA_A_LOG_PER_HEAD:
+                b_A_log = tl.load(p_A_log).to(tl.float32)
+            else:
+                b_A_log = tl.load(p_A_log, mask=mask_k, other=0).to(tl.float32)
             b_a = tl.load(p_a, mask=mask_k, other=0).to(tl.float32)
             b_dt_bias = tl.load(p_dt_bias, mask=mask_k, other=0).to(tl.float32)
         else:
@@ -269,6 +272,7 @@ def fused_sigmoid_gating_delta_rule_update(
     use_qk_l2norm_in_kernel: bool = False,
     cu_seqlens: Optional[torch.Tensor] = None,
     is_kda: bool = False,
+    kda_a_log_per_head: bool = False,
     lower_bound: float | None = None,
     # Optional parameters for target_verify support
     disable_state_update: bool = False,
@@ -372,6 +376,7 @@ def fused_sigmoid_gating_delta_rule_update(
         USE_QK_L2NORM_IN_KERNEL=use_qk_l2norm_in_kernel,
         IS_VARLEN=cu_seqlens is not None,
         IS_KDA=is_kda,
+        KDA_A_LOG_PER_HEAD=kda_a_log_per_head,
         HAS_GATE_LOWER_BOUND=lower_bound is not None,
         gate_lower_bound=0.0 if lower_bound is None else lower_bound,
         DISABLE_STATE_UPDATE=disable_state_update,

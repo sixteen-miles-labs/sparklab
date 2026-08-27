@@ -38,6 +38,7 @@ class MoELayer(BaseOP):
         apply_router_weight_on_input: bool = False,
         allocate_experts: bool = True,
         weight_format: str = "bf16",
+        weight_scale_dtype: torch.dtype = torch.bfloat16,
     ):
         super().__init__()
 
@@ -53,6 +54,7 @@ class MoELayer(BaseOP):
         self.activation = activation
         self.apply_router_weight_on_input = apply_router_weight_on_input
         self.weight_format = weight_format
+        self.weight_scale_dtype = weight_scale_dtype
         intermediate_size_per_partition = div_even(intermediate_size, tp_size)
         if allocate_experts:
             self._alloc_resident_experts(intermediate_size_per_partition)
@@ -72,10 +74,10 @@ class MoELayer(BaseOP):
             n, i, h = self.num_experts, self.intermediate_size, self.hidden_size
             self.gate_up_proj = torch.empty(n, 2 * i, h, dtype=FP8)
             self.gate_up_scale_inv = torch.empty(
-                n, 2 * i // blk, h // blk, dtype=torch.bfloat16
+                n, 2 * i // blk, h // blk, dtype=self.weight_scale_dtype
             )
             self.down_proj = torch.empty(n, h, i, dtype=FP8)
-            self.down_scale_inv = torch.empty(n, h // blk, i // blk, dtype=torch.bfloat16)
+            self.down_scale_inv = torch.empty(n, h // blk, i // blk, dtype=self.weight_scale_dtype)
             return
         assert self.weight_format == "bf16", (
             f"no resident expert allocation for weight_format {self.weight_format!r}"
@@ -134,10 +136,12 @@ class MoELayer(BaseOP):
                     hidden_states, self.gate_up_proj, self.gate_up_scale_inv,
                     self.down_proj, self.down_scale_inv,
                     topk_weights, topk_ids, self.num_experts,
+                    swiglu_limit=getattr(self, "swiglu_limit", None),
                 )
             return fused_experts_decode_fp8_block(
                 hidden_states, self.gate_up_proj, self.gate_up_scale_inv,
                 self.down_proj, self.down_scale_inv, topk_weights, topk_ids,
+                swiglu_limit=getattr(self, "swiglu_limit", None),
             )
         assert self.weight_format == "bf16", (
             f"no resident expert kernel for weight_format {self.weight_format!r}"
@@ -573,10 +577,12 @@ class OffloadMoELayer(MoELayer):
                     hidden_states, gate_up, gate_up_scale, down, down_scale,
                     topk_weights, topk_ids, n, self.activation,
                     self.apply_router_weight_on_input,
+                    getattr(self, "swiglu_limit", None),
                 )
             return fused_experts_decode_fp8_block(
                 hidden_states, gate_up, gate_up_scale, down, down_scale,
                 topk_weights, topk_ids, self.activation, self.apply_router_weight_on_input,
+                getattr(self, "swiglu_limit", None),
             )
         if fmt == "q4_0":
             # Native GGUF Q4_0 experts: dequant-in-kernel grouped GEMV (MMVQ) over the
@@ -687,6 +693,8 @@ def make_moe_layer(
         kwargs["layer_id"] = layer_id
     else:
         kwargs["weight_format"] = weight_format
+        scale_name = getattr(config, "fp8_block_scale_dtype", "bfloat16")
+        kwargs["weight_scale_dtype"] = getattr(torch, scale_name)
     layer = layer_cls(**kwargs)
     for name, value in (extra_attrs or {}).items():
         setattr(layer, name, value)

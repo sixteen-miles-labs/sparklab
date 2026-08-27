@@ -33,7 +33,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | Frontier | `qwen3.8-flash-next` | [Qwen/Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | Certified; text-only NVFP4/NVMe recipe, 12.51 tok/s, 0.870 s warm TTFT, exact 64K context, and 60.50-minute endurance |
 | Frontier | `deepseek-v4` | [deepseek-ai/DeepSeek-V4-Flash-0731](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | Preview; measured baseline, product gates still open |
 | Frontier | `glm-5.2` | [nvidia/GLM-5.2-NVFP4](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | Experimental; fallback retained in the catalog, not the current enablement priority |
-| Frontier | `glm-5.3-flash` | [zai-org/GLM-5.3-Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | Experimental; desired second Frontier model |
+| Frontier | `glm-5.3-flash` | [zai-org/GLM-5.3-Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | Experimental; text runtime implemented, complete-checkpoint GB10 validation in progress |
 | Research | `kimi-k3` | [moonshotai/Kimi-K3](https://huggingface.co/moonshotai/Kimi-K3) | Experimental; text architecture implemented, full run pending |
 
 Qwen3.8-Flash-Next is the first Certified recipe. The evidence records a 3/5

@@ -233,6 +233,9 @@ class ModelConfig:
     nvfp4_backend: str = "triton"
     # Block size (out, in) for block-wise weight quantization (fp8_block: (128, 128)).
     weight_block_size: tuple[int, int] | None = None
+    # Storage dtype of block-FP8 ``weight_scale_inv`` tensors. Qwen uses bf16;
+    # GLM-5.3 ships fp32 scales and must retain them through resident/offload banks.
+    fp8_block_scale_dtype: str = "bfloat16"
     # Weight quantization of the *dense* attention / GatedDeltaNet projections (separate
     # from the routed experts above). "fp8_pertensor" keeps them fp8-e4m3 + a per-output-row
     # scale and runs a W8A16 kernel (modelopt MIXED_PRECISION); "none" leaves them bf16
@@ -299,6 +302,11 @@ class ModelConfig:
     # Residuals, latent-MoE width, and SiTU activation constants.  Kept opaque to
     # model-agnostic engine code, like glm_dsa_args and m3_args above.
     kimi_k3_args: Any | None = None
+    # GLM-5.3-Flash text-tower payload (Glm5NextArgs): hybrid KDA/NoPE-MLA,
+    # KPool sparse indexing, and manifold-constrained Hyper-Connections.  This is
+    # deliberately separate from glm_dsa_args: GLM-5.2 uses token-granular
+    # IndexShare and a conventional single residual stream, while GLM-5.3 does not.
+    glm5_next_args: Any | None = None
     # Qwen4-Exp text-tower payload: QSA, Hyper-Connection and PLE geometry.
     qwen4_exp_args: Any | None = None
     # Generic execution-path capability flags (set by a model's parse_config) so the engine and

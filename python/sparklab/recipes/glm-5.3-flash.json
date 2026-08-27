@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "recipe_version": "0.1.0",
+  "recipe_version": "0.2.0",
   "slug": "glm-5.3-flash",
   "name": "GLM-5.3 Flash",
   "model": "zai-org/GLM-5.3-Flash",
@@ -10,13 +10,30 @@
   "minimum_free_bytes": 794113864816,
   "intended_tier": "frontier",
   "status": "experimental",
-  "implementation": "planned",
+  "implementation": "text-architecture",
   "checkpoint_format": "ftw-fp8",
   "execution_policy": "nvme-moe",
   "profile": "quality",
-  "description": "Desired second Frontier model after text-only GB10 enablement.",
+  "runtime_args": [
+    "--attention-backend", "dsa",
+    "--moe-backend", "offload",
+    "--moe-storage", "disk",
+    "--moe-host-cache-gb", "2",
+    "--moe-cache-auto",
+    "--moe-prefill-sparse-max-tokens", "512",
+    "--moe-prefill-hit-d2d",
+    "--cuda-graph-max-bs", "0",
+    "--cache-type", "naive",
+    "--page-size", "1",
+    "--max-running-req", "1"
+  ],
+  "runtime_memory": {
+    "total_bytes": 106837311488
+  },
+  "description": "Text-only GLM-5.3-Flash Frontier candidate with native KDA, NoPE MLA/KPool, mHC, and FP8 NVMe-MoE serving.",
   "limitations": [
-    "The glm5_next text architecture, KDA/mHC path, and GB10 recipe are not implemented.",
+    "The text architecture is implemented but complete-checkpoint conversion, output parity, performance, and endurance gates are still in progress.",
+    "KPool sparse selection is currently eager and CUDA graph capture is disabled.",
     "Multimodal certification is a separate later gate."
   ]
 }

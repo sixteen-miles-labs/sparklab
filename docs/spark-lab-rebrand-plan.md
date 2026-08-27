@@ -40,12 +40,13 @@ runtime-memory measurements, and all model certification gates remain open.
 The current machine work is deliberately serial to preserve NVMe and unified
 memory headroom:
 
-1. Finish the pinned Qwen3.8-Flash-Next source, prepare FTW, validate full-model
-   output, and assign the tier earned by the GB10 gates.
-2. Implement and certify text-only GLM-5.3-Flash. GLM-5.2 remains a catalog
-   fallback, but its local source/prepared artifacts are not retained during
-   this sequence.
-3. Resume the complete Kimi K3 experiment only after Qwen and GLM-5.3 finish.
+1. Qwen3.8-Flash-Next is complete: its text-only FTW/NVMe recipe earned Frontier
+   certification in `GB10-QWEN38-FRONTIER-001`.
+2. Finish the pinned GLM-5.3-Flash acquisition, convert FTW, and validate the new
+   text runtime against the complete checkpoint. The implementation now includes
+   KDA, NoPE MLA/KPool, four-stream mHC, FP32-scaled block FP8, and NVMe experts;
+   certification still requires measured correctness, performance, and endurance.
+3. Resume the complete Kimi K3 experiment only after GLM-5.3 finishes.
 
 No dummy, reduced-layer, or import-only result can promote a recipe beyond
 Experimental. Only complete-checkpoint evidence can earn Preview or Certified.
@@ -541,7 +542,7 @@ its recipe cannot be reproduced, or a better model occupies the same product rol
 | Fast | [Qwen3.6-35B-A3B-NVFP4](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | Native low precision, about 3B active parameters, existing model implementation | Fast certification candidate |
 | Frontier | [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | 125B language-model parameters with 6B active, plus a 51B n-gram embedding and 4B MTP; the certified NVFP4/NVMe recipe sustains 12.51 tok/s with exact 64K context | Certified for text inference by `GB10-QWEN38-FRONTIER-001`; multimodal input remains out of scope |
 | Frontier | [DeepSeek-V4-Flash-0731](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | Strong coding/reasoning story and an existing reproducible GB10 result | Baseline proven; Frontier recipe not yet productized |
-| Frontier | [GLM-5.3-Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 320B total and 18B active parameters, native multimodality, FP8 weights, and hybrid sparse/linear attention | Research until `glm5_next`, multimodal input, and GB10 storage policy pass; intended Frontier candidate |
+| Frontier | [GLM-5.3-Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 320B total and 18B active parameters, native multimodality, FP8 weights, and hybrid sparse/linear attention | Text architecture implemented; Experimental until the complete checkpoint and GB10 gates pass; multimodality remains separate |
 | Frontier fallback | [GLM-5.2-NVFP4](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | Existing implementation, NVIDIA-format checkpoint, and lower enablement risk | Certification candidate retained until GLM-5.3-Flash passes |
 | Research | [Kimi K3](https://huggingface.co/moonshotai/Kimi-K3) | 2.8T flagship that demonstrates inference beyond physical memory | Architecture and performance work required |
 
@@ -573,8 +574,9 @@ gate. In particular:
 
 ### Active promotion queue
 
-1. **GLM-5.3-Flash text inference** is next. Implement `glm5_next`, KDA/mHC, FP8 loading,
-   and a bounded GB10 NVMe policy, then run the complete Frontier gate.
+1. **GLM-5.3-Flash text inference** is active. The `glm5_next` KDA/mHC/KPool runtime,
+   FP8 loader, and bounded NVMe recipe are implemented; finish acquisition and run the
+   complete checkpoint through parity, performance, context, and endurance gates.
 2. **GLM-5.3-Flash multimodality** follows text-only Frontier certification. Vision support
    must pass separate image preprocessing, memory, correctness, and agent-tool tests and
    cannot inherit the text recipe's certification.
@@ -592,9 +594,10 @@ Its five-problem AIME sample scored 3/5, with two reasoning-budget caps recorded
 explicit quality limitation.
 
 GLM-5.3-Flash supersedes GLM-5.2 as the desired Frontier candidate, but it does not inherit
-GLM-5.2's status. Its `glm5_next` architecture, hybrid linear/sparse attention, mHC, FP8
-format, and native multimodal path each require explicit implementation and validation.
-Keep GLM-5.2-NVFP4 as the release fallback until 5.3 passes the complete Frontier gate.
+GLM-5.2's status. Its text-only `glm5_next` architecture, hybrid linear/sparse attention,
+mHC, and FP8 format are implemented and now require complete-checkpoint validation. The
+native multimodal path remains a separate later milestone. Keep GLM-5.2-NVFP4 as the
+release fallback until 5.3 passes the complete Frontier gate.
 
 The release still requires one Fast and two Frontier recipes to pass rather than merely
 exist in the target lineup. Qwen3.8 now fills the first Frontier slot. If GLM-5.3 is not
