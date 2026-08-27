@@ -189,10 +189,13 @@ def measure_request(args, origin: str, model_id: str, index: int, row: dict, sam
     steps = max(0, completion - 1)
     decode_seconds = stamps[-1] - stamps[0] if len(stamps) >= 2 else 0.0
     gaps = [(b - a) * 1e3 for a, b in zip(stamps, stamps[1:])]
-    # Score only the visible final channel. Falling back is retained for models
-    # without a reasoning channel; a reasoning-capable model cannot receive credit
-    # for an answer it considered but did not present.
-    final_text = result["content_text"] or result["text"]
+    # Score only the visible final channel once a reasoning channel is present. A
+    # capped reasoning trace with no final content must not receive credit for an
+    # answer it merely considered. Models with no reasoning channel retain the
+    # combined-text fallback.
+    reasoning_seen = bool(result["reasoning_text"])
+    content_seen = bool(result["content_text"])
+    final_text = result["content_text"] if reasoning_seen else result["text"]
     answer = extract_answer(final_text)
     expected = str(row.get("answer", "")).strip()
     measured = {
@@ -212,7 +215,9 @@ def measure_request(args, origin: str, model_id: str, index: int, row: dict, sam
         "output_sha1": hashlib.sha1(result["text"].encode()).hexdigest()[:12],
         "finish_reason": result["finish_reason"],
         "ended_by_eos": result["finish_reason"] == "stop",
-        "reasoning_parser_ok": bool(result["reasoning_text"] and result["content_text"]),
+        "parser_ok": bool(reasoning_seen or content_seen),
+        "reasoning_channel_seen": reasoning_seen,
+        "content_channel_seen": content_seen,
         "vram_gib": after.get("vram_bytes", 0) / 2**30,
         "gpu_telemetry": gpu_telemetry,
     }
@@ -293,8 +298,8 @@ def summarize(
         "backend": args.backend,
         "problems": len(results),
         "correct": sum(row["correct"] for row in results),
-        "reasoning_parser_passes": sum(
-            row.get("reasoning_parser_ok", False) for row in results
+        "reasoning_channel_requests": sum(
+            row.get("reasoning_channel_seen", False) for row in results
         ),
         "accuracy": statistics.mean(row["correct"] for row in results),
         "sampling": sampling,
@@ -478,7 +483,7 @@ def main() -> int:
         selected_requests=len(selected),
         soak_requests=len(soak_results),
         parser_failures=sum(
-            not row.get("reasoning_parser_ok", False)
+            not row.get("parser_ok", False)
             for row in [*results, *soak_results]
         ),
     )
