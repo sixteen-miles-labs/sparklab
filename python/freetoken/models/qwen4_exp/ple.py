@@ -22,6 +22,12 @@ _M1 = 0xBF58476D1CE4E5B9
 _M2 = 0x94D049BB133111EB
 _SHARD_RE = re.compile(r"ngram_embedding\.shard_(\d+)\.weight$")
 _DEFAULT_ROW_CACHE_MB = 256
+_STORAGE_DTYPES = {
+    "BF16": (torch.bfloat16, 2),
+    "F8_E4M3": (torch.float8_e4m3fn, 1),
+    "bfloat16": (torch.bfloat16, 2),
+    "float8_e4m3fn": (torch.float8_e4m3fn, 1),
+}
 
 
 def _splitmix64(value: int) -> int:
@@ -114,7 +120,9 @@ class _CachedRowStore:
         if len(rows) != unique.numel():
             raise RuntimeError("Qwen4 n-gram row cache returned an incomplete lookup")
         payload = bytearray().join(rows)
-        table = torch.frombuffer(payload, dtype=torch.bfloat16).clone().view(-1, self.dim)
+        table = torch.frombuffer(payload, dtype=self.storage_dtype).clone().view(-1, self.dim)
+        if table.dtype != torch.bfloat16:
+            table = table.to(torch.bfloat16)
         return table.index_select(0, inverse).view(*ids.shape, self.dim)
 
 
@@ -138,7 +146,8 @@ class SafetensorNGramStore(_CachedRowStore):
                 f"found {[i for i, _, _ in parts]}"
             )
         self.dim = dim
-        self.row_bytes = dim * 2
+        storage_dtype = None
+        item_size = None
         self._parts: list[tuple[int, int, int]] = []  # fd, absolute data offset, rows
         self._fds: list[int] = []
         for _, name, path in parts:
@@ -147,13 +156,21 @@ class SafetensorNGramStore(_CachedRowStore):
             header_size = struct.unpack("<Q", os.pread(fd, 8, 0))[0]
             header = json.loads(os.pread(fd, header_size, 8))
             meta = header[name]
-            if meta["dtype"] != "BF16" or meta["shape"][1] != dim:
+            if meta["dtype"] not in _STORAGE_DTYPES or meta["shape"][1] != dim:
                 raise ValueError(f"unexpected Qwen4 n-gram tensor {name}: {meta}")
+            part_dtype, part_item_size = _STORAGE_DTYPES[meta["dtype"]]
+            if storage_dtype is None:
+                storage_dtype, item_size = part_dtype, part_item_size
+            elif storage_dtype != part_dtype:
+                raise ValueError("Qwen4 n-gram shards use inconsistent storage dtypes")
             begin, end = meta["data_offsets"]
             rows = int(meta["shape"][0])
-            if end - begin != rows * self.row_bytes:
+            if end - begin != rows * dim * part_item_size:
                 raise ValueError(f"non-contiguous Qwen4 n-gram tensor: {name}")
             self._parts.append((fd, 8 + header_size + begin, rows))
+        assert storage_dtype is not None and item_size is not None
+        self.storage_dtype = storage_dtype
+        self.row_bytes = dim * item_size
         self._starts = []
         total = 0
         for _, _, rows in self._parts:
@@ -194,7 +211,11 @@ class RawNGramStore(_CachedRowStore):
 
     def __init__(self, model_path: str, manifest: dict, dim: int):
         self.dim = dim
-        self.row_bytes = dim * 2
+        dtype_name = str(manifest.get("dtype", ""))
+        if dtype_name not in _STORAGE_DTYPES:
+            raise ValueError(f"unsupported Qwen4 FTW n-gram dtype: {dtype_name!r}")
+        self.storage_dtype, item_size = _STORAGE_DTYPES[dtype_name]
+        self.row_bytes = dim * item_size
         self.total_rows = int(manifest["rows"])
         if int(manifest["dim"]) != dim or int(manifest["nbytes"]) != self.total_rows * self.row_bytes:
             raise ValueError(f"invalid Qwen4 FTW n-gram manifest: {manifest}")

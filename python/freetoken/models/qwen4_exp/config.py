@@ -16,6 +16,36 @@ from freetoken.models.config import (
 from .args import load_args
 
 
+def _expert_quantization(hf_config: Any, text: Any) -> tuple[str, tuple[int, int] | None]:
+    """Return the routed-expert storage format declared by a Qwen4 checkpoint.
+
+    Qwen's official FP8 checkpoint puts the quantization descriptor on the wrapper config,
+    not ``text_config``. Only its routed experts and disk n-gram table are quantized; the
+    publisher's ``modules_to_not_convert`` list keeps the served dense tower in BF16.
+    Conversion-owned FTW-NVFP4 checkpoints instead record the explicit text-config override.
+    """
+    override = str(getattr(text, "freetoken_expert_quant", "none"))
+    if override != "none":
+        if override != "nvfp4":
+            raise ValueError(f"unsupported Qwen4 expert quantization: {override!r}")
+        return override, None
+
+    quant = getattr(hf_config, "quantization_config", None)
+    if quant is None:
+        return "none", None
+    get = quant.get if isinstance(quant, dict) else (lambda k, d=None: getattr(quant, k, d))
+    method = str(get("quant_method") or get("quant_algo") or "").lower()
+    block = get("weight_block_size")
+    if method == "fp8" and block:
+        block_size = tuple(int(value) for value in block)
+        if block_size != (128, 128):
+            raise ValueError(f"Qwen4 supports 128x128 block-FP8 only, got {block_size}")
+        return "fp8_block", block_size
+    if method:
+        raise ValueError(f"unsupported Qwen4 checkpoint quantization: {method!r}")
+    return "none", None
+
+
 def parse_config(hf_config: Any) -> ModelConfig:
     text = getattr(hf_config, "text_config", None) or hf_config
     real_layers = int(text.num_hidden_layers)
@@ -88,9 +118,7 @@ def parse_config(hf_config: Any) -> ModelConfig:
         ),
     )
 
-    expert_quant = str(getattr(text, "freetoken_expert_quant", "none"))
-    if expert_quant not in {"none", "nvfp4"}:
-        raise ValueError(f"unsupported Qwen4 expert quantization: {expert_quant!r}")
+    expert_quant, weight_block_size = _expert_quantization(hf_config, text)
 
     return ModelConfig(
         num_layers=num_layers,
@@ -117,6 +145,9 @@ def parse_config(hf_config: Any) -> ModelConfig:
         vision_config=None,
         image_token_id=getattr(hf_config, "image_token_id", None),
         expert_quant=expert_quant,
+        shared_expert_quant="none",
+        weight_block_size=weight_block_size,
+        fp8_block_scale_dtype="bfloat16",
         linear_state_snapshots=False,
         qwen4_exp_args=args,
     )

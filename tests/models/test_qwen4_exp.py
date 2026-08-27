@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import struct
 from types import SimpleNamespace
 
 import torch
@@ -13,6 +14,7 @@ from freetoken.models.qwen4_exp.hyper import GroupedPlusOneRMSNorm, Qwen4GatedRe
 from freetoken.models.qwen4_exp.ple import DiskNGramEmbedding, RawNGramStore
 from freetoken.models.qwen4_exp.weight import copy_external_artifacts
 from freetoken.models.qwen4_exp.weight import _iter_experts_layer_order
+from freetoken.models.qwen4_exp.weight import iter_weights
 
 
 def _config(layers: int = 8):
@@ -83,6 +85,20 @@ def test_config_accepts_conversion_owned_nvfp4_experts():
     source = _config()
     source.text_config.freetoken_expert_quant = "nvfp4"
     assert parse_config(source).expert_quant == "nvfp4"
+
+
+def test_config_detects_official_routed_only_block_fp8():
+    source = _config()
+    source.quantization_config = {
+        "quant_method": "fp8",
+        "activation_scheme": "dynamic",
+        "weight_block_size": [128, 128],
+    }
+    config = parse_config(source)
+    assert config.expert_quant == "fp8_block"
+    assert config.weight_block_size == (128, 128)
+    assert config.fp8_block_scale_dtype == "bfloat16"
+    assert config.shared_expert_quant == "none"
 
 
 def test_hyper_connection_matches_reference_equations():
@@ -165,6 +181,71 @@ def test_external_ngram_artifact_streams_exact_rows(tmp_path):
     torch.testing.assert_close(got, expected)
     torch.testing.assert_close(again, expected)
     assert reads == 3
+
+
+def test_external_ngram_artifact_preserves_official_fp8_payload(tmp_path):
+    source, out = tmp_path / "source", tmp_path / "out"
+    source.mkdir()
+    out.mkdir()
+    rows = [
+        torch.arange(12, dtype=torch.bfloat16).view(3, 4).to(torch.float8_e4m3fn),
+        (16 + torch.arange(8, dtype=torch.bfloat16)).view(2, 4).to(torch.float8_e4m3fn),
+    ]
+    weight_map = {}
+    source_payloads = []
+    for index, tensor in enumerate(rows):
+        name = f"model.language_model.layers.1.ple.ple_embedding.ngram_embedding.shard_{index}.weight"
+        filename = f"model-{index}.safetensors"
+        path = source / filename
+        save_file({name: tensor}, path)
+        weight_map[name] = filename
+        data = path.read_bytes()
+        header_size = struct.unpack("<Q", data[:8])[0]
+        meta = json.loads(data[8:8 + header_size])[name]
+        begin, end = meta["data_offsets"]
+        source_payloads.append(data[8 + header_size + begin:8 + header_size + end])
+    (source / "model.safetensors.index.json").write_text(
+        json.dumps({"weight_map": weight_map}), encoding="utf-8"
+    )
+    args = SimpleNamespace(
+        split_ngram_parts=2, ple_embed_dim=64, ngram_size=3, heads_per_ngram=8
+    )
+
+    copy_external_artifacts(str(source), str(out), SimpleNamespace(qwen4_exp_args=args))
+    manifest = json.loads((out / "qwen4_ngram.json").read_text(encoding="utf-8"))
+    assert manifest["dtype"] == "float8_e4m3fn"
+    assert manifest["nbytes"] == 20
+    assert (out / "qwen4_ngram.bin").read_bytes() == b"".join(source_payloads)
+    store = RawNGramStore(str(out), manifest, dim=4)
+    try:
+        got = store.lookup(torch.tensor([[4, 0, 2]]))
+    finally:
+        store.close()
+    expected = torch.stack((rows[1][1], rows[0][0], rows[0][2])).to(torch.bfloat16)
+    torch.testing.assert_close(got, expected.view(1, 3, 4), rtol=0, atol=0)
+
+
+def test_official_per_expert_fp8_tensors_do_not_enter_dense_loader(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "freetoken.models.qwen4_exp.weight.get_tp_info",
+        lambda: SimpleNamespace(size=1),
+    )
+    expert = "model.language_model.layers.0.mlp.experts.0.gate_proj"
+    tensors = {
+        "model.language_model.norm.weight": torch.ones(4, dtype=torch.bfloat16),
+        expert + ".weight": torch.ones(4, 4, dtype=torch.float8_e4m3fn),
+        expert + ".weight_scale_inv": torch.ones(1, 1, dtype=torch.bfloat16),
+    }
+    filename = "model.safetensors"
+    save_file(tensors, tmp_path / filename)
+    (tmp_path / "model.safetensors.index.json").write_text(
+        json.dumps({"weight_map": {name: filename for name in tensors}}), encoding="utf-8"
+    )
+    got = list(iter_weights(
+        str(tmp_path), torch.device("cpu"),
+        include_moe_experts=False, include_non_moe=True,
+    ))
+    assert [name for name, _ in got] == ["model.norm.weight"]
 
 
 def test_expert_reader_pairs_layers_regardless_of_index_order(tmp_path):

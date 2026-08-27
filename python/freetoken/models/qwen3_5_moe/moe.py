@@ -22,12 +22,15 @@ class _SharedExpert(BaseOP):
     """Always-present shared SwiGLU expert of width ``shared_expert_intermediate_size``."""
 
     def __init__(self, config: ModelConfig, hidden_size: int, intermediate_size: int):
-        if getattr(config, "expert_quant", "none") == "fp8_block":
+        shared_quant = getattr(config, "shared_expert_quant", None)
+        if shared_quant is None:
+            shared_quant = getattr(config, "expert_quant", "none")
+        if shared_quant == "fp8_block":
             self.gate_up_proj = Fp8BlockColMerged(
                 hidden_size, [intermediate_size, intermediate_size], has_bias=False
             )
             self.down_proj = Fp8BlockLinear(intermediate_size, hidden_size, has_bias=False)
-        elif getattr(config, "dense_quant", "none") == "nvfp4":
+        elif shared_quant == "nvfp4" or getattr(config, "dense_quant", "none") == "nvfp4":
             # NVFP4 checkpoint: keep the shared expert's NVFP4 weights native (W4A16).
             from freetoken.kernel.triton.nvfp4_linear import Nvfp4DenseColMerged, Nvfp4DenseLinear
 

@@ -12,6 +12,11 @@ from freetoken.distributed import get_tp_info
 from freetoken.models.loader import drop_page_cache, iter_weight_files
 
 _EXPERT = re.compile(r"^model\.layers\.\d+\.mlp\.experts\.(gate_up_proj|down_proj)$")
+_PER_EXPERT = re.compile(
+    r"^(?:model\.language_model\.|language_model\.|model\.)"
+    r"layers\.\d+\.mlp\.experts\.\d+\.(gate|up|down)_proj\."
+    r"(weight|weight_scale_inv)$"
+)
 _EXPERT_LAYER = re.compile(
     r"^(?:model\.language_model\.|language_model\.|model\.)"
     r"layers\.(\d+)\.mlp\.experts\.(gate_up_proj|down_proj)$"
@@ -121,10 +126,24 @@ def iter_weights(
 ) -> Iterator[tuple[str, torch.Tensor]]:
     if get_tp_info().size != 1:
         raise NotImplementedError("Qwen4-Exp weight loading currently supports TP=1")
+    index_path = os.path.join(model_path, "model.safetensors.index.json")
+    packed_index = False
+    if os.path.isfile(index_path):
+        with open(index_path, encoding="utf-8") as handle:
+            index_names = json.load(handle)["weight_map"]
+        packed_index = any(_EXPERT_LAYER.match(name) is not None for name in index_names)
+        per_expert_index = any(_PER_EXPERT.match(name) is not None for name in index_names)
+    else:
+        per_expert_index = False
+    if include_moe_experts and per_expert_index:
+        raise ValueError(
+            "Qwen's official per-expert FP8 checkpoint requires --moe-backend offload; "
+            "resident expert loading is not supported"
+        )
     if (
         include_moe_experts
         and not include_non_moe
-        and os.path.isfile(os.path.join(model_path, "model.safetensors.index.json"))
+        and packed_index
     ):
         yield from _iter_experts_layer_order(model_path, device)
         return
@@ -136,7 +155,9 @@ def iter_weights(
                 name = _rename(raw)
                 if name is None:
                     continue
-                is_expert = _EXPERT.match(name) is not None
+                # Converted checkpoints pack experts by layer; the official FP8 source
+                # stores six tensors per expert. Both belong exclusively to expert banks.
+                is_expert = _EXPERT.match(name) is not None or _PER_EXPERT.match(raw) is not None
                 if is_expert != include_moe_experts and not (
                     include_moe_experts and include_non_moe
                 ):
@@ -169,7 +190,11 @@ def iter_weights(
         )
 
 
-__all__ = ["iter_weights"]
+def setup_offload_expert_banks(*args, **kwargs):
+    """Use the shared precision-preserving per-expert block-FP8 bank loader."""
+    from freetoken.models.qwen3_5_moe.weight import setup_offload_expert_banks as setup
+
+    return setup(*args, **kwargs)
 
 
 def _copy_range(src_fd: int, dst_fd: int, offset: int, length: int) -> None:
@@ -187,7 +212,7 @@ def _copy_range(src_fd: int, dst_fd: int, offset: int, length: int) -> None:
 
 
 def copy_external_artifacts(model_path: str, out_dir: str, model_config) -> list[dict]:
-    """Extract the 95 GiB PLE table into one row-contiguous random-read file.
+    """Extract the PLE table into one precision-preserving random-read file.
 
     This streams exact safetensors data ranges in kernel space: no tensor is
     materialized and page cache pressure stays bounded. The final manifest is
@@ -209,6 +234,8 @@ def copy_external_artifacts(model_path: str, out_dir: str, model_config) -> list
     final_path = os.path.join(out_dir, "qwen4_ngram.bin")
     temporary = final_path + ".tmp"
     total_rows = total_bytes = 0
+    storage_dtype = None
+    dtype_bytes = {"BF16": ("bfloat16", 2), "F8_E4M3": ("float8_e4m3fn", 1)}
     with open(temporary, "wb", buffering=0) as out:
         for _, name, filename in parts:
             path = os.path.join(model_path, filename)
@@ -217,17 +244,22 @@ def copy_external_artifacts(model_path: str, out_dir: str, model_config) -> list
                 header_size = struct.unpack("<Q", os.pread(fd, 8, 0))[0]
                 header = json.loads(os.pread(fd, header_size, 8))
                 meta = header[name]
-                if meta["dtype"] != "BF16" or len(meta["shape"]) != 2:
+                if meta["dtype"] not in dtype_bytes or len(meta["shape"]) != 2:
                     raise ValueError(f"unexpected Qwen4 n-gram tensor {name}: {meta}")
+                manifest_dtype, item_size = dtype_bytes[meta["dtype"]]
+                if storage_dtype is None:
+                    storage_dtype = manifest_dtype
+                elif storage_dtype != manifest_dtype:
+                    raise ValueError("Qwen4 n-gram shards use inconsistent storage dtypes")
                 begin, end = meta["data_offsets"]
                 length = end - begin
-                expected = int(meta["shape"][0]) * int(meta["shape"][1]) * 2
+                expected = int(meta["shape"][0]) * int(meta["shape"][1]) * item_size
                 if length != expected:
                     raise ValueError(f"invalid Qwen4 n-gram byte length for {name}")
                 _copy_range(fd, out.fileno(), 8 + header_size + begin, length)
-                # Keep the 95 GiB destination from becoming dirty page-cache
-                # pressure on unified memory. Commit and evict each ~0.75 GiB
-                # part before copying the next one; source pages are evicted below.
+                # Keep the destination from becoming dirty page-cache pressure on unified
+                # memory. Commit and evict each part before copying the next one; source
+                # pages are evicted below.
                 os.fdatasync(out.fileno())
                 try:
                     os.posix_fadvise(
@@ -248,7 +280,7 @@ def copy_external_artifacts(model_path: str, out_dir: str, model_config) -> list
     manifest = {
         "schema_version": "1.0",
         "file": "qwen4_ngram.bin",
-        "dtype": "bfloat16",
+        "dtype": storage_dtype,
         "rows": total_rows,
         "dim": args.ple_embed_dim // ((args.ngram_size - 1) * args.heads_per_ngram),
         "nbytes": total_bytes,
@@ -262,4 +294,4 @@ def copy_external_artifacts(model_path: str, out_dir: str, model_config) -> list
     return [{"kind": "qwen4_ngram", **manifest}]
 
 
-__all__ = ["copy_external_artifacts", "iter_weights"]
+__all__ = ["copy_external_artifacts", "iter_weights", "setup_offload_expert_banks"]

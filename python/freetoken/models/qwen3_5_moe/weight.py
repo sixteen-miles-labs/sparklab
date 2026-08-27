@@ -904,8 +904,12 @@ def _build_fp8_expert_banks(
     weight_scale_inv}), so a layer completes after ``E * 6`` writes. ``layer_sink=None``
     (serving) pins each layer's 4 banks as it completes via an internally-owned
     :class:`PinPipeline`; ``layer_sink`` given (converter) fires the completion tracker into it
-    instead (nothing pinned; released banks -- caller owns that tradeoff). ``pin=False`` and the
-    CUDA-less host stay on the plain materialize path (no pin, no stream)."""
+    instead (nothing pinned; released banks -- caller owns that tradeoff). A serial converter
+    allocates only the layer currently being read: allocating lazy anonymous mmaps for the full
+    bank set is not a safe memory bound on unified-memory systems, where creating tensor views
+    over hundreds of GiB of shmem can make those mappings resident before the first layer is
+    written. ``pin=False`` and the CUDA-less host stay on the plain materialize path (no pin, no
+    stream)."""
     from freetoken.kernel.triton.fp8_block_linear import FP8
     from freetoken.models.weight import experts_scattered, iter_expert_tensors_parallel
 
@@ -918,6 +922,64 @@ def _build_fp8_expert_banks(
         "down": ((E, H, I), FP8),
         "down_scale": ((E, H // B, I // B), scale_dtype),
     }
+    if parallel is None:
+        parallel = not dummy and experts_scattered(model_path)
+
+    # Low-memory conversion takes the serial reader path. Do not even create mappings for
+    # future layers here: GLM-5.3's complete FP8 expert set is ~284 GiB, and on GB10 the
+    # supposedly lazy all-layer shmem mappings became resident until global OOM. The serial
+    # checkpoint layout already visits one complete layer at a time, so allocate that layer,
+    # hand it to the converter, and let the sink release it before moving on.
+    if pin and layer_sink is not None and not parallel:
+        from freetoken.moe.host_banks import alloc_banks
+
+        reader = _expert_reader(model_path, torch.device("cpu"))
+        primary = get_tp_info().is_primary()
+        try:
+            for li in tqdm(range(L), desc="Loading fp8 experts (serial)", disable=not primary):
+                layer = dense + li
+                layer_hb = alloc_banks(specs)
+                layer_tensors = {name: bank.tensor for name, bank in layer_hb.items()}
+                handed_off = False
+                try:
+                    for e in range(E):
+                        p = f"model.language_model.layers.{layer}.mlp.experts.{e}"
+                        for proj in ("gate", "up", "down"):
+                            for kind in ("weight", "weight_scale_inv"):
+                                key = f"{p}.{proj}_proj.{kind}"
+                                tensor = reader.get(key)
+                                if kind == "weight":
+                                    target = (
+                                        layer_tensors["gate_up"][e, :I]
+                                        if proj == "gate"
+                                        else layer_tensors["gate_up"][e, I:]
+                                        if proj == "up"
+                                        else layer_tensors["down"][e]
+                                    )
+                                else:
+                                    target = (
+                                        layer_tensors["gate_up_scale"][e, : I // B]
+                                        if proj == "gate"
+                                        else layer_tensors["gate_up_scale"][e, I // B:]
+                                        if proj == "up"
+                                        else layer_tensors["down_scale"][e]
+                                    )
+                                target.copy_(tensor)
+                    layer_sink(li, layer_hb)
+                    handed_off = True
+                finally:
+                    # The normal conversion sink owns release after it has synchronously
+                    # written the tensors. If filling or the sink fails, release the partial
+                    # layer here so a caught exception cannot strand several GiB of shmem.
+                    if not handed_off:
+                        for bank in layer_hb.values():
+                            bank.release()
+        finally:
+            reader.close()
+        # Streamed sources are intentionally absent: the sink has already consumed and
+        # released them, and retaining stale tensor views would defeat the memory contract.
+        return {name: [] for name in specs}
+
     hb = None
     if pin:
         from freetoken.moe.host_banks import alloc_layer_banks
@@ -963,9 +1025,6 @@ def _build_fp8_expert_banks(
     def is_served_expert(raw_name: str) -> bool:
         match = _FP8_EXPERT_RE.match(raw_name)
         return match is not None and dense <= int(match["layer"]) < dense + L
-
-    if parallel is None:
-        parallel = experts_scattered(model_path)
 
     from freetoken.moe.host_banks import LayerCompletionTracker, PinPipeline
 
