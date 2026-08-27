@@ -40,6 +40,15 @@ def is_sm100_family() -> bool:
     return _is_arch_family(10)
 
 
+def is_sm121_family() -> bool:
+    """Exactly SM121, the CUDA architecture used by NVIDIA GB10.
+
+    Keep this closed rather than treating every 12.x device as GB10: Spark Lab
+    recipes and architecture-specific kernels are certified against SM121.
+    """
+    return _get_torch_cuda_version() == (12, 1)
+
+
 def is_sm90_supported() -> bool:
     return is_arch_supported(9, 0)
 

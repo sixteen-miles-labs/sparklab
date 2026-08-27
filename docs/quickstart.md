@@ -1,61 +1,68 @@
-# Quick start
+# Spark Lab quick start
 
-Assumes FreeToken is installed — see [install.md](install.md).
+This early product path assumes the compatibility distribution is installed; see
+[install.md](install.md). The supported production target is one NVIDIA GB10.
 
-## Launch a server
+## 1. Inspect the machine
 
 ```bash
-ft serve --model ~/models/Qwen3.6-35B-A3B
+sparklab doctor --storage-path /path/to/models
 ```
 
-`--model` also takes a Hugging Face repo id. Everything else — dtype, attention
-and MoE backends, cache sizes, tool-call and reasoning parsers — resolves from
-the checkpoint and the GPU; see [cli.md](cli.md) for the flags. The server is
-ready when the log reaches `API server is ready to serve on 127.0.0.1:1919`.
+Resolve every failed requirement before loading a model. Warnings identify
+conditions requiring review, such as device-mapper storage whose NVMe backing
+cannot be proven automatically. The JSON form is intended for installers and CI:
 
-## Send a request
+```bash
+sparklab doctor --storage-path /path/to/models --json
+```
 
-Check what is being served:
+## 2. Choose a recipe
+
+```bash
+sparklab models
+sparklab models --tier frontier
+sparklab models --json
+```
+
+Recipe status is separate from intended tier. `experimental` and `preview`
+entries do not carry the latency and stability promise of `certified`.
+
+## 3. Launch the compatibility engine
+
+Recipe-backed `sparklab pull` and `sparklab run` are still being implemented. In
+this first migration slice, use the Spark Lab alias for the existing engine:
+
+```bash
+sparklab serve --model /path/to/checkpoint
+```
+
+The server is ready when the log reports that the API is listening on
+`127.0.0.1:1919`.
+
+## 4. Send a request
 
 ```bash
 curl http://127.0.0.1:1919/v1/models
-```
 
-Then use that id as the `model` field:
-
-```bash
 curl http://127.0.0.1:1919/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -d '{
-    "model": "Qwen3.6-35B-A3B",
-    "messages": [{"role": "user", "content": "What is a Mixture-of-Experts model?"}],
+    "model": "served-model-id",
+    "messages": [{"role": "user", "content": "Explain unified memory."}],
     "max_tokens": 256,
     "stream": true
   }'
 ```
 
-FreeToken serves the OpenAI API (`/v1/chat/completions`, `/v1/responses`,
-`/v1/models`) and the Anthropic API (`/v1/messages`,
-`/v1/messages/count_tokens`), so a client library for either works by pointing
-its base URL at the server. 
+Spark Lab serves the OpenAI Chat Completions and Responses APIs and the
+Anthropic Messages API.
 
-## Chat in the terminal
-
-A simple TUI to interact with the server:
+## 5. Use the terminal or a coding agent
 
 ```bash
-ft shell                                    # attach to the server above
-ft shell --model ~/models/Qwen3.6-35B-A3B   # start an engine and chat, one process
+sparklab shell
+sparklab launch codex
 ```
 
-`/help` lists the in-shell commands. Attach mode needs no GPU, so it also drives
-a server on another machine (`--server URL`).
-
-## Use a coding agent
-
-```bash
-ft launch claude   # claude / codex / dsh / hermes / openclaw / opencode
-```
-
-Writes that agent's provider config, installs its CLI if missing, and starts it
-against your server. `--dry-run` previews the changes.
+The legacy `ft` forms remain valid. See [migration.md](migration.md).

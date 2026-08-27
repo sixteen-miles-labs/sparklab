@@ -29,7 +29,15 @@ def load_tokenizer(model_path: str) -> PreTrainedTokenizerBase:
         from freetoken.models.gguf.tokenizer import load_gguf_tokenizer
 
         return load_gguf_tokenizer(gguf_src)
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    # Kimi K3 ships a tiktoken-backed tokenizer and its Python XTML renderer via
+    # ``auto_map`` rather than a Jinja chat_template.  Trust remote code only for
+    # that explicitly identified model family; every ordinary checkpoint keeps
+    # AutoTokenizer's safer default.
+    try:
+        is_kimi_k3 = _raw_config_json(model_path).get("model_type") == "kimi_k3"
+    except Exception:
+        is_kimi_k3 = False
+    tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=is_kimi_k3)
     # Some Mistral models store chat_template in a separate JSON file
     if not getattr(tokenizer, "chat_template", None):
         try:

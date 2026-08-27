@@ -122,6 +122,17 @@ _MODEL_REGISTRY: dict[str, ModelSpec] = {
         "freetoken.models.glm_moe_dsa",
         "GlmMoeDsaForCausalLM",
     ),
+    # Kimi K3: text-only tower for the multimodal wrapper.  The 93-layer decoder
+    # alternates KDA linear attention with gated NoPE MLA and uses Attention
+    # Residuals plus latent MXFP4 MoE experts.
+    "KimiK3ForConditionalGeneration": ModelSpec(
+        "freetoken.models.kimi_k3",
+        "KimiK3ForCausalLM",
+    ),
+    "KimiLinearForCausalLM": ModelSpec(
+        "freetoken.models.kimi_k3",
+        "KimiK3ForCausalLM",
+    ),
 }
 
 

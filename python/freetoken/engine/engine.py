@@ -1218,10 +1218,18 @@ def _adjust_config(config: EngineConfig):
             override("cache_type", "swa_radix")
 
     if has_linear_attention:
-        override(
-            "cache_type",
-            _resolve_cache_type(True, getattr(config, "cache_type", "radix")),
-        )
+        if not getattr(model_config, "linear_state_snapshots", True):
+            if getattr(config, "cache_type", "radix") != "naive":
+                logger.warning_rank0(
+                    f"{getattr(model_config, 'model_type', 'model')} does not yet support "
+                    "recurrent-state snapshots; using the naive prefix cache"
+                )
+            override("cache_type", "naive")
+        else:
+            override(
+                "cache_type",
+                _resolve_cache_type(True, getattr(config, "cache_type", "radix")),
+            )
 
     # Type x backend capability matrix: resolve auto from the per-type priority
     # lists, then validate whatever is now selected (explicit or auto) -- every
@@ -1267,12 +1275,10 @@ def _adjust_config(config: EngineConfig):
     _cpu_moe_acts = (
         "silu", "swish", "gelu", "gelu_tanh", "gelu_pytorch_tanh", "swigluoai",
     )
-    # hidden_act (the dense activation) stands proxy for the expert activation --
-    # true for every in-tree model. mxfp4 experts pass regardless: their act runs
-    # inside the mxfp4 kernel, not the generic epilogue.
-    _cpu_moe_act_ok = getattr(model_config, "hidden_act", "silu") in _cpu_moe_acts or (
-        getattr(model_config, "moe_weight_format", None) == "mxfp4"
-    )
+    # hidden_act stands proxy for the expert activation.  MXFP4 is only a weight
+    # format, not an activation guarantee: GPT-OSS uses a CPU-supported SiLU-family
+    # epilogue, while Kimi K3 uses SiTU and must remain on GPU offload.
+    _cpu_moe_act_ok = getattr(model_config, "hidden_act", "silu") in _cpu_moe_acts
     if (
         is_moe
         and not _cpu_moe_act_ok

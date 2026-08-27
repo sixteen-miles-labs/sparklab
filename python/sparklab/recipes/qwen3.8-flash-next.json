@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "recipe_version": "0.1.0",
+  "slug": "qwen3.8-flash-next",
+  "name": "Qwen3.8 Flash Next",
+  "model": "Qwen/Qwen3.8-Flash-Next",
+  "intended_tier": "fast",
+  "status": "experimental",
+  "implementation": "planned",
+  "checkpoint_format": "safetensors-fp8",
+  "execution_policy": "resident",
+  "profile": "balanced",
+  "description": "Highest-priority post-1.0 Fast candidate for long agent sessions.",
+  "limitations": [
+    "The hybrid architecture and GB10-sized low-precision recipe are not implemented.",
+    "Final tier is determined by measured recipe performance."
+  ]
+}

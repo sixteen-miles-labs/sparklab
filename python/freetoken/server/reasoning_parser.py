@@ -412,6 +412,27 @@ class ThinkReasoningParser(BaseReasoningParser):
         )
 
 
+class KimiK3ReasoningParser(BaseReasoningParser):
+    """K3 XTML ``think``/``response`` channel splitter.
+
+    The generation prompt pre-opens one channel, so thinking mode starts inside
+    ``think`` and the model emits the compound close-think/open-response marker.
+    """
+
+    THINK_OPEN = "<|open|>think<|sep|>"
+    RESPONSE_OPEN = "<|open|>response<|sep|>"
+    THINK_TO_RESPONSE = "<|close|>think<|sep|>" + RESPONSE_OPEN
+
+    def __init__(self, force_reasoning: bool = True, stream_reasoning: bool = True) -> None:
+        super().__init__(
+            think_start_token=self.THINK_OPEN,
+            think_end_token=self.THINK_TO_RESPONSE,
+            force_reasoning=force_reasoning,
+            stream_reasoning=stream_reasoning,
+            tool_start_token="<|open|>tools<|sep|>",
+        )
+
+
 class MiniMaxM3ReasoningParser(BaseReasoningParser):
     """Reasoning parser for MiniMax-M3's ``<mm:think>...</mm:think>`` protocol.
 
@@ -882,6 +903,7 @@ class ReasoningParser:
         "minimax_m3": MiniMaxM3ReasoningParser,
         "muse_glimmer": MuseGlimmerReasoningParser,
         "gemma4": GemmaThoughtReasoningParser,
+        "kimi_k3": KimiK3ReasoningParser,
     }
 
     def __init__(

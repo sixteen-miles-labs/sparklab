@@ -126,6 +126,8 @@ def parse_args(
             " ".join(str(v) for v in text_cfg.get("architectures", []) or []),
         ]
         marker = " ".join(candidates).lower()
+        if any(tag in marker for tag in ("kimi_k3", "kimi-k3", "kimik3", "kimilinear")):
+            return "kimi_k3"
         if "gpt_oss" in marker or "gpt-oss" in marker or "gptoss" in marker:
             return "gpt_oss"
         # M3 first: its marker also contains the bare "minimax" substring, but the
@@ -173,6 +175,8 @@ def parse_args(
             " ".join(str(v) for v in text_cfg.get("architectures", []) or []),
         ]
         marker = " ".join(candidates).lower()
+        if any(tag in marker for tag in ("kimi_k3", "kimi-k3", "kimik3", "kimilinear")):
+            return "kimi_k3"
         if "gpt_oss" in marker or "gpt-oss" in marker or "gptoss" in marker:
             return "gpt_oss"
         if "deepseek" in marker and any(

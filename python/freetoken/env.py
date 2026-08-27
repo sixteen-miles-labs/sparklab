@@ -4,6 +4,8 @@ import os
 from functools import partial
 from typing import Callable, Generic, TypeVar
 
+from freetoken.env_compat import getenv_compat
+
 
 class BaseEnv:
     def _init(self, name: str) -> None:
@@ -20,7 +22,7 @@ class EnvVar(BaseEnv, Generic[T]):
         super().__init__()
 
     def _init(self, name: str) -> None:
-        env_value = os.getenv(name)
+        env_value = getenv_compat(name)
         if env_value is not None:
             try:
                 self.value = self.fn(env_value)

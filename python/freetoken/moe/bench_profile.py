@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import os
 
+from freetoken.env_compat import getenv_compat
 from freetoken.utils import init_logger
 
 logger = init_logger(__name__)
@@ -32,7 +33,12 @@ _QUANT_TO_BENCH_FORMAT = {
 
 
 def default_profile_path() -> str:
-    """``$XDG_CACHE_HOME/freetoken/benchbw.json`` (mirrors ``benchbw.default_out_path``)."""
+    """New Spark Lab bandwidth-profile path (writer destination)."""
+    cache = os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache")
+    return os.path.join(cache, "sparklab", "benchbw.json")
+
+
+def legacy_profile_path() -> str:
     cache = os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache")
     return os.path.join(cache, "freetoken", "benchbw.json")
 
@@ -49,9 +55,15 @@ def _usable_profile(gpu_name: str | None, path: str | None) -> dict | None:
     """The cached profile, or ``None`` when there is no file / it was benched on another GPU
     (bandwidths are hardware-specific, so a mismatch is ignored rather than trusted).
 
-    ``path`` overrides the profile location (else ``FREETOKEN_BENCHBW_PATH`` then the default).
+    ``path`` overrides the profile location. Otherwise SPARKLAB_BENCHBW_PATH wins,
+    followed by FREETOKEN_BENCHBW_PATH, the new default, then legacy discovery.
     """
-    src = path or os.environ.get("FREETOKEN_BENCHBW_PATH") or default_profile_path()
+    configured = getenv_compat("FREETOKEN_BENCHBW_PATH")
+    src = path or configured or default_profile_path()
+    if path is None and configured is None and not os.path.exists(src):
+        legacy = legacy_profile_path()
+        if os.path.exists(legacy):
+            src = legacy
     prof = _load(src)
     if not isinstance(prof, dict):
         return None

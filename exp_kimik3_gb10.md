@@ -395,6 +395,42 @@ before enabling hybrid scheduling.
 
 ## Stage C implementation roadmap
 
+### Implementation status (2026-08-26)
+
+Architecture work began in parallel with the GLM-5.2 checkpoint experiment; no
+full K3 download, conversion, or GPU run has started. The current text-only code
+includes:
+
+- both K3 architecture registrations and strict parsing of the released 1-based
+  69-KDA/24-MLA layer partition;
+- NoPE gated MLA with latent-KV weight absorption and a hybrid MLA pool that stores
+  only the 24 full-attention layers;
+- KDA projections, three short convolutions, key-wise decay, the `-5` safe-gate
+  floor, sigmoid output gating, and recurrent/conv state-pool integration. The
+  released shard's 128-element `A_log` layout is handled explicitly despite the
+  published reference constructor declaring a stale 96-element shape;
+- Attention Residuals, SiTU, the leading dense MLP, sigmoid/bias routing, shared
+  experts, and the 3,584-dimensional latent routed-expert bottleneck;
+- native compressed-tensors MXFP4 expert mapping into FreeToken's transposed
+  six-bank disk format, with the bias banks zeroed because K3 experts are biasless;
+- the checkpoint's Python/tiktoken XTML renderer plus automatic K3 reasoning and
+  typed tool-call parsing, including `reasoning_effort` to `thinking_effort` and
+  thinking-toggle translation (vision placeholders remain disabled at the model layer);
+- text-wrapper checkpoint name mapping and CPU references/tests for config, SiTU,
+  Attention Residuals, KDA continuation, pool remapping, and registration.
+
+A read-only audit of the official 96-shard index found 497,220 source tensors and
+confirmed that all 2,367 non-expert text tensors map exactly onto the FreeToken
+text model state. Header checks also confirm the expert matrices use the expected
+MXFP4 shapes: gate/up `[3072, 1792]` and down `[3584, 1536]`, plus group-32 scales.
+
+This is an architecture milestone, not a K3 inference claim. Open items before
+K3-C1/C2 can pass are a full-checkpoint streaming-conversion rehearsal, GPU parity
+for KDA/MLA/MXFP4, a chunk-efficient KDA prefill/snapshot path, tokenizer/parser
+validation against official transcripts, and the deferred vision tower. Direct loading
+of the 1.56 TB source checkpoint is deliberately rejected; GB10 serving requires FTW
+conversion.
+
 ### K3-C0: checkpoint and hardware characterization
 
 - Download all official K3 files and record SHA-256 hashes.
@@ -410,8 +446,8 @@ kernel path runs on SM121.
 
 ### K3-C1: architecture-only K3 model
 
-- Implement config parsing and tokenizer/chat-template behavior.
-- Implement embeddings, output head, normalization, Attention Residuals, routing,
+- Validate tokenizer/chat-template and XTML tool/reasoning behavior against official transcripts.
+- Validate the implemented embeddings, output head, normalization, Attention Residuals, routing,
   Stable LatentMoE, SiTU-GLU, KDA, and Gated MLA.
 - Reuse official kernels where compatible; add explicit numerical references.
 - Run reduced-shape CPU/GPU tests for every operator.
@@ -664,5 +700,8 @@ only the best Kimi run:
 6. Complete G1-G7, including short-prefill, shared-expert overlap, layer-aware GPU
    eviction, and one-pool GB10 memory accounting.
 7. Freeze and document the validated storage/cache interfaces at the Stage B gate.
-8. Only then mirror Kimi K3 metadata, calculate its resident/KDA/MLA floor, add its
-   `ft bench bw` geometry, and begin K3-C0/K3-C1.
+8. While GLM runs, keep K3 work CPU/static only: finish XTML parsing, the resident
+   memory inventory, and bounded conversion tests without competing for GB10 GPU or
+   NVMe bandwidth.
+9. After the GLM Stage B gate, run K3-C0 hardware checks, add its `ft bench bw`
+   geometry, then perform the first full K3 FTW conversion and GPU parity ladder.

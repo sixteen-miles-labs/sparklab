@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "recipe_version": "0.1.0",
+  "slug": "kimi-k3",
+  "name": "Kimi K3",
+  "model": "moonshotai/Kimi-K3",
+  "intended_tier": "research",
+  "status": "experimental",
+  "implementation": "text-architecture",
+  "checkpoint_format": "ftw-mxfp4",
+  "execution_policy": "nvme-moe",
+  "profile": "research",
+  "description": "The 2.8T flagship demonstration for inference beyond physical memory.",
+  "limitations": [
+    "Full-checkpoint conversion and GPU parity are not yet validated.",
+    "No latency promise and no vision support."
+  ]
+}

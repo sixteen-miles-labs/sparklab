@@ -43,6 +43,7 @@ def test_tokenize_manager_passes_chat_template_kwargs():
         "tokenize": False,
         "add_generation_prompt": True,
         "enable_thinking": True,
+        "thinking": True,
     }
     assert input_ids.tolist() == [1, 2, 3]
 
@@ -224,6 +225,57 @@ def test_tokenize_quantizes_foreign_effort_onto_the_template_vocabulary():
     assert tokenizer.chat_template_kwargs["enable_thinking"] is True
     # the caller's kwargs stay untouched
     assert msg.chat_template_kwargs["reasoning_effort"] == "high"
+
+
+class KimiK3LikeTokenizer:
+    """The official Python XTML renderer reads Kimi's native kwarg names."""
+
+    def __init__(self) -> None:
+        self.chat_template_kwargs = None
+
+    def apply_chat_template(self, messages, **kwargs):
+        self.chat_template_kwargs = kwargs
+        if kwargs.get("thinking", True):
+            effort = kwargs.get("thinking_effort", "max")
+            if effort not in ("low", "high", "max"):
+                raise ValueError(f"Unsupported thinking_effort={effort!r}")
+            return f"kimi thinking={effort}"
+        return "kimi thinking=off"
+
+    def encode(self, prompt, return_tensors=None, add_special_tokens=True):
+        return torch.tensor([[9]], dtype=torch.long)
+
+
+def test_tokenize_translates_openai_controls_to_kimi_xtml_dialect():
+    tokenizer = KimiK3LikeTokenizer()
+    manager = TokenizeManager(tokenizer)
+    msg = TokenizeMsg(
+        uid=1,
+        text=[{"role": "user", "content": "hello"}],
+        sampling_params=SamplingParams(),
+        chat_template_kwargs={"enable_thinking": True, "reasoning_effort": "high"},
+    )
+
+    manager.tokenize([msg])
+
+    assert tokenizer.chat_template_kwargs["thinking"] is True
+    assert tokenizer.chat_template_kwargs["thinking_effort"] == "high"
+    assert manager.effort_profile().supported == frozenset({"low", "high", "max"})
+
+
+def test_tokenize_translates_thinking_off_to_kimi_xtml_dialect():
+    tokenizer = KimiK3LikeTokenizer()
+    manager = TokenizeManager(tokenizer)
+    msg = TokenizeMsg(
+        uid=1,
+        text=[{"role": "user", "content": "hello"}],
+        sampling_params=SamplingParams(),
+        chat_template_kwargs={"enable_thinking": False},
+    )
+
+    manager.tokenize([msg])
+
+    assert tokenizer.chat_template_kwargs["thinking"] is False
 
 
 def test_tokenize_drops_effort_for_templates_that_ignore_it():

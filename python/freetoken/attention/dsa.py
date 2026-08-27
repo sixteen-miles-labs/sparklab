@@ -73,14 +73,17 @@ class DSAAttnBackend(DSAIndexerMixin, BaseAttnBackend):
     def __init__(self, config: ModelConfig) -> None:
         from freetoken.kvcache.dsa_pool import DSAKVCache, MLAKVCache
 
-        args = config.glm_dsa_args
-        assert args is not None, "dsa backend needs ModelConfig.glm_dsa_args (MLA dims)"
+        args = config.glm_dsa_args or config.kimi_k3_args
+        assert args is not None, "dsa backend needs model-specific MLA dimensions"
         self.config = config
         self.num_heads = config.num_qo_heads
         self.kv_lora_rank = args.kv_lora_rank
         self.qk_rope_head_dim = args.qk_rope_head_dim
         self.latent_dim = self.kv_lora_rank + self.qk_rope_head_dim
-        self.sm_scale = config.attn_sm_scale or (args.qk_head_dim**-0.5)
+        qk_head_dim = getattr(
+            args, "qk_head_dim", args.qk_nope_head_dim + args.qk_rope_head_dim
+        )
+        self.sm_scale = config.attn_sm_scale or (qk_head_dim**-0.5)
         self.kvcache = get_global_ctx().kv_cache
         self.device = self.kvcache.device
 
@@ -91,8 +94,9 @@ class DSAAttnBackend(DSAIndexerMixin, BaseAttnBackend):
             f"dsa backend needs an MLA latent pool, got {type(self.kvcache).__name__}"
         )
         self.dsa_enabled = isinstance(self.kvcache, DSAKVCache)
-        self.index_topk = args.index_topk
-        self.index_scale = args.index_head_dim**-0.5 if args.index_head_dim else 0.0
+        self.index_topk = getattr(args, "index_topk", 0)
+        index_head_dim = getattr(args, "index_head_dim", 0)
+        self.index_scale = index_head_dim**-0.5 if index_head_dim else 0.0
         # layer -> group leader (most recent "full" layer); leader -> pool slot.
         # Only built when DSA serves: the dense ablation never consults indexer_types,
         # so a checkpoint with a malformed list cannot crash the ablation.

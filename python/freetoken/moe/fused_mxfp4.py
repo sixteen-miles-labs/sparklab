@@ -25,6 +25,39 @@ def gpt_oss_swiglu(gate_up: torch.Tensor, *, alpha: float, limit: float | None) 
     return gate * torch.sigmoid(gate * alpha) * (up + 1.0)
 
 
+def kimi_situ(gate_up: torch.Tensor, *, beta: float, linear_beta: float | None) -> torch.Tensor:
+    """Kimi SiTU over concatenated ``gate | up`` expert outputs."""
+    input_dtype = gate_up.dtype
+    gate, up = gate_up.float().chunk(2, dim=-1)
+    gate = beta * torch.tanh(gate / beta) * torch.sigmoid(gate)
+    if linear_beta is not None:
+        up = linear_beta * torch.tanh(up / linear_beta)
+    return (gate * up).to(input_dtype)
+
+
+def _activate_mxfp4(
+    gate_up: torch.Tensor,
+    out: torch.Tensor,
+    *,
+    activation: str,
+    alpha: float,
+    limit: float | None,
+    compute_type: torch.dtype,
+) -> None:
+    if activation == "gpt_oss_swiglu":
+        from freetoken.kernel import gpt_oss_swiglu_triton
+
+        gpt_oss_swiglu_triton(
+            gate_up, out, alpha=alpha,
+            limit=limit if limit is not None else float("inf"), compute_type=compute_type,
+        )
+        return
+    if activation == "situ":
+        out.copy_(kimi_situ(gate_up, beta=alpha, linear_beta=limit))
+        return
+    raise ValueError(f"unsupported MXFP4 activation {activation!r}")
+
+
 def dequant_mxfp4_blocks(
     blocks: torch.Tensor,
     scales: torch.Tensor,
@@ -86,12 +119,12 @@ def run_mxfp4_prefill_experts_t(
     top_k: int,
     hidden_act_alpha: float,
     swiglu_limit: float | None,
+    activation: str = "gpt_oss_swiglu",
 ) -> torch.Tensor:
     """Prefill experts using the transposed weight layout shared with split-K decode
     ([E, K//2, N] blocks, [E, K//32, N] scales, N innermost). Uses
     mxfp4_fused_moe_kernel_t_triton for the grouped GEMM."""
     from freetoken.kernel import (
-        gpt_oss_swiglu_triton,
         moe_sum_reduce_triton,
         mxfp4_fused_moe_kernel_t_triton,
     )
@@ -151,11 +184,9 @@ def run_mxfp4_prefill_experts_t(
         device=hidden_states.device,
         dtype=hidden_states.dtype,
     )
-    gpt_oss_swiglu_triton(
-        gate_up.view(num_tokens * top_k, 2 * local_intermediate_size),
-        activated,
-        alpha=hidden_act_alpha,
-        limit=swiglu_limit if swiglu_limit is not None else float("inf"),
+    _activate_mxfp4(
+        gate_up.view(num_tokens * top_k, 2 * local_intermediate_size), activated,
+        activation=activation, alpha=hidden_act_alpha, limit=swiglu_limit,
         compute_type=hidden_states.dtype,
     )
 
@@ -218,12 +249,13 @@ def run_mxfp4_splitk_decode_experts(
     top_k: int,
     hidden_act_alpha: float,
     swiglu_limit: float | None,
+    activation: str = "gpt_oss_swiglu",
 ) -> torch.Tensor:
     """Split-K GEMV MoE decode over TRANSPOSED MXFP4 weights:
     gate_up_blocks_t [E, H//2, 2I], gate_up_scales_t [E, H//32, 2I], bias [E, 2I];
     down_blocks_t [E, I//2, H], down_scales_t [E, I//32, H], bias [E, H].
     Targets small token counts (M <= MXFP4_DECODE_MAX_TOKENS)."""
-    from freetoken.kernel import gpt_oss_swiglu_triton, mxfp4_splitk_gemv_triton
+    from freetoken.kernel import mxfp4_splitk_gemv_triton
 
     if not hidden_states.is_cuda:
         raise RuntimeError("GPT-OSS MXFP4 MoE requires the Triton CUDA kernel")
@@ -256,11 +288,9 @@ def run_mxfp4_splitk_decode_experts(
     )
 
     hidden_out = torch.empty((routes, local_intermediate_size), device=device, dtype=compute_type)
-    gpt_oss_swiglu_triton(
-        gate_up_out, hidden_out,
-        alpha=hidden_act_alpha,
-        limit=swiglu_limit if swiglu_limit is not None else float("inf"),
-        compute_type=compute_type,
+    _activate_mxfp4(
+        gate_up_out, hidden_out, activation=activation, alpha=hidden_act_alpha,
+        limit=swiglu_limit, compute_type=compute_type,
     )
 
     dp_splits = _decode_split_count(routes, local_intermediate_size // 32, target_programs=72)
@@ -277,6 +307,7 @@ __all__ = [
     "MXFP4_DECODE_MAX_TOKENS",
     "dequant_mxfp4_blocks",
     "gpt_oss_swiglu",
+    "kimi_situ",
     "run_mxfp4_prefill_experts_t",
     "run_mxfp4_splitk_decode_experts",
 ]

@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "recipe_version": "0.1.0",
+  "slug": "glm-5.2",
+  "name": "GLM-5.2 NVFP4",
+  "model": "nvidia/GLM-5.2-NVFP4",
+  "intended_tier": "frontier",
+  "status": "experimental",
+  "implementation": "available",
+  "checkpoint_format": "ftw",
+  "execution_policy": "nvme-moe",
+  "profile": "quality",
+  "description": "Lower-risk Frontier fallback while GLM-5.3 is enabled.",
+  "limitations": [
+    "The active GB10 correctness and performance experiment is not complete.",
+    "No Frontier latency, context, or endurance certification is claimed."
+  ]
+}

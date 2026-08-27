@@ -217,6 +217,10 @@ class ModelConfig:
     moe_backend: str = "fused"
     # ----- optional, model-specific extensions (default keeps other models intact) -----
     moe_enabled: bool = False
+    # Whether a hybrid linear-attention model can snapshot/restore its recurrent
+    # state for radix prefix reuse. Models still in naive-state bring-up set this
+    # false so the engine does not select hybrid_radix by default.
+    linear_state_snapshots: bool = True
     # Weight quantization of the MoE experts only. "none" keeps the default BF16
     # offload/fused path; "nvfp4" stores experts as packed FP4 + block scales;
     # "fp8_block" is DeepSeek-V3-style 128x128 block-fp8 (weight fp8-e4m3 +
@@ -288,6 +292,10 @@ class ModelConfig:
     # swigluoai/dense-MLP scalars the model module needs. Opaque to model-agnostic engine
     # code; None for every other model.
     m3_args: Any | None = None
+    # Kimi K3 text-tower payload (KimiK3Args): MLA/KDA geometry, Attention
+    # Residuals, latent-MoE width, and SiTU activation constants.  Kept opaque to
+    # model-agnostic engine code, like glm_dsa_args and m3_args above.
+    kimi_k3_args: Any | None = None
     # Generic execution-path capability flags (set by a model's parse_config) so the engine and
     # factories stay model-agnostic instead of branching on dsv4_args:
     single_stream_only: bool = False  # model runs one sequence at a time -> force bs=1

@@ -590,6 +590,7 @@ class OffloadMoELayer(MoELayer):
                 top_k=self.top_k,
                 hidden_act_alpha=self.hidden_act_alpha,
                 swiglu_limit=self.swiglu_limit,
+                activation=self.activation,
             )
         if fmt == "ds_fp4":
             # DeepSeek-V4 FP4 experts: grouped inline-dequant GEMM for streaming

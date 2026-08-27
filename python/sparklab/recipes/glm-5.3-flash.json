@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "recipe_version": "0.1.0",
+  "slug": "glm-5.3-flash",
+  "name": "GLM-5.3 Flash",
+  "model": "zai-org/GLM-5.3-Flash",
+  "intended_tier": "frontier",
+  "status": "experimental",
+  "implementation": "planned",
+  "checkpoint_format": "safetensors-fp8",
+  "execution_policy": "nvme-moe",
+  "profile": "quality",
+  "description": "Desired second Frontier model after text-only GB10 enablement.",
+  "limitations": [
+    "The glm5_next architecture and GB10 recipe are not implemented.",
+    "Multimodal certification is a separate later gate."
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "recipe_version": "0.1.0",
+  "slug": "qwen3.6-35b-a3b",
+  "name": "Qwen3.6 35B A3B NVFP4",
+  "model": "nvidia/Qwen3.6-35B-A3B-NVFP4",
+  "intended_tier": "fast",
+  "status": "experimental",
+  "implementation": "available",
+  "checkpoint_format": "safetensors-nvfp4",
+  "execution_policy": "resident",
+  "profile": "balanced",
+  "description": "First Fast certification target for routine chat and short agent loops.",
+  "limitations": [
+    "The Fast speed, TTFT, context, and 60-minute stability gates have not passed."
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "recipe_version": "0.1.0",
+  "slug": "deepseek-v4",
+  "name": "DeepSeek V4 Flash",
+  "model": "deepseek-ai/DeepSeek-V4-Flash-0731",
+  "intended_tier": "frontier",
+  "status": "preview",
+  "implementation": "available",
+  "checkpoint_format": "ftw",
+  "execution_policy": "nvme-moe",
+  "profile": "balanced",
+  "description": "The measured GB10 baseline and first Frontier certification target.",
+  "evidence": ["GB10-BASELINE-001"],
+  "limitations": [
+    "The 64K context and 60-minute agent gates have not passed.",
+    "The measured configuration is not yet a certified release recipe."
+  ]
+}

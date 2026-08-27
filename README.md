@@ -1,64 +1,103 @@
-<div align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/FlashML-org/FreeToken/main/assets/freetoken-logo-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/FlashML-org/FreeToken/main/assets/freetoken-logo-light.svg">
-    <img alt="FreeToken" src="https://raw.githubusercontent.com/FlashML-org/FreeToken/main/assets/freetoken-logo.svg" width=65%>
-  </picture>
-</div>
+# Spark Lab
 
-<p align="center">
-| <a href="https://www.flashml.ai/"><b>Download</b></a> | <a href="https://arxiv.org/abs/2608.16157"><b>Paper</b></a> | <a href="https://join.slack.com/t/flashml/shared_invite/zt-3zpdh5j10-9dwTXrgLiqpVxizhA9KVbA"><b>Developer Slack</b></a> | <a href="https://discord.gg/xzwSnMdsX"><b>Community Discord</b></a> | <a href="https://github.com/FlashML-org/FreeToken/blob/main/assets/freetoken-wechatgroup.png"><b>Community WeChat</b></a> |
-</p>
+> Turn one NVIDIA GB10 into a private frontier-AI workstation.
 
+Spark Lab is a GB10-native frontier inference lab. It packages tested model
+recipes, unified-memory diagnostics, NVMe-backed MoE execution, and
+OpenAI-/Anthropic-compatible APIs around the FreeToken research engine.
 
-Unlock datacenter-class intelligence on the hardware you already own — Run 290B+ frontier MoE models locally on your gaming PC at blistering interactive speeds.
+The supported production target is intentionally narrow:
 
-## About
+- NVIDIA GB10 Grace Blackwell Superchip, SM121
+- 128 GB coherent unified memory
+- ARM64 Linux / DGX OS
+- CUDA 13
+- Local NVMe for checkpoints and disk-backed experts
 
-FreeToken is an edge-native Mixture-of-Experts (MoE) serving engine designed for running frontier-scale open-weight models on personal and consumer hardware. It treats heterogeneous edge resources—GPUs, CPUs, host memory, and interconnects—as a unified, elastic inference platform. Its core features include:  
+This repository is in the staged rebrand period. The `sparklab` product CLI is
+available, while the `freetoken` Python package and `ft` CLI remain compatible.
+No recipe is called Certified until its GB10 correctness, latency, context,
+stability, and agent gates have all passed.
 
-- **Fast Edge-Native Runtime**: Provides efficient MoE serving with bandwidth-adaptive CPU–GPU co-execution ($q^\star$ policy), full-layer double-buffered prefill streaming, global LRU expert caching, graph-compatible execution, and the FTW fast weight format.  
-- **Semantic-Aware Caching**: Features semantic anchor checkpoints for recurrent state and KV caches, allowing agentic context edits (e.g., tool calls, thinking blocks) to avoid redundant context recomputation.  
-- **Elastic Memory Management**: Supports dynamic, runtime VRAM re-allocation between expert caches and KV memory without engine restarts or weight reloading.  
-- **Broad MoE & Ecosystem Support**: Supports frontier open-weight MoE models (e.g., DeepSeek-V4-Flash, Qwen3.6-35B-A3B, GLM-5.2) across various parameter scales and quantization formats (e.g., MXFP4, NVFP4, FP8, BF16), with Anthropic/OpenAI-compatible APIs for seamless integration with real-world coding and tool-calling agents (e.g., Codex, Claude Code, OpenCode, OpenClaw, DeepSeek Harness). 
-- **Diverse Consumer Hardware**: Scales across consumer laptops, gaming desktops, and workstation GPUs, with native support for NVIDIA RTX 30, RTX 40, and RTX 50 series GPUs.  
+## Start here
 
-## Getting Started
-
-### Desktop app
-
-Download FreeToken for Windows or Linux at [flashml.ai](https://www.flashml.ai/). It sets the engine up for you and gives you a GUI for running models, chatting, and tuning the engine.
-
-<div align="center">
-  <img alt="FreeToken Desktop" src="https://raw.githubusercontent.com/FlashML-org/FreeToken/main/assets/desktop-console.png" width=92%>
-</div>
-
-### CLI
-
-Install FreeToken with [uv](https://docs.astral.sh/uv/) (recommended) or pip:
+Install the current distribution with [uv](https://docs.astral.sh/uv/):
 
 ```bash
 uv pip install "freetoken[accel]"
 ```
 
-Or build from source:
+Or install this checkout:
 
 ```bash
-git clone https://github.com/FlashML-org/FreeToken.git && cd FreeToken
-uv venv && source .venv/bin/activate
+git clone https://github.com/FlashML-org/FreeToken.git
+cd FreeToken
+uv venv
+source .venv/bin/activate
 uv pip install -e ".[accel]"
 ```
 
-For More details:
+Inspect the GB10 before loading a checkpoint:
 
-- [Install FreeToken](https://github.com/FlashML-org/FreeToken/blob/main/docs/install.md)
-- [Quick start](https://github.com/FlashML-org/FreeToken/blob/main/docs/quickstart.md)
-- [Supported models](https://github.com/FlashML-org/FreeToken/blob/main/docs/models.md)
-- [CLI reference](https://github.com/FlashML-org/FreeToken/blob/main/docs/cli.md)
+```bash
+sparklab doctor
+sparklab doctor --storage-path /path/to/models --json
+sparklab models
+```
 
-## Citation
+The initial CLI delegates inference to the compatibility-stable engine:
 
-If you use FreeToken for your research, please cite our [paper](https://arxiv.org/abs/2608.16157):
+```bash
+sparklab serve --model /path/to/checkpoint
+sparklab shell
+sparklab launch codex
+```
+
+The server exposes OpenAI Chat Completions and Responses APIs plus the Anthropic
+Messages API on `http://127.0.0.1:1919` by default.
+
+## Model portfolio
+
+Spark Lab has three recipe tiers:
+
+| Tier | Product role | Current targets |
+|---|---|---|
+| Fast | Routine chat, editing, and short agent loops | Qwen3.6-35B-A3B-NVFP4; Qwen3.8-Flash-Next next |
+| Frontier | Quality-first coding, reasoning, and long agent work | DeepSeek V4 Flash; GLM-5.3 Flash, with GLM-5.2 fallback |
+| Research | Correct, bounded execution beyond the interactive envelope | Kimi K3 |
+
+Run `sparklab models --json` for exact checkpoint IDs, recipe versions,
+implementation state, evidence IDs, and limitations. Tier names describe intended
+roles until a recipe's current `status` becomes `certified`.
+
+DeepSeek V4 is the measured GB10 baseline: 9.217 decode tok/s and 14.045 s warm
+TTFT on the fixed 64-token probe, with identical output across matched controls.
+The compact evidence is checked in as
+[`GB10-BASELINE-001`](benchmarks/gb10/results/GB10-BASELINE-001.json); it is a
+Preview result, not yet a complete Frontier certification.
+
+## Why Spark Lab
+
+- **Made for unified memory:** platform checks and upcoming capacity planning use
+  the physical GB10 memory pool rather than pretending it is discrete VRAM.
+- **Frontier beyond memory:** FTW and NVMe-backed expert streaming can address MoE
+  checkpoints larger than physical memory.
+- **Agent ready:** reasoning, tool calls, prefix reuse, and compatible APIs are
+  first-class validation targets.
+- **Measured, not implied:** product claims must point to versioned GB10 evidence.
+
+See the [quick start](docs/quickstart.md), [model catalog](docs/models.md),
+[CLI reference](docs/cli.md), [installation guide](docs/install.md), and
+[rebrand plan](docs/spark-lab-rebrand-plan.md).
+
+## Compatibility and research attribution
+
+Spark Lab is the product identity. FreeToken remains the internal engine and the
+name of the research paper during this migration. Existing `ft` commands,
+`freetoken.*` imports, and API protocols continue to work; see the
+[migration guide](docs/migration.md).
+
+If you use the engine for research, cite:
 
 ```bibtex
 @article{yang2026freetoken,
@@ -69,16 +108,9 @@ If you use FreeToken for your research, please cite our [paper](https://arxiv.or
 }
 ```
 
-## Acknowledgment
-
-FreeToken was deeply inspired by [mini-sglang](https://github.com/sgl-project/mini-sglang), and
-learned the design and reused code from the following projects:
-[SGLang](https://github.com/sgl-project/sglang),
-[vLLM](https://github.com/vllm-project/vllm),
-[FlashInfer](https://github.com/flashinfer-ai/flashinfer),
-[flash-linear-attention](https://github.com/fla-org/flash-linear-attention),
-[LightLLM](https://github.com/ModelTC/lightllm) and [llama.cpp](https://github.com/ggml-org/llama.cpp).
+FreeToken builds on ideas and code from mini-sglang, SGLang, vLLM,
+FlashInfer, flash-linear-attention, LightLLM, and llama.cpp.
 
 ## License
 
-[Apache License 2.0](https://github.com/FlashML-org/FreeToken/blob/main/LICENSE).
+[Apache License 2.0](LICENSE).

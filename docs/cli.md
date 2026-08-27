@@ -1,26 +1,50 @@
-# CLI reference
+# Spark Lab CLI reference
 
 ```
-ft <command> [args]
+sparklab <command> [args]
 ```
 
 | Command | Purpose |
 |---|---|
-| `ft serve` | Start the API server (OpenAI `/v1/*`, Anthropic `/v1/messages`, Responses) |
-| `ft shell` | Chat with a server in the terminal |
-| `ft ctl` | Query and manage a running server over HTTP |
-| `ft launch` | Configure and launch a coding agent against a server |
-| `ft checkpoint` | Convert an HF checkpoint to the FTW fast-load format |
-| `ft bench bw` | Benchmark CPU vs PCIe bandwidth to calibrate the MoE backend |
+| `sparklab doctor` | Validate GB10, CUDA 13, unified memory, storage, and dependencies |
+| `sparklab models` | List versioned Fast, Frontier, and Research recipes |
+| `sparklab status` | Show the persistent engine status |
+| `sparklab serve` | Start the API server (OpenAI `/v1/*`, Anthropic `/v1/messages`, Responses) |
+| `sparklab shell` | Chat with a server in the terminal |
+| `sparklab ctl` | Query and manage a running server over HTTP |
+| `sparklab launch` | Configure and launch a coding agent against a server |
+| `sparklab checkpoint` | Convert an HF checkpoint to the FTW fast-load format |
+| `sparklab bench bw` | Benchmark CPU vs expert-transfer bandwidth |
 
-`ft --version` prints the installed version (torch-free; nightly wheels carry a
+`sparklab --version` prints the installed version (torch-free; nightly wheels carry a
 `+g<sha>` build stamp, tagged releases a bare version). Every command supports
-`--help`.
+`--help`. The legacy `ft` forms remain supported and call the same engine.
 
-## ft serve
+## sparklab doctor
 
 ```bash
-ft serve --model <path-or-hf-id> [options]
+sparklab doctor [--storage-path PATH] [--json] [--strict]
+```
+
+The human report explains every platform failure and warning. The JSON report is
+schema-versioned for installers and CI. A supported GB10 can still be not ready—for
+example, if swap is already in use or less than the operational memory reserve is
+available.
+
+## sparklab models
+
+```bash
+sparklab models [--tier fast|frontier|research] \
+  [--status certified|preview|experimental] [--json]
+```
+
+Tier is the intended product role. Status records how much of that role has been
+proven; the current catalog deliberately has no Certified recipe.
+
+## sparklab serve
+
+```bash
+sparklab serve --model <path-or-hf-id> [options]
 ```
 
 `--model` is the only required flag — dtype, attention backend, MoE backend,
@@ -63,7 +87,7 @@ See [models.md](models.md#moe-backends) for what each backend does.
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--moe-backend` | auto | `fused`/`offload`/`cpu`/`hybrid`; auto → offload, or hybrid with a `ft bench bw` profile |
+| `--moe-backend` | auto | `fused`/`offload`/`cpu`/`hybrid`; auto → offload, or hybrid with a `sparklab bench bw` profile |
 | `--moe-cache-size` / `--moe-cache-rate` / `--moe-cache-auto` | auto | GPU expert-cache size as slots / fraction of all experts / sized from free VRAM (mutually exclusive; auto is enabled by default for offload-family backends) |
 | `--moe-cache-policy` | `lru` | `lru`, or borrowable `layer_lru` protection applied to both the GPU slot cache and disk host LRU |
 | `--kv-reserve-tokens` | 8192 | KV token floor reserved before `--moe-cache-auto` fills experts |
@@ -84,20 +108,20 @@ See [models.md](models.md#moe-backends) for what each backend does.
 | `--reasoning-parser` | auto | Splits chain-of-thought into `reasoning_content`; auto-inferred; `off` disables |
 | `--enable-cache-report` | off | Report prefix-cache hits in each response's usage block |
 
-## ft shell
+## sparklab shell
 
 ```bash
-ft shell                                    # attach to a running server
-ft shell --model ~/models/Qwen3.6-35B-A3B   # serve + chat in one process
+sparklab shell                                    # attach to a running server
+sparklab shell --model ~/models/Qwen3.6-35B-A3B   # serve + chat in one process
 ```
 
 - Attach mode talks to `--server URL` (default `http://127.0.0.1:1919`)
 - `/help` inside the shell lists the commands (`/think`, `/cache`, `/reset`).
 
-## ft ctl
+## sparklab ctl
 
 ```bash
-ft ctl [--base-url http://127.0.0.1:1919] [--timeout 10] [--json] <subcommand>
+sparklab ctl [--base-url http://127.0.0.1:1919] [--timeout 10] [--json] <subcommand>
 ```
 
 | Subcommand | Endpoint | Purpose |
@@ -109,10 +133,10 @@ ft ctl [--base-url http://127.0.0.1:1919] [--timeout 10] [--json] <subcommand>
 | `cache --moe N \| --kv N \| --mamba N \| --swa N [--wait 300]` | `POST /v1/cache/rebuild` | Live pool resizing without a restart (`k`/`m` suffixes; `--kv`/`--swa` in tokens) |
 | `requests [--since N] [--limit N]` | `GET /v1/requests` | Recent request ring |
 
-## ft launch
+## sparklab launch
 
 ```bash
-ft launch {claude,codex,dsh,hermes,openclaw,opencode} [options] [-- <agent args>]
+sparklab launch {claude,codex,dsh,hermes,openclaw,opencode} [options] [-- <agent args>]
 ```
 
 Discovers the served model via `/v1/models`, writes the agent's provider
@@ -130,29 +154,29 @@ environment so the agent cannot silently fall back to a paid endpoint.
 | `--force-reinstall` | Re-run the agent installer |
 | `-- <args>` | Forwarded verbatim to the agent |
 
-## ft checkpoint
+## sparklab checkpoint
 
 ```bash
-ft checkpoint --model <hf_dir> --out <ftw_dir> [--dtype bfloat16] [--moe-backend offload] [--nvfp4-backend triton] [--shard-gib 8] [--device cuda:0]
+sparklab checkpoint --model <hf_dir> --out <ftw_dir> [--dtype bfloat16] [--moe-backend offload] [--nvfp4-backend triton] [--shard-gib 8] [--device cuda:0]
 ```
 
-Converts an HF safetensors checkpoint to FTW, FreeToken's self-contained
-fast-load format; point `ft serve --model` at the output dir. `--moe-backend
+Converts an HF safetensors checkpoint to FTW, the engine's self-contained
+fast-load format; point `sparklab serve --model` at the output dir. `--moe-backend
 offload` (default) packs experts into offload banks; `--moe-backend triton`
 keeps them dense for resident serving. See the FTW caveats in
 [models.md](models.md#notes). NVFP4 layouts are backend-owned, so choose the
 same `--nvfp4-backend` at conversion and serve time; `auto` selects by GPU,
 while `flashinfer` forces the SM12x b12x layout.
 
-## ft bench bw
+## sparklab bench bw
 
 ```bash
-ft bench bw                       # once per machine
-ft bench bw --dtype nvfp4,bf16    # only the formats you serve
+sparklab bench bw                       # once per machine
+sparklab bench bw --dtype nvfp4,bf16    # only the formats you serve
 ```
 
 Measures host-RAM vs PCIe bandwidth with the real cpu/offload MoE kernels and
-writes a profile (`~/.cache/freetoken/benchbw.json`) that `ft serve
+writes a profile (`~/.cache/sparklab/benchbw.json`) that `sparklab serve
 --moe-backend auto` and `--moe-hybrid-max-fetch -1` read. Profiles are keyed on
 expert format + GPU name, so a profile from different hardware is ignored
 rather than misapplied. Selection flags: `--dtype`, `--model`, `--formats`,

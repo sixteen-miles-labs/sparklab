@@ -97,15 +97,29 @@ class TokenizeManager:
             return _apply_dsv4_chat_encoder(
                 self._dsv4_encoder, messages, tools, chat_template_kwargs
             )
-        # Broadcast the effort in every spelling the ecosystem's templates read
-        # (muse-glimmer grades ``reasoning_strength``; Jinja ignores undeclared
-        # variables) -- the same rule the thinking toggles use. An explicit
-        # caller-provided spelling wins over the broadcast.
+        # Broadcast controls in every spelling the ecosystem's templates read.
+        # Kimi K3's Python XTML renderer consumes ``thinking_effort`` and
+        # ``thinking``; Jinja templates ignore undeclared variables. An explicit
+        # caller-provided spelling always wins over the broadcast.
         if "reasoning_effort" in chat_template_kwargs:
             chat_template_kwargs = dict(chat_template_kwargs)
             chat_template_kwargs.setdefault(
                 "reasoning_strength", chat_template_kwargs["reasoning_effort"]
             )
+            chat_template_kwargs.setdefault(
+                "thinking_effort", chat_template_kwargs["reasoning_effort"]
+            )
+        if "thinking" not in chat_template_kwargs:
+            if "enable_thinking" in chat_template_kwargs:
+                chat_template_kwargs = dict(chat_template_kwargs)
+                chat_template_kwargs["thinking"] = bool(
+                    chat_template_kwargs["enable_thinking"]
+                )
+            elif chat_template_kwargs.get("thinking_mode") in ("enabled", "disabled"):
+                chat_template_kwargs = dict(chat_template_kwargs)
+                chat_template_kwargs["thinking"] = (
+                    chat_template_kwargs["thinking_mode"] == "enabled"
+                )
         if tools is not None:
             chat_template_kwargs = {**chat_template_kwargs, "tools": tools}
         prompt = self.tokenizer.apply_chat_template(

@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import ast
+import html
 import json
 import os
 import logging
@@ -3512,6 +3513,145 @@ class MuseGlimmerDetector(InvokeParamStreamMixin, BaseFormatDetector):
         return StreamingParseResult(normal_text="".join(normal_parts).strip(), calls=calls)
 
 
+class KimiK3Detector(BaseFormatDetector):
+    """One-shot parser for K3's XTML tool-call blocks.
+
+    K3 arguments are structural ``argument`` nodes (or one ``json`` node), not a
+    JSON blob after the opener. Streaming releases ordinary response text
+    immediately and buffers only the structural tools block until its close, so
+    typed values and escaped attributes stay exact.
+    """
+
+    supports_streaming = True
+    toolcall_opener = "<|open|>tools<|sep|>"
+    _tools_close = "<|close|>tools<|sep|>"
+    _call_close = "<|close|>call<|sep|>"
+    _response_close = "<|close|>response<|sep|>"
+
+    def __init__(self):
+        super().__init__()
+        self.bot_token = self.toolcall_opener
+        self.eot_token = self._tools_close
+        self._in_tools = False
+
+    def has_tool_call(self, text: str) -> bool:
+        return self.toolcall_opener in text
+
+    def block_close_tokens(self) -> tuple:
+        return (self._tools_close,)
+
+    @staticmethod
+    def _attrs(raw: str) -> dict[str, str]:
+        return {
+            key: html.unescape(value)
+            for key, value in re.findall(r'([A-Za-z_][\w-]*)="([^"]*)"', raw)
+        }
+
+    @staticmethod
+    def _typed(value: str, kind: str):
+        if kind == "string":
+            return value
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return value
+
+    def detect_and_parse(self, text: str, tools: List[Tool]) -> StreamingParseResult:
+        start = text.find(self.toolcall_opener)
+        if start < 0:
+            return StreamingParseResult(normal_text=text)
+        normal = text[:start].replace(self._response_close, "").strip()
+        end = text.find(self._tools_close, start)
+        body = text[start + len(self.toolcall_opener) : end if end >= 0 else len(text)]
+        calls: list[ToolCallItem] = []
+        tool_indices = self._get_tool_indices(tools)
+        call_re = re.compile(
+            r"<\|open\|>call(?P<attrs>.*?)<\|sep\|>(?P<body>.*?)"
+            + re.escape(self._call_close),
+            re.DOTALL,
+        )
+        arg_re = re.compile(
+            r"<\|open\|>argument(?P<attrs>.*?)<\|sep\|>(?P<value>.*?)"
+            r"<\|close\|>argument<\|sep\|>",
+            re.DOTALL,
+        )
+        json_re = re.compile(
+            r"<\|open\|>json(?:.*?)<\|sep\|>(?P<value>.*?)"
+            r"<\|close\|>json<\|sep\|>",
+            re.DOTALL,
+        )
+        for call in call_re.finditer(body):
+            attrs = self._attrs(call.group("attrs"))
+            name = attrs.get("tool")
+            if not name:
+                continue
+            json_match = json_re.search(call.group("body"))
+            if json_match is not None:
+                try:
+                    params = json.loads(json_match.group("value"))
+                except json.JSONDecodeError:
+                    continue
+            else:
+                params = {}
+                for arg in arg_re.finditer(call.group("body")):
+                    arg_attrs = self._attrs(arg.group("attrs"))
+                    key = arg_attrs.get("key")
+                    if key is not None:
+                        params[key] = self._typed(
+                            arg.group("value"), arg_attrs.get("type", "string")
+                        )
+            calls.append(
+                ToolCallItem(
+                    tool_index=tool_indices.get(name, -1),
+                    name=name,
+                    parameters=json.dumps(params, ensure_ascii=False),
+                )
+            )
+        return StreamingParseResult(normal_text=normal, calls=calls)
+
+    def parse_streaming_increment(self, new_text: str, tools: List[Tool]) -> StreamingParseResult:
+        self._buffer += new_text
+        normal = ""
+        if not self._in_tools:
+            start = self._buffer.find(self.toolcall_opener)
+            if start < 0:
+                # Hold a suffix that can still become either the response closer
+                # (which is markup) or the tools opener on the next increment.
+                held = max(
+                    self._ends_with_partial_token(self._buffer, self.toolcall_opener),
+                    self._ends_with_partial_token(self._buffer, self._response_close),
+                )
+                safe = self._buffer[:-held] if held else self._buffer
+                self._buffer = self._buffer[-held:] if held else ""
+                return StreamingParseResult(
+                    normal_text=safe.replace(self._response_close, "")
+                )
+            normal = self._buffer[:start].replace(self._response_close, "")
+            self._buffer = self._buffer[start:]
+            self._in_tools = True
+
+        end = self._buffer.find(self._tools_close)
+        if end < 0:
+            return StreamingParseResult(normal_text=normal)
+        end += len(self._tools_close)
+        block, tail = self._buffer[:end], self._buffer[end:]
+        parsed = self.detect_and_parse(block, tools)
+        self._buffer = tail
+        self._in_tools = False
+        self.prev_tool_call_arr.extend(
+            {"name": call.name, "arguments": json.loads(call.parameters)}
+            for call in parsed.calls
+        )
+        return StreamingParseResult(normal_text=normal, calls=parsed.calls)
+
+    def finish_streaming(self) -> str:
+        residual, self._buffer = self._buffer, ""
+        if self._in_tools:
+            self._in_tools = False
+            return ""
+        return residual.replace(self._response_close, "")
+
+
 class FunctionCallParser:
     """
     Parser for function/tool calls in model outputs.
@@ -3535,6 +3675,7 @@ class FunctionCallParser:
         "qwen": Qwen25Detector,
         "qwen25": Qwen25Detector,
         "qwen3_coder": Qwen3CoderDetector,
+        "kimi_k3": KimiK3Detector,
     }
 
     def __init__(self, tools: List[Tool], tool_call_parser: str, turn_starts_open: bool = False):

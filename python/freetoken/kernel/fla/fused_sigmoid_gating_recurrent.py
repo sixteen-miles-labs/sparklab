@@ -53,6 +53,8 @@ def fused_sigmoid_gating_delta_rule_update_kernel(
     USE_QK_L2NORM_IN_KERNEL: tl.constexpr,
     IS_VARLEN: tl.constexpr,
     IS_KDA: tl.constexpr,
+    HAS_GATE_LOWER_BOUND: tl.constexpr,
+    gate_lower_bound,
     # Optional flags for target_verify support (default False for decode)
     DISABLE_STATE_UPDATE: tl.constexpr = False,
     CACHE_INTERMEDIATE_STATES: tl.constexpr = False,
@@ -86,11 +88,15 @@ def fused_sigmoid_gating_delta_rule_update_kernel(
     p_o = o + ((i_k * all + bos) * HV + i_hv) * V + o_v
 
     # Gating computation pointers
-    p_A_log = A_log + i_hv
     if IS_KDA:
+        # Released Kimi K3 checkpoints store A_log per key coordinate [K]
+        # (128 values), shared by all heads.  GDN keeps the original per-value-
+        # head scalar layout [HV].
+        p_A_log = A_log + o_k
         p_a = a + bos * stride_a + i_hv * K + o_k
         p_dt_bias = dt_bias + i_hv * K + o_k
     else:
+        p_A_log = A_log + i_hv
         p_a = a + bos * stride_a + i_hv
         p_dt_bias = dt_bias + i_hv
 
@@ -157,11 +163,12 @@ def fused_sigmoid_gating_delta_rule_update_kernel(
 
         # Compute sigmoid gating
         # Load gating parameters
-        b_A_log = tl.load(p_A_log).to(tl.float32)
         if IS_KDA:
+            b_A_log = tl.load(p_A_log, mask=mask_k, other=0).to(tl.float32)
             b_a = tl.load(p_a, mask=mask_k, other=0).to(tl.float32)
             b_dt_bias = tl.load(p_dt_bias, mask=mask_k, other=0).to(tl.float32)
         else:
+            b_A_log = tl.load(p_A_log).to(tl.float32)
             b_a = tl.load(p_a).to(tl.float32)
             b_dt_bias = tl.load(p_dt_bias).to(tl.float32)
 
@@ -175,6 +182,8 @@ def fused_sigmoid_gating_delta_rule_update_kernel(
             x,
         )
         b_g = -tl.exp(b_A_log) * softplus_x
+        if HAS_GATE_LOWER_BOUND:
+            b_g = tl.maximum(b_g, gate_lower_bound)
 
         # Compute beta = sigmoid(b)
         b_beta = 1.0 / (1.0 + tl.exp(-b_b))
@@ -260,6 +269,7 @@ def fused_sigmoid_gating_delta_rule_update(
     use_qk_l2norm_in_kernel: bool = False,
     cu_seqlens: Optional[torch.Tensor] = None,
     is_kda: bool = False,
+    lower_bound: float | None = None,
     # Optional parameters for target_verify support
     disable_state_update: bool = False,
     intermediate_states_buffer: Optional[torch.Tensor] = None,
@@ -362,6 +372,8 @@ def fused_sigmoid_gating_delta_rule_update(
         USE_QK_L2NORM_IN_KERNEL=use_qk_l2norm_in_kernel,
         IS_VARLEN=cu_seqlens is not None,
         IS_KDA=is_kda,
+        HAS_GATE_LOWER_BOUND=lower_bound is not None,
+        gate_lower_bound=0.0 if lower_bound is None else lower_bound,
         DISABLE_STATE_UPDATE=disable_state_update,
         CACHE_INTERMEDIATE_STATES=intermediate_states_buffer is not None,
         HAS_EAGLE_TREE_CUSTOM_ATTN_MASK=retrieve_parent_token is not None,

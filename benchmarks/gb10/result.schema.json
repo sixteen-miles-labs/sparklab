@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sparklab.local/schemas/gb10-result-1.0.json",
+  "title": "Spark Lab GB10 benchmark result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "result_id",
+    "status",
+    "platform",
+    "engine",
+    "model",
+    "workload",
+    "metrics",
+    "validation",
+    "source"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "result_id": {"type": "string", "pattern": "^GB10-[A-Z]+-[0-9]{3}$"},
+    "status": {"enum": ["measured", "projected"]},
+    "platform": {
+      "type": "object",
+      "required": ["device", "memory_gib", "machine", "cuda"],
+      "properties": {
+        "device": {"type": "string"},
+        "memory_gib": {"type": "number"},
+        "machine": {"type": "string"},
+        "cuda": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "engine": {
+      "type": "object",
+      "required": ["name", "revision"],
+      "properties": {
+        "name": {"type": "string"},
+        "revision": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "model": {
+      "type": "object",
+      "required": ["repository", "checkpoint_format", "fingerprint"],
+      "properties": {
+        "repository": {"type": "string"},
+        "checkpoint_format": {"type": "string"},
+        "fingerprint": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "workload": {"type": "object"},
+    "metrics": {"type": "object"},
+    "validation": {"type": "object"},
+    "source": {
+      "type": "object",
+      "required": ["summary", "raw_artifact"],
+      "properties": {
+        "summary": {"type": "string"},
+        "raw_artifact": {"type": "string"}
+      },
+      "additionalProperties": true
+    }
+  }
+}

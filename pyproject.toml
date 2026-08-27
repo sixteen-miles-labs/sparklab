@@ -10,7 +10,7 @@ build-backend = "setuptools.build_meta"
 name = "freetoken"
 # Single source of truth: python/freetoken/version.py (read via the attr directive below).
 dynamic = ["version"]
-description = "Local MoE-offload LLM inference runtime with OpenAI- and Anthropic-compatible APIs"
+description = "Spark Lab: GB10-native frontier inference powered by the FreeToken engine"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
@@ -55,6 +55,8 @@ dependencies = [
     # PyPI's torch 2.11.0 wheel is itself the cu130 build, so plain pip resolves
     # correctly from PyPI alone; uv additionally pins the index below.
     "torch>=2.11,<2.12",
+    # Kimi K3's official remote tokenizer loads its vocabulary with tiktoken.
+    "tiktoken>=0.12,<1",
     "tqdm>=4.66,<5",
     "transformers>=5.5,<6",
     "triton==3.6.0; platform_system == 'Linux'",
@@ -68,6 +70,7 @@ Issues = "https://github.com/FlashML-org/FreeToken/issues"
 
 [project.scripts]
 ft = "freetoken.cli:main"
+sparklab = "sparklab.cli:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=6.0"]
@@ -114,7 +117,7 @@ version = {attr = "freetoken.version.__version__"}
 where = ["python"]
 
 [tool.setuptools.package-data]
-"*" = ["csrc/**/*", "moe/configs/**/*.json"]
+"*" = ["csrc/**/*", "moe/configs/**/*.json", "recipes/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

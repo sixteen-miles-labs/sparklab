@@ -1,0 +1,72 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-BASELINE-001",
+  "status": "measured",
+  "platform": {
+    "device": "NVIDIA GB10",
+    "memory_gib": 128,
+    "machine": "aarch64",
+    "cpu": "20 physical Arm cores",
+    "os": "Ubuntu NVIDIA kernel 6.17.0-1014-nvidia",
+    "driver": "580.126.09",
+    "cuda": "13.0",
+    "torch": "2.11.0+cu130",
+    "triton": "3.6.0"
+  },
+  "engine": {
+    "name": "FreeToken",
+    "product_identity": "Spark Lab",
+    "revision": "ddc3b34+experiment-metadata"
+  },
+  "model": {
+    "repository": "deepseek-ai/DeepSeek-V4-Flash-0731",
+    "checkpoint_format": "ftw-ds_fp4",
+    "checkpoint_bytes": 157460918272,
+    "fingerprint": "72acedb1d9578b22"
+  },
+  "recipe": {
+    "execution_policy": "nvme-moe",
+    "profile": "balanced",
+    "host_cache_gib": 4,
+    "expert_slots": 5900,
+    "read_workers": 20,
+    "kv_tokens": 2048,
+    "prefill_overlap": true,
+    "cuda_graph": false
+  },
+  "workload": {
+    "name": "AIME-25 fixed probe",
+    "batch_size": 1,
+    "sampling": "greedy",
+    "requested_output_tokens": 64,
+    "completion_tokens": 63,
+    "measured_intervals": 62,
+    "warmup_requests": 1,
+    "measured_requests": 1
+  },
+  "metrics": {
+    "decode_tokens_per_second": 9.217,
+    "decode_milliseconds_per_token": 108.489,
+    "warm_ttft_seconds": 14.045,
+    "latency_p50_milliseconds": 94.058,
+    "latency_p99_milliseconds": 569.993,
+    "device_allocation_gib": 83.40,
+    "free_memory_floor_gib_range": [2.79, 3.52],
+    "expert_cache_miss_rate_percent": 3.15,
+    "host_lru_hit_rate_percent": 0.56,
+    "disk_reads": 45820,
+    "physical_io_gib": 142.63,
+    "swap_growth_bytes": 0
+  },
+  "validation": {
+    "output_hash_algorithm": "sha1-prefix",
+    "output_hash": "fbf178b2bde5",
+    "matched_existing_controls": true,
+    "confirmation_decode_tokens_per_second": 8.967
+  },
+  "source": {
+    "summary": "exp_dsv4_gb10.md",
+    "raw_artifact": "/home/lidaiqing/results/dsv4-gb10/stage-a-final-overlap-host4-cache5900-decode64.jsonl",
+    "raw_artifact_committed": false
+  }
+}

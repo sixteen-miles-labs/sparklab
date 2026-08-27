@@ -17,24 +17,28 @@ from freetoken.utils import arch
 
 
 @pytest.mark.parametrize(
-    "cc, sm90_sup, sm100_sup, sm90_fam, sm100_fam",
+    "cc, sm90_sup, sm100_sup, sm90_fam, sm100_fam, sm121_fam",
     [
-        ((8, 6), False, False, False, False),
-        ((9, 0), True, False, True, False),
-        ((10, 0), True, True, False, True),
-        ((10, 3), True, True, False, True),
-        ((11, 0), True, True, False, False),
-        ((12, 0), True, True, False, False),
-        ((12, 1), True, True, False, False),
-        (None, False, False, False, False),  # no CUDA device
+        ((8, 6), False, False, False, False, False),
+        ((9, 0), True, False, True, False, False),
+        ((10, 0), True, True, False, True, False),
+        ((10, 3), True, True, False, True, False),
+        ((11, 0), True, True, False, False, False),
+        ((12, 0), True, True, False, False, False),
+        ((12, 1), True, True, False, False, True),
+        ((12, 2), True, True, False, False, False),
+        (None, False, False, False, False, False),  # no CUDA device
     ],
 )
-def test_arch_helper_semantics(monkeypatch, cc, sm90_sup, sm100_sup, sm90_fam, sm100_fam):
+def test_arch_helper_semantics(
+    monkeypatch, cc, sm90_sup, sm100_sup, sm90_fam, sm100_fam, sm121_fam
+):
     monkeypatch.setattr(arch, "_get_torch_cuda_version", lambda: cc)
     assert arch.is_sm90_supported() is sm90_sup
     assert arch.is_sm100_supported() is sm100_sup
     assert arch.is_sm90_family() is sm90_fam
     assert arch.is_sm100_family() is sm100_fam
+    assert arch.is_sm121_family() is sm121_fam
 
 
 def _engine_config(**overrides):
