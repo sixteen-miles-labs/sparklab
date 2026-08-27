@@ -127,6 +127,189 @@ def validate_safetensors_snapshot(directory: str | os.PathLike[str]) -> dict[str
     }
 
 
+def validate_ftw_checkpoint(directory: str | os.PathLike[str]) -> dict[str, Any]:
+    """Validate a complete FTW checkpoint without reading its weight payloads.
+
+    Conversion streams hundreds of GiB and publishes the index last.  This gate
+    independently proves that every indexed shard and external artifact exists at
+    its exact recorded size, and that all tensor metadata describes one contiguous,
+    aligned logical stream.  It catches interrupted conversions, stale shard sets,
+    and malformed indexes before their fingerprint can be used as certification
+    evidence.
+    """
+    from freetoken.checkpoint.ftw import ALIGN, FORMAT_TAG, FORMAT_VERSION, INDEX_NAME
+
+    folder = Path(directory)
+    index_path = folder / INDEX_NAME
+    try:
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AcquisitionError(f"cannot read FTW index {index_path}: {exc}") from exc
+    if index.get("format") != FORMAT_TAG or index.get("version") != FORMAT_VERSION:
+        raise AcquisitionError(
+            f"unsupported FTW identity in {index_path}: "
+            f"format={index.get('format')!r}, version={index.get('version')!r}"
+        )
+    if index.get("align") != ALIGN:
+        raise AcquisitionError(
+            f"FTW alignment mismatch: expected {ALIGN}, found {index.get('align')!r}"
+        )
+
+    shards = index.get("shards")
+    tensors = index.get("tensors")
+    total_bytes = index.get("total_bytes")
+    if not isinstance(shards, list) or not shards:
+        raise AcquisitionError("FTW index has no shards")
+    if not isinstance(tensors, list) or not tensors:
+        raise AcquisitionError("FTW index has no tensors")
+    if not isinstance(total_bytes, int) or total_bytes <= 0:
+        raise AcquisitionError(f"invalid FTW total_bytes: {total_bytes!r}")
+
+    shard_cursor = 0
+    indexed_shard_names: set[str] = set()
+    for shard in shards:
+        try:
+            filename = shard["file"]
+            offset = int(shard["global_off"])
+            nbytes = int(shard["nbytes"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise AcquisitionError(f"invalid FTW shard metadata: {shard!r}") from exc
+        if (
+            not isinstance(filename, str)
+            or Path(filename).is_absolute()
+            or ".." in Path(filename).parts
+        ):
+            raise AcquisitionError(f"unsafe FTW shard path: {filename!r}")
+        if filename in indexed_shard_names:
+            raise AcquisitionError(f"duplicate FTW shard: {filename}")
+        indexed_shard_names.add(filename)
+        if offset != shard_cursor or nbytes <= 0:
+            raise AcquisitionError(
+                f"non-contiguous FTW shard {filename}: expected offset "
+                f"{shard_cursor}, found offset={offset}, nbytes={nbytes}"
+            )
+        path = folder / filename
+        try:
+            actual_size = path.stat().st_size
+        except OSError as exc:
+            raise AcquisitionError(f"FTW checkpoint is missing shard: {path}") from exc
+        if actual_size != nbytes:
+            raise AcquisitionError(
+                f"FTW shard size mismatch for {filename}: expected {nbytes}, "
+                f"found {actual_size}"
+            )
+        shard_cursor += nbytes
+    if shard_cursor != total_bytes:
+        raise AcquisitionError(
+            f"FTW shard total mismatch: index={total_bytes}, shards={shard_cursor}"
+        )
+    actual_shard_names = {path.name for path in folder.glob("*.ftw") if path.is_file()}
+    if actual_shard_names != indexed_shard_names:
+        raise AcquisitionError(
+            "FTW shard set mismatch: "
+            f"missing={sorted(indexed_shard_names - actual_shard_names)}, "
+            f"stale={sorted(actual_shard_names - indexed_shard_names)}"
+        )
+
+    import torch
+
+    tensor_cursor = 0
+    names: set[str] = set()
+    kind_counts: dict[str, int] = {}
+    logical_bytes = 0
+    for tensor in tensors:
+        try:
+            name = tensor["name"]
+            kind = tensor["kind"]
+            dtype_name = tensor["dtype"]
+            shape = [int(dim) for dim in tensor["shape"]]
+            offset = int(tensor["global_off"])
+            nbytes = int(tensor["nbytes"])
+            dtype = getattr(torch, dtype_name)
+        except (AttributeError, KeyError, TypeError, ValueError) as exc:
+            raise AcquisitionError(f"invalid FTW tensor metadata: {tensor!r}") from exc
+        if not isinstance(name, str) or not name or name in names:
+            raise AcquisitionError(f"invalid or duplicate FTW tensor name: {name!r}")
+        if not isinstance(kind, str) or not kind:
+            raise AcquisitionError(f"invalid FTW tensor kind for {name}: {kind!r}")
+        if (
+            offset != tensor_cursor
+            or offset % ALIGN
+            or nbytes < 0
+            or any(dim < 0 for dim in shape)
+        ):
+            raise AcquisitionError(
+                f"invalid FTW tensor range for {name}: expected aligned offset "
+                f"{tensor_cursor}, found offset={offset}, nbytes={nbytes}"
+            )
+        expected_nbytes = int(torch.empty((), dtype=dtype).element_size())
+        for dim in shape:
+            expected_nbytes *= dim
+        if nbytes != expected_nbytes:
+            raise AcquisitionError(
+                f"FTW tensor size mismatch for {name}: expected {expected_nbytes}, "
+                f"found {nbytes}"
+            )
+        names.add(name)
+        kind_counts[kind] = kind_counts.get(kind, 0) + 1
+        logical_bytes += nbytes
+        tensor_cursor = ((offset + nbytes + ALIGN - 1) // ALIGN) * ALIGN
+    if tensor_cursor != total_bytes:
+        raise AcquisitionError(
+            f"FTW tensor stream mismatch: index={total_bytes}, tensors={tensor_cursor}"
+        )
+    recorded_counts = index.get("counts") or {}
+    if recorded_counts != kind_counts:
+        raise AcquisitionError(
+            f"FTW kind count mismatch: index={recorded_counts!r}, "
+            f"tensors={kind_counts!r}"
+        )
+
+    external_bytes = 0
+    external = index.get("external_artifacts") or []
+    if not isinstance(external, list):
+        raise AcquisitionError("FTW external_artifacts must be a list")
+    for artifact in external:
+        try:
+            filename = artifact["file"]
+            nbytes = int(artifact["nbytes"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise AcquisitionError(f"invalid FTW external artifact: {artifact!r}") from exc
+        if (
+            not isinstance(filename, str)
+            or Path(filename).is_absolute()
+            or ".." in Path(filename).parts
+            or nbytes < 0
+        ):
+            raise AcquisitionError(f"unsafe FTW external artifact: {artifact!r}")
+        path = folder / filename
+        try:
+            actual_size = path.stat().st_size
+        except OSError as exc:
+            raise AcquisitionError(f"FTW checkpoint is missing external artifact: {path}") from exc
+        if actual_size != nbytes:
+            raise AcquisitionError(
+                f"FTW external artifact size mismatch for {filename}: expected "
+                f"{nbytes}, found {actual_size}"
+            )
+        external_bytes += nbytes
+
+    fingerprint = index.get("fingerprint")
+    if not isinstance(fingerprint, str) or not fingerprint:
+        raise AcquisitionError("FTW checkpoint has no source fingerprint")
+    return {
+        "index": INDEX_NAME,
+        "fingerprint": fingerprint,
+        "shards": len(shards),
+        "tensors": len(tensors),
+        "logical_bytes": logical_bytes,
+        "physical_bytes": total_bytes,
+        "external_artifacts": len(external),
+        "external_bytes": external_bytes,
+        "kind_counts": kind_counts,
+    }
+
+
 def _write_manifest(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(".tmp")
@@ -183,6 +366,7 @@ def acquire_recipe(
 
     prepared: Path | None = None
     index: dict[str, Any] | None = None
+    prepared_validation: dict[str, Any] | None = None
     if prepare:
         if recipe.implementation == "planned":
             raise AcquisitionError(
@@ -201,6 +385,7 @@ def acquire_recipe(
             nvfp4_backend="auto",
             device="cuda:0",
         )
+        prepared_validation = validate_ftw_checkpoint(prepared)
 
     payload = {
         "schema_version": "1.0",
@@ -211,6 +396,7 @@ def acquire_recipe(
         "source_path": str(resolved),
         "prepared_path": str(prepared) if prepared else None,
         "prepared_fingerprint": index.get("fingerprint") if index else None,
+        "prepared_validation": prepared_validation,
         "completed_at": datetime.now(timezone.utc).isoformat(),
         "source_validation": source_validation,
     }
@@ -229,5 +415,5 @@ def read_manifest(recipe: ModelRecipe, root: str | None = None) -> dict[str, Any
 
 __all__ = [
     "AcquisitionError", "acquire_recipe", "read_manifest",
-    "validate_safetensors_snapshot",
+    "validate_ftw_checkpoint", "validate_safetensors_snapshot",
 ]
