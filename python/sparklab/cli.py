@@ -26,6 +26,7 @@ Product commands:
   plan        Show storage and unified-memory admission for one recipe
   pull        Acquire an immutable model revision, optionally preparing FTW
   run         Start a recipe-backed server after fail-closed GB10 admission
+  gate        Evaluate versioned evidence against Fast/Frontier/Research gates
   status      Show the persistent engine status
 
 Engine commands (FreeToken-compatible):
@@ -273,6 +274,49 @@ def _run_recipe(argv: list[str]) -> int:
     return 0
 
 
+def _run_gate(argv: list[str]) -> int:
+    from sparklab.catalog import TIERS
+
+    parser = argparse.ArgumentParser(
+        prog="sparklab gate",
+        description="Evaluate complete-checkpoint evidence without promoting a recipe.",
+    )
+    parser.add_argument("recipe", type=_recipe)
+    parser.add_argument("evidence", help="Certification evidence JSON")
+    parser.add_argument("--tier", choices=TIERS)
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+    try:
+        with open(args.evidence, encoding="utf-8") as handle:
+            evidence = json.load(handle)
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"sparklab gate: cannot read evidence: {exc}", file=sys.stderr)
+        return 2
+
+    from sparklab.certification import evaluate_all_tiers, evaluate_tier
+
+    gates = (
+        (evaluate_tier(args.recipe, evidence, args.tier),)
+        if args.tier else evaluate_all_tiers(args.recipe, evidence)
+    )
+    payload = {
+        "schema_version": "1.0",
+        "recipe": args.recipe.slug,
+        "recipe_version": args.recipe.recipe_version,
+        "requested_tier": args.tier or args.recipe.intended_tier,
+        "gates": [gate.to_dict() for gate in gates],
+    }
+    if args.json:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+    else:
+        for gate in gates:
+            print(f"{gate.tier.upper():<9} {'PASS' if gate.passed else 'FAIL'}")
+            for reason in gate.reasons:
+                print(f"  - {reason}")
+    requested = args.tier or args.recipe.intended_tier
+    return 0 if next(gate for gate in gates if gate.tier == requested).passed else 1
+
+
 def _run_serve(argv: list[str]) -> int:
     from freetoken.server import launch_server
 
@@ -335,6 +379,7 @@ COMMANDS = {
     "plan": _run_plan,
     "pull": _run_pull,
     "run": _run_recipe,
+    "gate": _run_gate,
     "status": _run_status,
     "serve": _run_serve,
     "shell": _run_shell,

@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sparklab.local/schemas/gb10-certification-1.0.json",
+  "title": "Spark Lab complete-checkpoint certification evidence",
+  "type": "object",
+  "required": [
+    "schema_version", "result_id", "recipe", "engine", "checkpoint",
+    "metrics", "validation", "stability"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "result_id": {"type": "string", "minLength": 1},
+    "recipe": {
+      "type": "object",
+      "required": ["slug", "recipe_version", "revision"],
+      "properties": {
+        "slug": {"type": "string"},
+        "recipe_version": {"type": "string"},
+        "revision": {"type": ["string", "null"]}
+      },
+      "additionalProperties": true
+    },
+    "engine": {
+      "type": "object",
+      "required": ["git_revision"],
+      "properties": {"git_revision": {"type": "string", "minLength": 1}},
+      "additionalProperties": true
+    },
+    "checkpoint": {
+      "type": "object",
+      "required": ["full_model", "fingerprint"],
+      "properties": {
+        "full_model": {"const": true},
+        "fingerprint": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": true
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "decode_tokens_per_second": {"type": "number", "minimum": 0},
+        "warm_ttft_seconds": {"type": "number", "minimum": 0}
+      },
+      "additionalProperties": true
+    },
+    "validation": {
+      "type": "object",
+      "required": [
+        "output_correctness", "reasoning_parser", "tool_parser",
+        "coding_agent_task", "memory_bounded"
+      ],
+      "properties": {
+        "output_correctness": {"const": true},
+        "reasoning_parser": {"const": true},
+        "tool_parser": {"const": true},
+        "coding_agent_task": {"const": true},
+        "memory_bounded": {"const": true},
+        "context_tokens": {"type": "integer", "minimum": 1},
+        "nvme_behavior": {"enum": ["no_stalls", "bounded", "unbounded"]}
+      },
+      "additionalProperties": true
+    },
+    "stability": {
+      "type": "object",
+      "properties": {
+        "duration_minutes": {"type": "number", "minimum": 0},
+        "oom_count": {"type": "integer", "minimum": 0},
+        "swap_growth_bytes": {"type": "integer"},
+        "parser_failures": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

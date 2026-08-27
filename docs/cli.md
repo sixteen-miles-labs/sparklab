@@ -11,6 +11,7 @@ sparklab <command> [args]
 | `sparklab plan` | Check recipe artifact space and runtime-memory admission |
 | `sparklab pull` | Resume a pinned checkpoint acquisition and optionally prepare FTW |
 | `sparklab run` | Launch a prepared recipe after fail-closed GB10 admission |
+| `sparklab gate` | Evaluate versioned full-model evidence against product tier gates |
 | `sparklab status` | Show the persistent engine status |
 | `sparklab serve` | Start the API server (OpenAI `/v1/*`, Anthropic `/v1/messages`, Responses) |
 | `sparklab shell` | Chat with a server in the terminal |
@@ -73,6 +74,17 @@ sparklab run <recipe> [--root PATH] [--dry-run] [--json] [-- <extra serve args>]
 Resolves the prepared artifact and recipe-owned runtime flags, then refuses to
 launch unless the checkpoint manifest and GB10 memory plan pass. Experimental
 recipes remain visibly non-certified when launched for engineering work.
+
+## sparklab gate
+
+```bash
+sparklab gate <recipe> <evidence.json> [--tier fast|frontier|research] [--json]
+```
+
+Fails closed if evidence belongs to another recipe version/revision or omits
+full-model identity, correctness, parser, coding-task, memory, or tier-specific
+performance/context/stability/NVMe proof. Passing this command is necessary but
+does not itself edit or promote a catalog recipe.
 
 ## sparklab serve
 

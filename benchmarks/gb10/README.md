@@ -9,3 +9,13 @@ recipes. Raw logs and large result streams stay outside the source repository.
 A model catalog entry may cite a result ID, but that evidence does not make the
 recipe Certified by itself. Tier latency, context, correctness, agent, and
 endurance gates must all pass on a release artifact.
+
+Complete-checkpoint tier evidence follows `certification.schema.json` and can be
+evaluated without changing catalog state:
+
+```bash
+sparklab gate <recipe> <evidence.json> --json
+```
+
+Reduced-layer, dummy-weight, or mismatched-recipe evidence is rejected even for
+Research admission.

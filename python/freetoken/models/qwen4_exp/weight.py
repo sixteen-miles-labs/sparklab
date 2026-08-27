@@ -9,7 +9,7 @@ from typing import Iterator
 import safetensors
 import torch
 from freetoken.distributed import get_tp_info
-from freetoken.models.loader import iter_weight_files
+from freetoken.models.loader import drop_page_cache, iter_weight_files
 
 _EXPERT = re.compile(r"^model\.layers\.\d+\.mlp\.experts\.(gate_up_proj|down_proj)$")
 _EXPERT_LAYER = re.compile(
@@ -103,10 +103,16 @@ def _iter_experts_layer_order(
         for role in ("gate_up_proj", "down_proj"):
             raw, filename = parts[role]
             path = os.path.join(model_path, filename)
-            with safetensors.safe_open(path, framework="pt", device=str(device)) as handle:
-                name = _rename(raw)
-                assert name is not None
-                yield name, handle.get_tensor(raw)
+            try:
+                with safetensors.safe_open(path, framework="pt", device=str(device)) as handle:
+                    name = _rename(raw)
+                    assert name is not None
+                    yield name, handle.get_tensor(raw)
+            finally:
+                # The consumer has copied this multi-GiB tensor into its bounded
+                # per-layer bank before requesting the next item. Do not let the
+                # original safetensors pages accumulate beside those banks.
+                drop_page_cache(path)
 
 
 def iter_weights(
