@@ -141,7 +141,8 @@ def parse_args(
         if "gemma4" in marker:
             return "gemma4"
         if (
-            "qwen3_5" in marker
+            "qwen4" in marker
+            or "qwen3_5" in marker
             or "qwen3.5" in marker
             or ("qwen3" in marker and "coder" in marker)
         ):
@@ -183,7 +184,12 @@ def parse_args(
             tag in marker for tag in ("v4", "deepseek_v4", "v3.2", "v32")
         ):
             return "deepseekv32"
-        if "qwen3" in marker or "qwen3.5" in marker or "qwen3_5" in marker:
+        if (
+            "qwen4" in marker
+            or "qwen3" in marker
+            or "qwen3.5" in marker
+            or "qwen3_5" in marker
+        ):
             return "qwen3"
         if "glm" in marker:
             return "glm"

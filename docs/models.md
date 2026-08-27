@@ -30,9 +30,9 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | Intended tier | Recipe | Checkpoint | Current status |
 |---|---|---|---|
 | Fast | `qwen3.6-35b-a3b` | [nvidia/Qwen3.6-35B-A3B-NVFP4](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | Experimental; first Fast certification target |
-| Fast | `qwen3.8-flash-next` | [Qwen/Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | Experimental; post-1.0 architecture/quantization work |
+| Fast | `qwen3.8-flash-next` | [Qwen/Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) | Experimental; text runtime implemented, full-checkpoint GB10 certification in progress |
 | Frontier | `deepseek-v4` | [deepseek-ai/DeepSeek-V4-Flash-0731](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | Preview; measured baseline, product gates still open |
-| Frontier | `glm-5.2` | [nvidia/GLM-5.2-NVFP4](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | Experimental; active GB10 experiment |
+| Frontier | `glm-5.2` | [nvidia/GLM-5.2-NVFP4](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | Experimental; fallback retained in the catalog, not the current enablement priority |
 | Frontier | `glm-5.3-flash` | [zai-org/GLM-5.3-Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | Experimental; desired second Frontier model |
 | Research | `kimi-k3` | [moonshotai/Kimi-K3](https://huggingface.co/moonshotai/Kimi-K3) | Experimental; text architecture implemented, full run pending |
 
@@ -55,5 +55,6 @@ experts must be independently addressable from NVMe:
 sparklab checkpoint --model /path/to/hf-checkpoint --out /path/to/model-ftw
 ```
 
-Until recipe-backed `pull` and `run` land, conversion and serving flags remain an
-expert interface documented in [cli.md](cli.md).
+Recipe-backed `sparklab pull <recipe> --prepare` performs this conversion at the
+pinned revision. Direct conversion and serving flags remain an expert interface
+documented in [cli.md](cli.md).

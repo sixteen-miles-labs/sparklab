@@ -35,3 +35,22 @@ def test_unknown_command_is_a_usage_error(capsys):
     assert cli.main(["spark"]) == 2
     captured = capsys.readouterr()
     assert "unknown sparklab command" in captured.err
+
+
+def test_pull_dry_run_delegates_to_pinned_acquisition(monkeypatch, capsys):
+    seen = {}
+
+    def fake_acquire(recipe, **kwargs):
+        seen.update(recipe=recipe, **kwargs)
+        return {
+            "artifact_plan": {
+                "source_path": "/models/qwen",
+                "prepared_path": "/models/qwen-ftw",
+            }
+        }
+
+    monkeypatch.setattr("sparklab.acquire.acquire_recipe", fake_acquire)
+    assert cli.main(["pull", "qwen3.8-flash-next", "--dry-run"]) == 0
+    assert seen["recipe"].revision == "f5d08274bafd880402bd16f5e3e6c514136ec06c"
+    assert seen["dry_run"] is True and seen["prepare"] is False
+    assert "would acquire" in capsys.readouterr().out

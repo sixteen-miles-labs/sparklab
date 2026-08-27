@@ -14,6 +14,14 @@ The first compatibility-preserving product slice has landed in the worktree:
   installed kernel dependencies;
 - `sparklab models` reads packaged, versioned recipes for the Fast, Frontier, and
   Research portfolio and keeps intended tier separate from admission status;
+- `sparklab plan`, `sparklab pull`, and `sparklab run` provide fail-closed
+  artifact planning, immutable resumable acquisition, optional FTW preparation,
+  and recipe-owned launch arguments;
+- Qwen3.8-Flash-Next now has a text runtime for Hyper-Connections, PLE with a
+  disk-backed 95 GiB n-gram table, hybrid GDN/QSA attention, stacked BF16
+  experts, and bounded-memory FTW conversion. Its four-layer GB10 dummy-weight
+  architecture smoke test passes; full-checkpoint correctness and performance
+  gates remain open;
 - `SPARKLAB_*` values take precedence in the central environment configuration,
   while corresponding `FREETOKEN_*` values remain fallbacks;
 - new bandwidth profiles write under `~/.cache/sparklab`, with read-only discovery
@@ -24,8 +32,23 @@ The first compatibility-preserving product slice has landed in the worktree:
   lead with the GB10 product workflow and retain explicit FreeToken attribution.
 
 This does not complete Stage 1 or the public rebrand gate. In particular, the
-unified-memory planner, ARM64 release artifact, recipe-backed `pull`/`run`, daemon
-state migration, visual identity, and all model certification gates remain open.
+ARM64 release artifact, daemon state migration, visual identity, calibrated
+runtime-memory measurements, and all model certification gates remain open.
+
+### Active certification sequence
+
+The current machine work is deliberately serial to preserve NVMe and unified
+memory headroom:
+
+1. Finish the pinned Qwen3.8-Flash-Next source, prepare FTW, validate full-model
+   output, and assign the tier earned by the GB10 gates.
+2. Implement and certify text-only GLM-5.3-Flash. GLM-5.2 remains a catalog
+   fallback, but its local source/prepared artifacts are not retained during
+   this sequence.
+3. Resume the complete Kimi K3 experiment only after Qwen and GLM-5.3 finish.
+
+No dummy, reduced-layer, or import-only result can promote a recipe beyond
+Experimental. Only complete-checkpoint evidence can earn Preview or Certified.
 
 ## 1. Executive decision
 
@@ -548,11 +571,11 @@ gate. In particular:
 - **Kimi K3** is the flagship beyond-memory demonstration and does not block the daily-use
   1.0 release. It stays Research unless it independently satisfies every Frontier gate.
 
-### Post-1.0 promotion queue
+### Active promotion queue
 
-1. **Qwen3.8-Flash-Next** is the highest-priority next Fast candidate. First validate the
-   official FP8 checkpoint for reference correctness, then develop a GB10-sized
-   lower-precision recipe. Promote it directly to Fast only if that exact recipe passes the
+1. **Qwen3.8-Flash-Next** is the highest-priority Fast candidate. First validate the
+   official checkpoint for reference correctness, then evaluate a GB10-sized
+   lower-precision recipe if the BF16/NVMe result misses its product gate. Promote it directly to Fast only if that exact recipe passes the
    Fast speed, TTFT, context, stability, quality, and agent gates; otherwise certify it as
    Frontier or retain it as Research.
 2. **GLM-5.3-Flash multimodality** follows text-only Frontier certification. Vision support
@@ -563,8 +586,8 @@ gate. In particular:
 4. **GPT-OSS 20B**, **Qwen3-30B-A3B**, and smaller Gemma variants are Fast-tier fallback
    candidates, not additional 1.0 commitments.
 
-Qwen3.8-Flash-Next should be tested in two forms: the official FP8 checkpoint for reference
-correctness and a GB10-oriented lower-precision recipe for capacity/performance. The latter
+Qwen3.8-Flash-Next should be tested in two forms: the official BF16 checkpoint for reference
+correctness and, if needed, a GB10-oriented lower-precision recipe for capacity/performance. The latter
 must preserve agreed output and agent-quality tolerances; otherwise only the official
 checkpoint can be certified. Its large offload-friendly n-gram embedding deserves a
 dedicated resident-versus-NVMe benchmark rather than being treated as ordinary MoE weights.

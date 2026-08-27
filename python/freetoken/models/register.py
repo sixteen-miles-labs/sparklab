@@ -65,6 +65,16 @@ _MODEL_REGISTRY: dict[str, ModelSpec] = {
         "freetoken.models.qwen3_5_moe",
         "Qwen3_5MoEForCausalLM",
     ),
+    # Qwen3.8-Flash-Next / Qwen4-Exp: text-only tower with Hyper-Connections,
+    # PLE, hybrid GDN/QSA attention and stacked BF16 experts.
+    "Qwen4ExpForConditionalGeneration": ModelSpec(
+        "freetoken.models.qwen4_exp",
+        "Qwen4ExpForCausalLM",
+    ),
+    "Qwen4ExpForCausalLM": ModelSpec(
+        "freetoken.models.qwen4_exp",
+        "Qwen4ExpForCausalLM",
+    ),
     # Muse-Glimmer-30B (model_type muse_glimmer): multimodal wrapper config (text tower in
     # text_config, weights under model.language_model.); served text-only. Dense gated GQA
     # with a [SWA x3, full] pattern -- full layers are NoPE -- weightless qk norms, centered

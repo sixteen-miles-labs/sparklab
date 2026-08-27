@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from importlib.resources import files
-from typing import Iterable
+from typing import Any, Iterable
 
 TIERS = ("fast", "frontier", "research")
 STATUSES = ("certified", "preview", "experimental")
@@ -25,6 +25,12 @@ class ModelRecipe:
     execution_policy: str
     profile: str
     description: str
+    revision: str | None = None
+    source_bytes: int | None = None
+    prepared_bytes: int | None = None
+    minimum_free_bytes: int | None = None
+    runtime_args: tuple[str, ...] = ()
+    runtime_memory: dict[str, int] | None = None
     evidence: tuple[str, ...] = ()
     limitations: tuple[str, ...] = ()
 
@@ -43,6 +49,22 @@ class ModelRecipe:
             execution_policy=str(value["execution_policy"]),
             profile=str(value["profile"]),
             description=str(value["description"]),
+            revision=(str(value["revision"]) if value.get("revision") else None),
+            source_bytes=(int(value["source_bytes"]) if value.get("source_bytes") else None),
+            prepared_bytes=(
+                int(value["prepared_bytes"]) if value.get("prepared_bytes") else None
+            ),
+            minimum_free_bytes=(
+                int(value["minimum_free_bytes"])
+                if value.get("minimum_free_bytes")
+                else None
+            ),
+            runtime_args=tuple(str(item) for item in value.get("runtime_args", ())),
+            runtime_memory=(
+                {str(key): int(size) for key, size in value["runtime_memory"].items()}
+                if value.get("runtime_memory")
+                else None
+            ),
             evidence=tuple(value.get("evidence", ())),
             limitations=tuple(value.get("limitations", ())),
         )
@@ -58,9 +80,29 @@ class ModelRecipe:
             raise ValueError(f"invalid status {self.status!r} for {self.slug}")
         if not self.slug or not self.model or not self.recipe_version:
             raise ValueError("recipe slug, model, and recipe_version are required")
+        for name in ("source_bytes", "prepared_bytes", "minimum_free_bytes"):
+            value = getattr(self, name)
+            if value is not None and value <= 0:
+                raise ValueError(f"{name} must be positive for {self.slug}")
+        if self.revision is not None and len(self.revision) != 40:
+            raise ValueError(f"recipe revision must be a full 40-character commit for {self.slug}")
+        if self.runtime_memory is not None:
+            allowed = {
+                "resident_weights_bytes",
+                "expert_cache_bytes",
+                "kv_cache_bytes",
+                "workspace_bytes",
+                "transient_bytes",
+                "total_bytes",
+            }
+            unknown = set(self.runtime_memory) - allowed
+            if unknown:
+                raise ValueError(f"unknown runtime-memory keys for {self.slug}: {sorted(unknown)}")
+            if any(value < 0 for value in self.runtime_memory.values()):
+                raise ValueError(f"runtime-memory values must be non-negative for {self.slug}")
 
-    def to_dict(self) -> dict:
-        return {
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {
             "schema_version": self.schema_version,
             "recipe_version": self.recipe_version,
             "slug": self.slug,
@@ -73,9 +115,16 @@ class ModelRecipe:
             "execution_policy": self.execution_policy,
             "profile": self.profile,
             "description": self.description,
+            "revision": self.revision,
+            "source_bytes": self.source_bytes,
+            "prepared_bytes": self.prepared_bytes,
+            "minimum_free_bytes": self.minimum_free_bytes,
+            "runtime_args": list(self.runtime_args),
+            "runtime_memory": self.runtime_memory,
             "evidence": list(self.evidence),
             "limitations": list(self.limitations),
         }
+        return result
 
 
 def load_catalog() -> tuple[ModelRecipe, ...]:

@@ -45,13 +45,19 @@ sparklab doctor --storage-path /path/to/models --json
 sparklab models
 ```
 
-The initial CLI delegates inference to the compatibility-stable engine:
+For a versioned recipe, plan capacity, acquire its immutable checkpoint, prepare
+FTW when required, and launch it through fail-closed GB10 admission:
 
 ```bash
-sparklab serve --model /path/to/checkpoint
+sparklab plan qwen3.8-flash-next --prepare
+sparklab pull qwen3.8-flash-next --prepare
+sparklab run qwen3.8-flash-next
 sparklab shell
 sparklab launch codex
 ```
+
+`sparklab serve --model /path/to/checkpoint` remains the expert/compatibility
+path for checkpoints outside the recipe catalog.
 
 The server exposes OpenAI Chat Completions and Responses APIs plus the Anthropic
 Messages API on `http://127.0.0.1:1919` by default.
@@ -65,6 +71,10 @@ Spark Lab has three recipe tiers:
 | Fast | Routine chat, editing, and short agent loops | Qwen3.6-35B-A3B-NVFP4; Qwen3.8-Flash-Next next |
 | Frontier | Quality-first coding, reasoning, and long agent work | DeepSeek V4 Flash; GLM-5.3 Flash, with GLM-5.2 fallback |
 | Research | Correct, bounded execution beyond the interactive envelope | Kimi K3 |
+
+The active enablement order is Qwen3.8-Flash-Next, then GLM-5.3-Flash, then
+Kimi K3. A target remains Experimental until its complete checkpoint passes the
+published gate; architecture smoke tests alone do not change status.
 
 Run `sparklab models --json` for exact checkpoint IDs, recipe versions,
 implementation state, evidence IDs, and limitations. Tier names describe intended

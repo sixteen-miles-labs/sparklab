@@ -8,6 +8,9 @@ sparklab <command> [args]
 |---|---|
 | `sparklab doctor` | Validate GB10, CUDA 13, unified memory, storage, and dependencies |
 | `sparklab models` | List versioned Fast, Frontier, and Research recipes |
+| `sparklab plan` | Check recipe artifact space and runtime-memory admission |
+| `sparklab pull` | Resume a pinned checkpoint acquisition and optionally prepare FTW |
+| `sparklab run` | Launch a prepared recipe after fail-closed GB10 admission |
 | `sparklab status` | Show the persistent engine status |
 | `sparklab serve` | Start the API server (OpenAI `/v1/*`, Anthropic `/v1/messages`, Responses) |
 | `sparklab shell` | Chat with a server in the terminal |
@@ -40,6 +43,36 @@ sparklab models [--tier fast|frontier|research] \
 
 Tier is the intended product role. Status records how much of that role has been
 proven; the current catalog deliberately has no Certified recipe.
+
+## sparklab plan
+
+```bash
+sparklab plan <recipe> [--root PATH] [--prepare] [--json]
+```
+
+Reports source/prepared artifact paths, required and free storage, and the
+recipe's unified-memory admission result without loading weights. A non-zero
+exit means at least one admission check failed or still lacks measured data.
+
+## sparklab pull
+
+```bash
+sparklab pull <recipe> [--root PATH] [--prepare] [--dry-run] [--json]
+```
+
+Downloads the recipe's immutable Hugging Face revision into the Spark Lab state
+root. Downloads are resumable. `--prepare` converts the completed source into
+the recipe's FTW execution artifact; `--dry-run` performs planning only.
+
+## sparklab run
+
+```bash
+sparklab run <recipe> [--root PATH] [--dry-run] [--json] [-- <extra serve args>]
+```
+
+Resolves the prepared artifact and recipe-owned runtime flags, then refuses to
+launch unless the checkpoint manifest and GB10 memory plan pass. Experimental
+recipes remain visibly non-certified when launched for engineering work.
 
 ## sparklab serve
 

@@ -26,6 +26,18 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     }
 
 
+def test_next_model_recipes_are_immutable_and_capacity_plannable():
+    qwen = get_recipe("qwen3.8-flash-next")
+    glm = get_recipe("glm-5.3-flash")
+    assert qwen.revision == "f5d08274bafd880402bd16f5e3e6c514136ec06c"
+    assert glm.revision == "3f1971b7b5f7a528c9c4ef6212c8785298a8c24a"
+    assert qwen.source_bytes == 360000192888
+    assert glm.source_bytes == 328337455672
+    assert qwen.execution_policy == glm.execution_policy == "nvme-moe"
+    assert qwen.minimum_free_bytes > qwen.source_bytes + qwen.prepared_bytes
+    assert glm.minimum_free_bytes > glm.source_bytes + glm.prepared_bytes
+
+
 def test_deepseek_recipe_points_to_checked_in_baseline():
     recipe = get_recipe("deepseek-v4")
     assert recipe.evidence == ("GB10-BASELINE-001",)

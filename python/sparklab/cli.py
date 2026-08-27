@@ -23,6 +23,9 @@ Spark Lab runs frontier open-weight models on one NVIDIA GB10.
 Product commands:
   doctor      Check GB10, CUDA 13, unified memory, storage, and dependencies
   models      Show the recipe-backed Fast, Frontier, and Research portfolio
+  plan        Show storage and unified-memory admission for one recipe
+  pull        Acquire an immutable model revision, optionally preparing FTW
+  run         Start a recipe-backed server after fail-closed GB10 admission
   status      Show the persistent engine status
 
 Engine commands (FreeToken-compatible):
@@ -136,6 +139,140 @@ def _run_models(argv: list[str]) -> int:
     return 0
 
 
+def _recipe(slug: str):
+    from sparklab.catalog import get_recipe
+
+    try:
+        return get_recipe(slug)
+    except KeyError as exc:
+        raise argparse.ArgumentTypeError(f"unknown Spark Lab recipe: {slug}") from exc
+
+
+def _run_plan(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="sparklab plan",
+        description="Plan disk artifacts and unified-memory admission without loading a model.",
+    )
+    parser.add_argument("recipe", type=_recipe)
+    parser.add_argument("--root", help="Spark Lab state root (default: ~/.sparklab)")
+    parser.add_argument("--prepare", action="store_true", help="Include FTW preparation space")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+
+    from freetoken.platform import collect_gb10_snapshot
+    from sparklab.planner import plan_artifacts, plan_runtime
+
+    artifacts = plan_artifacts(args.recipe, root=args.root, include_prepared=args.prepare)
+    memory = plan_runtime(args.recipe, collect_gb10_snapshot(artifacts.root))
+    payload = {
+        "schema_version": "1.0",
+        "recipe": args.recipe.slug,
+        "artifacts": artifacts.to_dict(),
+        "runtime": memory.to_dict(),
+    }
+    if args.json:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+    else:
+        print(f"Spark Lab plan: {args.recipe.slug}")
+        required = artifacts.required_bytes
+        print(f"  Storage: {_gib(required)} required; {_gib(artifacts.free_bytes)} free")
+        print(f"  Download/preparation ready: {'yes' if artifacts.ready else 'no'}")
+        print(
+            f"  Runtime: {_gib(memory.required_bytes)} required; "
+            f"{_gib(memory.usable_bytes)} safely usable"
+        )
+        print(f"  Runtime ready: {'yes' if memory.ready else 'no'}")
+        for reason in (*artifacts.reasons, *memory.reasons):
+            print(f"    - {reason}")
+    return 0 if artifacts.ready and memory.ready else 1
+
+
+def _run_pull(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="sparklab pull",
+        description="Acquire a recipe's exact Hugging Face revision with resumable downloads.",
+    )
+    parser.add_argument("recipe", type=_recipe)
+    parser.add_argument("--root", help="Spark Lab state root (default: ~/.sparklab)")
+    parser.add_argument(
+        "--prepare",
+        action="store_true",
+        help="Also convert the completed source checkpoint into its FTW execution artifact",
+    )
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args(argv)
+
+    from sparklab.acquire import AcquisitionError, acquire_recipe
+
+    try:
+        result = acquire_recipe(
+            args.recipe,
+            root=args.root,
+            prepare=args.prepare,
+            dry_run=args.dry_run,
+        )
+    except AcquisitionError as exc:
+        print(f"sparklab pull: {exc}", file=sys.stderr)
+        return 1
+    if args.json:
+        print(json.dumps(result, indent=2, sort_keys=True))
+    else:
+        plan = result["artifact_plan"]
+        action = "would acquire" if args.dry_run else "acquired"
+        print(
+            f"Spark Lab {action} {args.recipe.model}@{args.recipe.revision[:12]} "
+            f"at {plan['source_path']}"
+        )
+        if args.prepare:
+            print(f"  FTW: {plan['prepared_path']}")
+    return 0
+
+
+def _run_recipe(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="sparklab run",
+        description="Start a recipe only after its checkpoint and GB10 memory plan pass.",
+    )
+    parser.add_argument("recipe", type=_recipe)
+    parser.add_argument("--root", help="Spark Lab state root (default: ~/.sparklab)")
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--json", action="store_true")
+    args, extra = parser.parse_known_args(argv)
+    if extra and extra[0] == "--":
+        extra = extra[1:]
+
+    from freetoken.platform import collect_gb10_snapshot
+    from sparklab.runtime import RuntimePlanError, plan_invocation
+
+    try:
+        invocation = plan_invocation(
+            args.recipe,
+            collect_gb10_snapshot("."),
+            root=args.root,
+            extra_args=tuple(extra),
+        )
+    except RuntimePlanError as exc:
+        print(f"sparklab run: {exc}", file=sys.stderr)
+        return 1
+    if args.json or args.dry_run:
+        if args.json:
+            print(json.dumps(invocation.to_dict(), indent=2, sort_keys=True))
+        else:
+            print("sparklab serve " + " ".join(invocation.arguments))
+        return 0
+
+    from freetoken.server import launch_server
+
+    if args.recipe.status != "certified":
+        print(
+            f"WARNING: {args.recipe.slug} is {args.recipe.status}, not certified.",
+            file=sys.stderr,
+        )
+    launch_server(argv=list(invocation.arguments), prog=f"sparklab run {args.recipe.slug}")
+    return 0
+
+
 def _run_serve(argv: list[str]) -> int:
     from freetoken.server import launch_server
 
@@ -195,6 +332,9 @@ def _run_bench(argv: list[str]) -> int:
 COMMANDS = {
     "doctor": _run_doctor,
     "models": _run_models,
+    "plan": _run_plan,
+    "pull": _run_pull,
+    "run": _run_recipe,
     "status": _run_status,
     "serve": _run_serve,
     "shell": _run_shell,

@@ -132,6 +132,20 @@ def create_m3_sparse_backend(config: ModelConfig):
     return M3SparseAttnBackend(config)
 
 
+@SUPPORTED_ATTENTION_BACKENDS.register(
+    "qsa",
+    BackendInfo(
+        supported_types=frozenset({AttnType.QSA}),
+        # Selection currently builds dynamic per-query row lists eagerly.
+        hybrid_linear_ok=True,
+    ),
+)
+def create_qsa_backend(config: ModelConfig):
+    from .qsa import QSAAttnBackend
+
+    return QSAAttnBackend(config)
+
+
 def attention_backend_info(name: str) -> BackendInfo:
     return SUPPORTED_ATTENTION_BACKENDS.info(name)
 

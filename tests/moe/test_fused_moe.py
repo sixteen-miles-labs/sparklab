@@ -59,6 +59,22 @@ def test_fused_topk_accepts_triton_kernel_tuple_output():
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is required")
+def test_fused_topk_falls_back_for_qwen4_top10():
+    from freetoken.moe.fused import fused_topk
+
+    torch.manual_seed(7)
+    logits = torch.randn(3, 512, device="cuda", dtype=torch.bfloat16)
+    hidden_states = torch.zeros((3, 8), device="cuda", dtype=torch.bfloat16)
+
+    weights, ids = fused_topk(hidden_states, logits, topk=10, renormalize=True)
+    probs = torch.softmax(logits.float(), dim=-1)
+    ref_weights, ref_ids = torch.topk(probs, 10, dim=-1)
+    ref_weights /= ref_weights.sum(dim=-1, keepdim=True)
+    torch.testing.assert_close(ids, ref_ids.to(torch.int32))
+    torch.testing.assert_close(weights, ref_weights)
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is required")
 @pytest.mark.parametrize("batch_size", [1, 2, 4, 8, 16, 24])
 @pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16])
 def test_fused_experts_decode_matches_reference_for_non_contiguous_slots(batch_size, dtype):

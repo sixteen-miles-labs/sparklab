@@ -28,17 +28,33 @@ sparklab models --json
 Recipe status is separate from intended tier. `experimental` and `preview`
 entries do not carry the latency and stability promise of `certified`.
 
-## 3. Launch the compatibility engine
+## 3. Plan and acquire a recipe
 
-Recipe-backed `sparklab pull` and `sparklab run` are still being implemented. In
-this first migration slice, use the Spark Lab alias for the existing engine:
+First check both artifact space and runtime admission. `pull` is resumable and
+uses the immutable revision recorded in the recipe; `--prepare` also builds the
+self-contained FTW execution artifact.
 
 ```bash
-sparklab serve --model /path/to/checkpoint
+sparklab plan qwen3.8-flash-next --prepare
+sparklab pull qwen3.8-flash-next --prepare
+```
+
+Then launch the exact prepared recipe:
+
+```bash
+sparklab run qwen3.8-flash-next
 ```
 
 The server is ready when the log reports that the API is listening on
 `127.0.0.1:1919`.
+
+Experimental recipes print a warning and remain non-certified. For an
+uncataloged checkpoint or engine-level experimentation, use the compatibility
+surface directly:
+
+```bash
+sparklab serve --model /path/to/checkpoint
+```
 
 ## 4. Send a request
 

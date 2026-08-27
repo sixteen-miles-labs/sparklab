@@ -52,6 +52,8 @@ class LinearStatePool:
         self._num_slots = num_slots
         self._device = device
         self._conv_dtype = dtype
+        self._aux_states: dict[str, torch.Tensor] = {}
+        self._aux_specs: dict[str, tuple[tuple[int, ...], torch.dtype, float]] = {}
 
         n_layers, local_conv_dim, local_v_heads = _linear_local_dims(group, tp_size)
 
@@ -121,6 +123,12 @@ class LinearStatePool:
             dtype=rec_dtype,
             device=device,
         )
+        self._aux_states = {
+            name: torch.full(
+                (num_slots, *shape), fill, dtype=aux_dtype, device=device
+            )
+            for name, (shape, aux_dtype, fill) in self._aux_specs.items()
+        }
         self._num_slots = num_slots
         self._free_slots = list(range(1, num_slots))
 
@@ -138,12 +146,35 @@ class LinearStatePool:
             slots = torch.as_tensor(slots, dtype=torch.long, device=self._device)
         self.conv_states[:, slots] = 0
         self.recurrent_states[:, slots] = 0
+        for name, state in self._aux_states.items():
+            state[slots] = self._aux_specs[name][2]
 
     def copy_from(self, src: int, dst: int) -> None:
         """Copy a whole-sequence snapshot (conv + recurrent, all layers) from slot ``src`` to
         ``dst``. Used for COW-on-restore (donated snapshot -> fresh live slot)."""
         self.conv_states[:, dst].copy_(self.conv_states[:, src])
         self.recurrent_states[:, dst].copy_(self.recurrent_states[:, src])
+        for state in self._aux_states.values():
+            state[dst].copy_(state[src])
+
+    def ensure_aux_state(
+        self, name: str, shape: tuple[int, ...], dtype: torch.dtype, *, fill: float = 0.0
+    ) -> torch.Tensor:
+        """Create a small model-owned per-request state alongside GDN state.
+
+        PLE's dilated convolution is not a GDN layer state, but it has the same
+        request lifetime and must participate in slot clear/copy/rebuild.
+        """
+        spec = (tuple(shape), dtype, float(fill))
+        old = self._aux_specs.get(name)
+        if old is not None and old != spec:
+            raise ValueError(f"aux state {name!r} already has spec {old}, requested {spec}")
+        if name not in self._aux_states:
+            self._aux_specs[name] = spec
+            self._aux_states[name] = torch.full(
+                (self._num_slots, *shape), fill, dtype=dtype, device=self._device
+            )
+        return self._aux_states[name]
 
     def is_linear_layer(self, layer_id: int) -> bool:
         return layer_id in self._local_index
@@ -161,6 +192,8 @@ class LinearStatePool:
         """Zero a slot across all linear layers (new request takes this table_idx)."""
         self.conv_states[:, table_idx].zero_()
         self.recurrent_states[:, table_idx].zero_()
+        for name, state in self._aux_states.items():
+            state[table_idx].fill_(self._aux_specs[name][2])
 
     @property
     def num_linear_layers(self) -> int:
@@ -180,6 +213,7 @@ class LinearStatePool:
             self.conv_states[:, 0].numel() * self.conv_states.element_size()
             + self.recurrent_states[:, 0].numel() * self.recurrent_states.element_size()
         )
+        per += sum(state[0].numel() * state.element_size() for state in self._aux_states.values())
         return int(per)
 
 
@@ -209,7 +243,19 @@ def state_pool_bytes(config, num_slots: int | None = None) -> int:
     if linear_group is None:
         return 0
     slots = num_slots if num_slots is not None else _linear_pool_num_slots(config)
-    return linear_state_bytes_per_req(linear_group, config.tp_info.size, config.dtype) * slots
+    per_slot = linear_state_bytes_per_req(linear_group, config.tp_info.size, config.dtype)
+    qwen = getattr(config.model_config, "qwen4_exp_args", None)
+    if qwen is not None:
+        # One BF16 dilated-conv history per PLE layer: [hc*H, (K-1)*dilation].
+        state_len = (qwen.ple_conv_kernel_size - 1) * qwen.ngram_size
+        per_slot += (
+            len(qwen.ple_layer_ids)
+            * qwen.hc_count
+            * config.model_config.hidden_size
+            * state_len
+            * config.dtype.itemsize
+        )
+    return per_slot * slots
 
 
 def _linear_pool_num_slots(config) -> int:

@@ -134,6 +134,9 @@ class FullAttentionGroupConfig(BaseAttentionGroupConfig):
     mla: bool = False
     index_head_dim: int = 0
     num_index_layers: int = 0
+    # Indexed non-MLA families share the same paged GQA + index-key storage but
+    # have different selection semantics. MiniMax defaults to BSA; Qwen4 sets QSA.
+    indexed_attn_type: AttnType = AttnType.BSA
 
 
 @dataclass(frozen=True)
@@ -188,7 +191,7 @@ def _full_group_attn_type(group: FullAttentionGroupConfig) -> AttnType:
     # GQA (non-mla) + index slab -> BSAKVCache (MiniMax-M3 block-sparse attention).
     if not group.mla:
         if group.index_head_dim > 0 and group.num_index_layers > 0:
-            return AttnType.BSA
+            return group.indexed_attn_type
         return AttnType.FULL
     if group.index_head_dim > 0 and group.num_index_layers > 0:
         return AttnType.DSA
@@ -296,6 +299,8 @@ class ModelConfig:
     # Residuals, latent-MoE width, and SiTU activation constants.  Kept opaque to
     # model-agnostic engine code, like glm_dsa_args and m3_args above.
     kimi_k3_args: Any | None = None
+    # Qwen4-Exp text-tower payload: QSA, Hyper-Connection and PLE geometry.
+    qwen4_exp_args: Any | None = None
     # Generic execution-path capability flags (set by a model's parse_config) so the engine and
     # factories stay model-agnostic instead of branching on dsv4_args:
     single_stream_only: bool = False  # model runs one sequence at a time -> force bs=1

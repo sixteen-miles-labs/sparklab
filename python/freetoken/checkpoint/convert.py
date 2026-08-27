@@ -287,6 +287,20 @@ def convert_checkpoint(
     _progress("finalize")  # writing shard index + copying config/tokenizer
     copied = _copy_metadata(model_path, out_dir)
 
+    # Models with very large non-parameter runtime stores can stream a self-contained
+    # side artifact beside FTW (Qwen4 PLE's 95 GiB random-row n-gram table). The hook
+    # runs before finalize, so a failed extraction never publishes a valid FTW index.
+    from freetoken.models.register import _load_attr, get_model_spec
+
+    spec = get_model_spec(mc.architectures[0])
+    try:
+        external_hook = _load_attr(spec.module, "copy_external_artifacts")
+    except AttributeError:
+        external_hook = None
+    external_artifacts = (
+        external_hook(model_path, out_dir, mc) if external_hook is not None else []
+    )
+
     try:
         fingerprint = _source_fingerprint(model_path, mc, device=dev)
     except Exception:
@@ -307,6 +321,7 @@ def convert_checkpoint(
         "expert_bank_num_layers": num_layers,
         "counts": {"weight": n_weight, "experts_bank": n_bank + n_alpha},
         "copied_metadata": copied,
+        "external_artifacts": external_artifacts,
     })
     return index
 

@@ -127,6 +127,8 @@ def _resolve_auto_attention_backend(
         candidates.append(("dsa", True))
     if AttnType.BSA in required:
         candidates.append(("m3_sparse", True))
+    if AttnType.QSA in required:
+        candidates.append(("qsa", True))
     if AttnType.SWA in required:
         candidates.append(("triton", True))
     if AttnType.FULL in required:
@@ -175,7 +177,7 @@ def _validate_attention_backend_choice(config, override, required: frozenset[Att
         if missing:
             valid = [
                 name
-                for name in ("fa", "fi", "trtllm", "triton", "dsa", "dsv4_sparse", "m3_sparse")
+                for name in ("fa", "fi", "trtllm", "triton", "dsa", "dsv4_sparse", "m3_sparse", "qsa")
                 if required <= attention_backend_info(name).supported_types
             ]
             missing_names = "/".join(sorted(t.value for t in missing))
@@ -320,6 +322,10 @@ class Engine:
         set_rope_device(self.device)
         with torch.device("meta"), torch_dtype(config.dtype):
             self.model = create_model(config.model_config)
+        if hasattr(self.model, "prepare_for_weight_load"):
+            self.model.prepare_for_weight_load(
+                config.model_path, dummy=config.use_dummy_weight
+            )
         self.model.load_state_dict(self._load_weight_state_dict(config))
         post_weights_free = self._sync_get_memory()[0]
         self._weights_bytes = self._baseline_free - post_weights_free
@@ -1236,7 +1242,7 @@ def _adjust_config(config: EngineConfig):
     # comma part must serve every required type, with packages/arch available.
     required_attn_types = _required_attn_types(model_config)
     _dtype = getattr(config, "dtype", None)  # duck-typed test configs omit it
-    if AttnType.BSA in required_attn_types and _dtype is not None and _dtype.itemsize != 2:
+    if required_attn_types & {AttnType.BSA, AttnType.QSA} and _dtype is not None and _dtype.itemsize != 2:
         # Reject at config time: the BSA pool's own assert only fires after the
         # model is resident (and not at all under `python -O`).
         raise ValueError(

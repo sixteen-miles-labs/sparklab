@@ -4,15 +4,31 @@
   "slug": "qwen3.8-flash-next",
   "name": "Qwen3.8 Flash Next",
   "model": "Qwen/Qwen3.8-Flash-Next",
+  "revision": "f5d08274bafd880402bd16f5e3e6c514136ec06c",
+  "source_bytes": 360000192888,
+  "prepared_bytes": 360000192888,
+  "minimum_free_bytes": 857439339248,
   "intended_tier": "fast",
   "status": "experimental",
-  "implementation": "planned",
-  "checkpoint_format": "safetensors-fp8",
-  "execution_policy": "resident",
+  "implementation": "text-architecture",
+  "checkpoint_format": "ftw-bf16",
+  "execution_policy": "nvme-moe",
   "profile": "balanced",
+  "runtime_args": [
+    "--attention-backend", "qsa",
+    "--moe-backend", "offload",
+    "--moe-storage", "disk",
+    "--moe-cache-auto",
+    "--cuda-graph-max-bs", "0",
+    "--cache-type", "naive",
+    "--page-size", "16",
+    "--max-running-req", "1"
+  ],
   "description": "Highest-priority post-1.0 Fast candidate for long agent sessions.",
   "limitations": [
-    "The hybrid architecture and GB10-sized low-precision recipe are not implemented.",
+    "The qwen4_exp text architecture, QSA, Hyper-Connections, PLE disk table, and FTW NVMe expert path are implemented but not yet GB10-certified.",
+    "QSA selection currently runs eagerly, so CUDA graph capture is disabled.",
+    "The published checkpoint is multimodal; initial Spark Lab certification is text-only.",
     "Final tier is determined by measured recipe performance."
   ]
 }

@@ -57,7 +57,7 @@ def resolve_pool_class(model_config: ModelConfig) -> type[BaseKVCachePool]:
         from .dsa_pool import MLAKVCache
 
         return MLAKVCache
-    if AttnType.BSA in types:
+    if types & {AttnType.BSA, AttnType.QSA}:
         from .bsa_pool import BSAKVCache
 
         return BSAKVCache
@@ -158,7 +158,7 @@ def create_kvcache_pool(
     # drive the KV cost model, so the factory and the budget can never disagree.
     from freetoken.attention import AttnType as _AttnType
 
-    if len(kv_specs) == 1 and kv_specs[0].attn_type == _AttnType.BSA:
+    if len(kv_specs) == 1 and kv_specs[0].attn_type in {_AttnType.BSA, _AttnType.QSA}:
         from .bsa_pool import BSAKVCache
 
         spec = kv_specs[0]
@@ -172,6 +172,7 @@ def create_kvcache_pool(
             device=device,
             index_head_dim=spec.index_head_dim,
             num_index_layers=spec.num_index_layers,
+            layer_ids=spec.layer_ids,
         )
 
     if len(kv_specs) == 1 and kv_specs[0].mla:

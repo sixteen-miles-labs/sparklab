@@ -46,9 +46,13 @@ def fused_topk(
 
     from freetoken.kernel.backend import is_triton_kernels_installed
 
-    # triton_kernels ships no Windows wheel, and unlike flashinfer/sgl_kernel it is not one
-    # of the six ops the in-repo triton kernels cover -- so this router needs its own fallback.
-    if not is_triton_kernels_installed():
+    # triton_kernels ships no Windows wheel, and its current top-k kernel also uses
+    # ``tl.arange(0, k)`` directly, which only compiles when k is a power of two.
+    # Qwen4 routes top-10, so keep the exact torch path for either condition. Padding
+    # k to 16 and slicing is not valid because the fused result is not contractually
+    # sorted by score.
+    non_power_of_two = topk <= 0 or (topk & (topk - 1)) != 0
+    if not is_triton_kernels_installed() or non_power_of_two:
         global _warned_torch_topk
         if not _warned_torch_topk:
             _warned_torch_topk = True
@@ -56,9 +60,9 @@ def fused_topk(
             # triton_kernels used to fail fast with ImportError; keep the misconfiguration
             # visible without giving up the fallback that Windows needs.
             logger.warning_rank0(
-                "fused_topk: triton_kernels is not installed -> pure-torch router fallback "
-                "(numerically equivalent, slower). Expected on Windows (no wheel); on Linux "
-                "install triton_kernels to restore the fused router."
+                "fused_topk: using the pure-torch router fallback "
+                f"({'top-k is not a power of two' if non_power_of_two else 'triton_kernels is not installed'}) "
+                "(numerically equivalent, slower)."
             )
         return _torch_fused_topk(gating_output, topk, renormalize, num_token_non_padded)
 

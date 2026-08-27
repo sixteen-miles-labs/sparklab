@@ -220,9 +220,65 @@ def runtime_provenance() -> dict:
     }
 
 
+def checkpoint_provenance(model_path: str) -> dict:
+    """Cheap checkpoint identity for a benchmark row (metadata/stat only)."""
+    path = Path(model_path).expanduser().resolve()
+    ftw_index = path / "freetoken_weight.json"
+    hf_index = path / "model.safetensors.index.json"
+    if ftw_index.is_file():
+        value = json.loads(ftw_index.read_text(encoding="utf-8"))
+        shards = value.get("shards") or []
+        shard_bytes = sum(
+            (path / shard["file"]).stat().st_size
+            for shard in shards
+            if (path / shard["file"]).is_file()
+        )
+        external = value.get("external_artifacts") or []
+        return {
+            "path": str(path),
+            "format": "ftw",
+            "bytes": shard_bytes + sum(int(item.get("nbytes", 0)) for item in external),
+            "fingerprint": value.get("fingerprint"),
+            "quant_format": value.get("quant_format"),
+            "source_model_path": value.get("source_model_path"),
+            "external_artifacts": external,
+        }
+    if hf_index.is_file():
+        value = json.loads(hf_index.read_text(encoding="utf-8"))
+        return {
+            "path": str(path),
+            "format": "safetensors",
+            "bytes": int((value.get("metadata") or {}).get("total_size", 0)),
+            "fingerprint": None,
+        }
+    return {"path": str(path), "format": "unknown", "bytes": None, "fingerprint": None}
+
+
+def gb10_evidence(storage_path: str) -> dict:
+    """Collect doctor JSON in a short-lived child so this process owns no CUDA context."""
+    result = subprocess.run(
+        [sys.executable, "-m", "sparklab", "doctor", "--storage-path", storage_path, "--json"],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=30,
+        check=False,
+    )
+    try:
+        report = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return {"collection_error": result.stderr[-1000:], "exit_code": result.returncode}
+    report["exit_code"] = result.returncode
+    return report
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--model", required=True, help="checkpoint dir (or .ftw)")
+    p.add_argument(
+        "--recipe", default=None,
+        help="Spark Lab recipe slug to embed as immutable benchmark provenance",
+    )
     p.add_argument(
         "--backend",
         default="offload",
@@ -231,6 +287,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--storage", choices=("ram", "disk"), default="ram",
         help="routed-expert backing store",
+    )
+    p.add_argument(
+        "--attention-backend", default="auto",
+        help="server attention backend (for example qsa for Qwen3.8-Flash-Next)",
+    )
+    p.add_argument("--page-size", type=int, default=1, help="paged KV page size")
+    p.add_argument(
+        "--cache-type", choices=("naive", "radix"), default="radix",
+        help="prefix-cache policy",
+    )
+    p.add_argument(
+        "--max-seq-len", type=int, default=0,
+        help="server sequence cap; 0 uses 8192 + --decode for the fixed probe",
     )
     p.add_argument(
         "--nvfp4-backend",
@@ -368,6 +437,7 @@ def free_port() -> int:
 
 
 def serve_cmd(args: argparse.Namespace, backend: str, port: int) -> list[str]:
+    max_seq_len = args.max_seq_len or (8192 + args.decode)
     cmd = [
         sys.executable, "-m", "freetoken.cli", "serve",
         "--model", args.model,
@@ -377,7 +447,10 @@ def serve_cmd(args: argparse.Namespace, backend: str, port: int) -> list[str]:
         "--moe-storage", args.storage,
         "--moe-host-cache-gb", str(args.host_cache_gb),
         "--max-running-requests", "1",
-        "--max-seq-len-override", str(8192 + args.decode),
+        "--max-seq-len-override", str(max_seq_len),
+        "--attention-backend", args.attention_backend,
+        "--page-size", str(args.page_size),
+        "--cache-type", args.cache_type,
         "--memory-ratio", str(args.mem_ratio),
         "--cuda-graph-max-bs", "0" if args.no_graph else "1",
         "--moe-hybrid-max-fetch", str(args.hybrid_fetch),
@@ -523,6 +596,21 @@ def stream_generate(origin: str, model_id: str, problem: str, sampling: dict,
 def run_one(args: argparse.Namespace, backend: str) -> dict:
     problem, answer = load_problem(args.aime, args.problem)
     sampling, sampling_src = resolve_sampling(args.model, args.greedy)
+    platform_evidence = gb10_evidence(args.model)
+    recipe_evidence = None
+    if args.recipe:
+        from sparklab.catalog import get_recipe
+
+        recipe = get_recipe(args.recipe)
+        recipe_evidence = {
+            "slug": recipe.slug,
+            "recipe_version": recipe.recipe_version,
+            "model": recipe.model,
+            "revision": recipe.revision,
+            "intended_tier": recipe.intended_tier,
+            "status_at_run": recipe.status,
+            "runtime_args": list(recipe.runtime_args),
+        }
     port = free_port()
     origin = f"http://127.0.0.1:{port}"
     fd, log_path = tempfile.mkstemp(prefix=f"bench-serve-{backend}-", suffix=".log")
@@ -574,10 +662,18 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
     decode_time = stamps[-1] - stamps[0] if len(stamps) >= 2 else 0.0
     gaps = sorted((b - a) * 1e3 for a, b in zip(stamps, stamps[1:]))
     row = {
+        "schema_version": "1.0",
         "model": args.model,
         "backend": backend,
+        "recipe": recipe_evidence,
+        "checkpoint": checkpoint_provenance(args.model),
+        "platform": platform_evidence,
         "configuration": {
             "storage": args.storage,
+            "attention_backend": args.attention_backend,
+            "page_size": args.page_size,
+            "cache_type": args.cache_type,
+            "max_seq_len": args.max_seq_len or (8192 + args.decode),
             "nvfp4_backend": args.nvfp4_backend,
             "host_cache_gb": args.host_cache_gb,
             "requested_cache_size": args.cache,
