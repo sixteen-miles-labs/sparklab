@@ -43,9 +43,8 @@ sparklab models [--tier fast|frontier|research] \
   [--role primary|fallback] [--json]
 ```
 
-Tier is the intended product layer. Portfolio role separates the primary four-model
-lineup from retained fallbacks. Status records how much of the target layer has been
-proven; the current catalog deliberately has no Certified recipe.
+Tier is the intended product layer. Portfolio role separates the primary lineup from
+retained fallbacks. Status records how much of the target layer has been proven.
 
 ## sparklab plan
 

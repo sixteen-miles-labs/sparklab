@@ -13,7 +13,9 @@ def test_catalog_has_unique_versioned_three_tier_recipes():
     assert {recipe.intended_tier for recipe in recipes} == {"fast", "frontier", "research"}
     assert len({recipe.slug for recipe in recipes}) == len(recipes)
     assert all(recipe.schema_version == "2.0" and recipe.recipe_version for recipe in recipes)
-    assert not {recipe.slug for recipe in recipes if recipe.status == "certified"}
+    assert {recipe.slug for recipe in recipes if recipe.status == "certified"} == {
+        "qwen3.8-flash-next"
+    }
 
 
 def test_catalog_contains_requested_portfolio_without_overclaiming_status():
@@ -24,26 +26,26 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert get_recipe("kimi-k3").status == "experimental"
     assert {item.slug for item in select_recipes(load_catalog(), tier="fast")} == {
         "qwen3.6-35b-a3b",
-        "qwen3.8-flash-next",
     }
     qwen = get_recipe("qwen3.8-flash-next")
-    assert qwen.recipe_version == "0.4.0"
-    assert qwen.intended_tier == "fast"
-    assert qwen.status == "preview"
+    assert qwen.recipe_version == "0.3.0"
+    assert qwen.intended_tier == "frontier"
+    assert qwen.status == "certified"
     assert qwen.evidence == ("GB10-QWEN38-FRONTIER-001",)
     assert qwen.backend == "native"
     assert qwen.deployment.runtime_format == "ftw-nvfp4"
     assert qwen.deployment.backend_options["attention_backend"] == "qsa"
     primary = select_recipes(load_catalog(), portfolio_role="primary")
     assert {(item.intended_tier, item.slug) for item in primary} == {
-        ("fast", "qwen3.8-flash-next"),
+        ("fast", "qwen3.6-35b-a3b"),
         ("frontier", "deepseek-v4"),
         ("frontier", "glm-5.3-flash"),
+        ("frontier", "qwen3.8-flash-next"),
         ("research", "kimi-k3"),
     }
     assert {
         item.slug for item in select_recipes(load_catalog(), portfolio_role="fallback")
-    } == {"qwen3.6-35b-a3b", "glm-5.2"}
+    } == {"glm-5.2"}
 
 
 def test_next_model_recipes_are_immutable_and_capacity_plannable():
@@ -72,9 +74,7 @@ def test_deepseek_recipe_points_to_checked_in_baseline():
     assert result["validation"]["output_hash"] == "fbf178b2bde5"
 
 
-def test_qwen_prior_evidence_passes_frontier_but_not_current_fast_target():
-    from dataclasses import replace
-
+def test_qwen_recipe_points_to_passing_frontier_evidence():
     from sparklab.certification import evaluate_tier
 
     recipe = get_recipe("qwen3.8-flash-next")
@@ -83,9 +83,7 @@ def test_qwen_prior_evidence_passes_frontier_but_not_current_fast_target():
         (root / "benchmarks/gb10/results/GB10-QWEN38-FRONTIER-001.json").read_text()
     )
     assert result["result_id"] == recipe.evidence[0]
-    prior_recipe = replace(recipe, recipe_version="0.3.0", intended_tier="frontier")
-    assert evaluate_tier(prior_recipe, result, "frontier").passed
-    assert not evaluate_tier(recipe, result, "frontier").passed
+    assert evaluate_tier(recipe, result, "frontier").passed
     assert not evaluate_tier(recipe, result, "fast").passed
 
 

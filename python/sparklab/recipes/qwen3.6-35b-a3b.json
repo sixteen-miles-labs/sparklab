@@ -7,7 +7,7 @@
   "intended_tier": "fast",
   "status": "experimental",
   "implementation": "available",
-  "portfolio_role": "fallback",
+  "portfolio_role": "primary",
   "deployment": {
     "backend": "native",
     "backend_api": "1.0",
@@ -18,7 +18,7 @@
     "backend_options": {}
   },
   "profile": "balanced",
-  "description": "Experimental Fast fallback retained outside the primary four-model lineup.",
+  "description": "Primary Fast certification target for routine chat and short agent loops.",
   "limitations": [
     "The Fast speed, TTFT, context, and 60-minute stability gates have not passed."
   ]
