@@ -298,6 +298,44 @@ def test_triton_overlap_prefill_matches_dequant_reference():
 
 
 @cuda
+def test_triton_sparse_prefill_maps_large_cache_slots():
+    """Logical expert sorting remains bounded by E when resident rows have large,
+    non-contiguous cache-slot ids (the GB10 auto-cache geometry regression)."""
+    from freetoken.moe.fused_nvfp4 import fused_experts_nvfp4
+
+    device = torch.device("cuda")
+    sources = _make_native_sources(device, seed=17)
+    layer_id = 0
+    dense = [
+        sources[name][layer_id].to(device)
+        for name in (
+            "gate_up_packed", "gate_up_scale", "gate_up_global",
+            "down_packed", "down_scale", "down_global",
+        )
+    ]
+    cache_rows = 257
+    slots = torch.tensor([193, 7, 256, 91, 144, 3, 222, 61], dtype=torch.int64, device=device)
+    slot_map = torch.full((E,), -1, dtype=torch.int64, device=device)
+    slot_map.copy_(slots)
+    banks = []
+    for bank in dense:
+        cached = torch.zeros((cache_rows, *bank.shape[1:]), dtype=bank.dtype, device=device)
+        cached[slots] = bank
+        banks.append(cached)
+
+    torch.manual_seed(18)
+    hidden = torch.randn(8, H, dtype=torch.bfloat16, device=device) / 4
+    topk_ids = torch.randint(0, E, (8, TOPK), dtype=torch.int32, device=device)
+    topk_weights = torch.rand(8, TOPK, dtype=torch.float32, device=device)
+    ref = _ref_moe(sources, layer_id, hidden, topk_weights, topk_ids)
+    out = fused_experts_nvfp4(
+        hidden, *banks, topk_weights, topk_ids, E, "silu", False,
+        slot_map=slot_map,
+    )
+    _assert_close(out, ref)
+
+
+@cuda
 def test_triton_swigluoai_matches_dequant_reference():
     """MiniMax-M3's swigluoai routed experts through the Triton prefill grouped GEMM
     and the marlin-style decode GEMV: same banks, the clamped (up+1) swiglu instead

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import glob
 import hashlib
+import json
 import os
 import shutil
 import threading
@@ -37,11 +38,15 @@ def _progress(phase: str, done: int = 0, total: int = 0) -> None:
         print(f"FTCONVERT {phase} {done} {total}", flush=True)
 
 
-def _source_fingerprint(model_path: str, model_config, *, device) -> str:
+def _source_fingerprint(
+    model_path: str, model_config, *, device, expert_quantization: str | None = None
+) -> str:
     """Identity of (checkpoint + quant + GPU capability), stored in the FTW index so
     it's clear what an FTW was built from. Cheap (stat only)."""
     h = hashlib.sha256()
     h.update(f"quant={getattr(model_config, 'expert_quant', None)}|".encode())
+    if expert_quantization is not None:
+        h.update(f"target_expert_quant={expert_quantization}|".encode())
     h.update(f"arch={getattr(model_config, 'architectures', None)}|".encode())
     try:  # nvfp4 marlin/b12x layout depends on compute capability
         h.update(f"cc={torch.cuda.get_device_capability(device)}|".encode())
@@ -160,6 +165,116 @@ class _ConvertSink:
         return len(self._seen)
 
 
+class _OwnedTensorBank:
+    """Minimal releasable bank passed from a conversion transform to ``_ConvertSink``."""
+
+    def __init__(self, tensor: torch.Tensor) -> None:
+        self.tensor = tensor
+        self.nbytes = tensor.numel() * tensor.element_size()
+
+    def release(self) -> None:
+        self.tensor = torch.empty(0, dtype=self.tensor.dtype)
+
+
+def _quantize_nvfp4_bank(
+    tensor: torch.Tensor, device: torch.device
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Quantize one ``[E, O, K]`` BF16 expert bank to native ModelOpt NVFP4.
+
+    FlashInfer produces canonical low-nibble-first E2M1 weights and linear E4M3
+    block scales.  A separate per-expert global keeps the full FP4 dynamic range
+    without coupling experts with different magnitudes.  The output is exactly
+    the native six-bank layout consumed by FreeToken's inline-dequant kernels.
+    """
+    if tensor.ndim != 3 or tensor.dtype != torch.bfloat16:
+        raise ValueError(
+            f"NVFP4 conversion expects [E, O, K] BF16 banks, got "
+            f"shape={tuple(tensor.shape)}, dtype={tensor.dtype}"
+        )
+    experts, out_features, in_features = tensor.shape
+    if in_features % 16:
+        raise ValueError(f"NVFP4 input width must be divisible by 16, got {in_features}")
+
+    import flashinfer
+    from flashinfer.quantization import SfLayout
+
+    packed = torch.empty(
+        (experts, out_features, in_features // 2), dtype=torch.uint8
+    )
+    scales = torch.empty(
+        (experts, out_features, in_features // 16), dtype=torch.float8_e4m3fn
+    )
+    globals_ = torch.empty((experts, out_features), dtype=torch.float16)
+    for expert in range(experts):
+        source = tensor[expert].to(device)
+        maximum = source.float().abs().nan_to_num().max()
+        # E4M3 max (448) times E2M1 max (6). A zero tensor uses unit
+        # scaling and remains exactly zero.
+        quant_scale = torch.where(
+            maximum > 0,
+            maximum.new_tensor(448.0 * 6.0) / maximum,
+            maximum.new_tensor(1.0),
+        ).reshape(1)
+        quantized, block_scales = flashinfer.nvfp4_quantize(
+            source,
+            quant_scale,
+            sfLayout=SfLayout.layout_linear,
+        )
+        packed[expert].copy_(quantized.view(torch.uint8).cpu())
+        scales[expert].copy_(
+            block_scales.view(torch.float8_e4m3fn)
+            .reshape(out_features, in_features // 16)
+            .cpu()
+        )
+        globals_[expert].fill_(float(quant_scale.reciprocal().item()))
+    return packed, scales, globals_
+
+
+class _Nvfp4QuantizeSink:
+    """Stream BF16 expert layers through NVFP4 quantization into the FTW sink."""
+
+    def __init__(self, outer: _ConvertSink, device: torch.device) -> None:
+        self._outer = outer
+        self._device = device
+
+    def __call__(self, layer_id: int, banks: dict) -> None:
+        expected = {"gate_up", "down"}
+        if set(banks) != expected:
+            raise ValueError(
+                f"BF16-to-NVFP4 transform expected banks {sorted(expected)}, "
+                f"found {sorted(banks)}"
+            )
+        transformed = {}
+        try:
+            for source_name, prefix in (("gate_up", "gate_up"), ("down", "down")):
+                packed, scales, globals_ = _quantize_nvfp4_bank(
+                    banks[source_name].tensor, self._device
+                )
+                transformed[f"{prefix}_packed"] = _OwnedTensorBank(packed)
+                transformed[f"{prefix}_scale"] = _OwnedTensorBank(scales)
+                transformed[f"{prefix}_global"] = _OwnedTensorBank(globals_)
+            self._outer(layer_id, transformed)
+        finally:
+            for bank in banks.values():
+                bank.release()
+            torch.cuda.empty_cache()
+
+
+def _write_expert_quantization_override(out_dir: str, quantization: str) -> None:
+    """Record a conversion-owned expert format in the self-contained HF config."""
+    path = os.path.join(out_dir, "config.json")
+    with open(path, encoding="utf-8") as handle:
+        config = json.load(handle)
+    config["freetoken_expert_quant"] = quantization
+    if isinstance(config.get("text_config"), dict):
+        config["text_config"]["freetoken_expert_quant"] = quantization
+    temporary = path + ".tmp"
+    with open(temporary, "w", encoding="utf-8") as handle:
+        json.dump(config, handle, indent=2, sort_keys=True)
+        handle.write("\n")
+    os.replace(temporary, path)
+
+
 def convert_checkpoint(
     model_path: str,
     out_dir: str,
@@ -167,6 +282,7 @@ def convert_checkpoint(
     dtype: torch.dtype = torch.bfloat16,
     moe_backend: str = "offload",
     nvfp4_backend: str = "triton",
+    expert_quantization: str | None = None,
     shard_limit: int = DEFAULT_SHARD_LIMIT,
     device: str | None = None,
 ) -> dict:
@@ -210,6 +326,16 @@ def convert_checkpoint(
     object.__setattr__(mc, "nvfp4_backend", cfg.nvfp4_backend)
     offload = moe_backend == "offload" and getattr(mc, "is_moe", False)
     include_moe_experts = not offload
+    if expert_quantization not in {None, "nvfp4"}:
+        raise ValueError(
+            f"unsupported target expert quantization: {expert_quantization!r}"
+        )
+    if expert_quantization is not None and (
+        not offload or getattr(mc, "expert_quant", "none") != "none"
+    ):
+        raise ValueError(
+            "target expert quantization requires an unquantized offload-MoE source"
+        )
 
     from freetoken.utils.progress import byte_bar, count_bar
 
@@ -237,8 +363,15 @@ def convert_checkpoint(
         # forwarding it, so those large layouts remain bounded too. Which path a provider
         # actually took is reported by ExpertBanks.streamed rather than guessed here.
         sink = _ConvertSink(writer)
-        banks = load_expert_banks(model_path, mc, device=dev, dtype=dtype, layer_sink=sink)
-        quant_format = banks.quant_format
+        layer_sink = (
+            _Nvfp4QuantizeSink(sink, dev)
+            if expert_quantization == "nvfp4"
+            else sink
+        )
+        banks = load_expert_banks(
+            model_path, mc, device=dev, dtype=dtype, layer_sink=layer_sink
+        )
+        quant_format = expert_quantization or banks.quant_format
         if banks.streamed:
             sink.close()
             num_layers = sink.num_layers  # however many distinct layers the sink actually saw
@@ -286,6 +419,8 @@ def convert_checkpoint(
 
     _progress("finalize")  # writing shard index + copying config/tokenizer
     copied = _copy_metadata(model_path, out_dir)
+    if expert_quantization is not None:
+        _write_expert_quantization_override(out_dir, expert_quantization)
 
     # Models with very large non-parameter runtime stores can stream a self-contained
     # side artifact beside FTW (Qwen4 PLE's 95 GiB random-row n-gram table). The hook
@@ -302,7 +437,9 @@ def convert_checkpoint(
     )
 
     try:
-        fingerprint = _source_fingerprint(model_path, mc, device=dev)
+        fingerprint = _source_fingerprint(
+            model_path, mc, device=dev, expert_quantization=expert_quantization
+        )
     except Exception:
         fingerprint = None
 
@@ -315,6 +452,7 @@ def convert_checkpoint(
         # read back at load (ftw.load_ftw_banks). dtype/moe_backend were dropped: each
         # tensor already carries its own dtype, and nothing reads a model-level backend.
         "quant_format": quant_format,
+        "expert_quantization": expert_quantization,
         # The reader takes num_layers from the model config (copied into this
         # checkpoint); recording it here too gives load_ftw_banks a cross-check that
         # the banks match the config they ship with. None for non-offload checkpoints.

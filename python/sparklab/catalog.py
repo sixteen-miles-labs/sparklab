@@ -22,6 +22,7 @@ class ModelRecipe:
     status: str
     implementation: str
     checkpoint_format: str
+    expert_quantization: str | None
     execution_policy: str
     profile: str
     description: str
@@ -46,6 +47,11 @@ class ModelRecipe:
             status=str(value["status"]),
             implementation=str(value["implementation"]),
             checkpoint_format=str(value["checkpoint_format"]),
+            expert_quantization=(
+                str(value["expert_quantization"])
+                if value.get("expert_quantization")
+                else None
+            ),
             execution_policy=str(value["execution_policy"]),
             profile=str(value["profile"]),
             description=str(value["description"]),
@@ -80,6 +86,11 @@ class ModelRecipe:
             raise ValueError(f"invalid status {self.status!r} for {self.slug}")
         if not self.slug or not self.model or not self.recipe_version:
             raise ValueError("recipe slug, model, and recipe_version are required")
+        if self.expert_quantization not in {None, "nvfp4"}:
+            raise ValueError(
+                f"unsupported expert quantization {self.expert_quantization!r} "
+                f"for {self.slug}"
+            )
         for name in ("source_bytes", "prepared_bytes", "minimum_free_bytes"):
             value = getattr(self, name)
             if value is not None and value <= 0:
@@ -118,6 +129,7 @@ class ModelRecipe:
             "status": self.status,
             "implementation": self.implementation,
             "checkpoint_format": self.checkpoint_format,
+            "expert_quantization": self.expert_quantization,
             "execution_policy": self.execution_policy,
             "profile": self.profile,
             "description": self.description,

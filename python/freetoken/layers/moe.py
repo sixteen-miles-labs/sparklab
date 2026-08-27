@@ -404,11 +404,22 @@ class OffloadMoELayer(MoELayer):
             )
             if cache.cache_policy != "layer_lru" or unique_ids.numel() <= quota:
                 cache.ensure_experts(self.layer_id, unique_ids, is_prefill=True)
-                topk_ids.copy_(cache.slot_for_id[self.layer_id][raw_ids.long()])
                 cache.sparse_prefill_layers += 1
                 cache.sparse_prefill_routes += raw_ids.numel()
                 cache.sparse_prefill_unique_rows += unique_ids.numel()
                 cache.copy_missing()
+                # Native NVFP4 keeps the logical expert ids for the grouped sort
+                # (domain E, not the potentially tens-of-thousands-wide cache) and
+                # translates each group to its resident slot inside the Triton
+                # kernel.  Sorting cache-slot ids directly makes moe_align allocate
+                # and scan over cache_size and exceeds the alignment kernel's
+                # supported expert domain on large unified-memory caches.
+                prefill_slot_map = None
+                if cache.quant_format == "nvfp4":
+                    topk_ids.copy_(raw_ids)
+                    prefill_slot_map = cache.slot_for_id[self.layer_id]
+                else:
+                    topk_ids.copy_(cache.slot_for_id[self.layer_id][raw_ids.long()])
                 return self._expert_gemm(
                     cache,
                     hidden_states,
@@ -418,6 +429,7 @@ class OffloadMoELayer(MoELayer):
                     n=None,
                     alphas=cache.alphas_for_slots(self.layer_id),
                     is_prefill=True,
+                    prefill_slot_map=prefill_slot_map,
                 )
             cache.sparse_prefill_fallback_layers += 1
         if cache.prefill_overlap:
@@ -476,6 +488,7 @@ class OffloadMoELayer(MoELayer):
         n: int | None,
         alphas: tuple[torch.Tensor, torch.Tensor] | None,
         is_prefill: bool,
+        prefill_slot_map: torch.Tensor | None = None,
     ) -> torch.Tensor:
         fmt = cache.quant_format
         if fmt in ("nvfp4_marlin", "nvfp4_b12x"):
@@ -513,11 +526,11 @@ class OffloadMoELayer(MoELayer):
             if is_prefill:
                 from freetoken.moe.fused_nvfp4 import fused_experts_nvfp4
 
-                # Route-first prefill rewrites expert ids to persistent-cache slot
-                # ids and passes the whole slot bank (``n`` is otherwise reserved
-                # for full-layer materialization).  The grouped Triton kernel still
-                # needs the row-domain size when it pads/sorts those slot ids.
-                kernel_num_experts = views[0].shape[0] if n is None else n
+                # Route-first prefill sorts logical expert ids and translates each
+                # group through ``prefill_slot_map`` in-kernel. Full-layer prefill
+                # has position == expert id and therefore needs no mapping.
+                kernel_num_experts = self.num_experts if prefill_slot_map is not None else n
+                assert kernel_num_experts is not None
                 return fused_experts_nvfp4(
                     hidden_states,
                     *views,
@@ -528,6 +541,7 @@ class OffloadMoELayer(MoELayer):
                     self.apply_router_weight_on_input,
                     act_alpha,
                     act_limit,
+                    slot_map=prefill_slot_map,
                 )
             # Marlin-style int32 wide-load GEMV (arithmetic dequant, no HW cvt).
             # Bit-identical to the byte-at-a-time path; lifts gate/up BW ~43%->51%

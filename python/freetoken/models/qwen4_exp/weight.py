@@ -225,6 +225,16 @@ def copy_external_artifacts(model_path: str, out_dir: str, model_config) -> list
                 if length != expected:
                     raise ValueError(f"invalid Qwen4 n-gram byte length for {name}")
                 _copy_range(fd, out.fileno(), 8 + header_size + begin, length)
+                # Keep the 95 GiB destination from becoming dirty page-cache
+                # pressure on unified memory. Commit and evict each ~0.75 GiB
+                # part before copying the next one; source pages are evicted below.
+                os.fdatasync(out.fileno())
+                try:
+                    os.posix_fadvise(
+                        out.fileno(), total_bytes, length, os.POSIX_FADV_DONTNEED
+                    )
+                except OSError:
+                    pass
                 total_rows += int(meta["shape"][0])
                 total_bytes += length
                 try:

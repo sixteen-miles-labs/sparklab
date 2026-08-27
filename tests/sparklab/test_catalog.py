@@ -34,6 +34,7 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     assert qwen.revision == "f5d08274bafd880402bd16f5e3e6c514136ec06c"
     assert glm.revision == "3f1971b7b5f7a528c9c4ef6212c8785298a8c24a"
     assert qwen.source_bytes == 360000192888
+    assert qwen.expert_quantization == "nvfp4"
     assert glm.source_bytes == 328337455672
     assert qwen.execution_policy == glm.execution_policy == "nvme-moe"
     assert qwen.minimum_free_bytes > qwen.source_bytes + qwen.prepared_bytes
@@ -60,4 +61,9 @@ def test_preview_and_certified_statuses_fail_closed_without_evidence_or_memory()
     with pytest.raises(ValueError, match="must cite versioned evidence"):
         replace(base, status="preview").validate()
     with pytest.raises(ValueError, match="runtime-memory budget"):
-        replace(base, status="certified", evidence=("GB10-QWEN-001",)).validate()
+        replace(
+            base,
+            status="certified",
+            evidence=("GB10-QWEN-001",),
+            runtime_memory=None,
+        ).validate()

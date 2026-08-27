@@ -88,6 +88,10 @@ def parse_config(hf_config: Any) -> ModelConfig:
         ),
     )
 
+    expert_quant = str(getattr(text, "freetoken_expert_quant", "none"))
+    if expert_quant not in {"none", "nvfp4"}:
+        raise ValueError(f"unsupported Qwen4 expert quantization: {expert_quant!r}")
+
     return ModelConfig(
         num_layers=num_layers,
         num_qo_heads=int(text.num_attention_heads),
@@ -112,7 +116,7 @@ def parse_config(hf_config: Any) -> ModelConfig:
         attention_groups=groups,
         vision_config=None,
         image_token_id=getattr(hf_config, "image_token_id", None),
-        expert_quant="none",
+        expert_quant=expert_quant,
         linear_state_snapshots=False,
         qwen4_exp_args=args,
     )

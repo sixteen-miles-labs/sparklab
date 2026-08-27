@@ -552,6 +552,8 @@ def stream_generate(origin: str, model_id: str, problem: str, sampling: dict,
     )
     stamps: list[float] = []
     pieces: list[str] = []
+    reasoning_pieces: list[str] = []
+    content_pieces: list[str] = []
     usage: dict | None = None
     finish_reason: str | None = None
     t0 = time.perf_counter()
@@ -578,16 +580,24 @@ def stream_generate(origin: str, model_id: str, problem: str, sampling: dict,
                 if choice.get("finish_reason") is not None:
                     finish_reason = choice["finish_reason"]
                 delta = choice.get("delta") or {}
-                text = delta.get("reasoning_content") or delta.get("content")
-                if text:
+                reasoning = delta.get("reasoning_content")
+                content = delta.get("content")
+                if reasoning or content:
                     stamps.append(now)
-                    pieces.append(text)
+                if reasoning:
+                    reasoning_pieces.append(reasoning)
+                    pieces.append(reasoning)
+                if content:
+                    content_pieces.append(content)
+                    pieces.append(content)
     if usage is None:
         sys.exit("[bench] stream ended without a usage chunk; is this a FreeToken server?")
     return {
         "t0": t0,
         "stamps": stamps,
         "text": "".join(pieces),
+        "reasoning_text": "".join(reasoning_pieces),
+        "content_text": "".join(content_pieces),
         "usage": usage,
         "finish_reason": finish_reason,
     }

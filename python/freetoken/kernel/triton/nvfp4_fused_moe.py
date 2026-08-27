@@ -237,6 +237,7 @@ def _prefill_nvfp4_moe_kernel(
     topk_weights_ptr,
     sorted_token_ids_ptr,
     expert_ids_ptr,    # cache slot per M-block
+    slot_map_ptr,      # optional [num_experts] logical expert -> cache slot
     num_tokens_post_padded_ptr,
     lut_ptr,
     N,
@@ -254,6 +255,7 @@ def _prefill_nvfp4_moe_kernel(
     BLOCK_SIZE_KB: tl.constexpr,
     GROUP_SIZE_M: tl.constexpr,
     MUL_ROUTED_WEIGHT: tl.constexpr,
+    HAS_SLOT_MAP: tl.constexpr,
     top_k: tl.constexpr,
     compute_type: tl.constexpr,
 ):
@@ -280,7 +282,11 @@ def _prefill_nvfp4_moe_kernel(
     a_ptrs_lo = a_ptr + (offs_token[:, None] // top_k * stride_am + (2 * offs_kb)[None, :] * stride_ak)
     a_ptrs_hi = a_ptr + (offs_token[:, None] // top_k * stride_am + (2 * offs_kb + 1)[None, :] * stride_ak)
 
-    slot = tl.load(expert_ids_ptr + pid_m).to(tl.int64)
+    expert = tl.load(expert_ids_ptr + pid_m).to(tl.int64)
+    if HAS_SLOT_MAP:
+        slot = tl.load(slot_map_ptr + expert).to(tl.int64)
+    else:
+        slot = expert
     packed_base = packed_ptr + slot * stride_pe + offs_bn[None, :] * stride_pn
     scale_base = scale_ptr + slot * stride_se + offs_bn[None, :] * stride_sn
 

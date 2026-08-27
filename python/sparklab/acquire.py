@@ -383,6 +383,7 @@ def acquire_recipe(
             str(prepared),
             moe_backend="offload" if recipe.execution_policy == "nvme-moe" else "fused",
             nvfp4_backend="auto",
+            expert_quantization=recipe.expert_quantization,
             device="cuda:0",
         )
         prepared_validation = validate_ftw_checkpoint(prepared)

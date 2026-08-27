@@ -269,6 +269,7 @@ def _prefill_gemm(
     kernel_top_k: int,
     mul_routed_weight: bool,
     cfg: Dict[str, Any],
+    slot_map: torch.Tensor | None,
 ) -> None:
     N = packed.shape[1]
     K = packed.shape[2] * 2
@@ -277,9 +278,11 @@ def _prefill_gemm(
     grid = lambda META: (  # noqa: E731
         triton.cdiv(EM, META["BLOCK_SIZE_M"]) * triton.cdiv(N, META["BLOCK_SIZE_N"]),
     )
+    # Triton requires a valid pointer even when the constexpr disables its load.
+    slot_map_arg = expert_ids if slot_map is None else slot_map
     _prefill_nvfp4_moe_kernel[grid](
         a, packed, scale, glob, c, topk_weights_flat, sorted_ids, expert_ids,
-        num_tokens_post_padded,
+        slot_map_arg, num_tokens_post_padded,
         _e2m1_lut(a.device.index),
         N, K, EM, num_valid_tokens,
         a.stride(0), a.stride(1),
@@ -289,6 +292,7 @@ def _prefill_gemm(
         c.stride(1), c.stride(2),
         topk_weights_flat.stride(0),
         MUL_ROUTED_WEIGHT=mul_routed_weight,
+        HAS_SLOT_MAP=slot_map is not None,
         top_k=kernel_top_k,
         compute_type=_tl_dtype(c.dtype),
         **cfg,
@@ -310,10 +314,13 @@ def fused_experts_nvfp4(
     apply_router_weight_on_input: bool = False,
     act_alpha: float = 1.702,
     act_limit: float = 7.0,
+    *,
+    slot_map: torch.Tensor | None = None,
 ) -> torch.Tensor:
     """Prefill inline-NVFP4 MoE. ``topk_ids`` index rows of the bank tensors in
-    ``[0, num_experts)``: full-layer banks with position == expert id (the
-    materialized ``[:E]`` slot view or the overlap double buffer), raw ids."""
+    ``[0, num_experts)``. Full-layer banks have position == expert id. For
+    route-first prefill, ``slot_map[expert_id]`` selects the persistent cache row
+    without inflating the grouped-sort domain to ``cache_size``."""
     M, H = hidden_states.shape
     top_k = topk_ids.shape[1]
     two_i = gate_up_packed.shape[1]
@@ -329,7 +336,7 @@ def fused_experts_nvfp4(
     _prefill_gemm(
         hidden_states, gate_up_packed, gate_up_scale, gate_up_global, ic1,
         tw, sorted_ids, expert_ids, ntpp, num_valid, top_k,
-        apply_router_weight_on_input, cfg,
+        apply_router_weight_on_input, cfg, slot_map,
     )
     ic2 = torch.empty((M * top_k, inter), device=dev, dtype=dt)
     _run_act(activation, ic1.view(-1, two_i), ic2, act_alpha, act_limit)
@@ -337,7 +344,7 @@ def fused_experts_nvfp4(
     _prefill_gemm(
         ic2, down_packed, down_scale, down_global, ic3,
         tw, sorted_ids, expert_ids, ntpp, num_valid, 1,
-        not apply_router_weight_on_input, cfg,
+        not apply_router_weight_on_input, cfg, slot_map,
     )
     out = torch.empty_like(hidden_states)
     moe_sum_reduce_triton(ic3, out)

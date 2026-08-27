@@ -38,7 +38,7 @@ def _snapshot(*, available: int = 100 * GIB, swap_used: int = 0) -> GB10Snapshot
 
 
 def test_runtime_plan_reserves_physical_memory_and_fails_without_measurement():
-    recipe = get_recipe("qwen3.8-flash-next")
+    recipe = replace(get_recipe("qwen3.8-flash-next"), runtime_memory=None)
     unknown = plan_runtime(recipe, _snapshot())
     assert unknown.ready is False
     assert "no measured GB10 runtime-memory budget" in unknown.reasons[0]

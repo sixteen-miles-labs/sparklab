@@ -79,6 +79,12 @@ def test_config_declares_qsa_separately_from_minimax_bsa():
     assert cfg.linear_state_snapshots is False
 
 
+def test_config_accepts_conversion_owned_nvfp4_experts():
+    source = _config()
+    source.text_config.freetoken_expert_quant = "nvfp4"
+    assert parse_config(source).expert_quant == "nvfp4"
+
+
 def test_hyper_connection_matches_reference_equations():
     torch.manual_seed(4)
     op = Qwen4GatedResidual(8, 4, 5, 1e-6)
