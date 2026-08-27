@@ -24,7 +24,9 @@ from bench_decode_moe import (
     AIME_REPO,
     BOXED_INSTRUCTION,
     GpuTelemetry,
+    checkpoint_provenance,
     free_port,
+    gb10_evidence,
     get_json,
     pump_output,
     resolve_sampling,
@@ -39,11 +41,34 @@ from bench_decode_moe import (
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--model", required=True)
+    p.add_argument(
+        "--recipe",
+        default=None,
+        help="Spark Lab recipe slug to embed as immutable benchmark provenance",
+    )
     p.add_argument("--aime", default=os.environ.get("FREETOKEN_AIME25_JSONL"))
     p.add_argument("--problems", default="all", help="all, comma list, or inclusive range (e.g. 0-4)")
     p.add_argument("--decode", type=int, default=1024, help="maximum output tokens per problem")
     p.add_argument("--backend", default="hybrid", choices=("offload", "cpu", "hybrid"))
     p.add_argument("--storage", default="disk", choices=("ram", "disk"))
+    p.add_argument(
+        "--attention-backend",
+        default="auto",
+        help="server attention backend (for example qsa for Qwen3.8-Flash-Next)",
+    )
+    p.add_argument("--page-size", type=int, default=1, help="paged KV page size")
+    p.add_argument(
+        "--cache-type",
+        choices=("naive", "radix"),
+        default="radix",
+        help="prefix-cache policy",
+    )
+    p.add_argument(
+        "--max-seq-len",
+        type=int,
+        default=0,
+        help="server sequence cap; 0 uses 8192 + --decode",
+    )
     p.add_argument(
         "--nvfp4-backend",
         choices=("auto", "marlin", "flashinfer", "triton"),
@@ -230,9 +255,26 @@ def summarize(args, results: list[dict], sampling: dict) -> dict:
         for row in results
         if "power_w_avg" in row.get("gpu_telemetry", {})
     ]
+    recipe = None
+    if args.recipe:
+        from sparklab.catalog import get_recipe
+
+        model_recipe = get_recipe(args.recipe)
+        recipe = {
+            "slug": model_recipe.slug,
+            "recipe_version": model_recipe.recipe_version,
+            "model": model_recipe.model,
+            "revision": model_recipe.revision,
+            "intended_tier": model_recipe.intended_tier,
+            "status_at_run": model_recipe.status,
+            "runtime_args": list(model_recipe.runtime_args),
+        }
     summary = {
         "kind": "summary",
         "model": args.model,
+        "recipe": recipe,
+        "checkpoint": checkpoint_provenance(args.model),
+        "platform": gb10_evidence(args.model),
         "backend": args.backend,
         "problems": len(results),
         "correct": sum(row["correct"] for row in results),
@@ -273,6 +315,11 @@ def summarize(args, results: list[dict], sampling: dict) -> dict:
             ),
         } if gpu_rows else {},
         "config": {
+            "storage": args.storage,
+            "attention_backend": args.attention_backend,
+            "page_size": args.page_size,
+            "cache_type": args.cache_type,
+            "max_seq_len": args.max_seq_len or (8192 + args.decode),
             "host_cache_gb": args.host_cache_gb,
             "nvfp4_backend": args.nvfp4_backend,
             "hybrid_fetch": args.hybrid_fetch,
