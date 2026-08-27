@@ -110,7 +110,7 @@ to a useful local frontier model.
 - **Practical flagship:** DeepSeek V4, already measured at 9.217 decode tok/s on GB10 with
   disk-backed experts, 14.045 s warm TTFT, no observed swap growth, and identical greedy
   output across matched configurations. This is the launch baseline, not an aspirational
-  number; see `exp_dsv4_gb10.md`.
+  number; see the [GB10 DeepSeek V4 experiment](../exps/exp_dsv4_gb10.md).
 - **Daily-use tier:** a small set of 20B-120B dense and sparse models selected for
   interactive coding, reasoning, and agent work.
 - **Research moonshot:** the complete official Kimi K3 checkpoint on one GB10 using
