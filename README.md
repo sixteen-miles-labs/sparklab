@@ -14,10 +14,6 @@
 
 <h3 align="center">Run frontier open-weight models privately on one NVIDIA DGX Spark.</h3>
 
-<p align="center">
-  <img src="assets/sparklab-hero.png" alt="SparkLab — Frontier models. One compact system." width="100%">
-</p>
-
 SparkLab is a GB10-native inference product for local, single-system deployments. It
 combines immutable model recipes, unified-memory admission, resumable checkpoint
 acquisition, FTW preparation, NVMe-backed MoE execution, and OpenAI- and
