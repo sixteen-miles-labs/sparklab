@@ -91,7 +91,10 @@ class Glm5NextDeltaAttention(BaseOP):
             fla.cache_indices,
             fla.has_initial_state,
         )
-        return out.transpose(0, 1)
+        # The recurrent kernel addresses features within each head contiguously.
+        # Materialize the channel-major convolution output once here so the three
+        # Q/K/V views can share one dense allocation.
+        return out.transpose(0, 1).contiguous()
 
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
         from freetoken.attention.linear import build_fla_metadata

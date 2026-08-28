@@ -25,7 +25,9 @@ def test_catalog_has_unique_versioned_three_tier_recipes():
 
 def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert get_recipe("kimi-k3").model == "nvidia/Kimi-K3-NVFP4"
-    assert get_recipe("glm-5.3-flash").model == "zai-org/GLM-5.3-Flash"
+    assert get_recipe("glm-5.3-flash").model == (
+        "RedHatAI/GLM-5.3-Flash-NVFP4"
+    )
     assert get_recipe("qwen3.8-flash-next").model == (
         "Inferact/Qwen3.8-Flash-Next-NVFP4"
     )
@@ -62,6 +64,10 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert qwen.performance.decode_tokens_per_second == pytest.approx(12.583951131340129)
     assert qwen.performance.warm_ttft_seconds == pytest.approx(0.7857413627207279)
     assert qwen.deployment.backend_options["moe_host_cache_gb"] == 3
+    assert qwen.runtime_artifact is not None
+    assert qwen.runtime_artifact.repo_id == "oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW"
+    assert qwen.runtime_artifact.revision == "cbbcf69f52b9815b8a987fe839003fae12aa8050"
+    assert qwen.runtime_artifact.fingerprint == "47e11ddb878adf4c"
     kimi = get_recipe("kimi-k3")
     assert kimi.recipe_version == "0.2.0"
     assert kimi.deployment.runtime_format == "ftw-nvfp4"
@@ -98,12 +104,18 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     kimi = get_recipe("kimi-k3")
     glm52 = get_recipe("glm-5.2")
     assert qwen.revision == "103a7608316173ca6edd49929544244de7ffda70"
-    assert glm.revision == "3f1971b7b5f7a528c9c4ef6212c8785298a8c24a"
+    assert glm.recipe_version == "0.3.1"
+    assert glm.revision == "9eaeadaf026871a90640e32c0604f6ab0b2d641d"
     assert kimi.revision == "f8c5234a0a880bcc6cbf779a315e7ee2f405b812"
     assert glm52.revision == "aec724e8c7b8ee9db3b48c01c320f63f9cdaf8aa"
     assert qwen.source_bytes == 182838060595
     assert qwen.expert_quantization == "nvfp4"
-    assert glm.source_bytes == 328337455672
+    assert glm.source_bytes == 190262422658
+    assert glm.deployment.source_format == "safetensors-nvfp4"
+    assert glm.deployment.runtime_format == "ftw-nvfp4"
+    assert glm.deployment.quantization == "nvfp4"
+    assert glm.deployment.backend_options["nvfp4_backend"] == "triton"
+    assert glm.deployment.backend_options["moe_host_cache_gb"] == 4
     assert kimi.source_bytes == 1610038482254
     assert glm52.source_bytes == 464874323992
     assert qwen.execution_policy == glm.execution_policy == "nvme-moe"

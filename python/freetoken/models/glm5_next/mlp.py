@@ -17,8 +17,8 @@ class Glm5Fp8BlockLinear(Fp8BlockLinear):
         )
 
 
-def _linear(quantized: bool, in_features: int, out_features: int) -> BaseOP:
-    if quantized:
+def _linear(quantization: str, in_features: int, out_features: int) -> BaseOP:
+    if quantization == "fp8_block":
         return Glm5Fp8BlockLinear(in_features, out_features, has_bias=False)
     return LinearReplicated(in_features, out_features, has_bias=False)
 
@@ -35,10 +35,10 @@ def clamped_swiglu(gate: torch.Tensor, up: torch.Tensor, limit: float) -> torch.
 
 
 class Glm5NextMLP(BaseOP):
-    def __init__(self, hidden_size: int, intermediate_size: int, limit: float, *, quantized: bool):
-        self.gate_proj = _linear(quantized, hidden_size, intermediate_size)
-        self.up_proj = _linear(quantized, hidden_size, intermediate_size)
-        self.down_proj = _linear(quantized, intermediate_size, hidden_size)
+    def __init__(self, hidden_size: int, intermediate_size: int, limit: float, *, quantization: str):
+        self.gate_proj = _linear(quantization, hidden_size, intermediate_size)
+        self.up_proj = _linear(quantization, hidden_size, intermediate_size)
+        self.down_proj = _linear(quantization, intermediate_size, hidden_size)
         self.limit = limit
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

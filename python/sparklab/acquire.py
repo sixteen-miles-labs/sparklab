@@ -114,18 +114,25 @@ def validate_safetensors_snapshot(directory: str | os.PathLike[str]) -> dict[str
             )
         physical_bytes += actual_size
 
+    # `metadata.total_size` is publisher-supplied advisory metadata. Some otherwise
+    # valid checkpoints carry a stale value (for example, RedHatAI's pinned GLM-5.3
+    # NVFP4 index is 6,684,672 bytes lower than its headers). The checks above are
+    # authoritative: every indexed name must occur in its declared shard, tensor
+    # ranges must be contiguous, and each physical file must end at the final range.
+    # Preserve a published-total discrepancy in the manifest instead of rejecting a
+    # byte-for-byte complete snapshot solely on this redundant field.
     published = int((index.get("metadata") or {}).get("total_size", logical_bytes))
-    if published != logical_bytes:
-        raise AcquisitionError(
-            f"safetensors logical byte total mismatch: index={published}, headers={logical_bytes}"
-        )
-    return {
+    result = {
         "index": index_path.name,
         "shards": len(by_file),
         "tensors": len(weight_map),
         "logical_bytes": logical_bytes,
         "physical_bytes": physical_bytes,
     }
+    if published != logical_bytes:
+        result["published_logical_bytes"] = published
+        result["published_logical_bytes_delta"] = logical_bytes - published
+    return result
 
 
 

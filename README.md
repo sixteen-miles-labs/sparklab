@@ -43,26 +43,32 @@ Spark Lab has three recipe tiers:
 | **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |
 | [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW | Experimental | 67.46 | 0.320 |
 | **Frontier — quality-first coding, reasoning, and long agent work** |  |  |  |  |  |
-| [Qwen3.8-Flash-Next](https://huggingface.co/Inferact/Qwen3.8-Flash-Next-NVFP4) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW upload pending | Experimental | 12.58 | 0.786 |
+| [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW | Experimental | 12.58 | 0.786 |
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | Preview | 9.22 | 14.045 |
-| [GLM-5.3 Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 320B total / 18B active | FP8 | Experimental | — | — |
+| [GLM-5.3 Flash](https://huggingface.co/RedHatAI/GLM-5.3-Flash-NVFP4) | 320B total / 18B active | NVFP4 · FTW | Experimental | 3.27 | 7.121 |
 | **Research — correct, bounded execution beyond the interactive envelope** |  |  |  |  |  |
 | [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | 753B total / 40B active | NVFP4 | Experimental | 0.80 | 2.570 |
 | [Kimi K3](https://huggingface.co/nvidia/Kimi-K3-NVFP4) | 2.8T total / 16 of 896 experts | NVFP4 · FTW upload pending | Experimental | — | — |
 
 Model links point to the selected runtime artifact when one is published, otherwise to
-the pinned source checkpoint. Qwen3.8 and Kimi K3 FTW artifacts remain pending.
+the pinned source checkpoint. The Kimi K3 FTW artifact remains pending.
 
 The measured results link to compact, machine-readable evidence:
 
 - Qwen3.6: [`GB10-QWEN36-FAST-001`](benchmarks/gb10/results/GB10-QWEN36-FAST-001.json)
 - Qwen3.8: [`GB10-QWEN38-NVFP4-001`](benchmarks/gb10/results/GB10-QWEN38-NVFP4-001.json)
 - DeepSeek V4: [`GB10-BASELINE-001`](benchmarks/gb10/results/GB10-BASELINE-001.json)
+- GLM-5.3: [`GB10-GLM53-NVFP4-001`](benchmarks/gb10/results/GB10-GLM53-NVFP4-001.json)
 - GLM-5.2: [`experiment and admission result`](exps/exp_glm5_2_gb10.md)
 
 These are fixed-probe measurements, not certification. Qwen3.6 still requires context
 and endurance gates; DeepSeek V4 remains Preview; GLM-5.2 remains an Experimental
 fallback after its selected trial recorded 680 KiB of swap-out.
+
+GLM-5.3's full-checkpoint probe loaded and served successfully at 3.27 tok/s and
+7.121 s warm TTFT. Its corrected greedy probe reached the reference answer, but the
+performance and remaining certification gates do not pass Frontier admission. See the
+[experiment report](exps/exp_glm5_3_nvfp4_gb10.md) for the FTW and backend findings.
 
 The Qwen3.8 recipe targets Inferact's publisher-quantized ModelOpt NVFP4 checkpoint and
 preserves its published precision during FTW preparation. Its complete-checkpoint probe

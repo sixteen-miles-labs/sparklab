@@ -1,9 +1,9 @@
 """Engine-facing configuration for the GLM-5.3-Flash text tower.
 
 The public checkpoint is a multimodal wrapper, but Spark Lab serves and certifies
-its language tower.  The tower is a 3:1 KDA/NoPE-MLA hybrid, uses four manifold-
-constrained Hyper-Connection streams, and stores its large linear and expert
-weights as dynamic-activation 128x128 block FP8.
+its language tower.  The tower is a 3:1 KDA/NoPE-MLA hybrid and uses four manifold-
+constrained Hyper-Connection streams.  Spark Lab supports both the publisher's
+dynamic 128x128 block-FP8 checkpoint and Red Hat AI's routed-expert NVFP4 derivative.
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ from freetoken.models.config import (
     LinearGatedDeltaGroupConfig,
     ModelConfig,
     RotaryConfig,
+    detect_compressed_tensors_nvfp4,
 )
 
 from .args import Glm5NextArgs
@@ -85,7 +86,15 @@ def parse_config(hf_config: Any) -> ModelConfig:
     )
 
     quant_source = text if _get(text, "quantization_config") is not None else hf_config
-    quant, block = _block_fp8(quant_source)
+    if detect_compressed_tensors_nvfp4(quant_source):
+        # RedHatAI/GLM-5.3-Flash-NVFP4 targets only routed expert projections.
+        # Every resident text-tower Linear remains BF16 per the checkpoint ignore list.
+        expert_quant = "nvfp4"
+        resident_quant = "none"
+        block = None
+    else:
+        expert_quant, block = _block_fp8(quant_source)
+        resident_quant = expert_quant
     index_dim = int(_get(text, "index_head_dim"))
     kpool = int(_get(text, "index_kpool", 1))
     dsa_on = bool(dsa_ids) and os.getenv("FREETOKEN_GLM5_NEXT_DSA", "1") != "0"
@@ -175,12 +184,12 @@ def parse_config(hf_config: Any) -> ModelConfig:
         ),
         moe_enabled=num_experts > 0,
         linear_state_snapshots=False,
-        expert_quant=quant,
+        expert_quant=expert_quant,
         weight_block_size=block,
         fp8_block_scale_dtype="float32",
-        attn_quant=quant,
-        dense_quant=quant,
-        moe_weight_format=quant,
+        attn_quant=resident_quant,
+        dense_quant=resident_quant,
+        moe_weight_format=expert_quant,
         first_k_dense_replace=int(_get(text, "first_k_dense_replace", 0)),
         n_shared_experts=int(_get(text, "n_shared_experts", 0)),
         shared_expert_intermediate_size=(

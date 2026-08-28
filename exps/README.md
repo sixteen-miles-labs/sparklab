@@ -7,8 +7,10 @@ Last updated: 2026-08-27
 - [DeepSeek V4 inference experiments](exp_dsv4.md)
 - [DeepSeek V4 Stage A on NVIDIA GB10](exp_dsv4_gb10.md)
 - [GLM-5.2 NVFP4 on NVIDIA GB10](exp_glm5_2_gb10.md)
+- [GLM-5.3 Flash NVFP4 on NVIDIA GB10](exp_glm5_3_nvfp4_gb10.md)
 - [Qwen3.6-35B-A3B NVFP4 on NVIDIA GB10](exp_qwen3_6_gb10.md)
 - [Qwen3.8-Flash-Next official FP8 on NVIDIA GB10](exp_qwen3_8_fp8_gb10.md)
+- [Qwen3.8-Flash-Next publisher NVFP4 on NVIDIA GB10](exp_qwen3_8_nvfp4_gb10.md)
 - [Frontier models on one GB10: DSV4 Flash to GLM-5.2 to Kimi K3](exp_kimik3_gb10.md)
 
 ## Summary

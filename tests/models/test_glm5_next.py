@@ -9,7 +9,11 @@ from freetoken.attention.base import AttnType
 from freetoken.models.glm5_next.config import parse_config
 from freetoken.models.glm5_next.hyper import Glm5NextHyperConnection
 from freetoken.models.glm5_next.kpool import pool_index_states, select_kpool_tokens
-from freetoken.models.glm5_next.weight import map_weight_name
+from freetoken.models.glm5_next.weight import (
+    _CT_NVFP4_SOURCE_SPEC,
+    load_nvfp4_expert_sources,
+    map_weight_name,
+)
 
 
 def _config(layers: int = 8):
@@ -95,6 +99,102 @@ def test_parse_config_builds_glm53_hybrid_geometry():
     assert cfg.linear_state_snapshots is False
 
 
+def test_parse_config_accepts_redhat_expert_only_nvfp4():
+    hf = _config()
+    hf.quantization_config = {
+        "quant_method": "compressed-tensors",
+        "format": "nvfp4-pack-quantized",
+        "config_groups": {
+            "group_0": {
+                "format": "nvfp4-pack-quantized",
+                "targets": ["re:.*mlp\\.experts\\..*(gate|up|down)_proj$"],
+                "weights": {
+                    "num_bits": 4,
+                    "type": "float",
+                    "group_size": 16,
+                    "strategy": "tensor_group",
+                },
+            }
+        },
+    }
+    cfg = parse_config(hf)
+    assert cfg.expert_quant == cfg.moe_weight_format == "nvfp4"
+    assert cfg.attn_quant == cfg.dense_quant == "none"
+    assert cfg.weight_block_size is None
+
+
+def test_glm53_compressed_tensors_expert_source_pattern():
+    match = _CT_NVFP4_SOURCE_SPEC.key_pattern.match(
+        "model.language_model.layers.3.mlp.experts.17.gate_proj.weight_packed"
+    )
+    assert match is not None
+    assert match.groupdict() == {
+        "layer": "3",
+        "expert": "17",
+        "proj": "gate_proj",
+        "kind": "weight_packed",
+    }
+
+
+def test_glm53_compressed_tensors_experts_preserve_packed_rows(tmp_path, monkeypatch):
+    import json
+
+    from safetensors.torch import save_file
+
+    tensors = {}
+    for expert in range(2):
+        for projection, base_value in (("gate_proj", 10), ("up_proj", 20), ("down_proj", 30)):
+            base = (
+                f"model.language_model.layers.0.mlp.experts.{expert}."
+                f"{projection}"
+            )
+            value = base_value + expert
+            tensors[base + ".weight_packed"] = torch.full(
+                (16, 8), value, dtype=torch.uint8
+            )
+            tensors[base + ".weight_scale"] = torch.full(
+                (16, 1), value, dtype=torch.float8_e4m3fn
+            )
+            tensors[base + ".weight_global_scale"] = torch.tensor(
+                [2.0 + expert], dtype=torch.float32
+            )
+    shard = "model.safetensors"
+    save_file(tensors, tmp_path / shard)
+    (tmp_path / "model.safetensors.index.json").write_text(
+        json.dumps({"weight_map": {name: shard for name in tensors}})
+    )
+    config = SimpleNamespace(
+        num_experts=2,
+        hidden_size=16,
+        moe_intermediate_size=16,
+        num_moe_layers=1,
+        first_k_dense_replace=0,
+    )
+    captured = {}
+    monkeypatch.setattr(
+        "freetoken.models.glm5_next.weight.get_tp_info",
+        lambda: SimpleNamespace(is_primary=lambda: False),
+    )
+
+    def sink(layer, banks):
+        assert layer == 0
+        captured.update({name: bank.tensor.clone() for name, bank in banks.items()})
+        for bank in banks.values():
+            bank.release()
+
+    load_nvfp4_expert_sources(str(tmp_path), config, layer_sink=sink)
+    assert captured["gate_up_packed"][1, 0, 0].item() == 11
+    assert captured["gate_up_packed"][1, 16, 0].item() == 21
+    assert captured["down_packed"][1, 0, 0].item() == 31
+    torch.testing.assert_close(
+        captured["gate_up_global"][0, :16], torch.full((16,), 0.5, dtype=torch.float16)
+    )
+    torch.testing.assert_close(
+        captured["down_global"][1],
+        torch.full((16,), 1.0 / 3.0, dtype=torch.float16),
+    )
+
+
 def test_parse_config_rejects_disagreeing_layer_metadata():
     hf = _config()
     hf.text_config.linear_attn_config["kda_layers"].remove(0)
@@ -176,8 +276,6 @@ def test_glm53_checkpoint_name_mapping_and_registry():
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 def test_glm53_per_head_kda_kernel_matches_reference_and_continuation():
-    import torch.nn.functional as F
-
     from freetoken.kernel.fla import fused_sigmoid_gating_delta_rule_update
 
     torch.manual_seed(17)
@@ -225,10 +323,12 @@ def test_glm53_per_head_kda_kernel_matches_reference_and_continuation():
     k_ref = k.float()
     q_ref = q_ref / torch.sqrt(q_ref.square().sum(-1, keepdim=True) + 1e-6) * dim**-0.5
     k_ref = k_ref / torch.sqrt(k_ref.square().sum(-1, keepdim=True) + 1e-6)
-    decay = -a_log.exp().view(1, heads, 1) * F.softplus(
-        a.float().view(steps, heads, dim) + dt_bias.view(heads, dim)
+    # GLM-5.3's safe bounded forget gate is the checkpoint's native rule, not
+    # the older ``clamp(-exp(A_log) * softplus(x), min=lower_bound)`` KDA rule.
+    decay = -5.0 * torch.sigmoid(
+        a_log.exp().view(1, heads, 1)
+        * (a.float().view(steps, heads, dim) + dt_bias.view(heads, dim))
     )
-    decay.clamp_min_(-5.0)
     state = torch.zeros(heads, dim, dim, device="cuda")
     expected = []
     for step in range(steps):
@@ -239,3 +339,28 @@ def test_glm53_per_head_kda_kernel_matches_reference_and_continuation():
         expected.append(torch.einsum("hkv,hk->hv", state, q_ref[0, step]))
     expected = torch.stack(expected).to(torch.bfloat16).unsqueeze(0)
     torch.testing.assert_close(whole, expected, atol=0, rtol=0)
+
+    # GLM's causal-convolution prefill output is transposed from [B, C, T] to
+    # [B, T, C], so its feature stride is T rather than 1. The fused kernel must
+    # materialize that unsupported layout before addressing individual features.
+    packed = torch.cat(
+        (q.flatten(2), k.flatten(2), v.flatten(2)),
+        dim=-1,
+    )
+    conv_layout = packed.transpose(1, 2).contiguous().transpose(1, 2)
+    q_strided, k_strided, v_strided = [
+        part.view(batch, steps, heads, dim)
+        for part in conv_layout.split([heads * dim] * 3, dim=-1)
+    ]
+    assert q_strided.stride(-1) == steps
+    assert q_strided.stride(-1) != 1
+    strided_state = torch.zeros_like(whole_state)
+    strided = run(
+        q_strided,
+        k_strided,
+        v_strided,
+        a,
+        beta_logits,
+        strided_state,
+    )
+    torch.testing.assert_close(strided, expected, atol=0, rtol=0)

@@ -36,7 +36,7 @@ class Glm5NextSparseMoe(BaseOP):
             config.hidden_size,
             config.moe_intermediate_size * max(1, config.n_shared_experts),
             config.swiglu_limit,
-            quantized=True,
+            quantization=config.dense_quant,
         )
 
     def _route(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:

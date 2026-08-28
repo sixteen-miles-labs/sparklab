@@ -8,6 +8,12 @@
   "revision": "103a7608316173ca6edd49929544244de7ffda70",
   "source_bytes": 182838060595,
   "prepared_bytes": 180433108992,
+  "runtime_artifact": {
+    "repo_id": "oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW",
+    "revision": "cbbcf69f52b9815b8a987fe839003fae12aa8050",
+    "bytes": 180433108992,
+    "fingerprint": "47e11ddb878adf4c"
+  },
   "minimum_free_bytes": 503115074662,
   "intended_tier": "frontier",
   "status": "experimental",

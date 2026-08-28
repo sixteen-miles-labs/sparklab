@@ -175,18 +175,26 @@ def fused_sigmoid_gating_delta_rule_update_kernel(
             b_a = tl.load(p_a).to(tl.float32)
             b_dt_bias = tl.load(p_dt_bias).to(tl.float32)
 
-        # Compute g = -exp(A_log) * softplus(a + dt_bias)
+        # Compute the recurrent log-decay. GLM-5.3's bounded KDA gate is not the
+        # older clamp-based KDA rule: its checkpoint was trained with
+        # ``lower_bound * sigmoid(exp(A_log) * (a + dt_bias))``. Keep the
+        # softplus rule for KDA checkpoints without a learned safe lower bound and
+        # for the GDN callers that share this fused kernel.
         x = b_a + b_dt_bias
-        beta_x = softplus_beta * x
-        # Apply softplus with numerical stability
-        softplus_x = tl.where(
-            beta_x <= softplus_threshold,
-            (1.0 / softplus_beta) * tl.log(1.0 + tl.exp(beta_x)),
-            x,
-        )
-        b_g = -tl.exp(b_A_log) * softplus_x
-        if HAS_GATE_LOWER_BOUND:
-            b_g = tl.maximum(b_g, gate_lower_bound)
+        if IS_KDA and HAS_GATE_LOWER_BOUND:
+            bounded_x = tl.exp(b_A_log) * x
+            b_g = gate_lower_bound / (1.0 + tl.exp(-bounded_x))
+        else:
+            beta_x = softplus_beta * x
+            # Apply softplus with numerical stability
+            softplus_x = tl.where(
+                beta_x <= softplus_threshold,
+                (1.0 / softplus_beta) * tl.log(1.0 + tl.exp(beta_x)),
+                x,
+            )
+            b_g = -tl.exp(b_A_log) * softplus_x
+            if HAS_GATE_LOWER_BOUND:
+                b_g = tl.maximum(b_g, gate_lower_bound)
 
         # Compute beta = sigmoid(b)
         b_beta = 1.0 / (1.0 + tl.exp(-b_b))
@@ -293,6 +301,19 @@ def fused_sigmoid_gating_delta_rule_update(
     - target_verify: multi-step with intermediate state caching, optional tree attention,
                      and optional state update disable
     """
+    # The Triton kernel advances within a head by adding the feature offset directly,
+    # so the key/value feature dimension and the query head dimension must be dense.
+    # GLM-5.3's causal-convolution prefill path naturally produces [B, T, C] views
+    # whose feature stride is T after transposing a contiguous [B, C, T] result.
+    # Preserve zero-copy packed Q/K/V views when they already have the supported
+    # layout, and materialize only unsupported inner layouts.
+    if q.stride(-1) != 1 or q.stride(-2) != q.shape[-1]:
+        q = q.contiguous()
+    if k.stride(-1) != 1 or k.stride(-2) != k.shape[-1]:
+        k = k.contiguous()
+    if v.stride(-1) != 1 or v.stride(-2) != v.shape[-1]:
+        v = v.contiguous()
+
     B, T, H, K, V = *k.shape, v.shape[-1]
     stride_q = q.stride()[1]
     stride_k = k.stride()[1]

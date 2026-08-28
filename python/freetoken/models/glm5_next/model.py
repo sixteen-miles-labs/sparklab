@@ -32,7 +32,7 @@ class Glm5NextDecoderLayer(BaseOP):
                 config.hidden_size,
                 config.intermediate_size,
                 config.swiglu_limit,
-                quantized=True,
+                quantization=config.dense_quant,
             )
         )
         self.input_layernorm = RMSNorm(config.hidden_size, config.rms_norm_eps)

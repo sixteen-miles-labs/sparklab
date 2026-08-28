@@ -1,14 +1,14 @@
 {
   "schema_version": "2.0",
-  "recipe_version": "0.2.0",
+  "recipe_version": "0.3.1",
   "slug": "glm-5.3-flash",
   "name": "GLM-5.3 Flash",
-  "model": "zai-org/GLM-5.3-Flash",
+  "model": "RedHatAI/GLM-5.3-Flash-NVFP4",
   "parameters": "320B total / 18B active",
-  "revision": "3f1971b7b5f7a528c9c4ef6212c8785298a8c24a",
-  "source_bytes": 328337455672,
-  "prepared_bytes": 328337455672,
-  "minimum_free_bytes": 794113864816,
+  "revision": "9eaeadaf026871a90640e32c0604f6ab0b2d641d",
+  "source_bytes": 190262422658,
+  "prepared_bytes": 189276450816,
+  "minimum_free_bytes": 517963798788,
   "intended_tier": "frontier",
   "status": "experimental",
   "implementation": "text-architecture",
@@ -16,16 +16,17 @@
   "deployment": {
     "backend": "native",
     "backend_api": "1.0",
-    "source_format": "safetensors",
-    "runtime_format": "ftw-fp8",
-    "quantization": "fp8",
+    "source_format": "safetensors-nvfp4",
+    "runtime_format": "ftw-nvfp4",
+    "quantization": "nvfp4",
     "execution_policy": "nvme-moe",
     "backend_options": {
       "attention_backend": "dsa",
       "moe_backend": "offload",
       "moe_storage": "disk",
-      "moe_host_cache_gb": 2,
+      "moe_host_cache_gb": 4,
       "moe_cache_auto": true,
+      "nvfp4_backend": "triton",
       "moe_prefill_sparse_max_tokens": 512,
       "moe_prefill_hit_d2d": true,
       "cuda_graph_max_bs": 0,
@@ -38,9 +39,21 @@
   "runtime_memory": {
     "total_bytes": 106837311488
   },
-  "description": "Text-only GLM-5.3-Flash Frontier candidate with native KDA, NoPE MLA/KPool, mHC, and FP8 NVMe-MoE serving.",
+  "performance": {
+    "decode_tokens_per_second": 3.272941188374269,
+    "warm_ttft_seconds": 7.121138163842261,
+    "evidence": "GB10-GLM53-NVFP4-001",
+    "note": "The corrected complete-checkpoint probe reached the reference answer, but it missed Frontier performance thresholds and the broader certification gates remain outstanding."
+  },
+  "evidence": [
+    "GB10-GLM53-NVFP4-001"
+  ],
+  "description": "Text-only GLM-5.3-Flash Frontier candidate using Red Hat AI's compressed-tensors NVFP4 checkpoint with native KDA, NoPE MLA/KPool, mHC, and NVMe-MoE serving.",
   "limitations": [
-    "The text architecture is implemented but complete-checkpoint conversion, output parity, performance, and endurance gates are still in progress.",
+    "The complete pinned checkpoint passed a precision-preserving FTW conversion and end-to-end API serving probe; the prepared artifact contains 1,498 entries across 24 shards.",
+    "This is a quantized derivative of zai-org/GLM-5.3-Flash; routed experts use NVFP4 while dense/KDA weights, the vision tower, embeddings, and output head retain their source precision.",
+    "The corrected probe reached the reference answer, but the measured 3.273 tok/s and 7.121 s warm TTFT miss Frontier performance thresholds and broader output parity remains outstanding.",
+    "FlashInfer 0.6.15's SM12x route packer exceeds Triton's tensor-size limit at 288 experts, so this recipe uses FreeToken's native Triton NVFP4 backend.",
     "KPool sparse selection is currently eager and CUDA graph capture is disabled.",
     "Multimodal certification is a separate later gate."
   ]

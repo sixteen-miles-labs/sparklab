@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from freetoken.core import get_global_ctx
 from freetoken.layers import BaseOP, LinearReplicated, RMSNorm
 
-from .mlp import Glm5Fp8BlockLinear
+from .mlp import _linear
 
 
 class _LayerNorm(BaseOP):
@@ -59,13 +59,13 @@ class Glm5NextMLAAttention(BaseOP):
         self.v_head_dim = args.v_head_dim
         self.kv_lora_rank = args.kv_lora_rank
 
-        self.q_a_proj = Glm5Fp8BlockLinear(args.hidden_size, args.q_lora_rank, has_bias=False)
+        self.q_a_proj = _linear(config.attn_quant, args.hidden_size, args.q_lora_rank)
         self.q_a_layernorm = RMSNorm(args.q_lora_rank, eps=args.norm_eps)
-        self.q_b_proj = Glm5Fp8BlockLinear(
-            args.q_lora_rank, self.num_heads * self.qk_head_dim, has_bias=False
+        self.q_b_proj = _linear(
+            config.attn_quant, args.q_lora_rank, self.num_heads * self.qk_head_dim
         )
-        self.kv_a_proj_with_mqa = Glm5Fp8BlockLinear(
-            args.hidden_size, self.kv_lora_rank + self.qk_rope_head_dim, has_bias=False
+        self.kv_a_proj_with_mqa = _linear(
+            config.attn_quant, args.hidden_size, self.kv_lora_rank + self.qk_rope_head_dim
         )
         self.kv_a_layernorm = RMSNorm(self.kv_lora_rank, eps=args.norm_eps)
         # kv_b is an absorbed BMM operand and is intentionally BF16 in the release.
@@ -74,8 +74,8 @@ class Glm5NextMLAAttention(BaseOP):
             self.num_heads * (self.qk_nope_head_dim + self.v_head_dim),
             has_bias=False,
         )
-        self.o_proj = Glm5Fp8BlockLinear(
-            self.num_heads * self.v_head_dim, args.hidden_size, has_bias=False
+        self.o_proj = _linear(
+            config.attn_quant, self.num_heads * self.v_head_dim, args.hidden_size
         )
         self._w_uk: torch.Tensor | None = None
         self._w_uv: torch.Tensor | None = None

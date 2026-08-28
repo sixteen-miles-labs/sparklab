@@ -14,6 +14,9 @@ recipes. Raw logs and large result streams stay outside the source repository.
   the current Inferact NVFP4 recipe.
 - `results/GB10-QWEN38-NVFP4-001.json` records the current Inferact NVFP4 recipe's
   complete-checkpoint performance probe: 12.58 decode tok/s and 0.786 s warm TTFT.
+- `results/GB10-GLM53-NVFP4-001.json` records the GLM-5.3 Flash NVFP4
+  complete-checkpoint probe: 3.27 decode tok/s and 7.121 s warm TTFT. Its corrected
+  greedy probe reaches the reference answer; the broader quality gates remain outstanding.
 
 The Qwen3.8 recipe version 0.5.0 passes the Frontier performance thresholds but remains
 Experimental because its context, capability, quality, and endurance gates are outstanding.

@@ -201,6 +201,121 @@ def load_nvfp4_expert_source_banks(
     }
 
 
+def load_ct_nvfp4_expert_source_banks(
+    model_path: str,
+    config,
+    spec: Nvfp4ExpertSourceSpec,
+    *,
+    drop_page_cache: DropPageCache,
+    primary: bool,
+    layer_sink=None,
+) -> dict[str, list[torch.Tensor]]:
+    """Stream compressed-tensors NVFP4 experts into native NVFP4 banks.
+
+    LLM Compressor names the three source components ``weight_packed``,
+    ``weight_scale`` and ``weight_global_scale``.  The native cache consumes the
+    same packed rows and block scales, but stores the reciprocal quant-side global
+    as a per-output-row dequant scale.  Keeping this adaptation here avoids a
+    dequantize/requantize cycle during FTW preparation.
+    """
+    folder = download_hf_weight(model_path)
+    index_path = os.path.join(folder, "model.safetensors.index.json")
+    with open(index_path, encoding="utf-8") as f:
+        weight_map = json.load(f)["weight_map"]
+
+    E = config.num_experts
+    H = config.hidden_size
+    I = config.moe_intermediate_size
+    num_layers = _num_moe_layers(config)
+    for shard in sorted(set(weight_map.values())):
+        drop_page_cache(os.path.join(folder, shard))
+
+    data_shards: dict[str, list[tuple[str, re.Match[str], int]]] = collections.defaultdict(list)
+    global_shards: dict[str, list[tuple[str, re.Match[str], int]]] = collections.defaultdict(list)
+    for name, shard in weight_map.items():
+        match = spec.key_pattern.match(name)
+        if match is None:
+            continue
+        bank_layer = _bank_layer(spec, int(match.group("layer")), config)
+        if bank_layer is None:
+            continue
+        proj = match.group("proj")
+        if proj not in spec.proj_to_role:
+            raise ValueError(f"{spec.desc}: unknown NVFP4 expert projection {proj!r}")
+        kind = match.group("kind")
+        if kind == "weight_global_scale":
+            global_shards[shard].append((name, match, bank_layer))
+        elif kind in {"weight_packed", "weight_scale"}:
+            data_shards[shard].append((name, match, bank_layer))
+        else:
+            raise ValueError(f"{spec.desc}: unknown compressed-tensors tensor kind {kind!r}")
+
+    globals_map: dict[tuple[int, int, str], torch.Tensor] = {}
+    for shard in sorted(global_shards):
+        path = os.path.join(folder, shard)
+        with safetensors.safe_open(path, framework="pt", device="cpu") as f:
+            for name, match, _ in global_shards[shard]:
+                quant_global = f.get_tensor(name).reshape(1).to(torch.float32)
+                globals_map[(
+                    int(match.group("layer")),
+                    int(match.group("expert")),
+                    match.group("proj"),
+                )] = (1.0 / quant_global).to(torch.float16)
+        drop_page_cache(path)
+
+    host_banks = _alloc_nvfp4_host_banks(num_layers, E, H, I)
+    banks = {name: [bank.tensor for bank in layers] for name, layers in host_banks.items()}
+    from freetoken.moe.host_banks import LayerCompletionTracker, PinPipeline
+
+    def _load(sink) -> int:
+        tracker = LayerCompletionTracker(E * 6, host_banks, sink)
+        placed = 0
+        for shard in tqdm(
+            sorted(data_shards), desc=f"Loading {spec.desc}", disable=not primary
+        ):
+            path = os.path.join(folder, shard)
+            with safetensors.safe_open(path, framework="pt", device="cpu") as f:
+                for name, match, bank_layer in data_shards[shard]:
+                    layer = int(match.group("layer"))
+                    expert = int(match.group("expert"))
+                    proj = match.group("proj")
+                    role = spec.proj_to_role[proj]
+                    kind = match.group("kind")
+                    tensor = f.get_tensor(name)
+                    if role == "gate":
+                        packed_target = banks["gate_up_packed"][bank_layer][expert, :I]
+                        scale_target = banks["gate_up_scale"][bank_layer][expert, :I]
+                        global_target = banks["gate_up_global"][bank_layer][expert, :I]
+                    elif role == "up":
+                        packed_target = banks["gate_up_packed"][bank_layer][expert, I:]
+                        scale_target = banks["gate_up_scale"][bank_layer][expert, I:]
+                        global_target = banks["gate_up_global"][bank_layer][expert, I:]
+                    elif role == "down":
+                        packed_target = banks["down_packed"][bank_layer][expert]
+                        scale_target = banks["down_scale"][bank_layer][expert]
+                        global_target = banks["down_global"][bank_layer][expert]
+                    else:  # pragma: no cover - guarded by the source spec
+                        raise ValueError(f"{spec.desc}: unknown projection role {role!r}")
+                    if kind == "weight_packed":
+                        packed_target.copy_(tensor)
+                    else:
+                        scale_target.copy_(tensor)
+                        global_target.fill_(globals_map[(layer, expert, proj)].item())
+                    tracker.note(bank_layer)
+                    placed += 1
+            drop_page_cache(path)
+        return placed
+
+    if layer_sink is not None:
+        placed = _load(layer_sink)
+    else:
+        with PinPipeline() as pins:
+            placed = _load(pins)
+    expected = num_layers * E * 6
+    assert placed == expected, f"{spec.desc}: loaded {placed} expert tensors, expected {expected}"
+    return banks
+
+
 def load_nvfp4_expert_source_banks_parallel(
     model_path: str,
     config,

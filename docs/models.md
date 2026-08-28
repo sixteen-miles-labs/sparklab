@@ -33,17 +33,16 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |  |
 | [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW | `qwen3.6-35b-a3b` | Experimental; primary target | 67.46 | 0.320 |
 | **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |  |
-| [Qwen3.8-Flash-Next](https://huggingface.co/Inferact/Qwen3.8-Flash-Next-NVFP4) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW upload pending | `qwen3.8-flash-next` | Experimental | 12.58 | 0.786 |
+| [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW | `qwen3.8-flash-next` | Experimental | 12.58 | 0.786 |
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | `deepseek-v4` | Preview | 9.22 | 14.045 |
-| [GLM-5.3 Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 320B total / 18B active | FP8 | `glm-5.3-flash` | Experimental | — | — |
+| [GLM-5.3 Flash](https://huggingface.co/RedHatAI/GLM-5.3-Flash-NVFP4) | 320B total / 18B active | NVFP4 · FTW | `glm-5.3-flash` | Experimental | 3.27 | 7.121 |
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
 | [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | 753B total / 40B active | NVFP4 | `glm-5.2` | Experimental fallback | 0.80 | 2.570 |
 | [Kimi K3](https://huggingface.co/nvidia/Kimi-K3-NVFP4) | 2.8T total / 16 of 896 experts | NVFP4 · FTW upload pending | `kimi-k3` | Experimental | — | — |
 
 Model links point to the selected source checkpoints. Quantization links point to
-Spark Lab's converted FTW checkpoints when those artifacts are published. The Qwen3.8
-and Kimi K3 NVFP4 FTW links are intentionally marked pending until their Hugging Face
-uploads exist.
+Spark Lab's converted FTW checkpoints when those artifacts are published. The Kimi K3
+NVFP4 FTW link remains marked pending until its Hugging Face upload exists.
 
 Parameter values use publisher-reported architecture counts. Qwen3.8's auxiliary total is
 the 51B n-gram embedding plus its 4B MTP module. NVIDIA reports Kimi K3 activation as 16 of
@@ -58,6 +57,9 @@ preserves Inferact's publisher-quantized ModelOpt NVFP4 precision. Its complete-
 probe measured 12.58 decode tok/s and 0.786 s warm TTFT, passing the Frontier performance
 thresholds; the remaining gates are outstanding. Its historical FP8 and earlier NVFP4
 results do not transfer across checkpoint and recipe-version boundaries.
+GLM-5.3's corrected complete-checkpoint probe measured 3.27 tok/s and 7.121 s warm TTFT
+and reached the fixed probe's reference answer. Performance and the broader certification
+gates remain outstanding. See the [full experiment](../exps/exp_glm5_3_nvfp4_gb10.md).
 The Kimi K3 recipe similarly preserves NVIDIA's mixed checkpoint: routed experts remain
 NVFP4, supported attention projections remain block FP8, and other tensors retain their
 source precision.

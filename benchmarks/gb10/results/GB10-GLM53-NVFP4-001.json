@@ -1,0 +1,129 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-GLM53-NVFP4-001",
+  "status": "measured",
+  "recipe": {
+    "slug": "glm-5.3-flash",
+    "recipe_version": "0.3.1",
+    "revision": "9eaeadaf026871a90640e32c0604f6ab0b2d641d"
+  },
+  "engine": {
+    "name": "FreeToken",
+    "product_identity": "Spark Lab",
+    "git_revision": "a1c3c3d59e7beb72bda90458f646155b8de7ff7a",
+    "git_tracked_dirty": true
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "machine": "aarch64",
+    "os": "Linux 6.17.0-1014-nvidia",
+    "driver": "580.126.09",
+    "cuda": "13.0",
+    "torch": "2.11.0+cu130",
+    "triton": "3.6.0"
+  },
+  "checkpoint": {
+    "repository": "RedHatAI/GLM-5.3-Flash-NVFP4",
+    "revision": "9eaeadaf026871a90640e32c0604f6ab0b2d641d",
+    "full_model": true,
+    "format": "ftw-nvfp4",
+    "quantization": "nvfp4",
+    "fingerprint": "93b1de335dd523e5",
+    "bytes": 189276450816,
+    "verified_source_shards": 10,
+    "prepared_shards": 24,
+    "prepared_tensors": 1498
+  },
+  "workload": {
+    "name": "AIME-25 problem 0 fixed decode probe",
+    "batch_size": 1,
+    "sampling": "greedy",
+    "prompt_tokens": 54,
+    "requested_completion_tokens": 256,
+    "returned_completion_tokens": 255,
+    "timed_decode_steps": 254,
+    "warmup_requests": 1,
+    "measured_requests": 1,
+    "client_path": "OpenAI-compatible streaming HTTP API"
+  },
+  "configuration": {
+    "moe_backend": "offload",
+    "expert_storage": "disk",
+    "expert_cache_slots": 5680,
+    "host_cache_gib": 4.0,
+    "disk_read_workers": 16,
+    "nvfp4_backend": "triton",
+    "attention_backend": "dsa",
+    "cuda_graph": false,
+    "kv_tokens": 8671,
+    "page_size": 1,
+    "cache_type": "naive",
+    "sparse_prefill_max_tokens": 512,
+    "prefill_hit_d2d": true
+  },
+  "metrics": {
+    "decode_tokens_per_second": 3.272941188374269,
+    "decode_milliseconds_per_token": 305.53558479818537,
+    "warm_ttft_seconds": 7.121138163842261,
+    "latency_p50_milliseconds": 283.71881134808064,
+    "latency_p99_milliseconds": 527.1025002002716,
+    "device_allocation_gib": 92.044921875,
+    "minimum_mem_available_gib": 10.954734802246094,
+    "power_watts_average": 24.188048780487804,
+    "power_watts_peak": 27.96,
+    "gpu_temperature_celsius_peak": 51.0,
+    "expert_cache_miss_rate_percent": 12.254901960784313,
+    "expert_disk_read_operations": 83856,
+    "physical_io_gib": 184.4671630859375,
+    "physical_io_gib_per_second": 5.229,
+    "swap_in_pages": 193,
+    "swap_out_pages": 0
+  },
+  "validation": {
+    "checkpoint_checksum_verified": true,
+    "complete_checkpoint_loaded": true,
+    "api_stream_completed": true,
+    "output_hash_algorithm": "sha1-prefix",
+    "output_hash": "97e9756e0869",
+    "output_hash_reproduced_runs": 1,
+    "output_correctness": true,
+    "reasoning_parser": false,
+    "tool_parser": false,
+    "coding_agent_task": false,
+    "memory_bounded": true,
+    "nvme_behavior": "bounded",
+    "context_gate_run": false,
+    "capability_gate_run": false,
+    "quality_gate_run": false,
+    "endurance_gate_run": false
+  },
+  "stability": {
+    "duration_minutes": 1.4121333042470117,
+    "oom_count": 0,
+    "service_restarts": 0,
+    "swap_growth_bytes": 0,
+    "parser_failures": 0
+  },
+  "admission": {
+    "tier": "frontier",
+    "performance_gate_passed": false,
+    "passed": false,
+    "reasons": [
+      "The measured 3.273 tok/s and 7.121 s warm TTFT do not pass the Frontier performance thresholds.",
+      "The single greedy probe is correct, but one problem is not the required quality suite.",
+      "Exact 64K context, capability, quality, and 60-minute endurance gates were not run.",
+      "The host had pre-existing unrelated swap resident before launch, although the measured request swapped no pages out."
+    ]
+  },
+  "source": {
+    "summary": "exps/exp_glm5_3_nvfp4_gb10.md",
+    "raw_artifact": "/home/lidaiqing/results/glm5.3-gb10/glm53_nvfp4_kda_stride_fix_decode256.jsonl"
+  },
+  "limitations": [
+    "This result establishes complete-checkpoint loading and serving, not Frontier certification.",
+    "A real layer-0 weight probe matches the reference KDA recurrence at cosine 0.99999994; broader output parity and quality evaluation remain outstanding.",
+    "FlashInfer b12x cannot compile its fixed route-packing tile for 288 experts in the installed release, so the measured artifact uses FreeToken's Triton NVFP4 layout.",
+    "Certification must be repeated after host swap usage returns to zero."
+  ]
+}

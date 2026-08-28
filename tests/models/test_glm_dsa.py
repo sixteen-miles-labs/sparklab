@@ -190,6 +190,24 @@ def test_sparse_kernel_equals_dense_when_all_selected():
     assert (o[0, 0].float() - ref).abs().max().item() < 2e-2
 
 
+def test_sparse_kernel_supports_nope_only_attention():
+    """GLM-5.3 has qk_rope_head_dim=0; the optional rope dot must compile away."""
+    from freetoken.kernel.triton.glm_dsa_sparse import glm_dsa_sparse_attn
+
+    torch.manual_seed(5)
+    h, d, n = 16, 64, 97
+    q = torch.randn(1, 1, h, d, device="cuda", dtype=torch.bfloat16)
+    pool = torch.randn(n, d, device="cuda", dtype=torch.bfloat16) * 0.5
+    idx = torch.arange(n, device="cuda", dtype=torch.int32).view(1, 1, n)
+    cnt = torch.tensor([[n]], device="cuda", dtype=torch.int32)
+    scale = d**-0.5
+
+    out = glm_dsa_sparse_attn(q, pool, idx, scale, counts=cnt, d_v=d)
+    scores = (q[0, 0].float() @ pool.float().T) * scale
+    ref = scores.softmax(-1) @ pool.float()
+    assert (out[0, 0].float() - ref).abs().max().item() < 2e-2
+
+
 def test_identity_selection_equals_topk_selection_at_short_kv():
     """The dense regimes serve through IDENTITY selection (one shared row list,
     stride-0 broadcast, causal counts). At kv <= index_topk the DSA select picks

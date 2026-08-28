@@ -8,7 +8,11 @@ from typing import Iterator
 import safetensors
 import torch
 from freetoken.distributed import get_tp_info
-from freetoken.models.loader import iter_weight_files
+from freetoken.models.loader import drop_page_cache, iter_weight_files
+from freetoken.models.nvfp4_banks import (
+    Nvfp4ExpertSourceSpec,
+    load_ct_nvfp4_expert_source_banks,
+)
 from freetoken.utils import cached_load_hf_config
 from tqdm import tqdm
 
@@ -19,6 +23,17 @@ _EXPERT = re.compile(r"\.mlp\.experts\.\d+\.")
 _LAYER = re.compile(r"^model\.layers\.(?P<layer>\d+)\.")
 _HC = re.compile(
     r"^(?P<prefix>model\.layers\.\d+)\.hc_(?P<site>attn|ffn)_(?P<part>fn|base|scale)$"
+)
+_CT_NVFP4_EXPERT = re.compile(
+    r"^model\.language_model\.layers\.(?P<layer>\d+)\.mlp\.experts\."
+    r"(?P<expert>\d+)\.(?P<proj>gate_proj|up_proj|down_proj)\."
+    r"(?P<kind>weight_packed|weight_scale|weight_global_scale)$"
+)
+_CT_NVFP4_SOURCE_SPEC = Nvfp4ExpertSourceSpec(
+    key_pattern=_CT_NVFP4_EXPERT,
+    proj_to_role={"gate_proj": "gate", "up_proj": "up", "down_proj": "down"},
+    layer_to_bank=lambda layer, config: layer - config.first_k_dense_replace,
+    desc="GLM-5.3 compressed-tensors NVFP4 experts",
 )
 
 
@@ -89,10 +104,45 @@ def iter_weights(
 
 
 def setup_offload_expert_banks(*args, **kwargs):
-    """Delegate to the shared per-expert 128x128 block-FP8 bank builder."""
+    """Build block-FP8 or compressed-tensors NVFP4 expert banks."""
+    if len(args) >= 2 and getattr(args[1], "expert_quant", None) == "nvfp4":
+        if kwargs.get("parallel"):
+            raise NotImplementedError(
+                "parallel GLM-5.3 compressed-tensors NVFP4 loading is not implemented"
+            )
+        from freetoken.moe.expert_banks import _nvfp4_banks
+
+        return _nvfp4_banks(
+            args[0],
+            args[1],
+            kwargs.get("device", torch.device("cuda:0")),
+            kwargs.get("dtype", torch.bfloat16),
+            kwargs.get("dummy", False),
+            parallel=False,
+            workers=kwargs.get("workers", 8),
+            chunk=kwargs.get("chunk", 8 << 20),
+            decode_target=kwargs.get("decode_target", "gpu"),
+            layer_sink=kwargs.get("layer_sink"),
+        )
     from freetoken.models.qwen3_5_moe.weight import setup_offload_expert_banks as setup
 
     return setup(*args, **kwargs)
 
 
-__all__ = ["iter_weights", "map_weight_name", "setup_offload_expert_banks"]
+def load_nvfp4_expert_sources(model_path: str, config, *, layer_sink=None):
+    return load_ct_nvfp4_expert_source_banks(
+        model_path,
+        config,
+        _CT_NVFP4_SOURCE_SPEC,
+        drop_page_cache=drop_page_cache,
+        primary=get_tp_info().is_primary(),
+        layer_sink=layer_sink,
+    )
+
+
+__all__ = [
+    "iter_weights",
+    "load_nvfp4_expert_sources",
+    "map_weight_name",
+    "setup_offload_expert_banks",
+]

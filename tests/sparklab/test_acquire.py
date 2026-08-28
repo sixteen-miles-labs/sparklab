@@ -46,6 +46,19 @@ def test_validate_safetensors_snapshot_checks_all_headers(tmp_path):
     assert result["physical_bytes"] > total
 
 
+def test_validate_safetensors_snapshot_reports_stale_published_total(tmp_path):
+    _, total = _indexed_snapshot(tmp_path)
+    index_path = tmp_path / "model.safetensors.index.json"
+    index = json.loads(index_path.read_text(encoding="utf-8"))
+    index["metadata"]["total_size"] = total - 4
+    index_path.write_text(json.dumps(index), encoding="utf-8")
+
+    result = validate_safetensors_snapshot(tmp_path)
+    assert result["logical_bytes"] == total
+    assert result["published_logical_bytes"] == total - 4
+    assert result["published_logical_bytes_delta"] == 4
+
+
 def test_validate_safetensors_snapshot_rejects_missing_shard(tmp_path):
     weight_map, _ = _indexed_snapshot(tmp_path)
     (tmp_path / next(iter(weight_map.values()))).unlink()
