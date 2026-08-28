@@ -12,7 +12,7 @@
   </a>
 </p>
 
-> Run frontier open-weight models privately on one NVIDIA DGX Spark.
+<h3 align="center">Run frontier open-weight models privately on one NVIDIA DGX Spark.</h3>
 
 <p align="center">
   <img src="assets/sparklab-hero.png" alt="SparkLab — Frontier models. One compact system." width="100%">
