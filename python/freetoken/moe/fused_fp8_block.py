@@ -17,15 +17,20 @@ def fused_experts_fp8_block(
     hidden_states, gate_up, gate_up_scale, down, down_scale,
     topk_weights, topk_ids, num_experts, activation="silu",
     apply_router_weight_on_input=False, swiglu_limit=None,
+    *, slot_map=None,
 ):
-    """Prefill: W8A8 fused grouped GEMM over the materialized-layer banks
-    (``[num_experts, ...]``, position == expert id)."""
+    """Prefill: W8A8 fused grouped GEMM over materialized or cache banks.
+
+    ``topk_ids`` stay in the logical expert domain; route-first prefill uses
+    ``slot_map[expert_id]`` to select the resident cache row in-kernel.
+    """
     assert not apply_router_weight_on_input
     from freetoken.kernel.triton.fp8_blockscale_moe import fused_experts_fp8_blockscale
 
     return fused_experts_fp8_blockscale(
         hidden_states, gate_up, gate_up_scale, down, down_scale,
         topk_weights, topk_ids, num_experts, activation, swiglu_limit,
+        slot_map=slot_map,
     )
 
 

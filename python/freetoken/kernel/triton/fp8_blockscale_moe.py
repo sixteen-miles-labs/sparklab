@@ -137,7 +137,7 @@ def fused_experts_decode_fp8_blockscale(
 def _prefill_fp8_moe_kernel(
     a_ptr, w_ptr, s_ptr, c_ptr,
     topk_weights_ptr, sorted_token_ids_ptr, expert_ids_ptr, num_tokens_post_padded_ptr,
-    a_scale_ptr,
+    a_scale_ptr, slot_map_ptr,
     N, K, EM, num_valid_tokens,
     stride_am, stride_ak,
     stride_we, stride_wn, stride_wk,
@@ -147,6 +147,7 @@ def _prefill_fp8_moe_kernel(
     stride_tw,
     BLOCK_SIZE_M: tl.constexpr, BLOCK_SIZE_N: tl.constexpr, BLOCK_SIZE_K: tl.constexpr,
     GROUP_SIZE_M: tl.constexpr, MUL_ROUTED_WEIGHT: tl.constexpr, top_k: tl.constexpr,
+    HAS_SLOT_MAP: tl.constexpr,
     compute_type: tl.constexpr,
 ):
     """W8A8: ``a`` is fp8 (per-128-K-group act scale ``a_scale``), ``w`` fp8 (per-128x128
@@ -172,7 +173,11 @@ def _prefill_fp8_moe_kernel(
     offs_k = tl.arange(0, BLOCK_SIZE_K)
     a_rows = offs_token // top_k
     a_ptrs = a_ptr + (a_rows[:, None] * stride_am + offs_k[None, :] * stride_ak)
-    slot = tl.load(expert_ids_ptr + pid_m).to(tl.int64)
+    expert = tl.load(expert_ids_ptr + pid_m).to(tl.int64)
+    if HAS_SLOT_MAP:
+        slot = tl.load(slot_map_ptr + expert).to(tl.int64)
+    else:
+        slot = expert
     w_base = w_ptr + slot * stride_we + offs_bn[None, :] * stride_wn
     sn = pid_n  # BLOCK_SIZE_N == 128 -> one weight-scale N-block per tile
     s_base = s_ptr + slot * stride_se + sn * stride_sn
@@ -203,19 +208,23 @@ def _prefill_fp8_moe_kernel(
 
 
 def _prefill_gemm(a_fp8, a_scale, w, s, c, tw, sorted_ids, expert_ids, ntpp, num_valid,
-                  kernel_top_k, mul_routed_weight, cfg):
+                  kernel_top_k, mul_routed_weight, cfg, slot_map):
     N, K = w.shape[1], w.shape[2]
     EM = sorted_ids.shape[0]
     w = e4m3_kernel_view(w)
     grid = lambda META: (triton.cdiv(EM, META["BLOCK_SIZE_M"]) * triton.cdiv(N, META["BLOCK_SIZE_N"]),)  # noqa: E731
+    # Triton requires a valid pointer even when the constexpr disables its load.
+    slot_map_arg = expert_ids if slot_map is None else slot_map
     _prefill_fp8_moe_kernel[grid](
-        a_fp8, w, s, c, tw, sorted_ids, expert_ids, ntpp, a_scale, N, K, EM, num_valid,
+        a_fp8, w, s, c, tw, sorted_ids, expert_ids, ntpp, a_scale, slot_map_arg,
+        N, K, EM, num_valid,
         a_fp8.stride(0), a_fp8.stride(1),
         w.stride(0), w.stride(1), w.stride(2),
         s.stride(0), s.stride(1), s.stride(2),
         a_scale.stride(0), a_scale.stride(1),
         c.stride(1), c.stride(2), tw.stride(0),
         MUL_ROUTED_WEIGHT=mul_routed_weight, top_k=kernel_top_k,
+        HAS_SLOT_MAP=slot_map is not None,
         compute_type=_TL.get(c.dtype, tl.bfloat16), **cfg,
     )
 
@@ -223,9 +232,13 @@ def _prefill_gemm(a_fp8, a_scale, w, s, c, tw, sorted_ids, expert_ids, ntpp, num
 def fused_experts_fp8_blockscale(
     hidden_states, gate_up, gate_up_scale, down, down_scale,
     topk_weights, topk_ids, num_experts, activation="silu", swiglu_limit=None,
+    *, slot_map=None,
 ) -> torch.Tensor:
-    """Prefill inline-dequant block-fp8 MoE. ``topk_ids`` index expert rows in [0, num_experts)
-    (materialized layer: position == expert id)."""
+    """Prefill inline-dequant block-fp8 MoE.
+
+    ``topk_ids`` are logical experts in ``[0, num_experts)``. Materialized banks
+    use position == expert id; route-first prefill maps them through ``slot_map``.
+    """
     from freetoken.kernel import moe_sum_reduce_triton
     from freetoken.kernel.triton.fp8_block_linear import per_token_group_quant_fp8
     from freetoken.moe.fused import moe_align_block_size
@@ -248,7 +261,7 @@ def fused_experts_fp8_blockscale(
     a1_fp8, a1_scale = per_token_group_quant_fp8(hidden_states, 128)
     ic1 = torch.empty((M, top_k, two_i), device=dev, dtype=dt)
     _prefill_gemm(a1_fp8, a1_scale, gate_up, gate_up_scale, ic1, tw, sorted_ids, expert_ids, ntpp,
-                  num_valid, top_k, False, cfg)
+                  num_valid, top_k, False, cfg, slot_map)
     if swiglu_limit is None:
         from freetoken.layers import silu_and_mul
 
@@ -261,7 +274,7 @@ def fused_experts_fp8_blockscale(
     a2_fp8, a2_scale = per_token_group_quant_fp8(ic2, 128)
     ic3 = torch.empty((M, top_k, H), device=dev, dtype=dt)
     _prefill_gemm(a2_fp8, a2_scale, down, down_scale, ic3, tw, sorted_ids, expert_ids, ntpp,
-                  num_valid, 1, True, cfg)
+                  num_valid, 1, True, cfg, slot_map)
     out = torch.empty_like(hidden_states)
     moe_sum_reduce_triton(ic3, out)
     return out

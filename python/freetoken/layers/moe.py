@@ -412,14 +412,14 @@ class OffloadMoELayer(MoELayer):
                 cache.sparse_prefill_routes += raw_ids.numel()
                 cache.sparse_prefill_unique_rows += unique_ids.numel()
                 cache.copy_missing()
-                # Native NVFP4 keeps the logical expert ids for the grouped sort
+                # Native quantized kernels keep logical expert ids for the grouped sort
                 # (domain E, not the potentially tens-of-thousands-wide cache) and
                 # translates each group to its resident slot inside the Triton
                 # kernel.  Sorting cache-slot ids directly makes moe_align allocate
                 # and scan over cache_size and exceeds the alignment kernel's
                 # supported expert domain on large unified-memory caches.
                 prefill_slot_map = None
-                if cache.quant_format == "nvfp4":
+                if cache.quant_format in ("nvfp4", "fp8_block"):
                     topk_ids.copy_(raw_ids)
                     prefill_slot_map = cache.slot_for_id[self.layer_id]
                 else:
@@ -573,16 +573,17 @@ class OffloadMoELayer(MoELayer):
 
             gate_up, gate_up_scale, down, down_scale = views
             if is_prefill:
-                # Full-layer prefill passes the logical expert count explicitly. Sparse
-                # prefill rewrites routes to persistent cache-slot ids and presents the
-                # full slot-cache views, so the grouped-sort domain is that view's row
-                # count instead (``n`` is intentionally None on that path).
-                kernel_num_experts = n if n is not None else gate_up.shape[0]
+                # Route-first prefill sorts over the model's logical expert domain and
+                # maps each group to its resident cache slot in-kernel. Full-layer
+                # prefill has position == expert id and needs no mapping.
+                kernel_num_experts = self.num_experts if prefill_slot_map is not None else n
+                assert kernel_num_experts is not None
                 return fused_experts_fp8_block(
                     hidden_states, gate_up, gate_up_scale, down, down_scale,
                     topk_weights, topk_ids, kernel_num_experts, self.activation,
                     self.apply_router_weight_on_input,
                     getattr(self, "swiglu_limit", None),
+                    slot_map=prefill_slot_map,
                 )
             return fused_experts_decode_fp8_block(
                 hidden_states, gate_up, gate_up_scale, down, down_scale,
