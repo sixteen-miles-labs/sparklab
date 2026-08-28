@@ -66,7 +66,7 @@ not a SparkLab support claim.
   </thead>
   <tbody>
     <tr>
-      <th colspan="7" align="left"><hr>Fast — routine chat, editing, and short agent loops</th>
+      <th colspan="7" align="left">Fast — routine chat, editing, and short agent loops</th>
     </tr>
     <tr>
       <td><a href="https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW">Qwen3.6-35B-A3B</a></td>
@@ -78,7 +78,7 @@ not a SparkLab support claim.
       <td><a href="docs/models/qwen3.6-35b-a3b.md">Instructions</a></td>
     </tr>
     <tr>
-      <th colspan="7" align="left"><hr>Frontier — quality-first coding, reasoning, and long agent work</th>
+      <th colspan="7" align="left">Frontier — quality-first coding, reasoning, and long agent work</th>
     </tr>
     <tr>
       <td><a href="https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW">Qwen3.8-Flash-Next</a></td>
@@ -108,7 +108,7 @@ not a SparkLab support claim.
       <td><a href="docs/models/glm-5.3-flash.md">Instructions</a></td>
     </tr>
     <tr>
-      <th colspan="7" align="left"><hr>Research — bounded execution outside the interactive envelope</th>
+      <th colspan="7" align="left">Research — bounded execution outside the interactive envelope</th>
     </tr>
     <tr>
       <td><a href="https://huggingface.co/nvidia/GLM-5.2-NVFP4">GLM-5.2</a></td>
