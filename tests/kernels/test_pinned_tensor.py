@@ -67,6 +67,29 @@ def test_fast_index_copy_accepts_exact_pinned_cpu_source():
     torch.testing.assert_close(output.cpu(), source[[5, 2, 0]])
 
 
+@pytest.mark.parametrize("columns", [100, 200])
+def test_fast_index_copy_accepts_non_128_byte_feature_row(columns):
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA is required for fast index copy")
+
+    from freetoken.kernel import copy_to_pinned_tensor, fast_index_copy_jit
+
+    # Qwen3.8's block-FP8 scale banks have 100/200 BF16 values = 200/400 bytes per expert.
+    # The vector-copy kernel must predicate its final partial worker group rather than
+    # requiring the whole row to be a multiple of 128 bytes.
+    source = copy_to_pinned_tensor(
+        torch.arange(6 * columns, dtype=torch.bfloat16).reshape(6, columns)
+    )
+    output = torch.empty((3, columns), dtype=torch.bfloat16, device="cuda")
+    dst_indices = torch.tensor([0, 1, 2], dtype=torch.int32, device="cuda")
+    src_indices = torch.tensor([5, 2, 0], dtype=torch.int32, device="cuda")
+
+    fast_index_copy_jit(output, dst_indices, source, src_indices)
+    torch.cuda.synchronize()
+
+    torch.testing.assert_close(output.cpu(), source[[5, 2, 0]])
+
+
 def test_fast_index_copy_skip_env_noops_without_jit(monkeypatch):
     import freetoken.kernel.fast_index_copy as fast_index_copy
 

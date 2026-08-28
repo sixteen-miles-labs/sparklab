@@ -357,6 +357,58 @@ def test_native_nvfp4_sparse_prefill_sorts_logical_ids_and_maps_slots(monkeypatc
     assert calls["slot_map"].tolist() == [3, 5, 4, 2]
 
 
+def test_fp8_sparse_prefill_sorts_over_cache_slot_domain(monkeypatch):
+    """Block-FP8 sparse prefill routes contain slot ids, so sorting spans the cache."""
+    from types import SimpleNamespace
+
+    from freetoken.layers.moe import OffloadMoELayer
+
+    _init_tp()
+    layer = OffloadMoELayer(
+        layer_id=0,
+        num_experts=4,
+        top_k=2,
+        hidden_size=8,
+        intermediate_size=16,
+    )
+    hidden_states = torch.randn(1, 8)
+    topk_weights = torch.tensor([[0.7, 0.3]], dtype=torch.float32)
+    topk_ids = torch.tensor([[5, 4]], dtype=torch.int32)
+    views = tuple(torch.empty(6, 1) for _ in range(4))
+    calls = {}
+
+    def fake_fused(
+        hidden_states,
+        gate_up,
+        gate_up_scale,
+        down,
+        down_scale,
+        topk_weights,
+        topk_ids,
+        num_experts,
+        *args,
+    ):
+        calls["num_experts"] = num_experts
+        calls["topk_ids"] = topk_ids.clone()
+        return hidden_states
+
+    monkeypatch.setattr("freetoken.moe.fused_fp8_block.fused_experts_fp8_block", fake_fused)
+    out = layer._expert_gemm(
+        SimpleNamespace(quant_format="fp8_block"),
+        hidden_states,
+        topk_weights,
+        topk_ids,
+        views=views,
+        n=None,
+        alphas=None,
+        is_prefill=True,
+    )
+
+    assert out is hidden_states
+    assert calls["num_experts"] == 6
+    assert calls["topk_ids"].tolist() == [[5, 4]]
+
+
 def test_offload_moe_layer_prefill_overlap_prefetches_layers_into_two_buffers(monkeypatch):
     from freetoken.layers.moe import OffloadMoELayer
     from freetoken.moe.offload_cache import OffloadMoeCache

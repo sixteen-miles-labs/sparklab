@@ -573,9 +573,14 @@ class OffloadMoELayer(MoELayer):
 
             gate_up, gate_up_scale, down, down_scale = views
             if is_prefill:
+                # Full-layer prefill passes the logical expert count explicitly. Sparse
+                # prefill rewrites routes to persistent cache-slot ids and presents the
+                # full slot-cache views, so the grouped-sort domain is that view's row
+                # count instead (``n`` is intentionally None on that path).
+                kernel_num_experts = n if n is not None else gate_up.shape[0]
                 return fused_experts_fp8_block(
                     hidden_states, gate_up, gate_up_scale, down, down_scale,
-                    topk_weights, topk_ids, n, self.activation,
+                    topk_weights, topk_ids, kernel_num_experts, self.activation,
                     self.apply_router_weight_on_input,
                     getattr(self, "swiglu_limit", None),
                 )

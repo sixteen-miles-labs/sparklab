@@ -60,11 +60,15 @@ def _jit_fast_index_copy_module(
 
 
 def _default_worker_threads(feature_size: int) -> int:
-    if feature_size <= 1024:
-        return 8
-    if feature_size <= 2048:
-        return 16
-    return 32
+    preferred = 8 if feature_size <= 1024 else 16 if feature_size <= 2048 else 32
+    # The CUDA template moves 128 / worker_threads bytes per lane. Keep the smallest
+    # (most efficient) preferred group whose vector width divides the row; Qwen3.8's
+    # block-scale banks exercise both 400-byte (16-byte vectors) and 200-byte (8-byte
+    # vectors) rows.
+    for worker_threads in (preferred, 16, 32):
+        if worker_threads >= preferred and feature_size % (128 // worker_threads) == 0:
+            return worker_threads
+    raise ValueError(f"fast_index_copy feature row must be a multiple of 4 bytes, got {feature_size}")
 
 
 def _shrink_worker_feature_size(feature_size: int, worker_feature_size: int) -> int:
