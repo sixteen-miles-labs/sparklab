@@ -10,9 +10,20 @@
   <a href="LICENSE">
     <img src="https://img.shields.io/badge/License-Apache%202.0-D22128" alt="Apache License 2.0">
   </a>
+  <a href="https://x.com/16MilesLabs">
+    <img src="https://img.shields.io/badge/X-@16MilesLabs-000000?logo=x&logoColor=white" alt="SixteenMiles Labs on X">
+  </a>
+  <a href="https://huggingface.co/oakmindai">
+    <img src="https://img.shields.io/badge/Hugging%20Face-oakmindai-FFD21E" alt="Oakmind AI on Hugging Face">
+  </a>
 </p>
 
 <h3 align="center">Run frontier open-weight models privately on one NVIDIA DGX Spark.</h3>
+
+<p align="center">
+  SparkLab is developed by <strong><a href="https://github.com/sixteen-miles-labs">SixteenMiles Labs</a></strong>,
+  a research lab under <strong><a href="https://oakmind.ai/">Oakmind AI</a></strong>.
+</p>
 
 SparkLab is a GB10-native inference product for local, single-system deployments. It
 combines immutable model recipes, unified-memory admission, resumable checkpoint
@@ -177,7 +188,7 @@ If you use SparkLab, cite the software:
 ```bibtex
 @software{sixteenmileslabs2026sparklab,
   title={SparkLab: Frontier Open-Weight Model Inference on NVIDIA DGX Spark},
-  author={{Sixteen Miles Labs}},
+  author={{SixteenMiles Labs}},
   year={2026},
   url={https://github.com/sixteen-miles-labs/freetoken},
   license={Apache-2.0}
