@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 
-from sparklab.catalog import get_recipe
-from sparklab.paths import source_path
+import pytest
+import torch
+
+from freetoken.checkpoint.ftw import FTWWriter
+from sparklab.catalog import RuntimeArtifact, get_recipe
+from sparklab.paths import manifest_path, prepared_path, source_path
 from sparklab.platform import GB10Snapshot
-from sparklab.runtime import plan_invocation
+from sparklab.runtime import RuntimePlanError, plan_invocation
 
 GIB = 1 << 30
 
@@ -55,3 +60,40 @@ def test_runtime_routes_resident_recipe_through_selected_backend(tmp_path):
     assert invocation.checkpoint == str(checkpoint.resolve())
     assert invocation.arguments[-2:] == ("--port", "1919")
     assert invocation.to_dict()["backend_version"]
+
+
+def test_runtime_rejects_prebuilt_artifact_with_wrong_fingerprint(tmp_path):
+    recipe = replace(
+        get_recipe("qwen3.8-flash-next"),
+        runtime_memory={"total_bytes": 64 * GIB},
+        runtime_artifact=RuntimeArtifact(
+            repo_id="freetoken/qwen-ftw",
+            revision="e" * 40,
+            bytes=4096,
+            fingerprint="expected",
+        ),
+    )
+    checkpoint = prepared_path(recipe, str(tmp_path))
+    checkpoint.mkdir(parents=True)
+    (checkpoint / "config.json").write_text("{}", encoding="utf-8")
+    writer = FTWWriter(str(checkpoint), shard_limit=4096)
+    writer.add_tensor("weight", torch.ones(1))
+    writer.finalize({"fingerprint": "actual", "counts": {"weight": 1}})
+    manifest = {
+        "schema_version": "2.0",
+        "artifacts": {
+            "source": None,
+            "runtime": {
+                "path": str(checkpoint),
+                "repository": "freetoken/qwen-ftw",
+                "revision": "e" * 40,
+            },
+        },
+    }
+    manifest_path(recipe, str(tmp_path)).parent.mkdir(parents=True, exist_ok=True)
+    manifest_path(recipe, str(tmp_path)).write_text(
+        json.dumps(manifest), encoding="utf-8"
+    )
+
+    with pytest.raises(RuntimePlanError, match="fingerprint mismatch"):
+        plan_invocation(recipe, _ready_snapshot(), root=str(tmp_path))

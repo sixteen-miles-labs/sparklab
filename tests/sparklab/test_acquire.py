@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
+from pathlib import Path
 
 import pytest
 import torch
@@ -9,9 +11,11 @@ from safetensors.torch import save_file
 from freetoken.checkpoint.ftw import FTWWriter
 from sparklab.acquire import (
     AcquisitionError,
+    acquire_recipe,
     validate_ftw_checkpoint,
     validate_safetensors_snapshot,
 )
+from sparklab.catalog import RuntimeArtifact, get_recipe
 
 
 def _indexed_snapshot(path):
@@ -101,3 +105,120 @@ def test_validate_ftw_checkpoint_rejects_bad_tensor_range(tmp_path):
     index_path.write_text(json.dumps(index), encoding="utf-8")
     with pytest.raises(AcquisitionError, match="tensor range"):
         validate_ftw_checkpoint(tmp_path)
+
+
+def test_acquire_recipe_downloads_and_manifests_pinned_prebuilt_ftw(tmp_path):
+    recipe = replace(
+        get_recipe("qwen3.8-flash-next"),
+        source_bytes=1,
+        prepared_bytes=1,
+        minimum_free_bytes=2,
+        runtime_artifact=RuntimeArtifact(
+            repo_id="freetoken/qwen-ftw",
+            revision="a" * 40,
+            bytes=1,
+            fingerprint="0123456789abcdef",
+        ),
+    )
+    calls = []
+
+    def downloader(**kwargs):
+        calls.append(kwargs)
+        destination = Path(kwargs["local_dir"])
+        destination.mkdir(parents=True, exist_ok=True)
+        (destination / "config.json").write_text("{}", encoding="utf-8")
+        _ftw_checkpoint(destination)
+        return str(destination)
+
+    result = acquire_recipe(
+        recipe,
+        root=str(tmp_path),
+        prepare=True,
+        downloader=downloader,
+    )
+
+    assert calls == [
+        {
+            "repo_id": "freetoken/qwen-ftw",
+            "revision": "a" * 40,
+            "local_dir": result["artifact_plan"]["prepared_path"],
+        }
+    ]
+    assert result["acquisition"] == "prebuilt-runtime"
+    assert result["manifest"]["artifacts"]["source"] is None
+    runtime = result["manifest"]["artifacts"]["runtime"]
+    assert runtime["repository"] == "freetoken/qwen-ftw"
+    assert runtime["revision"] == "a" * 40
+    assert runtime["fingerprint"] == "0123456789abcdef"
+
+
+def test_acquire_recipe_rejects_wrong_prebuilt_fingerprint(tmp_path):
+    recipe = replace(
+        get_recipe("qwen3.8-flash-next"),
+        source_bytes=1,
+        prepared_bytes=1,
+        minimum_free_bytes=2,
+        runtime_artifact=RuntimeArtifact(
+            repo_id="freetoken/qwen-ftw",
+            revision="b" * 40,
+            bytes=1,
+            fingerprint="wrong",
+        ),
+    )
+
+    def downloader(**kwargs):
+        destination = Path(kwargs["local_dir"])
+        destination.mkdir(parents=True, exist_ok=True)
+        (destination / "config.json").write_text("{}", encoding="utf-8")
+        _ftw_checkpoint(destination)
+        return str(destination)
+
+    with pytest.raises(AcquisitionError, match="fingerprint mismatch"):
+        acquire_recipe(
+            recipe,
+            root=str(tmp_path),
+            prepare=True,
+            downloader=downloader,
+        )
+
+
+def test_acquire_recipe_can_force_source_instead_of_prebuilt(tmp_path):
+    recipe = replace(
+        get_recipe("qwen3.8-flash-next"),
+        source_bytes=1,
+        prepared_bytes=1,
+        minimum_free_bytes=2,
+        runtime_artifact=RuntimeArtifact(
+            repo_id="freetoken/qwen-ftw",
+            revision="c" * 40,
+            bytes=1,
+            fingerprint="0123456789abcdef",
+        ),
+    )
+    calls = []
+
+    def downloader(**kwargs):
+        calls.append(kwargs)
+        destination = Path(kwargs["local_dir"])
+        destination.mkdir(parents=True, exist_ok=True)
+        (destination / "config.json").write_text("{}", encoding="utf-8")
+        return str(destination)
+
+    def converter(_source, destination, **_kwargs):
+        path = Path(destination)
+        path.mkdir(parents=True, exist_ok=True)
+        (path / "config.json").write_text("{}", encoding="utf-8")
+        return _ftw_checkpoint(path)
+
+    result = acquire_recipe(
+        recipe,
+        root=str(tmp_path),
+        prepare=True,
+        from_source=True,
+        downloader=downloader,
+        converter=converter,
+    )
+
+    assert calls[0]["repo_id"] == recipe.model
+    assert result["acquisition"] == "source-conversion"
+    assert result["manifest"]["artifacts"]["source"] is not None

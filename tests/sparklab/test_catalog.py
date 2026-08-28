@@ -5,7 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from sparklab.catalog import PerformanceSummary, get_recipe, load_catalog, select_recipes
+from sparklab.catalog import (
+    PerformanceSummary,
+    RuntimeArtifact,
+    get_recipe,
+    load_catalog,
+    select_recipes,
+)
 
 
 def test_catalog_has_unique_versioned_three_tier_recipes():
@@ -164,3 +170,23 @@ def test_preview_and_certified_statuses_fail_closed_without_evidence_or_memory()
                 evidence="GB10-UNKNOWN",
             ),
         ).validate()
+
+
+def test_runtime_artifact_round_trips_and_requires_immutable_revision():
+    from dataclasses import replace
+
+    base = get_recipe("qwen3.8-flash-next")
+    artifact = RuntimeArtifact(
+        repo_id="freetoken/qwen-ftw",
+        revision="d" * 40,
+        bytes=123,
+        fingerprint="source-fingerprint",
+    )
+    value = replace(base, runtime_artifact=artifact).to_dict()
+
+    loaded = replace(base, runtime_artifact=artifact).from_dict(value)
+    assert loaded.runtime_artifact == artifact
+    with pytest.raises(ValueError, match="full 40-character commit"):
+        RuntimeArtifact("freetoken/qwen-ftw", "main", 123, "fingerprint").validate()
+    with pytest.raises(ValueError, match="fingerprint is required"):
+        RuntimeArtifact("freetoken/qwen-ftw", "d" * 40, 123, "").validate()

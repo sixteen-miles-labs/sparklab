@@ -66,7 +66,9 @@ def resolve_checkpoint(recipe: ModelRecipe, root: str | None = None) -> Path:
     except AcquisitionError as exc:
         raise RuntimePlanError(str(exc)) from exc
     candidates = _manifest_candidates(manifest)
-    candidates.extend((prepared_path(recipe, root), source_path(recipe, root)))
+    if recipe.runtime_artifact is None:
+        candidates.append(prepared_path(recipe, root))
+    candidates.append(source_path(recipe, root))
     backend = get_backend(recipe.backend)
     seen: set[Path] = set()
     for candidate in candidates:
@@ -83,6 +85,26 @@ def resolve_checkpoint(recipe: ModelRecipe, root: str | None = None) -> Path:
     )
 
 
+def _hosted_runtime_record(
+    recipe: ModelRecipe, checkpoint: Path, root: str | None
+) -> dict[str, Any] | None:
+    """Return provenance only when this path was acquired from a hosted runtime repo."""
+    try:
+        manifest = read_manifest(recipe, root)
+    except AcquisitionError as exc:
+        raise RuntimePlanError(str(exc)) from exc
+    if not manifest:
+        return None
+    artifacts = manifest.get("artifacts")
+    runtime = artifacts.get("runtime") if isinstance(artifacts, dict) else None
+    if not isinstance(runtime, dict) or not runtime.get("repository"):
+        return None
+    path = runtime.get("path")
+    if not path or Path(str(path)).expanduser().resolve() != checkpoint:
+        return None
+    return runtime
+
+
 def plan_invocation(
     recipe: ModelRecipe,
     snapshot: GB10Snapshot,
@@ -96,7 +118,23 @@ def plan_invocation(
         raise RuntimePlanError("; ".join(memory.reasons))
     backend = get_backend(recipe.backend)
     try:
-        backend.validate_artifact(checkpoint, recipe.deployment)
+        validation = backend.validate_artifact(checkpoint, recipe.deployment)
+        hosted = recipe.runtime_artifact
+        record = _hosted_runtime_record(recipe, checkpoint, root)
+        if hosted is not None and record is not None:
+            if (
+                record.get("repository") != hosted.repo_id
+                or record.get("revision") != hosted.revision
+            ):
+                raise RuntimePlanError(
+                    "runtime artifact provenance does not match the recipe's pinned "
+                    "repository and revision"
+                )
+            if validation.fingerprint != hosted.fingerprint:
+                raise RuntimePlanError(
+                    "runtime artifact fingerprint mismatch: "
+                    f"expected {hosted.fingerprint}, found {validation.fingerprint}"
+                )
         plan = backend.build_launch_plan(
             RuntimeRequest(
                 recipe=recipe.slug,

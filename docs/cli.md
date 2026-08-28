@@ -51,7 +51,7 @@ performance; JSON output includes the underlying evidence-bound performance fiel
 ## sparklab plan
 
 ```bash
-sparklab plan <recipe> [--root PATH] [--prepare] [--json]
+sparklab plan <recipe> [--root PATH] [--prepare] [--from-source] [--json]
 ```
 
 Reports source/prepared artifact paths, required and free storage, and the
@@ -61,12 +61,14 @@ exit means at least one admission check failed or still lacks measured data.
 ## sparklab pull
 
 ```bash
-sparklab pull <recipe> [--root PATH] [--prepare] [--dry-run] [--json]
+sparklab pull <recipe> [--root PATH] [--prepare] [--from-source] [--dry-run] [--json]
 ```
 
-Downloads the recipe's immutable Hugging Face revision into the Spark Lab state
-root. Downloads are resumable. `--prepare` converts the completed source into
-the recipe's FTW execution artifact; `--dry-run` performs planning only.
+Downloads an immutable Hugging Face revision into the Spark Lab state root.
+Downloads are resumable. With `--prepare`, a recipe-pinned prebuilt FTW artifact
+is preferred when available; otherwise Spark Lab downloads and converts the
+source checkpoint. `--from-source` forces local conversion, and `--dry-run`
+performs planning only.
 
 ## sparklab run
 

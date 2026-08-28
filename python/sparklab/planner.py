@@ -14,6 +14,7 @@ from sparklab.platform import GB10_SAFETY_RESERVE_BYTES, GB10Snapshot
 
 @dataclass(frozen=True)
 class ArtifactPlan:
+    acquisition: str
     root: str
     source_path: str
     prepared_path: str
@@ -64,6 +65,7 @@ def plan_artifacts(
     *,
     root: str | None = None,
     include_prepared: bool = False,
+    use_prebuilt: bool = True,
 ) -> ArtifactPlan:
     base = state_root(root)
     base.mkdir(parents=True, exist_ok=True)
@@ -71,10 +73,24 @@ def plan_artifacts(
     prepared = prepared_path(recipe, base)
     free = int(shutil.disk_usage(base).free)
     reasons: list[str] = []
-    if recipe.source_bytes is None:
+    prebuilt = recipe.runtime_artifact if include_prepared and use_prebuilt else None
+    if prebuilt is not None:
+        acquisition = "prebuilt-runtime"
+        required = max(0, prebuilt.bytes - _existing_bytes(prepared))
+        if recipe.minimum_free_bytes is not None:
+            declared = (recipe.source_bytes or 0) + (recipe.prepared_bytes or 0)
+            safety_margin = max(0, recipe.minimum_free_bytes - declared)
+            required += safety_margin
+        if free < required:
+            reasons.append(
+                f"storage shortfall: need {required} bytes, have {free} bytes free"
+            )
+    elif recipe.source_bytes is None:
+        acquisition = "source-conversion" if include_prepared else "source"
         required = None
         reasons.append("recipe does not declare the pinned source artifact size")
     else:
+        acquisition = "source-conversion" if include_prepared else "source"
         required = max(0, recipe.source_bytes - _existing_bytes(source))
         if include_prepared:
             if recipe.prepared_bytes is None:
@@ -92,11 +108,14 @@ def plan_artifacts(
             reasons.append(f"storage shortfall: need {required} bytes, have {free} bytes free")
     shortfall = None if required is None else max(0, required - free)
     return ArtifactPlan(
+        acquisition=acquisition,
         root=str(base),
         source_path=str(source),
         prepared_path=str(prepared),
         source_bytes=recipe.source_bytes,
-        prepared_bytes=recipe.prepared_bytes,
+        prepared_bytes=(
+            prebuilt.bytes if prebuilt is not None else recipe.prepared_bytes
+        ),
         required_bytes=required,
         free_bytes=free,
         shortfall_bytes=shortfall,

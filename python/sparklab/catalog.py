@@ -14,6 +14,47 @@ RECIPE_SCHEMA_VERSION = "2.0"
 
 
 @dataclass(frozen=True)
+class RuntimeArtifact:
+    """Immutable, prebuilt execution artifact published in a model repository."""
+
+    repo_id: str
+    revision: str
+    bytes: int
+    fingerprint: str
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "RuntimeArtifact":
+        artifact = cls(
+            repo_id=str(value["repo_id"]),
+            revision=str(value["revision"]),
+            bytes=int(value["bytes"]),
+            fingerprint=str(value["fingerprint"]),
+        )
+        artifact.validate()
+        return artifact
+
+    def validate(self) -> None:
+        if not self.repo_id:
+            raise ValueError("runtime_artifact.repo_id is required")
+        if len(self.revision) != 40:
+            raise ValueError(
+                "runtime_artifact.revision must be a full 40-character commit"
+            )
+        if self.bytes <= 0:
+            raise ValueError("runtime_artifact.bytes must be positive")
+        if not self.fingerprint:
+            raise ValueError("runtime_artifact.fingerprint is required")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "repo_id": self.repo_id,
+            "revision": self.revision,
+            "bytes": self.bytes,
+            "fingerprint": self.fingerprint,
+        }
+
+
+@dataclass(frozen=True)
 class DeploymentRecipe:
     backend: str
     backend_api: str
@@ -135,6 +176,7 @@ class ModelRecipe:
     deployment: DeploymentRecipe
     profile: str
     description: str
+    runtime_artifact: RuntimeArtifact | None = None
     revision: str | None = None
     source_bytes: int | None = None
     prepared_bytes: int | None = None
@@ -169,6 +211,11 @@ class ModelRecipe:
             deployment=DeploymentRecipe.from_dict(value["deployment"]),
             profile=str(value["profile"]),
             description=str(value["description"]),
+            runtime_artifact=(
+                RuntimeArtifact.from_dict(value["runtime_artifact"])
+                if value.get("runtime_artifact")
+                else None
+            ),
             revision=(str(value["revision"]) if value.get("revision") else None),
             source_bytes=(
                 int(value["source_bytes"]) if value.get("source_bytes") else None
@@ -243,6 +290,8 @@ class ModelRecipe:
             raise ValueError(
                 f"recipe revision must be a full 40-character commit for {self.slug}"
             )
+        if self.runtime_artifact is not None:
+            self.runtime_artifact.validate()
         if self.runtime_memory is not None:
             allowed = {
                 "resident_weights_bytes",
@@ -292,6 +341,11 @@ class ModelRecipe:
             "deployment": self.deployment.to_dict(),
             "profile": self.profile,
             "description": self.description,
+            "runtime_artifact": (
+                self.runtime_artifact.to_dict()
+                if self.runtime_artifact is not None
+                else None
+            ),
             "revision": self.revision,
             "source_bytes": self.source_bytes,
             "prepared_bytes": self.prepared_bytes,
@@ -351,6 +405,7 @@ __all__ = [
     "PORTFOLIO_ROLES",
     "PerformanceSummary",
     "RECIPE_SCHEMA_VERSION",
+    "RuntimeArtifact",
     "STATUSES",
     "TIERS",
     "get_recipe",

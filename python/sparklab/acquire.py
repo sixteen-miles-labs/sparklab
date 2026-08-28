@@ -168,14 +168,23 @@ def acquire_recipe(
     *,
     root: str | None = None,
     prepare: bool = False,
+    from_source: bool = False,
     dry_run: bool = False,
     downloader: Callable[..., str] = snapshot_download,
     converter: Callable[..., dict] | None = None,
 ) -> dict[str, Any]:
-    """Acquire an immutable source and optionally ask its backend to prepare it."""
+    """Acquire an immutable source or a pinned, prebuilt runtime artifact."""
     if recipe.revision is None:
         raise AcquisitionError(f"{recipe.slug} is not pinned to an immutable revision")
-    plan = plan_artifacts(recipe, root=root, include_prepared=prepare)
+    if from_source and not prepare:
+        raise AcquisitionError("from_source requires prepare=True")
+    use_prebuilt = prepare and not from_source and recipe.runtime_artifact is not None
+    plan = plan_artifacts(
+        recipe,
+        root=root,
+        include_prepared=prepare,
+        use_prebuilt=use_prebuilt,
+    )
     result: dict[str, Any] = {
         "schema_version": "2.0",
         "recipe": recipe.slug,
@@ -184,6 +193,13 @@ def acquire_recipe(
         "revision": recipe.revision,
         "deployment": recipe.deployment.to_dict(),
         "prepare": prepare,
+        "from_source": from_source,
+        "acquisition": plan.acquisition,
+        "runtime_artifact": (
+            recipe.runtime_artifact.to_dict()
+            if recipe.runtime_artifact is not None
+            else None
+        ),
         "dry_run": dry_run,
         "artifact_plan": plan.to_dict(),
     }
@@ -192,23 +208,87 @@ def acquire_recipe(
     if dry_run:
         return result
 
-    source = source_path(recipe, root)
-    source.mkdir(parents=True, exist_ok=True)
-    resolved = Path(
-        downloader(
-            repo_id=recipe.model,
-            revision=recipe.revision,
-            local_dir=str(source),
-        )
-    ).resolve()
-    config = resolved / "config.json"
-    if not config.is_file():
-        raise AcquisitionError(f"pinned snapshot completed without config.json: {resolved}")
-    source_validation = validate_safetensors_snapshot(resolved)
-
     backend = get_backend(recipe.backend)
+    resolved: Path | None = None
+    source_validation: dict[str, Any] | None = None
+    source_artifact: dict[str, Any] | None = None
     runtime_artifact: dict[str, Any] | None = None
-    if prepare:
+    if use_prebuilt:
+        hosted = recipe.runtime_artifact
+        assert hosted is not None
+        destination = prepared_path(recipe, root)
+        destination.mkdir(parents=True, exist_ok=True)
+        try:
+            resolved_runtime = Path(
+                downloader(
+                    repo_id=hosted.repo_id,
+                    revision=hosted.revision,
+                    local_dir=str(destination),
+                )
+            ).resolve()
+        except Exception as exc:
+            raise AcquisitionError(
+                f"cannot acquire prebuilt runtime artifact "
+                f"{hosted.repo_id}@{hosted.revision}: {exc}; "
+                "retry or use --from-source to convert locally"
+            ) from exc
+        if not (resolved_runtime / "config.json").is_file():
+            raise AcquisitionError(
+                f"prebuilt runtime artifact has no config.json: {resolved_runtime}"
+            )
+        try:
+            validation = backend.validate_artifact(
+                resolved_runtime, recipe.deployment
+            )
+        except BackendError as exc:
+            raise AcquisitionError(str(exc)) from exc
+        if validation.fingerprint != hosted.fingerprint:
+            raise AcquisitionError(
+                "prebuilt runtime fingerprint mismatch: "
+                f"expected {hosted.fingerprint}, found {validation.fingerprint}"
+            )
+        runtime_artifact = {
+            "role": "runtime",
+            "path": str(resolved_runtime),
+            "format": validation.format,
+            "backend": recipe.backend,
+            "repository": hosted.repo_id,
+            "revision": hosted.revision,
+            "fingerprint": validation.fingerprint,
+            "validation": _validation_payload(validation),
+        }
+    else:
+        source = source_path(recipe, root)
+        source.mkdir(parents=True, exist_ok=True)
+        try:
+            resolved = Path(
+                downloader(
+                    repo_id=recipe.model,
+                    revision=recipe.revision,
+                    local_dir=str(source),
+                )
+            ).resolve()
+        except Exception as exc:
+            raise AcquisitionError(
+                f"cannot acquire source artifact "
+                f"{recipe.model}@{recipe.revision}: {exc}"
+            ) from exc
+        config = resolved / "config.json"
+        if not config.is_file():
+            raise AcquisitionError(
+                f"pinned snapshot completed without config.json: {resolved}"
+            )
+        source_validation = validate_safetensors_snapshot(resolved)
+        source_artifact = {
+            "role": "source",
+            "path": str(resolved),
+            "format": recipe.deployment.source_format,
+            "repository": recipe.model,
+            "revision": recipe.revision,
+            "validation": source_validation,
+        }
+
+    if prepare and not use_prebuilt:
         if recipe.implementation == "planned":
             raise AcquisitionError(
                 f"{recipe.slug} cannot be prepared until its architecture is implemented"
@@ -240,12 +320,7 @@ def acquire_recipe(
         "revision": recipe.revision,
         "deployment": recipe.deployment.to_dict(),
         "artifacts": {
-            "source": {
-                "role": "source",
-                "path": str(resolved),
-                "format": recipe.deployment.source_format,
-                "validation": source_validation,
-            },
+            "source": source_artifact,
             "runtime": runtime_artifact,
         },
         "completed_at": datetime.now(timezone.utc).isoformat(),

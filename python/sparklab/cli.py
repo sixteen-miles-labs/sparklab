@@ -200,13 +200,25 @@ def _run_plan(argv: list[str]) -> int:
     parser.add_argument("recipe", type=_recipe)
     parser.add_argument("--root", help="Spark Lab state root (default: ~/.sparklab)")
     parser.add_argument("--prepare", action="store_true", help="Include FTW preparation space")
+    parser.add_argument(
+        "--from-source",
+        action="store_true",
+        help="Plan local source conversion even when a prebuilt FTW artifact is available",
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
 
     from sparklab.platform import collect_gb10_snapshot
     from sparklab.planner import plan_artifacts, plan_runtime
 
-    artifacts = plan_artifacts(args.recipe, root=args.root, include_prepared=args.prepare)
+    if args.from_source and not args.prepare:
+        parser.error("--from-source requires --prepare")
+    artifacts = plan_artifacts(
+        args.recipe,
+        root=args.root,
+        include_prepared=args.prepare,
+        use_prebuilt=not args.from_source,
+    )
     memory = plan_runtime(args.recipe, collect_gb10_snapshot(artifacts.root))
     payload = {
         "schema_version": "2.0",
@@ -218,6 +230,7 @@ def _run_plan(argv: list[str]) -> int:
         print(json.dumps(payload, indent=2, sort_keys=True))
     else:
         print(f"Spark Lab plan: {args.recipe.slug}")
+        print(f"  Acquisition: {artifacts.acquisition}")
         required = artifacts.required_bytes
         print(f"  Storage: {_gib(required)} required; {_gib(artifacts.free_bytes)} free")
         print(f"  Download/preparation ready: {'yes' if artifacts.ready else 'no'}")
@@ -241,11 +254,18 @@ def _run_pull(argv: list[str]) -> int:
     parser.add_argument(
         "--prepare",
         action="store_true",
-        help="Also convert the completed source checkpoint into its FTW execution artifact",
+        help="Acquire the prebuilt FTW artifact, or convert source when none is published",
+    )
+    parser.add_argument(
+        "--from-source",
+        action="store_true",
+        help="Convert from source even when a prebuilt FTW artifact is available",
     )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
+    if args.from_source and not args.prepare:
+        parser.error("--from-source requires --prepare")
 
     from sparklab.acquire import AcquisitionError, acquire_recipe
 
@@ -254,6 +274,7 @@ def _run_pull(argv: list[str]) -> int:
             args.recipe,
             root=args.root,
             prepare=args.prepare,
+            from_source=args.from_source,
             dry_run=args.dry_run,
         )
     except AcquisitionError as exc:
@@ -264,10 +285,18 @@ def _run_pull(argv: list[str]) -> int:
     else:
         plan = result["artifact_plan"]
         action = "would acquire" if args.dry_run else "acquired"
-        print(
-            f"Spark Lab {action} {args.recipe.model}@{args.recipe.revision[:12]} "
-            f"at {plan['source_path']}"
-        )
+        if plan["acquisition"] == "prebuilt-runtime":
+            hosted = args.recipe.runtime_artifact
+            assert hosted is not None
+            print(
+                f"Spark Lab {action} {hosted.repo_id}@{hosted.revision[:12]} "
+                f"at {plan['prepared_path']}"
+            )
+        else:
+            print(
+                f"Spark Lab {action} {args.recipe.model}@{args.recipe.revision[:12]} "
+                f"at {plan['source_path']}"
+            )
         if args.prepare:
             print(f"  FTW: {plan['prepared_path']}")
     return 0

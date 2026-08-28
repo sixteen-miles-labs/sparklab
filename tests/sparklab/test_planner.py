@@ -5,7 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from sparklab.acquire import acquire_recipe
-from sparklab.catalog import get_recipe
+from sparklab.catalog import RuntimeArtifact, get_recipe
 from sparklab.planner import plan_artifacts, plan_runtime
 from sparklab.platform import GB10Snapshot
 
@@ -77,6 +77,40 @@ def test_artifact_plan_accounts_for_source_prepare_and_safety_margin(tmp_path, m
     assert source_only.required_bytes == 15 * GIB
     assert complete.required_bytes == 24 * GIB
     assert source_only.ready is complete.ready is True
+
+
+def test_artifact_plan_prefers_prebuilt_runtime_without_source_space(
+    tmp_path, monkeypatch
+):
+    recipe = replace(
+        get_recipe("qwen3.8-flash-next"),
+        source_bytes=10 * GIB,
+        prepared_bytes=9 * GIB,
+        minimum_free_bytes=24 * GIB,
+        runtime_artifact=RuntimeArtifact(
+            repo_id="freetoken/qwen-ftw",
+            revision="a" * 40,
+            bytes=9 * GIB,
+            fingerprint="ftw-fingerprint",
+        ),
+    )
+    monkeypatch.setattr(
+        "sparklab.planner.shutil.disk_usage",
+        lambda _path: SimpleNamespace(total=100 * GIB, used=70 * GIB, free=30 * GIB),
+    )
+
+    prebuilt = plan_artifacts(recipe, root=str(tmp_path), include_prepared=True)
+    converted = plan_artifacts(
+        recipe,
+        root=str(tmp_path),
+        include_prepared=True,
+        use_prebuilt=False,
+    )
+
+    assert prebuilt.acquisition == "prebuilt-runtime"
+    assert prebuilt.required_bytes == 14 * GIB
+    assert converted.acquisition == "source-conversion"
+    assert converted.required_bytes == 24 * GIB
 
 
 def test_acquisition_is_pinned_and_manifest_marks_only_completed_download(tmp_path):

@@ -82,9 +82,12 @@ experts must be independently addressable from NVMe:
 sparklab checkpoint --model /path/to/hf-checkpoint --out /path/to/model-ftw
 ```
 
-Recipe-backed `sparklab pull <recipe> --prepare` performs this conversion at the
-pinned revision. Direct conversion and serving flags remain an expert interface
-documented in [cli.md](cli.md).
+Recipe-backed `sparklab pull <recipe> --prepare` downloads a prebuilt FTW when
+the recipe declares an immutable `runtime_artifact`; otherwise it performs this
+conversion at the pinned source revision. A runtime artifact declaration records
+its Hugging Face repository, full commit revision, byte size, and FTW source
+fingerprint. `--from-source` forces conversion. Direct conversion and serving
+flags remain an expert interface documented in [cli.md](cli.md).
 
 For Beta 0.1 recipes, FTW preparation is precision-preserving: it may align, shard,
 fuse, or repack tensors for the native backend, but it must retain the source

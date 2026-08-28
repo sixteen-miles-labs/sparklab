@@ -31,8 +31,10 @@ entries do not carry the latency and stability promise of `certified`.
 ## 3. Plan and acquire a recipe
 
 First check both artifact space and runtime admission. `pull` is resumable and
-uses the immutable revision recorded in the recipe; `--prepare` also builds the
-self-contained FTW execution artifact.
+uses the immutable revision recorded in the recipe. `--prepare` downloads a
+pinned prebuilt FTW artifact when the recipe publishes one, otherwise it builds
+the self-contained FTW artifact locally. Use `--from-source` to force local
+conversion.
 
 ```bash
 sparklab plan qwen3.8-flash-next --prepare

@@ -89,6 +89,7 @@ def test_pull_dry_run_delegates_to_pinned_acquisition(monkeypatch, capsys):
         seen.update(recipe=recipe, **kwargs)
         return {
             "artifact_plan": {
+                "acquisition": "source",
                 "source_path": "/models/qwen",
                 "prepared_path": "/models/qwen-ftw",
             }
@@ -98,4 +99,5 @@ def test_pull_dry_run_delegates_to_pinned_acquisition(monkeypatch, capsys):
     assert cli.main(["pull", "qwen3.8-flash-next", "--dry-run"]) == 0
     assert seen["recipe"].revision == "970c569adaca6b35532111fd6b27351b2baefe50"
     assert seen["dry_run"] is True and seen["prepare"] is False
+    assert seen["from_source"] is False
     assert "would acquire" in capsys.readouterr().out
