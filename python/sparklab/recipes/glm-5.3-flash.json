@@ -8,6 +8,12 @@
   "revision": "9eaeadaf026871a90640e32c0604f6ab0b2d641d",
   "source_bytes": 190262422658,
   "prepared_bytes": 189276450816,
+  "runtime_artifact": {
+    "repo_id": "oakmindai/GLM-5.3-Flash-NVFP4-FTW",
+    "revision": "932479eca99b3267186d9c9144e1bb215e9ce31b",
+    "bytes": 189276450816,
+    "fingerprint": "93b1de335dd523e5"
+  },
   "minimum_free_bytes": 517963798788,
   "intended_tier": "frontier",
   "status": "experimental",

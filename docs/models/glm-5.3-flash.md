@@ -5,8 +5,11 @@ The recipe is Experimental.
 
 ## Prepare
 
-Use fast local NVMe storage. The catalog currently requires about 518 GB of free space.
-This recipe prepares FTW locally from the selected source checkpoint.
+Use fast local NVMe storage. By default, `--prepare` downloads the pinned, validated FTW
+artifact from
+[`oakmindai/GLM-5.3-Flash-NVFP4-FTW`](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW).
+Use `--from-source` only when you intentionally want to download the Red Hat AI source
+checkpoint and reproduce the FTW conversion locally.
 
 ```bash
 sparklab doctor --storage-path /path/to/models

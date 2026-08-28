@@ -59,7 +59,7 @@ not a SparkLab support claim.
 | **Frontier — quality-first coding, reasoning, and long agent work** |  |  |  |  |  |  |
 | [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW | Experimental | 12.58 | 0.786 | [Instructions](docs/models/qwen3.8-flash-next.md) |
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | Preview | 9.22 | 14.045 | [Instructions](docs/models/deepseek-v4.md) |
-| [GLM-5.3 Flash](https://huggingface.co/RedHatAI/GLM-5.3-Flash-NVFP4) | 320B total / 18B active | NVFP4 · FTW | Experimental | 4.46 | 5.760 | [Instructions](docs/models/glm-5.3-flash.md) |
+| [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 · FTW | Experimental | 4.46 | 5.760 | [Instructions](docs/models/glm-5.3-flash.md) |
 | **Research — bounded execution outside the interactive envelope** |  |  |  |  |  |  |
 | [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | 753B total / 40B active | NVFP4 | Experimental | 0.80 | 2.570 | [Instructions](docs/models/glm-5.2.md) |
 | [Kimi K3](https://huggingface.co/nvidia/Kimi-K3-NVFP4) | 2.8T total / 16 of 896 experts | NVFP4 · FTW pending | Experimental | — | — | [Instructions](docs/models/kimi-k3.md) |

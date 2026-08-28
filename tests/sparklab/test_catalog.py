@@ -118,6 +118,11 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     assert glm.deployment.backend_options["moe_host_cache_gb"] == 0
     assert glm.deployment.backend_options["memory_ratio"] == 0.97
     assert glm.deployment.backend_options["moe_prefill_overlap"] is False
+    assert glm.runtime_artifact is not None
+    assert glm.runtime_artifact.repo_id == "oakmindai/GLM-5.3-Flash-NVFP4-FTW"
+    assert glm.runtime_artifact.revision == "932479eca99b3267186d9c9144e1bb215e9ce31b"
+    assert glm.runtime_artifact.bytes == 189276450816
+    assert glm.runtime_artifact.fingerprint == "93b1de335dd523e5"
     assert kimi.source_bytes == 1610038482254
     assert glm52.source_bytes == 464874323992
     assert qwen.execution_policy == glm.execution_policy == "nvme-moe"
