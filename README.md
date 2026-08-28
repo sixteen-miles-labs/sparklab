@@ -52,17 +52,17 @@ not a SparkLab support claim.
 
 ## Model portfolio
 
-| Model | Parameters | Quantization | Status | tok/s | TTFT(s) |
-|---|---|---|---|---:|---:|
-| **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |
-| [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW | Experimental | 67.46 | 0.320 |
-| **Frontier — quality-first coding, reasoning, and long agent work** |  |  |  |  |  |
-| [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW | Experimental | 12.58 | 0.786 |
-| [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | Preview | 9.22 | 14.045 |
-| [GLM-5.3 Flash](https://huggingface.co/RedHatAI/GLM-5.3-Flash-NVFP4) | 320B total / 18B active | NVFP4 · FTW | Experimental | 4.46 | 5.760 |
-| **Research — bounded execution outside the interactive envelope** |  |  |  |  |  |
-| [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | 753B total / 40B active | NVFP4 | Experimental | 0.80 | 2.570 |
-| [Kimi K3](https://huggingface.co/nvidia/Kimi-K3-NVFP4) | 2.8T total / 16 of 896 experts | NVFP4 · FTW pending | Experimental | — | — |
+| Model | Parameters | Quantization | Status | tok/s | TTFT(s) | Run |
+|---|---|---|---|---:|---:|---|
+| **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |  |
+| [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW | Experimental | 67.46 | 0.320 | [Instructions](docs/models/qwen3.6-35b-a3b.md) |
+| **Frontier — quality-first coding, reasoning, and long agent work** |  |  |  |  |  |  |
+| [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW | Experimental | 12.58 | 0.786 | [Instructions](docs/models/qwen3.8-flash-next.md) |
+| [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | Preview | 9.22 | 14.045 | [Instructions](docs/models/deepseek-v4.md) |
+| [GLM-5.3 Flash](https://huggingface.co/RedHatAI/GLM-5.3-Flash-NVFP4) | 320B total / 18B active | NVFP4 · FTW | Experimental | 4.46 | 5.760 | [Instructions](docs/models/glm-5.3-flash.md) |
+| **Research — bounded execution outside the interactive envelope** |  |  |  |  |  |  |
+| [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | 753B total / 40B active | NVFP4 | Experimental | 0.80 | 2.570 | [Instructions](docs/models/glm-5.2.md) |
+| [Kimi K3](https://huggingface.co/nvidia/Kimi-K3-NVFP4) | 2.8T total / 16 of 896 experts | NVFP4 · FTW pending | Experimental | — | — | [Instructions](docs/models/kimi-k3.md) |
 
 Displayed values are fixed, batch-one probes—not certification or capacity promises:
 
@@ -104,6 +104,18 @@ work and builds on open inference projects including
 [flash-linear-attention](https://github.com/fla-org/flash-linear-attention),
 [LightLLM](https://github.com/ModelTC/lightllm), and
 [llama.cpp](https://github.com/ggml-org/llama.cpp).
+
+If you use SparkLab, cite the software:
+
+```bibtex
+@software{sixteenmileslabs2026sparklab,
+  title={SparkLab: Frontier Open-Weight Model Inference on NVIDIA DGX Spark},
+  author={{Sixteen Miles Labs}},
+  year={2026},
+  url={https://github.com/sixteen-miles-labs/freetoken},
+  license={Apache-2.0}
+}
+```
 
 If you use the underlying engine in research, cite the
 [FreeToken paper](https://arxiv.org/abs/2608.16157):
