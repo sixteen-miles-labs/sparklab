@@ -90,7 +90,7 @@ def test_native_backend_compiles_qwen_recipe_options_in_stable_order(tmp_path):
         "--model",
         str(checkpoint),
         "--served-model-name",
-        "Qwen/Qwen3.8-Flash-Next-FP8",
+        "Inferact/Qwen3.8-Flash-Next-NVFP4",
         "--attention-backend",
         "qsa",
         "--moe-backend",
@@ -100,6 +100,8 @@ def test_native_backend_compiles_qwen_recipe_options_in_stable_order(tmp_path):
         "--moe-host-cache-gb",
         "3",
         "--moe-cache-auto",
+        "--nvfp4-backend",
+        "triton",
         "--moe-prefill-sparse-max-tokens",
         "512",
         "--moe-prefill-hit-d2d",
@@ -116,7 +118,7 @@ def test_native_backend_compiles_qwen_recipe_options_in_stable_order(tmp_path):
     )
 
 
-def test_native_prepare_preserves_qwen_source_precision(tmp_path, monkeypatch):
+def test_native_prepare_preserves_qwen_nvfp4_source_precision(tmp_path, monkeypatch):
     recipe = get_recipe("qwen3.8-flash-next")
     backend = get_backend("native")
     calls = []
@@ -125,7 +127,7 @@ def test_native_prepare_preserves_qwen_source_precision(tmp_path, monkeypatch):
         calls.append((args, kwargs))
         return {"fingerprint": "test"}
 
-    expected = ArtifactValidation("ftw-fp8", "test", {})
+    expected = ArtifactValidation("ftw-nvfp4", "test", {})
     monkeypatch.setattr(backend, "validate_artifact", lambda *_args: expected)
     result = backend.prepare(
         tmp_path / "source",

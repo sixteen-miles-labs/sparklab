@@ -26,7 +26,9 @@ def test_catalog_has_unique_versioned_three_tier_recipes():
 def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert get_recipe("kimi-k3").model == "nvidia/Kimi-K3-NVFP4"
     assert get_recipe("glm-5.3-flash").model == "zai-org/GLM-5.3-Flash"
-    assert get_recipe("qwen3.8-flash-next").model == "Qwen/Qwen3.8-Flash-Next-FP8"
+    assert get_recipe("qwen3.8-flash-next").model == (
+        "Inferact/Qwen3.8-Flash-Next-NVFP4"
+    )
     assert get_recipe("qwen3.6-35b-a3b").name == "Qwen3.6 35B A3B"
     assert get_recipe("glm-5.2").name == "GLM-5.2"
     assert get_recipe("glm-5.2").intended_tier == "research"
@@ -46,17 +48,18 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
         "qwen3.6-35b-a3b",
     }
     qwen = get_recipe("qwen3.8-flash-next")
-    assert qwen.recipe_version == "0.4.0"
+    assert qwen.recipe_version == "0.5.0"
     assert qwen.intended_tier == "frontier"
     assert qwen.status == "experimental"
-    assert qwen.evidence == ("GB10-QWEN38-FP8-001",)
+    assert qwen.evidence == ()
     assert qwen.backend == "native"
-    assert qwen.deployment.runtime_format == "ftw-fp8"
+    assert qwen.deployment.source_format == "safetensors-nvfp4"
+    assert qwen.deployment.runtime_format == "ftw-nvfp4"
     assert qwen.deployment.backend_options["attention_backend"] == "qsa"
-    assert qwen.deployment.quantization == "fp8"
+    assert qwen.deployment.quantization == "nvfp4"
     assert "convert_expert_quantization" not in qwen.deployment.backend_options
-    assert qwen.performance.decode_tokens_per_second == pytest.approx(4.987115832105288)
-    assert qwen.performance.warm_ttft_seconds == pytest.approx(0.5798669513314962)
+    assert qwen.deployment.backend_options["nvfp4_backend"] == "triton"
+    assert qwen.performance is None
     assert qwen.deployment.backend_options["moe_host_cache_gb"] == 3
     kimi = get_recipe("kimi-k3")
     assert kimi.recipe_version == "0.2.0"
@@ -90,12 +93,12 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     glm = get_recipe("glm-5.3-flash")
     kimi = get_recipe("kimi-k3")
     glm52 = get_recipe("glm-5.2")
-    assert qwen.revision == "970c569adaca6b35532111fd6b27351b2baefe50"
+    assert qwen.revision == "103a7608316173ca6edd49929544244de7ffda70"
     assert glm.revision == "3f1971b7b5f7a528c9c4ef6212c8785298a8c24a"
     assert kimi.revision == "f8c5234a0a880bcc6cbf779a315e7ee2f405b812"
     assert glm52.revision == "aec724e8c7b8ee9db3b48c01c320f63f9cdaf8aa"
-    assert qwen.source_bytes == 185553536918
-    assert qwen.expert_quantization == "fp8"
+    assert qwen.source_bytes == 182838060595
+    assert qwen.expert_quantization == "nvfp4"
     assert glm.source_bytes == 328337455672
     assert kimi.source_bytes == 1610038482254
     assert glm52.source_bytes == 464874323992
@@ -138,7 +141,7 @@ def test_glm52_recipe_points_to_measured_failed_research_evidence():
     assert any("reasoning_parser" in reason for reason in evaluation.reasons)
 
 
-def test_historical_qwen_nvfp4_evidence_does_not_transfer_to_fp8_recipe():
+def test_historical_qwen_nvfp4_evidence_does_not_transfer_to_new_checkpoint():
     from sparklab.certification import evaluate_tier
 
     recipe = get_recipe("qwen3.8-flash-next")
@@ -152,7 +155,7 @@ def test_historical_qwen_nvfp4_evidence_does_not_transfer_to_fp8_recipe():
     assert any("recipe_version mismatch" in reason for reason in evaluation.reasons)
 
 
-def test_qwen_fp8_recipe_points_to_measured_failed_frontier_evidence():
+def test_historical_qwen_fp8_evidence_does_not_transfer_to_nvfp4_recipe():
     from sparklab.certification import evaluate_tier
 
     recipe = get_recipe("qwen3.8-flash-next")
@@ -160,12 +163,12 @@ def test_qwen_fp8_recipe_points_to_measured_failed_frontier_evidence():
     result = json.loads(
         (root / "benchmarks/gb10/results/GB10-QWEN38-FP8-001.json").read_text()
     )
-    assert result["result_id"] == recipe.evidence[0]
+    assert result["result_id"] == "GB10-QWEN38-FP8-001"
     assert result["metrics"]["decode_tokens_per_second"] == pytest.approx(4.987115832105288)
     assert result["metrics"]["warm_ttft_seconds"] == pytest.approx(0.5798669513314962)
     evaluation = evaluate_tier(recipe, result, "frontier")
     assert not evaluation.passed
-    assert any("must be >= 5" in reason for reason in evaluation.reasons)
+    assert any("recipe_version mismatch" in reason for reason in evaluation.reasons)
 
 
 def test_preview_and_certified_statuses_fail_closed_without_evidence_or_memory():

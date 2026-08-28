@@ -10,12 +10,27 @@ import safetensors
 import torch
 from freetoken.distributed import get_tp_info
 from freetoken.models.loader import drop_page_cache, iter_weight_files
+from freetoken.models.nvfp4_banks import (
+    Nvfp4ExpertSourceSpec,
+    load_nvfp4_expert_source_banks,
+)
 
 _EXPERT = re.compile(r"^model\.layers\.\d+\.mlp\.experts\.(gate_up_proj|down_proj)$")
 _PER_EXPERT = re.compile(
     r"^(?:model\.language_model\.|language_model\.|model\.)"
     r"layers\.\d+\.mlp\.experts\.\d+\.(gate|up|down)_proj\."
-    r"(weight|weight_scale_inv)$"
+    r"(weight|weight_scale_inv|weight_scale|weight_scale_2|input_scale)$"
+)
+_NVFP4_EXPERT_KEY_RE = re.compile(
+    r"^model\.language_model\.layers\.(?P<layer>\d+)\.mlp\.experts\."
+    r"(?P<expert>\d+)\.(?P<proj>gate_proj|up_proj|down_proj)\."
+    r"(?P<kind>weight|weight_scale|weight_scale_2)$"
+)
+_NVFP4_SOURCE_SPEC = Nvfp4ExpertSourceSpec(
+    key_pattern=_NVFP4_EXPERT_KEY_RE,
+    proj_to_role={"gate_proj": "gate", "up_proj": "up", "down_proj": "down"},
+    layer_to_bank=lambda layer, config: layer,
+    desc="Qwen4-Exp NVFP4 experts",
 )
 _EXPERT_LAYER = re.compile(
     r"^(?:model\.language_model\.|language_model\.|model\.)"
@@ -137,7 +152,7 @@ def iter_weights(
         per_expert_index = False
     if include_moe_experts and per_expert_index:
         raise ValueError(
-            "Qwen's official per-expert FP8 checkpoint requires --moe-backend offload; "
+            "Qwen4 per-expert FP8/NVFP4 checkpoints require --moe-backend offload; "
             "resident expert loading is not supported"
         )
     if (
@@ -155,8 +170,9 @@ def iter_weights(
                 name = _rename(raw)
                 if name is None:
                     continue
-                # Converted checkpoints pack experts by layer; the official FP8 source
-                # stores six tensors per expert. Both belong exclusively to expert banks.
+                # Converted checkpoints pack experts by layer; source FP8/NVFP4 checkpoints
+                # store per-expert weights plus quantization metadata. Both belong exclusively
+                # to expert banks.
                 is_expert = _EXPERT.match(name) is not None or _PER_EXPERT.match(raw) is not None
                 if is_expert != include_moe_experts and not (
                     include_moe_experts and include_non_moe
@@ -191,10 +207,47 @@ def iter_weights(
 
 
 def setup_offload_expert_banks(*args, **kwargs):
-    """Use the shared precision-preserving per-expert block-FP8 bank loader."""
+    """Use the shared precision-preserving per-expert FP8/NVFP4 bank provider."""
     from freetoken.models.qwen3_5_moe.weight import setup_offload_expert_banks as setup
 
     return setup(*args, **kwargs)
+
+
+def load_nvfp4_expert_sources(
+    model_path: str, config, *, layer_sink=None
+) -> dict[str, list[torch.Tensor]]:
+    """Load Inferact's per-expert ModelOpt NVFP4 rows into native offload banks."""
+    return load_nvfp4_expert_source_banks(
+        model_path,
+        config,
+        _NVFP4_SOURCE_SPEC,
+        drop_page_cache=drop_page_cache,
+        primary=get_tp_info().is_primary(),
+        layer_sink=layer_sink,
+    )
+
+
+def load_nvfp4_expert_sources_parallel(
+    model_path: str,
+    config,
+    *,
+    workers: int = 8,
+    chunk: int = 8 << 20,
+    layer_sink=None,
+):
+    """Parallel counterpart using the common chunked expert reader."""
+    from freetoken.models.nvfp4_banks import load_nvfp4_expert_source_banks_parallel
+
+    return load_nvfp4_expert_source_banks_parallel(
+        model_path,
+        config,
+        _NVFP4_SOURCE_SPEC,
+        drop_page_cache=drop_page_cache,
+        primary=get_tp_info().is_primary(),
+        workers=workers,
+        chunk=chunk,
+        layer_sink=layer_sink,
+    )
 
 
 def _copy_range(src_fd: int, dst_fd: int, offset: int, length: int) -> None:
@@ -294,4 +347,10 @@ def copy_external_artifacts(model_path: str, out_dir: str, model_config) -> list
     return [{"kind": "qwen4_ngram", **manifest}]
 
 
-__all__ = ["copy_external_artifacts", "iter_weights", "setup_offload_expert_banks"]
+__all__ = [
+    "copy_external_artifacts",
+    "iter_weights",
+    "load_nvfp4_expert_sources",
+    "load_nvfp4_expert_sources_parallel",
+    "setup_offload_expert_banks",
+]

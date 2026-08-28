@@ -101,6 +101,20 @@ def test_config_detects_official_routed_only_block_fp8():
     assert config.shared_expert_quant == "none"
 
 
+def test_config_detects_inferact_modelopt_nvfp4_experts():
+    source = _config()
+    source.quantization_config = {
+        "quant_method": "modelopt",
+        "quant_algo": "NVFP4",
+        "group_size": 16,
+        "with_input_scale": True,
+    }
+    config = parse_config(source)
+    assert config.expert_quant == "nvfp4"
+    assert config.weight_block_size is None
+    assert config.shared_expert_quant == "none"
+
+
 def test_expert_wrapper_receives_conversion_streaming_controls(monkeypatch):
     import freetoken.models.qwen3_5_moe.weight as shared_weight
     from freetoken.moe.expert_banks import ExpertBanks, _build_expert_banks
@@ -290,6 +304,53 @@ def test_official_per_expert_fp8_tensors_do_not_enter_dense_loader(tmp_path, mon
         include_moe_experts=False, include_non_moe=True,
     ))
     assert [name for name, _ in got] == ["model.norm.weight"]
+
+
+def test_modelopt_nvfp4_expert_tensors_do_not_enter_dense_loader(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "freetoken.models.qwen4_exp.weight.get_tp_info",
+        lambda: SimpleNamespace(size=1),
+    )
+    expert = "model.language_model.layers.0.mlp.experts.0.gate_proj"
+    tensors = {
+        "model.language_model.norm.weight": torch.ones(4, dtype=torch.bfloat16),
+        expert + ".weight": torch.ones(4, 2, dtype=torch.uint8),
+        expert + ".weight_scale": torch.ones(4, 1, dtype=torch.float8_e4m3fn),
+        expert + ".weight_scale_2": torch.ones(1, dtype=torch.float32),
+        expert + ".input_scale": torch.ones(1, dtype=torch.float32),
+    }
+    filename = "model.safetensors"
+    save_file(tensors, tmp_path / filename)
+    (tmp_path / "model.safetensors.index.json").write_text(
+        json.dumps({"weight_map": {name: filename for name in tensors}}), encoding="utf-8"
+    )
+
+    got = list(iter_weights(
+        str(tmp_path), torch.device("cpu"),
+        include_moe_experts=False, include_non_moe=True,
+    ))
+
+    assert [name for name, _ in got] == ["model.norm.weight"]
+
+
+def test_inferact_nvfp4_source_spec_matches_served_experts_only():
+    from freetoken.models.qwen4_exp.weight import _NVFP4_SOURCE_SPEC
+
+    name = (
+        "model.language_model.layers.47.mlp.experts.511.down_proj.weight_scale_2"
+    )
+    match = _NVFP4_SOURCE_SPEC.key_pattern.match(name)
+    assert match is not None
+    assert match.groupdict() == {
+        "layer": "47",
+        "expert": "511",
+        "proj": "down_proj",
+        "kind": "weight_scale_2",
+    }
+    assert _NVFP4_SOURCE_SPEC.layer_to_bank(47, object()) == 47
+    assert _NVFP4_SOURCE_SPEC.key_pattern.match(
+        "mtp.layers.0.mlp.experts.0.down_proj.weight"
+    ) is None
 
 
 def test_expert_reader_pairs_layers_regardless_of_index_order(tmp_path):

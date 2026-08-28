@@ -33,16 +33,16 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |  |
 | [Qwen3.6-35B-A3B](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | 35B total / 3B active | NVFP4 | `qwen3.6-35b-a3b` | Experimental; primary target | 67.46 | 0.320 |
 | **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |  |
-| [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next-FP8) | 125B LM + 55B auxiliary / 6B active | FP8 · FTW upload pending | `qwen3.8-flash-next` | Experimental | 4.99 | 0.580 |
+| [Qwen3.8-Flash-Next](https://huggingface.co/Inferact/Qwen3.8-Flash-Next-NVFP4) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW upload pending | `qwen3.8-flash-next` | Experimental | — | — |
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | `deepseek-v4` | Preview | 9.22 | 14.045 |
 | [GLM-5.3 Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 320B total / 18B active | FP8 | `glm-5.3-flash` | Experimental | — | — |
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
 | [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | 753B total / 40B active | NVFP4 | `glm-5.2` | Experimental fallback | 0.80 | 2.570 |
 | [Kimi K3](https://huggingface.co/nvidia/Kimi-K3-NVFP4) | 2.8T total / 16 of 896 experts | NVFP4 · FTW upload pending | `kimi-k3` | Experimental | — | — |
 
-Model links point to the original publisher checkpoints. Quantization links point to
+Model links point to the selected source checkpoints. Quantization links point to
 Spark Lab's converted FTW checkpoints when those artifacts are published. The Qwen3.8
-FP8 and Kimi K3 NVFP4 FTW links are intentionally marked pending until their Hugging Face
+and Kimi K3 NVFP4 FTW links are intentionally marked pending until their Hugging Face
 uploads exist.
 
 Parameter values use publisher-reported architecture counts. Qwen3.8's auxiliary total is

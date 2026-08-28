@@ -161,17 +161,18 @@ Replace engine-specific `runtime_args` with a backend-qualified deployment in re
 schema v2:
 
 ```yaml
-model: Qwen/Qwen3.8-Flash-Next-FP8
+model: Inferact/Qwen3.8-Flash-Next-NVFP4
 deployment:
   backend: native
   backend_api: "1.0"
-  source_format: safetensors
-  runtime_format: ftw-fp8
-  quantization: fp8
+  source_format: safetensors-nvfp4
+  runtime_format: ftw-nvfp4
+  quantization: nvfp4
   execution_policy: nvme-moe
   backend_options:
     attention_backend: qsa
     moe_host_cache_gb: 3
+    nvfp4_backend: triton
     max_running_req: 1
 ```
 
@@ -293,10 +294,11 @@ The current proof points are:
 - Qwen3.8-Flash-Next 0.3.0 historically demonstrated converted NVFP4/NVMe execution at
   12.51 decode tok/s, 0.870 s warm TTFT, exact 65,536-token recall, and 60.50 minutes
   uninterrupted with no model-attributed swap growth. This evidence is retained for
-  comparison but does not certify the precision-preserving official FP8 Beta recipe;
+  comparison but does not certify the publisher-quantized Inferact NVFP4 Beta recipe;
 - Qwen3.8-Flash-Next 0.4.0's complete official FP8 artifact measured 4.99 decode tok/s
   and 0.580 s warm TTFT. The result proves preparation and end-to-end serving, but misses
-  the 5 tok/s Frontier floor by 0.01 tok/s and does not include the remaining gates;
+  the 5 tok/s Frontier floor by 0.01 tok/s, does not include the remaining gates, and is
+  historical evidence for a superseded checkpoint tuple;
 - DeepSeek V4: Preview DS-FP4/NVMe execution at 9.217 decode tok/s and 14.045 s warm TTFT,
   with identical greedy output across matched controls and 142.63 GiB physical expert I/O
   on the fixed probe;
@@ -351,8 +353,8 @@ one real alternative backend as proof of portability before declaring the adapte
   payload checks.
 - `sparklab doctor`, `models`, `plan`, `pull`, `run`, `status`, `shell`, and
   `launch` for the documented happy path.
-- Qwen3.8-Flash-Next-FP8 `0.4.0` as the primary precision-preserving official FP8
-  FTW candidate.
+- Inferact/Qwen3.8-Flash-Next-NVFP4 `0.5.0` as the primary precision-preserving
+  publisher-quantized NVFP4 FTW candidate.
 - At least one source-precision-preserving recipe must be Certified before release; Beta
   does not ship by reusing certification from a converted artifact.
 - Fail-closed platform, storage, memory, checkpoint-revision, and recipe admission.
@@ -408,7 +410,7 @@ Snapshot from `main` at `ddb9c34` on 2026-08-27:
 | Backend boundary | Spark Lab imports the engine directly for platform inspection, FTW validation/conversion, server launch, daemon, shell, and benchmarks | Route runtime behavior through structured backend and product-service contracts; confine direct engine imports to the native adapter and legacy compatibility layer |
 | Recipe schema | Recipes contain engine checkpoint names and raw runtime argument vectors | Introduce backend-qualified schema v2 and preserve v1 migration coverage |
 | NVMe execution | Aligned FTW expert rows, bounded caches/staging, persistent parallel reads, coalescing, prefill lookahead, sparse prefill, hybrid staging, and basic counters are implemented | Move the feature behind the native adapter; normalize missing queue/prefetch/stall/page-cache telemetry; prove cancellation, read-error, and memory-budget behavior |
-| Certified model | Official Qwen3.8 FP8 preparation and serving are measured at 4.99 tok/s and 0.580 s TTFT, but performance narrowly misses Frontier and the remaining gates are open | Optimize and repeat on the release candidate, complete every gate, and publish the exact artifact linkage |
+| Certified model | The current Inferact Qwen3.8 NVFP4 checkpoint has loader coverage but no accepted preparation or GB10 measurement; prior converted-NVFP4 and official-FP8 results are historical | Prepare and validate the immutable 0.5.0 artifact, run every gate, and publish the exact artifact linkage |
 | Other models | DeepSeek V4 Preview; four recipes Experimental | Keep clearly non-default; do not let them expand the critical path |
 | Packaging | Tagged x86_64 CPython 3.10-3.13 workflow and rolling beta workflow publish engine-named wheels | Add a Spark Lab-branded ARM64/GB10 artifact and keep engine packages behind the product boundary |
 | Automation | Nightly and tagged-release workflows exist | Add ordinary pull-request CI and a release rehearsal that cannot publish production artifacts |
@@ -447,13 +449,15 @@ headroom. These facts are historical implementation evidence, not Beta FP8 certi
 A later engineering run prepared, byte-validated, and served the complete official FP8
 artifact despite the fail-closed product preflight remaining not-ready due unrelated swap.
 `GB10-QWEN38-FP8-001` records 4.99 tok/s and 0.580 s warm TTFT without granting admission.
+Recipe 0.5.0 now targets Inferact's native ModelOpt NVFP4 checkpoint, so neither historical
+result transfers to the current tuple.
 
 This checkpoint does **not** complete the Beta architecture or release gate. Remaining
 work includes moving daemon supervision and stable gateway lifecycle handling into Spark
 Lab, binding final certification evidence to the full backend/artifact/release tuple,
 adding the missing normalized disk telemetry and failure tests, producing a Spark
-Lab-branded ARM64 artifact, improving official FP8 throughput above the Frontier floor,
-and running correctness, context, quality, and endurance after swap returns to zero.
+Lab-branded ARM64 artifact, measuring the current NVFP4 checkpoint above the Frontier
+floor, and running correctness, context, quality, and endurance after swap returns to zero.
 
 ## 7. Workstreams and exit gates
 
@@ -471,7 +475,7 @@ responsible person.
 | ARM64 packaging | Release engineering | Audit binary dependencies; build the Spark Lab product artifact plus internal runtime/kernel-cache artifacts for ARM64/CUDA 13/SM121; add checksums and provenance | Clean GB10 installs Spark Lab using a Spark Lab-branded command/artifact and reaches `sparklab doctor` with no local source tree |
 | CI and quality | QA/runtime | Add hosted CPU-safe PR checks; run full suite on the trusted GPU runner; make wheel build/import/CLI smoke tests mandatory | Required checks are green on the release commit; no test result depends on an unrecorded local patch |
 | GB10 product path | Product/runtime | Exercise doctor -> models -> plan -> pull -> run -> status -> API; improve errors and cleanup behavior found during rehearsal | A clean-machine scripted rehearsal passes twice, including one interrupted/resumed pull |
-| Certified model | Model/runtime | Retain the proven official Qwen3.8 FP8 FTW round trip; improve throughput above the Frontier floor; then run output, capability, exact 64K recall, latency, memory, disk, quality, and 60-minute endurance probes | New evidence passes the selected tier contract and names the release commit, recipe, source precision, checkpoint, OS, and artifacts |
+| Certified model | Model/runtime | Complete the Inferact Qwen3.8 NVFP4 FTW round trip; then run output, capability, exact 64K recall, latency, memory, disk, quality, and 60-minute endurance probes | New evidence passes the selected tier contract and names the release commit, recipe, source precision, checkpoint, OS, and artifacts |
 | API and agent compatibility | API/runtime | Test OpenAI Chat Completions, Responses, Anthropic Messages, streaming, reasoning, tool calls, cancellation, restart, and one supported coding-agent task | Protocol matrix and fixed agent task pass with the packaged server |
 | Safety and recovery | Runtime/QA | Test insufficient RAM/disk, active swap, wrong GPU/CUDA, corrupt or partial artifact, port conflict, process kill, restart, and disk-full behavior | Failures are early and actionable; no corrupt cache is treated as valid; restart/cleanup is documented |
 | Documentation | Docs/product | Make Spark Lab the sole primary identity; follow install and quick start literally; add release notes, limitations, support matrix, artifact verification, diagnostics, upgrade, rollback, About/Notices, and a secondary legacy migration page | A reviewer unfamiliar with the implementation completes the clean-machine path using only published docs and encounters the engine name only in attribution or legacy material |
@@ -497,7 +501,7 @@ Use relative dates until the release lead chooses `T0`.
   schema v2, artifact manifest v2, and certification identity tuple.
 - Capture golden native-backend launch plans, health/status payloads, API responses,
   metrics, shutdown behavior, and Qwen evidence before refactoring.
-- Freeze Qwen3.8 0.4.0's official-FP8-preserving preparation policy, checkpoint revision,
+- Freeze Qwen3.8 0.5.0's Inferact-NVFP4-preserving preparation policy, checkpoint revision,
   prompts, and evidence schema.
 - Triage all open defects; mark release blockers explicitly.
 
@@ -512,7 +516,7 @@ Gate: no unresolved product/version decision can change packaging or certificati
 - Preserve FTW row addressing, bounded cache/staging, parallel/coalesced reads, prefill
   lookahead, sparse prefill, and hybrid staging inside the native adapter; do not duplicate
   the storage engine in Spark Lab product code.
-- Keep Qwen3.8's official per-expert block-FP8 loader and FTW writer path covered by exact
+- Keep Qwen3.8's per-expert ModelOpt NVFP4 loader and FTW writer path covered by exact
   dtype, shape, scale, and payload round-trip tests; optimize the measured serving path
   without dequantizing or requantizing the checkpoint.
 - Add normalized disk path, queue, coalescing, prefetch, cache, bytes/token, allocation,
@@ -540,9 +544,9 @@ Gate: the packaged product works end to end before model certification begins.
 - Run native-adapter parity tests and confirm there are no direct runtime-engine imports
   outside the adapter and approved compatibility modules.
 - Store raw logs externally and commit the compact evidence result.
-- Repeat the official FP8 baseline on RC1 and clear the 5 tok/s Frontier threshold. Treat
-  `GB10-QWEN38-FRONTIER-001` only as a historical NVFP4 systems comparison, not as a
-  regression or quality baseline for the Beta artifact.
+- Measure the Inferact NVFP4 artifact on RC1 and clear the 5 tok/s Frontier threshold. Treat
+  both existing Qwen3.8 result IDs only as historical systems comparisons, not as regression
+  or quality baselines for the Beta artifact.
 - Conduct an independent documentation rehearsal from a fresh OS/user state.
 
 Gate: all mandatory checks pass on the same immutable RC1 artifacts.

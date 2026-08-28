@@ -22,8 +22,9 @@ The first compatibility-preserving product slice has landed in the worktree:
   expert sources converted to NVFP4, and bounded-memory FTW conversion. That artifact
   passed output,
   capability, exact 64K-context, performance, and 60-minute endurance gates in
-  `GB10-QWEN38-FRONTIER-001`; Beta 0.1 instead targets Qwen's official FP8 checkpoint
-  with precision-preserving FTW and requires independent certification;
+  `GB10-QWEN38-FRONTIER-001`; Beta 0.1 now targets Inferact's publisher-quantized
+  ModelOpt NVFP4 checkpoint with precision-preserving FTW and requires independent
+  certification;
 - `SPARKLAB_*` values take precedence in the central environment configuration,
   while corresponding `FREETOKEN_*` values remain fallbacks;
 - new bandwidth profiles write under `~/.cache/sparklab`, with read-only discovery
@@ -43,9 +44,10 @@ open.
 The current machine work is deliberately serial to preserve NVMe and unified
 memory headroom:
 
-1. Enable Qwen3.8-Flash-Next-FP8 as the 0.4.0 precision-preserving FTW recipe and
+1. Enable Inferact/Qwen3.8-Flash-Next-NVFP4 as the 0.5.0 precision-preserving FTW recipe and
    run its complete correctness, quality, performance, context, and endurance gates.
-   The 0.3.0 NVFP4 certification remains historical and does not transfer.
+   The 0.3.0 converted-NVFP4 and 0.4.0 official-FP8 evidence remain historical and do not
+   transfer.
 2. Finish the pinned GLM-5.3-Flash acquisition, convert FTW, and validate the new
    text runtime against the complete checkpoint. The implementation now includes
    KDA, NoPE MLA/KPool, four-stream mHC, FP32-scaled block FP8, and NVMe experts;
@@ -289,7 +291,7 @@ Target: Week 0-1
 - Freeze new non-GB10 optimization work.
 - Record the current DeepSeek V4 GB10 result as baseline `GB10-BASELINE-001`.
 - Define a standard benchmark prompt set and artifact schema.
-- Confirm the primary lineup: Qwen3.6-35B-A3B-NVFP4 for Fast; Qwen3.8-Flash-Next-FP8,
+- Confirm the primary lineup: Qwen3.6-35B-A3B-NVFP4 for Fast; Qwen3.8-Flash-Next-NVFP4,
   GLM-5.3-Flash, and DeepSeek-V4-Flash-0731 for Frontier; and Kimi K3 for Research.
   Retain GLM-5.2-NVFP4 only as an Experimental Research fallback.
 
@@ -360,7 +362,7 @@ Target: Week 5-10
 - Tune FP8, MXFP4, and native-checkpoint NVFP4 kernels specifically for SM121.
 - Add long-running agent traces, repeated-prefix traces, and cold/warm prompt suites.
 - Certify Qwen3.6-35B-A3B-NVFP4 for Fast and GLM-5.3-Flash plus DeepSeek V4
-  for Frontier; certify Qwen3.8-Flash-Next-FP8 using Qwen's official checkpoint.
+  for Frontier; certify Qwen3.8-Flash-Next-NVFP4 using Inferact's immutable checkpoint.
 - Validate reasoning and tool-call parsers with real coding-agent sessions.
 
 #### Initial performance objectives
@@ -547,7 +549,7 @@ its recipe cannot be reproduced, or a better model occupies the same product rol
 | Intended tier | Candidate | GB10 rationale | Admission status |
 |---|---|---|---|
 | Fast | [Qwen3.6-35B-A3B-NVFP4](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | Native low precision, about 3B active parameters, existing model implementation | Experimental Fast certification target |
-| Frontier | [Qwen3.8-Flash-Next-FP8](https://huggingface.co/Qwen/Qwen3.8-Flash-Next-FP8) | 125B language-model parameters with 6B active, plus a 51B n-gram embedding and 4B MTP; Beta FTW preserves Qwen's official block-FP8 weights and scales | Experimental until the official FP8 artifact completes the full Frontier gate; the prior NVFP4 result is historical only |
+| Frontier | [Qwen3.8-Flash-Next-NVFP4](https://huggingface.co/Inferact/Qwen3.8-Flash-Next-NVFP4) | 125B language-model parameters with 6B active, plus a 51B n-gram embedding and 4B MTP; Beta FTW preserves Inferact's ModelOpt NVFP4 routed experts and the published precision of remaining tensors | Experimental until the immutable 0.5.0 artifact completes the full Frontier gate; both prior Qwen3.8 results are historical only |
 | Frontier | [DeepSeek-V4-Flash-0731](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | Strong coding/reasoning story and an existing reproducible GB10 result | Baseline proven; Frontier recipe not yet productized |
 | Frontier | [GLM-5.3-Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 320B total and 18B active parameters, native multimodality, FP8 weights, and hybrid sparse/linear attention | Text architecture implemented; Experimental until the complete checkpoint and GB10 gates pass; multimodality remains separate |
 | Research fallback | [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | Complete 753B NVFP4 checkpoint measured at 0.802 tok/s and 2.57 s TTFT on GB10 | Experimental; the selected 256-token trial swapped out 680 KiB and did not pass Research admission |
@@ -559,7 +561,7 @@ The planned launch lineup is:
 
 ```text
 Fast       Qwen3.6-35B-A3B-NVFP4
-Frontier   Qwen3.8-Flash-Next-FP8
+Frontier   Qwen3.8-Flash-Next-NVFP4
 Frontier   GLM-5.3-Flash
 Frontier   DeepSeek-V4-Flash-0731
 Research   Kimi K3
@@ -572,9 +574,9 @@ checkpoint passes the required GB10 gate. In particular:
 - **Qwen3.6-35B-A3B-NVFP4** is the primary Fast target because its native low
   precision and approximately 3B active parameters give it the shortest path to the
   Fast latency and stability gates.
-- **Qwen3.8-Flash-Next-FP8** is the primary precision-preserving Frontier candidate.
-  Its 0.4.0 Beta recipe stores Qwen's official block-FP8 representation in FTW without
-  requantization and remains Experimental until it earns complete-checkpoint evidence.
+- **Qwen3.8-Flash-Next-NVFP4** is the primary precision-preserving Frontier candidate.
+  Its 0.5.0 Beta recipe stores Inferact's ModelOpt NVFP4 expert representation in FTW
+  without requantization and remains Experimental until it earns complete-checkpoint evidence.
 - **GLM-5.3-Flash** and **DeepSeek V4 Flash** are the two Frontier targets. Each must
   independently pass the complete Frontier gate.
 - **Kimi K3** is the flagship beyond-memory demonstration and does not block the daily-use
@@ -597,12 +599,11 @@ checkpoint passes the required GB10 gate. In particular:
 5. **GPT-OSS 20B**, **Qwen3-30B-A3B**, and smaller Gemma variants are Fast-tier fallback
    candidates, not additional 1.0 commitments.
 
-Qwen3.8-Flash-Next was previously tested in BF16 and GB10-oriented NVFP4 forms. The
-NVFP4 artifact keeps routed experts independently addressable and uses a bounded
-page-cached n-gram artifact, but it is a locally converted representation. Beta 0.1
-therefore selects Qwen's official 128x128 block-FP8 checkpoint and preserves it in FTW.
-The historical five-problem NVFP4 AIME sample scored 3/5 with two reasoning-budget caps;
-those results do not certify the official FP8 artifact.
+Qwen3.8-Flash-Next was previously tested in BF16, locally converted NVFP4, and official
+block-FP8 forms. Beta 0.1 now selects Inferact's publisher-quantized ModelOpt NVFP4
+checkpoint and preserves it in FTW. The historical five-problem converted-NVFP4 AIME
+sample scored 3/5 with two reasoning-budget caps; neither it nor the official-FP8
+performance probe certifies the current 0.5.0 artifact.
 
 GLM-5.3-Flash supersedes GLM-5.2 as the desired Frontier candidate, but it does not inherit
 GLM-5.2's status. Its text-only `glm5_next` architecture, hybrid linear/sparse attention,

@@ -66,7 +66,7 @@ _MODEL_REGISTRY: dict[str, ModelSpec] = {
         "Qwen3_5MoEForCausalLM",
     ),
     # Qwen3.8-Flash-Next / Qwen4-Exp: text-only tower with Hyper-Connections,
-    # PLE, hybrid GDN/QSA attention and stacked BF16 experts.
+    # PLE, hybrid GDN/QSA attention and per-expert BF16/FP8/NVFP4 checkpoints.
     "Qwen4ExpForConditionalGeneration": ModelSpec(
         "freetoken.models.qwen4_exp",
         "Qwen4ExpForCausalLM",
