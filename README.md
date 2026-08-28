@@ -52,18 +52,84 @@ not a SparkLab support claim.
 
 ## Model portfolio
 
-| **Fast** | **Frontier** | **Research** |
-|---|---|---|
-| Routine chat, editing, and short agent loops | Quality-first coding, reasoning, and long agent work | Complete or novel models outside the interactive envelope |
-
-| Tier | Model | Parameters | Quantization | Status | tok/s | TTFT(s) | Run |
-|---|---|---|---|---|---:|---:|---|
-| **Fast** | [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW | Experimental | 67.46 | 0.320 | [Instructions](docs/models/qwen3.6-35b-a3b.md) |
-| **Frontier** | [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW | Experimental | 12.58 | 0.786 | [Instructions](docs/models/qwen3.8-flash-next.md) |
-| **Frontier** | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | Preview | 9.22 | 14.045 | [Instructions](docs/models/deepseek-v4.md) |
-| **Frontier** | [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 · FTW | Experimental | 4.46 | 5.760 | [Instructions](docs/models/glm-5.3-flash.md) |
-| **Research** | [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | 753B total / 40B active | NVFP4 | Experimental | 0.80 | 2.570 | [Instructions](docs/models/glm-5.2.md) |
-| **Research** | [Kimi K3](https://huggingface.co/nvidia/Kimi-K3-NVFP4) | 2.8T total / 16 of 896 experts | NVFP4 · FTW pending | Experimental | — | — | [Instructions](docs/models/kimi-k3.md) |
+<table>
+  <thead>
+    <tr>
+      <th>Model</th>
+      <th>Parameters</th>
+      <th>Quantization</th>
+      <th>Status</th>
+      <th align="right">tok/s</th>
+      <th align="right">TTFT(s)</th>
+      <th>Run</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th colspan="7" align="left"><hr>Fast — routine chat, editing, and short agent loops</th>
+    </tr>
+    <tr>
+      <td><a href="https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW">Qwen3.6-35B-A3B</a></td>
+      <td>35B total / 3B active</td>
+      <td>NVFP4 · FTW</td>
+      <td>Experimental</td>
+      <td align="right">67.46</td>
+      <td align="right">0.320</td>
+      <td><a href="docs/models/qwen3.6-35b-a3b.md">Instructions</a></td>
+    </tr>
+    <tr>
+      <th colspan="7" align="left"><hr>Frontier — quality-first coding, reasoning, and long agent work</th>
+    </tr>
+    <tr>
+      <td><a href="https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW">Qwen3.8-Flash-Next</a></td>
+      <td>125B LM + 55B auxiliary / 6B active</td>
+      <td>NVFP4 · FTW</td>
+      <td>Experimental</td>
+      <td align="right">12.58</td>
+      <td align="right">0.786</td>
+      <td><a href="docs/models/qwen3.8-flash-next.md">Instructions</a></td>
+    </tr>
+    <tr>
+      <td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731">DeepSeek V4 Flash</a></td>
+      <td>284B total / 13B active</td>
+      <td>DS-FP4</td>
+      <td>Preview</td>
+      <td align="right">9.22</td>
+      <td align="right">14.045</td>
+      <td><a href="docs/models/deepseek-v4.md">Instructions</a></td>
+    </tr>
+    <tr>
+      <td><a href="https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW">GLM-5.3 Flash</a></td>
+      <td>320B total / 18B active</td>
+      <td>NVFP4 · FTW</td>
+      <td>Experimental</td>
+      <td align="right">4.46</td>
+      <td align="right">5.760</td>
+      <td><a href="docs/models/glm-5.3-flash.md">Instructions</a></td>
+    </tr>
+    <tr>
+      <th colspan="7" align="left"><hr>Research — bounded execution outside the interactive envelope</th>
+    </tr>
+    <tr>
+      <td><a href="https://huggingface.co/nvidia/GLM-5.2-NVFP4">GLM-5.2</a></td>
+      <td>753B total / 40B active</td>
+      <td>NVFP4</td>
+      <td>Experimental</td>
+      <td align="right">0.80</td>
+      <td align="right">2.570</td>
+      <td><a href="docs/models/glm-5.2.md">Instructions</a></td>
+    </tr>
+    <tr>
+      <td><a href="https://huggingface.co/nvidia/Kimi-K3-NVFP4">Kimi K3</a></td>
+      <td>2.8T total / 16 of 896 experts</td>
+      <td>NVFP4 · FTW pending</td>
+      <td>Experimental</td>
+      <td align="right">—</td>
+      <td align="right">—</td>
+      <td><a href="docs/models/kimi-k3.md">Instructions</a></td>
+    </tr>
+  </tbody>
+</table>
 
 Displayed values are fixed, batch-one probes—not certification or capacity promises:
 
