@@ -2,9 +2,10 @@
 
 > Turn one NVIDIA GB10 into a private frontier-AI workstation.
 
-Spark Lab is a GB10-native frontier inference lab. It packages tested model
+Spark Lab focuses on optimizing frontier open-weight inference for the NVIDIA
+DGX Spark and its GB10 Grace Blackwell Superchip. It packages tested model
 recipes, unified-memory diagnostics, NVMe-backed MoE execution, and
-OpenAI-/Anthropic-compatible APIs around the FreeToken research engine.
+OpenAI-/Anthropic-compatible APIs for a single DGX Spark.
 
 The supported production target is intentionally narrow:
 
@@ -14,53 +15,24 @@ The supported production target is intentionally narrow:
 - CUDA 13
 - Local NVMe for checkpoints and disk-backed experts
 
-This repository is in the staged rebrand period. The `sparklab` product CLI is
-available, while the `freetoken` Python package and `ft` CLI remain compatible.
-No recipe is called Certified until its GB10 correctness, latency, context,
-stability, and agent gates have all passed.
+Spark Lab uses versioned recipes and fail-closed admission: no recipe is called
+Certified until its complete checkpoint passes the published GB10 correctness,
+latency, context, stability, and agent gates.
 
-## Start here
+## Why Spark Lab
 
-Install the current distribution with [uv](https://docs.astral.sh/uv/):
+- **Optimized for DGX Spark:** platform checks, model recipes, and launch policies
+  target the GB10 Grace Blackwell Superchip, CUDA 13, and SM121.
+- **Made for unified memory:** capacity planning uses the physical 128 GB GB10 memory
+  pool rather than treating it as discrete VRAM.
+- **Frontier beyond memory:** FTW and NVMe-backed expert streaming can address MoE
+  checkpoints larger than physical memory.
+- **Agent ready:** reasoning, tool calls, prefix reuse, and compatible APIs are
+  first-class validation targets.
+- **Measured, not implied:** product claims point to versioned GB10 evidence.
 
-```bash
-uv pip install "freetoken[accel]"
-```
-
-Or install this checkout:
-
-```bash
-git clone https://github.com/FlashML-org/FreeToken.git
-cd FreeToken
-uv venv
-source .venv/bin/activate
-uv pip install -e ".[accel]"
-```
-
-Inspect the GB10 before loading a checkpoint:
-
-```bash
-sparklab doctor
-sparklab doctor --storage-path /path/to/models --json
-sparklab models
-```
-
-For a versioned recipe, plan capacity, acquire its immutable checkpoint, prepare
-FTW when required, and launch it through fail-closed GB10 admission:
-
-```bash
-sparklab plan qwen3.8-flash-next --prepare
-sparklab pull qwen3.8-flash-next --prepare
-sparklab run qwen3.8-flash-next
-sparklab shell
-sparklab launch codex
-```
-
-`sparklab serve --model /path/to/checkpoint` remains the expert/compatibility
-path for checkpoints outside the recipe catalog.
-
-The server exposes OpenAI Chat Completions and Responses APIs plus the Anthropic
-Messages API on `http://127.0.0.1:1919` by default.
+See the [quick start](docs/quickstart.md), [model catalog](docs/models.md),
+[CLI reference](docs/cli.md), and [installation guide](docs/install.md).
 
 ## Model portfolio
 
@@ -78,67 +50,55 @@ Spark Lab has three recipe tiers:
 | [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | 753B total / 40B active | NVFP4 | Experimental | 0.80 | 2.570 |
 | [Kimi K3](https://huggingface.co/nvidia/Kimi-K3-NVFP4) | 2.8T total / 16 of 896 experts | NVFP4 · FTW upload pending | Experimental | — | — |
 
-Model links point to the selected source checkpoints. When Spark Lab publishes a
-converted FTW checkpoint, its Hugging Face link appears in the Quantization column; the
-Qwen3.8 and Kimi K3 NVFP4 FTW links will be added after those artifacts are uploaded.
+Model links point to the selected runtime artifact when one is published, otherwise to
+the pinned source checkpoint. Qwen3.8 and Kimi K3 FTW artifacts remain pending.
 
-GLM-5.2 remains an Experimental Research fallback outside the primary lineup. Its measured
-0.802 tok/s and 2.57 s TTFT come from the selected 256-token GB10 trial, which failed the
-strict Research admission gate because swap-out grew by 680 KiB; see the
-[`GLM-5.2 GB10 experiment`](exps/exp_glm5_2_gb10.md). A target remains Preview or
-Experimental until its complete checkpoint passes the published gate; architecture smoke
-tests alone do not change status.
+The measured results link to compact, machine-readable evidence:
 
-Parameter values use the publishers' architecture counts. Qwen3.8's 55B auxiliary
-parameters are its 51B n-gram embedding plus 4B MTP module; Kimi K3's publisher reports
-expert activation count rather than an active-parameter total.
+- Qwen3.6: [`GB10-QWEN36-FAST-001`](benchmarks/gb10/results/GB10-QWEN36-FAST-001.json)
+- DeepSeek V4: [`GB10-BASELINE-001`](benchmarks/gb10/results/GB10-BASELINE-001.json)
+- GLM-5.2: [`experiment and admission result`](exps/exp_glm5_2_gb10.md)
 
-Run `sparklab models --json` for exact checkpoint IDs, recipe versions,
-implementation state, evidence IDs, and limitations. Tier names describe intended
-roles until a recipe's current `status` becomes `certified`.
+These are fixed-probe measurements, not certification. Qwen3.6 still requires context
+and endurance gates; DeepSeek V4 remains Preview; GLM-5.2 remains an Experimental
+fallback after its selected trial recorded 680 KiB of swap-out.
 
-DeepSeek V4 is the measured GB10 baseline: 9.217 decode tok/s and 14.045 s warm
-TTFT on the fixed 64-token probe, with identical output across matched controls.
-The compact evidence is checked in as
-[`GB10-BASELINE-001`](benchmarks/gb10/results/GB10-BASELINE-001.json); it is a
-Preview result, not yet a complete Frontier certification.
-
-Qwen3.6 NVFP4 measured 67.46 decode tok/s and 0.320 s warm TTFT on the same class
-of fixed 64-token GB10 probe. The compact
-[`GB10-QWEN36-FAST-001`](benchmarks/gb10/results/GB10-QWEN36-FAST-001.json)
-evidence establishes Fast-class latency, but the recipe stays Experimental until
-its context and endurance gates pass.
-
-The Beta 0.1 Qwen3.8 recipe now targets Inferact's publisher-quantized ModelOpt NVFP4
-checkpoint. Preparation preserves those NVFP4 routed experts and the published precision
-of the remaining text tower; no BF16-to-NVFP4 requantization is performed. This immutable
-0.5.0 checkpoint has not yet been prepared or measured on GB10, so the archived
+The Qwen3.8 recipe targets Inferact's publisher-quantized ModelOpt NVFP4 checkpoint and
+preserves its published precision during FTW preparation. It has not yet been prepared or
+measured on GB10, so the archived
 [`GB10-QWEN38-FP8-001`](benchmarks/gb10/results/GB10-QWEN38-FP8-001.json) and
 [`GB10-QWEN38-FRONTIER-001`](benchmarks/gb10/results/GB10-QWEN38-FRONTIER-001.json)
 results remain historical and do not certify it.
 
-## Why Spark Lab
+Run `sparklab models --json` for exact revisions, recipe versions, implementation state,
+evidence IDs, and limitations.
 
-- **Made for unified memory:** platform checks and upcoming capacity planning use
-  the physical GB10 memory pool rather than pretending it is discrete VRAM.
-- **Frontier beyond memory:** FTW and NVMe-backed expert streaming can address MoE
-  checkpoints larger than physical memory.
-- **Agent ready:** reasoning, tool calls, prefix reuse, and compatible APIs are
-  first-class validation targets.
-- **Measured, not implied:** product claims must point to versioned GB10 evidence.
+## Credits and citation
 
-See the [quick start](docs/quickstart.md), [model catalog](docs/models.md),
-[CLI reference](docs/cli.md), [installation guide](docs/install.md), and
-[rebrand plan](docs/spark-lab-rebrand-plan.md).
+Spark Lab incorporates the [FreeToken](https://github.com/FlashML-org/FreeToken)
+research work and builds on ideas and code from
+[mini-sglang](https://github.com/sgl-project/mini-sglang),
+[SGLang](https://github.com/sgl-project/sglang),
+[vLLM](https://github.com/vllm-project/vllm),
+[FlashInfer](https://github.com/flashinfer-ai/flashinfer),
+[flash-linear-attention](https://github.com/fla-org/flash-linear-attention),
+[LightLLM](https://github.com/ModelTC/lightllm), and
+[llama.cpp](https://github.com/ggml-org/llama.cpp). We thank their authors and
+maintainers for their contributions to open inference.
 
-## Compatibility and research attribution
+If you use Spark Lab in research, cite the software:
 
-Spark Lab is the product identity. FreeToken remains the internal engine and the
-name of the research paper during this migration. Existing `ft` commands,
-`freetoken.*` imports, and API protocols continue to work; see the
-[migration guide](docs/migration.md).
+```bibtex
+@software{sparklab2026,
+  title={Spark Lab: Frontier Open-Weight Inference for NVIDIA DGX Spark},
+  author={{Spark Lab Contributors}},
+  year={2026},
+  note={GitHub repository URL forthcoming}
+}
+```
 
-If you use the engine for research, cite:
+If you use its FreeToken components, also cite the
+[FreeToken paper](https://arxiv.org/abs/2608.16157):
 
 ```bibtex
 @article{yang2026freetoken,
@@ -148,9 +108,6 @@ If you use the engine for research, cite:
   year={2026}
 }
 ```
-
-FreeToken builds on ideas and code from mini-sglang, SGLang, vLLM,
-FlashInfer, flash-linear-attention, LightLLM, and llama.cpp.
 
 ## License
 
