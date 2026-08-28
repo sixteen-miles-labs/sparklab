@@ -14,10 +14,10 @@ from huggingface_hub.errors import HfHubHTTPError
 
 DEFAULT_REPO_ID = "oakmindai/GLM-5.3-Flash-NVFP4-FTW"
 DEFAULT_WEIGHTS_DIR = Path(
-    "~/.sparklab/models/glm-5.3-flash/prepared/0.3.1"
+    "~/.sparklab/models/glm-5.3-flash/prepared/0.3.2"
 ).expanduser()
-EXPECTED_FINGERPRINT = "93b1de335dd523e5"
-EXPECTED_TOTAL_BYTES = 189_276_450_816
+EXPECTED_FINGERPRINT = "4c021651a1e61802"
+EXPECTED_TOTAL_BYTES = 184_716_947_456
 REQUIRED_FILES = (
     "README.md",
     "config.json",
@@ -90,8 +90,8 @@ def validate_args(args: argparse.Namespace) -> Path:
         )
 
     shards = index.get("shards") or []
-    if len(shards) != 24:
-        raise ValueError(f"expected 24 FTW shards, found {len(shards)}")
+    if len(shards) != 23:
+        raise ValueError(f"expected 23 FTW shards, found {len(shards)}")
     for shard in shards:
         path = weights_dir / shard["file"]
         if not path.is_file():

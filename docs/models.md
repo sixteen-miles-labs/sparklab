@@ -35,7 +35,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |  |
 | [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW | `qwen3.8-flash-next` | Experimental | 12.58 | 0.786 |
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | `deepseek-v4` | Preview | 10.28 | 0.604 |
-| [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 · FTW | `glm-5.3-flash` | Experimental | 4.46 | 5.760 |
+| [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 + KDA FP8 · FTW | `glm-5.3-flash` | Experimental | 4.98 | 5.379 |
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
 | [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | 753B total / 40B active | NVFP4 | `glm-5.2` | Experimental fallback | 0.80 | 2.570 |
 | [Kimi K3](https://huggingface.co/nvidia/Kimi-K3-NVFP4) | 2.8T total / 16 of 896 experts | NVFP4 · FTW upload pending | `kimi-k3` | Experimental | — | — |
@@ -57,9 +57,11 @@ preserves Inferact's publisher-quantized ModelOpt NVFP4 precision. Its complete-
 probe measured 12.58 decode tok/s and 0.786 s warm TTFT, passing the Frontier performance
 thresholds; the remaining gates are outstanding. Its historical FP8 and earlier NVFP4
 results do not transfer across checkpoint and recipe-version boundaries.
-GLM-5.3's optimized complete-checkpoint probe measured 4.46 tok/s and 5.760 s warm TTFT
-and reached the fixed probe's reference answer. Performance and the broader certification
-gates remain outstanding. See the [full experiment](../exps/exp_glm5_3_nvfp4_gb10.md).
+GLM-5.3's KDA-FP8 complete-checkpoint probe measured 4.98 tok/s and 5.379 s warm TTFT.
+Against the same-machine BF16-resident control, decode improved by 18.5% and warm TTFT
+by 4.0%. Prompt-selected NVMe expert reads still dominate TTFT, and the broader
+certification gates remain outstanding. See the
+[versioned evidence](../benchmarks/gb10/results/GB10-GLM53-KDA-FP8-002.json).
 DeepSeek V4's optimized route-first sparse prefill measured 10.28 tok/s and 0.604 s
 warm TTFT with an auto-sized 5,321-slot expert cache. The repeated fixed probe required
 no physical expert reads during the measured request and preserved the established greedy

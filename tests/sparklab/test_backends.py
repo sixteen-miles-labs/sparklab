@@ -138,7 +138,7 @@ def test_native_backend_compiles_glm_residency_options(tmp_path):
     assert "--moe-host-cache-gb" in plan.arguments
     assert plan.arguments[plan.arguments.index("--moe-host-cache-gb") + 1] == "0"
     assert "--memory-ratio" in plan.arguments
-    assert plan.arguments[plan.arguments.index("--memory-ratio") + 1] == "0.97"
+    assert plan.arguments[plan.arguments.index("--memory-ratio") + 1] == "0.96"
     assert "--disable-moe-prefill-overlap" in plan.arguments
 
 
@@ -228,6 +228,29 @@ def test_native_prepare_honors_resident_expert_bank_layout(tmp_path, monkeypatch
     assert result == expected
     assert calls[0][1]["moe_backend"] == "offload"
     assert calls[0][1]["nvfp4_backend"] == "triton"
+
+
+def test_native_prepare_applies_glm_kda_artifact_quantization(tmp_path, monkeypatch):
+    recipe = get_recipe("glm-5.3-flash")
+    backend = get_backend("native")
+    calls = []
+
+    def converter(*args, **kwargs):
+        calls.append((args, kwargs))
+        return {"fingerprint": "test"}
+
+    expected = ArtifactValidation("ftw-nvfp4", "test", {})
+    monkeypatch.setattr(backend, "validate_artifact", lambda *_args: expected)
+    result = backend.prepare(
+        tmp_path / "source",
+        tmp_path / "runtime",
+        recipe.deployment,
+        implementation=converter,
+    )
+
+    assert result == expected
+    assert calls[0][1]["kda_quantization"] == "fp8_pertensor"
+    assert calls[0][1]["expert_quantization"] is None
 
 
 def test_schema_one_recipe_migrates_to_native_deployment():

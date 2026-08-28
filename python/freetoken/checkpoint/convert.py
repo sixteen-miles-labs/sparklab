@@ -31,6 +31,7 @@ from .ftw import DEFAULT_SHARD_LIMIT, FTWWriter, layer_bank_entry_name
 # FREETOKEN_CONVERT_PROGRESS=1 so plain CLI use isn't spammed; the human tqdm bars stay on
 # stderr. Phases: `dense` (indeterminate, done=total=0), `experts` (byte totals), `finalize`.
 _EMIT_PROGRESS = os.environ.get("FREETOKEN_CONVERT_PROGRESS") == "1"
+_GLM_KDA_QUANT_ENV = "_FREETOKEN_CONVERT_GLM5_KDA_QUANT"
 
 
 def _progress(phase: str, done: int = 0, total: int = 0) -> None:
@@ -45,6 +46,14 @@ def _source_fingerprint(
     it's clear what an FTW was built from. Cheap (stat only)."""
     h = hashlib.sha256()
     h.update(f"quant={getattr(model_config, 'expert_quant', None)}|".encode())
+    # Model-specific resident-weight transformations must participate in artifact
+    # identity too.  GLM-5.3's optimized FTW keeps the source NVFP4 experts but stores
+    # its bandwidth-dominant KDA projections as FP8; without this discriminator it
+    # would collide with the all-BF16-resident artifact built from the same source.
+    model_args = getattr(model_config, "glm5_next_args", None)
+    kda_quant = getattr(model_args, "kda_quant", "none")
+    if kda_quant != "none":
+        h.update(f"kda_quant={kda_quant}|".encode())
     if expert_quantization is not None:
         h.update(f"target_expert_quant={expert_quantization}|".encode())
     h.update(f"arch={getattr(model_config, 'architectures', None)}|".encode())
@@ -260,14 +269,14 @@ class _Nvfp4QuantizeSink:
             torch.cuda.empty_cache()
 
 
-def _write_expert_quantization_override(out_dir: str, quantization: str) -> None:
-    """Record a conversion-owned expert format in the self-contained HF config."""
+def _write_config_override(out_dir: str, name: str, value: str) -> None:
+    """Record a conversion-owned format choice in the self-contained HF config."""
     path = os.path.join(out_dir, "config.json")
     with open(path, encoding="utf-8") as handle:
         config = json.load(handle)
-    config["freetoken_expert_quant"] = quantization
+    config[name] = value
     if isinstance(config.get("text_config"), dict):
-        config["text_config"]["freetoken_expert_quant"] = quantization
+        config["text_config"][name] = value
     temporary = path + ".tmp"
     with open(temporary, "w", encoding="utf-8") as handle:
         json.dump(config, handle, indent=2, sort_keys=True)
@@ -275,7 +284,7 @@ def _write_expert_quantization_override(out_dir: str, quantization: str) -> None
     os.replace(temporary, path)
 
 
-def convert_checkpoint(
+def _convert_checkpoint(
     model_path: str,
     out_dir: str,
     *,
@@ -420,7 +429,9 @@ def convert_checkpoint(
     _progress("finalize")  # writing shard index + copying config/tokenizer
     copied = _copy_metadata(model_path, out_dir)
     if expert_quantization is not None:
-        _write_expert_quantization_override(out_dir, expert_quantization)
+        _write_config_override(out_dir, "freetoken_expert_quant", expert_quantization)
+    if kda_quantization := os.environ.get(_GLM_KDA_QUANT_ENV):
+        _write_config_override(out_dir, "freetoken_kda_quant", kda_quantization)
 
     # Models with very large non-parameter runtime stores can stream a self-contained
     # side artifact beside FTW (Qwen4 PLE's 95 GiB random-row n-gram table). The hook
@@ -462,6 +473,44 @@ def convert_checkpoint(
         "external_artifacts": external_artifacts,
     })
     return index
+
+
+def convert_checkpoint(
+    model_path: str,
+    out_dir: str,
+    *,
+    dtype: torch.dtype = torch.bfloat16,
+    moe_backend: str = "offload",
+    nvfp4_backend: str = "triton",
+    expert_quantization: str | None = None,
+    kda_quantization: str | None = None,
+    shard_limit: int = DEFAULT_SHARD_LIMIT,
+    device: str | None = None,
+) -> dict:
+    """Write a self-contained FTW checkpoint, including requested format transforms."""
+    if kda_quantization not in {None, "fp8_pertensor"}:
+        raise ValueError(f"unsupported KDA quantization: {kda_quantization!r}")
+    previous = os.environ.get(_GLM_KDA_QUANT_ENV)
+    try:
+        if kda_quantization is None:
+            os.environ.pop(_GLM_KDA_QUANT_ENV, None)
+        else:
+            os.environ[_GLM_KDA_QUANT_ENV] = kda_quantization
+        return _convert_checkpoint(
+            model_path,
+            out_dir,
+            dtype=dtype,
+            moe_backend=moe_backend,
+            nvfp4_backend=nvfp4_backend,
+            expert_quantization=expert_quantization,
+            shard_limit=shard_limit,
+            device=device,
+        )
+    finally:
+        if previous is None:
+            os.environ.pop(_GLM_KDA_QUANT_ENV, None)
+        else:
+            os.environ[_GLM_KDA_QUANT_ENV] = previous
 
 
 __all__ = ["convert_checkpoint"]

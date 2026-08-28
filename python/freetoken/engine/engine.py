@@ -424,8 +424,10 @@ class Engine:
             dummy_req=self.dummy_req,
             moe_offload_cache=self.moe_offload_cache,
         )
-        if config.attention_backend.split(",")[0] == "triton":
-            # Prefill runs on the first comma part; warm its autotune cache.
+        if config.attention_backend.split(",")[0] in {"triton", "dsa"}:
+            # DSA owns a Triton attention kernel and GLM's surrounding KDA/MoE path is
+            # Triton too. Warm it before advertising readiness just like the plain
+            # Triton backend; otherwise the first user request pays compilation.
             self._warmup_prefill()
 
     def _init_communication(self, config: EngineConfig) -> torch.distributed.ProcessGroup:
@@ -951,7 +953,9 @@ class Engine:
         if self.max_seq_len < 2:
             return
 
-        warmup_lens = [min(80, self.max_seq_len)]
+        # 32 and 80 exercise both sides of resident FP8's M<64 block-size branch.
+        # 128 also covers the recurrent/attention medium-prefill geometry.
+        warmup_lens = [min(length, self.max_seq_len) for length in (32, 80)]
         if self.max_seq_len >= 128:
             warmup_lens.append(128)
         warmup_lens = sorted({length for length in warmup_lens if length >= 2})

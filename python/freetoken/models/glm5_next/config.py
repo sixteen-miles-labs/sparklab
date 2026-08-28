@@ -97,6 +97,12 @@ def parse_config(hf_config: Any) -> ModelConfig:
         resident_quant = expert_quant
     index_dim = int(_get(text, "index_head_dim"))
     kpool = int(_get(text, "index_kpool", 1))
+    kda_quant = str(
+        os.environ.get("_FREETOKEN_CONVERT_GLM5_KDA_QUANT")
+        or _get(text, "freetoken_kda_quant", _get(hf_config, "freetoken_kda_quant", "none"))
+    ).lower()
+    if kda_quant not in {"none", "fp8_pertensor"}:
+        raise ValueError(f"unsupported GLM-5.3 KDA quantization: {kda_quant!r}")
     dsa_on = bool(dsa_ids) and os.getenv("FREETOKEN_GLM5_NEXT_DSA", "1") != "0"
     args = Glm5NextArgs(
         hidden_size=int(_get(text, "hidden_size")),
@@ -115,6 +121,7 @@ def parse_config(hf_config: Any) -> ModelConfig:
         kda_head_dim=int(_get(linear, "head_dim")),
         kda_conv_kernel=int(_get(linear, "short_conv_kernel_size")),
         kda_gate_lower_bound=_get(linear, "gate_lower_bound"),
+        kda_quant=kda_quant,
         index_n_heads=int(_get(text, "index_n_heads")),
         index_head_dim=index_dim,
         index_topk=int(_get(text, "index_topk")),

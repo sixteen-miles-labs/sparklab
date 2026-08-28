@@ -1,7 +1,7 @@
 # Run GLM-5.3 Flash
 
-GLM-5.3 Flash is a text-only Frontier-tier NVFP4 recipe with NVMe-backed MoE execution.
-The recipe is Experimental.
+GLM-5.3 Flash is a text-only Frontier-tier recipe with NVFP4 routed experts, FP8 KDA
+main projections, and NVMe-backed MoE execution. The recipe is Experimental.
 
 ## Install SparkLab
 
@@ -48,3 +48,16 @@ curl http://127.0.0.1:1919/v1/models
 ```
 
 See the [quick start](../quickstart.md) for API and agent examples.
+
+## Performance and TTFT
+
+The fixed batch-one DGX Spark probe measured 4.98 decode tok/s and 5.379 s warm TTFT.
+KDA FP8 reduced resident storage by about 4.25 GiB and improved decode throughput by
+18.5% against the same-machine BF16-resident control. TTFT improved by 4.0% because its
+main cost is different: prompt-selected expert rows that are absent from the GPU cache
+must still be read from local NVMe. A first cold-cache request measured 10.745 s TTFT;
+startup warmup removes compilation from that number but cannot pre-resident every routed
+expert row.
+
+See the [versioned GB10 evidence](../../benchmarks/gb10/results/GB10-GLM53-KDA-FP8-002.json)
+for the complete configuration, comparison, and remaining validation gaps.

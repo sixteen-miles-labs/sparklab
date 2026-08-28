@@ -648,8 +648,10 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
             print(f"[bench] model_id={model_id}", flush=True)
             print(f"[bench] AIME25 #{args.problem} (answer {answer})", flush=True)
 
-            # Warm the expert cache to a steady-state decode working set.
-            stream_generate(origin, model_id, problem, sampling, args)
+            # Record the first-request TTFT separately, then warm the expert cache to a
+            # steady-state decode working set. This catches server-ready-before-JIT bugs
+            # without changing the established warm throughput/TTFT comparison below.
+            first_request = stream_generate(origin, model_id, problem, sampling, args)
             stats_before = get_json(f"{origin}/v1/stats")
             telemetry = GpuTelemetry()
             telemetry.start()
@@ -703,6 +705,11 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
         "cache_geometry": cache_status.get("geometry", {}),
         "problem": args.problem,
         "prompt_tokens": usage["prompt_tokens"],
+        "first_request_ttft_ms": (
+            (first_request["stamps"][0] - first_request["t0"]) * 1e3
+            if first_request["stamps"]
+            else None
+        ),
         "decode_steps": steps,
         "decode_tok_s": steps / decode_time if decode_time > 0 else 0.0,
         "ms_per_token": decode_time / steps * 1e3 if steps > 0 else 0.0,
@@ -763,6 +770,7 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
 
     print(f"\n==== decode bs=1 [{backend}] via /v1/chat/completions ====", flush=True)
     print(f"  decode throughput : {row['decode_tok_s']:8.2f} tok/s  ({row['ms_per_token']:.3f} ms/token)")
+    print(f"  TTFT (first req)  : {row['first_request_ttft_ms']:8.1f} ms")
     print(f"  TTFT (warm)       : {row['ttft_ms']:8.1f} ms  (prompt {row['prompt_tokens']} tok)")
     print(f"  decode measured   : {steps} steps in {decode_time:.3f} s  "
           f"(event p50 {row['event_ms_p50']:.3f} / p99 {row['event_ms_p99']:.3f} ms, "

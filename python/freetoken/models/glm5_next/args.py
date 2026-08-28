@@ -24,6 +24,7 @@ class Glm5NextArgs:
     kda_head_dim: int
     kda_conv_kernel: int
     kda_gate_lower_bound: float | None
+    kda_quant: str
     index_n_heads: int
     index_head_dim: int
     index_topk: int

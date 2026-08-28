@@ -178,7 +178,8 @@ class NativeBackend(RuntimeBackend):
                 f"unsupported native execution policy {deployment.execution_policy!r}"
             )
         unknown = set(deployment.backend_options) - set(_OPTION_ORDER) - {
-            "convert_expert_quantization"
+            "convert_expert_quantization",
+            "convert_kda_quantization",
         }
         if unknown:
             raise BackendError(f"unknown native backend options: {sorted(unknown)}")
@@ -186,6 +187,12 @@ class NativeBackend(RuntimeBackend):
         if convert_quant not in {None, "nvfp4"}:
             raise BackendError(
                 "native convert_expert_quantization currently supports only 'nvfp4'"
+            )
+        kda_quant = deployment.backend_options.get("convert_kda_quantization")
+        if kda_quant not in {None, "fp8_pertensor"}:
+            raise BackendError(
+                "native convert_kda_quantization currently supports only "
+                "'fp8_pertensor'"
             )
         _compile_options(deployment.backend_options)
 
@@ -263,6 +270,9 @@ class NativeBackend(RuntimeBackend):
             nvfp4_backend=deployment.backend_options.get("nvfp4_backend", "auto"),
             expert_quantization=deployment.backend_options.get(
                 "convert_expert_quantization"
+            ),
+            kda_quantization=deployment.backend_options.get(
+                "convert_kda_quantization"
             ),
             device="cuda:0",
         )

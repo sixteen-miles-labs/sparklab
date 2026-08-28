@@ -1,20 +1,20 @@
 {
   "schema_version": "2.0",
-  "recipe_version": "0.3.1",
+  "recipe_version": "0.3.2",
   "slug": "glm-5.3-flash",
   "name": "GLM-5.3 Flash",
   "model": "RedHatAI/GLM-5.3-Flash-NVFP4",
   "parameters": "320B total / 18B active",
   "revision": "9eaeadaf026871a90640e32c0604f6ab0b2d641d",
   "source_bytes": 190262422658,
-  "prepared_bytes": 189276450816,
+  "prepared_bytes": 184716947456,
   "runtime_artifact": {
     "repo_id": "oakmindai/GLM-5.3-Flash-NVFP4-FTW",
-    "revision": "932479eca99b3267186d9c9144e1bb215e9ce31b",
-    "bytes": 189276450816,
-    "fingerprint": "93b1de335dd523e5"
+    "revision": "f296cec0baceb2276121efe76f14d61b62c1e47d",
+    "bytes": 184716947456,
+    "fingerprint": "4c021651a1e61802"
   },
-  "minimum_free_bytes": 517963798788,
+  "minimum_free_bytes": 513404295428,
   "intended_tier": "frontier",
   "status": "experimental",
   "implementation": "text-architecture",
@@ -31,9 +31,10 @@
       "moe_backend": "offload",
       "moe_storage": "disk",
       "moe_host_cache_gb": 0,
-      "memory_ratio": 0.97,
+      "memory_ratio": 0.96,
       "moe_cache_auto": true,
       "nvfp4_backend": "triton",
+      "convert_kda_quantization": "fp8_pertensor",
       "moe_prefill_sparse_max_tokens": 512,
       "moe_prefill_overlap": false,
       "moe_prefill_hit_d2d": true,
@@ -45,22 +46,24 @@
   },
   "profile": "quality",
   "runtime_memory": {
-    "total_bytes": 106837311488
+    "total_bytes": 113000000000
   },
   "performance": {
-    "decode_tokens_per_second": 4.4557343502045,
-    "warm_ttft_seconds": 5.760485886596143,
-    "evidence": "GB10-GLM53-NVFP4-001",
-    "note": "The corrected complete-checkpoint probe reached the reference answer, but it missed Frontier performance thresholds and the broader certification gates remain outstanding."
+    "decode_tokens_per_second": 4.983276815628373,
+    "warm_ttft_seconds": 5.378618810325861,
+    "evidence": "GB10-GLM53-KDA-FP8-002",
+    "note": "KDA FP8 improved decode throughput by 18.5% and warm TTFT by 4.0% against the same-machine BF16-resident control, but Frontier performance and certification gates remain outstanding."
   },
   "evidence": [
-    "GB10-GLM53-NVFP4-001"
+    "GB10-GLM53-NVFP4-001",
+    "GB10-GLM53-KDA-FP8-002"
   ],
-  "description": "Text-only GLM-5.3-Flash Frontier candidate using Red Hat AI's compressed-tensors NVFP4 checkpoint with native KDA, NoPE MLA/KPool, mHC, and NVMe-MoE serving.",
+  "description": "Text-only GLM-5.3-Flash Frontier candidate using Red Hat AI's NVFP4 experts, Spark Lab's FP8 KDA projection format, native NoPE MLA/KPool, mHC, and NVMe-MoE serving.",
   "limitations": [
-    "The complete pinned checkpoint passed a precision-preserving FTW conversion and end-to-end API serving probe; the prepared artifact contains 1,498 entries across 24 shards.",
-    "This is a quantized derivative of zai-org/GLM-5.3-Flash; routed experts use NVFP4 while dense/KDA weights, the vision tower, embeddings, and output head retain their source precision.",
-    "The optimized probe reached the reference answer, but the measured 4.456 tok/s and 5.760 s warm TTFT miss Frontier performance thresholds and broader output parity remains outstanding.",
+    "The complete pinned checkpoint passed FTW index validation and end-to-end API serving; the artifact contains 1,634 entries across 23 shards.",
+    "Routed experts retain Red Hat AI's NVFP4 values. Spark Lab additionally stores the bandwidth-dominant KDA q/k/v/o projections in per-output-row FP8 W8A16; recurrent gates, DSA projections, shared experts, embeddings, and output head retain source precision.",
+    "The optimized probe measured 4.983 tok/s and 5.379 s warm TTFT, but it still misses Frontier performance thresholds and its fixed response ended at the token limit before a final answer.",
+    "Prompt-selected expert rows must still be read from NVMe when absent from the GPU cache; these compulsory reads dominate TTFT.",
     "FlashInfer 0.6.15's SM12x route packer exceeds Triton's tensor-size limit at 288 experts, so this recipe uses FreeToken's native Triton NVFP4 backend.",
     "KPool sparse selection is currently eager and CUDA graph capture is disabled.",
     "Multimodal certification is a separate later gate."

@@ -6,7 +6,7 @@ This helper publishes Spark Lab's prepared GLM-5.3 Flash artifact to
 The default source is the validated Spark Lab artifact:
 
 ```text
-~/.sparklab/models/glm-5.3-flash/prepared/0.3.1
+~/.sparklab/models/glm-5.3-flash/prepared/0.3.2
 ```
 
 Upload or resume it with:
@@ -17,6 +17,6 @@ HF_XET_HIGH_PERFORMANCE=1 \
   python hf/models/glm-5.3-Flash-NVFP4-FTW/push_weights.py --create
 ```
 
-The uploader verifies the FTW index, fingerprint, total byte count, and all 24 shards
+The uploader verifies the FTW index, fingerprint, total byte count, and all 23 shards
 before publishing. Hugging Face's large-folder upload state is resumable when the same
 command is run again.

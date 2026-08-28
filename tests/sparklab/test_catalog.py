@@ -115,7 +115,7 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     glm52 = get_recipe("glm-5.2")
     deepseek = get_recipe("deepseek-v4")
     assert qwen.revision == "103a7608316173ca6edd49929544244de7ffda70"
-    assert glm.recipe_version == "0.3.1"
+    assert glm.recipe_version == "0.3.2"
     assert glm.revision == "9eaeadaf026871a90640e32c0604f6ab0b2d641d"
     assert kimi.revision == "f8c5234a0a880bcc6cbf779a315e7ee2f405b812"
     assert glm52.revision == "aec724e8c7b8ee9db3b48c01c320f63f9cdaf8aa"
@@ -127,14 +127,15 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     assert glm.deployment.runtime_format == "ftw-nvfp4"
     assert glm.deployment.quantization == "nvfp4"
     assert glm.deployment.backend_options["nvfp4_backend"] == "triton"
+    assert glm.deployment.backend_options["convert_kda_quantization"] == "fp8_pertensor"
     assert glm.deployment.backend_options["moe_host_cache_gb"] == 0
-    assert glm.deployment.backend_options["memory_ratio"] == 0.97
+    assert glm.deployment.backend_options["memory_ratio"] == 0.96
     assert glm.deployment.backend_options["moe_prefill_overlap"] is False
     assert glm.runtime_artifact is not None
     assert glm.runtime_artifact.repo_id == "oakmindai/GLM-5.3-Flash-NVFP4-FTW"
-    assert glm.runtime_artifact.revision == "932479eca99b3267186d9c9144e1bb215e9ce31b"
-    assert glm.runtime_artifact.bytes == 189276450816
-    assert glm.runtime_artifact.fingerprint == "93b1de335dd523e5"
+    assert glm.runtime_artifact.revision == "f296cec0baceb2276121efe76f14d61b62c1e47d"
+    assert glm.runtime_artifact.bytes == 184716947456
+    assert glm.runtime_artifact.fingerprint == "4c021651a1e61802"
     assert kimi.source_bytes == 1610038482254
     assert glm52.source_bytes == 464874323992
     assert deepseek.source_bytes == 166878536440
@@ -167,6 +168,28 @@ def test_deepseek_recipe_points_to_checked_in_optimized_evidence():
     assert result["metrics"]["expert_cache_miss_rate_percent"] == 0
     assert result["metrics"]["physical_io_gib"] == 0
     assert result["validation"]["output_hash"] == "fbf178b2bde5"
+
+
+def test_glm53_recipe_points_to_checked_in_kda_fp8_evidence():
+    recipe = get_recipe("glm-5.3-flash")
+    assert recipe.performance.evidence == "GB10-GLM53-KDA-FP8-002"
+    assert recipe.performance.evidence in recipe.evidence
+    root = Path(__file__).resolve().parents[2]
+    result = json.loads(
+        (root / "benchmarks/gb10/results/GB10-GLM53-KDA-FP8-002.json").read_text()
+    )
+    assert result["result_id"] == recipe.performance.evidence
+    assert result["status"] == "measured"
+    assert result["recipe"]["recipe_version"] == recipe.recipe_version
+    assert result["recipe"]["revision"] == recipe.revision
+    assert result["checkpoint"]["fingerprint"] == recipe.runtime_artifact.fingerprint
+    assert result["metrics"]["decode_tokens_per_second"] == pytest.approx(
+        recipe.performance.decode_tokens_per_second
+    )
+    assert result["metrics"]["warm_ttft_seconds"] == pytest.approx(
+        recipe.performance.warm_ttft_seconds
+    )
+    assert result["comparison"]["decode_throughput_improvement_percent"] > 18
 
 
 def test_glm52_recipe_points_to_measured_failed_research_evidence():

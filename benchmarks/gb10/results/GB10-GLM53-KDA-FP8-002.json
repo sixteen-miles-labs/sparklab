@@ -1,0 +1,145 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-GLM53-KDA-FP8-002",
+  "status": "measured",
+  "recipe": {
+    "slug": "glm-5.3-flash",
+    "recipe_version": "0.3.2",
+    "revision": "9eaeadaf026871a90640e32c0604f6ab0b2d641d"
+  },
+  "engine": {
+    "name": "FreeToken",
+    "product_identity": "Spark Lab",
+    "git_revision": "ad6a0acdcb2a42e29025cf73f5ce02c02e7f1063",
+    "git_tracked_dirty": true
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "machine": "aarch64",
+    "os": "Linux 6.17.0-1014-nvidia",
+    "driver": "580.126.09",
+    "cuda": "13.0",
+    "torch": "2.11.0+cu130",
+    "triton": "3.6.0"
+  },
+  "checkpoint": {
+    "repository": "oakmindai/GLM-5.3-Flash-NVFP4-FTW",
+    "revision": "f296cec0baceb2276121efe76f14d61b62c1e47d",
+    "source_repository": "RedHatAI/GLM-5.3-Flash-NVFP4",
+    "source_revision": "9eaeadaf026871a90640e32c0604f6ab0b2d641d",
+    "full_model": true,
+    "format": "ftw-nvfp4-kda-fp8",
+    "quantization": "nvfp4 experts plus per-output-row FP8 KDA main projections",
+    "fingerprint": "4c021651a1e61802",
+    "bytes": 184716947456,
+    "verified_source_shards": 10,
+    "prepared_shards": 23,
+    "prepared_tensors": 1634
+  },
+  "workload": {
+    "name": "AIME-25 problem 0 fixed decode probe",
+    "batch_size": 1,
+    "sampling": "greedy",
+    "prompt_tokens": 54,
+    "requested_completion_tokens": 256,
+    "returned_completion_tokens": 255,
+    "timed_decode_steps": 254,
+    "warmup_requests": 1,
+    "measured_requests": 1,
+    "client_path": "OpenAI-compatible streaming HTTP API"
+  },
+  "configuration": {
+    "moe_backend": "offload",
+    "expert_storage": "disk",
+    "expert_cache_slots": 6979,
+    "host_cache_gib": 0.0,
+    "memory_ratio": 0.96,
+    "disk_read_workers": 16,
+    "nvfp4_backend": "triton",
+    "attention_backend": "dsa",
+    "cuda_graph": false,
+    "kv_tokens": 8691,
+    "page_size": 1,
+    "cache_type": "naive",
+    "sparse_prefill_max_tokens": 512,
+    "prefill_overlap": false,
+    "prefill_hit_d2d": true,
+    "startup_prefill_warmup_lengths": [32, 80, 128]
+  },
+  "metrics": {
+    "decode_tokens_per_second": 4.983276815628373,
+    "decode_milliseconds_per_token": 200.67117220216144,
+    "first_request_ttft_seconds": 10.745114794932306,
+    "warm_ttft_seconds": 5.378618810325861,
+    "latency_p50_milliseconds": 196.74984738230705,
+    "latency_p99_milliseconds": 266.9526366516948,
+    "device_allocation_gib": 104.98046875,
+    "minimum_mem_available_gib": 2.301586151123047,
+    "power_watts_average": 27.40290909090909,
+    "power_watts_peak": 30.22,
+    "gpu_temperature_celsius_peak": 51.0,
+    "expert_cache_miss_rate_percent": 7.436974789915966,
+    "expert_disk_read_operations": 53028,
+    "physical_io_gib": 116.65145874023438,
+    "physical_io_gib_per_second": 6.966736912020274,
+    "swap_in_pages": 7683,
+    "swap_out_pages": 0
+  },
+  "comparison": {
+    "control_artifact": "BF16-resident KDA with identical NVFP4 experts",
+    "control_warm_ttft_seconds": 5.6010568188503385,
+    "control_decode_tokens_per_second": 4.204214975222352,
+    "warm_ttft_improvement_percent": 3.971357829755684,
+    "decode_throughput_improvement_percent": 18.53049487234695,
+    "resident_storage_reduction_bytes": 4559503360
+  },
+  "validation": {
+    "checkpoint_checksum_verified": true,
+    "complete_checkpoint_loaded": true,
+    "api_stream_completed": true,
+    "output_hash_algorithm": "sha1-prefix",
+    "output_hash": "83eb899150fe",
+    "output_hash_reproduced_runs": 2,
+    "output_correctness": false,
+    "reasoning_parser": false,
+    "tool_parser": false,
+    "coding_agent_task": false,
+    "memory_bounded": false,
+    "nvme_behavior": "bounded",
+    "context_gate_run": false,
+    "capability_gate_run": false,
+    "quality_gate_run": false,
+    "endurance_gate_run": false
+  },
+  "stability": {
+    "duration_minutes": 0.9391824906536688,
+    "oom_count": 0,
+    "service_restarts": 0,
+    "swap_growth_bytes": 0,
+    "parser_failures": 0
+  },
+  "admission": {
+    "tier": "frontier",
+    "performance_gate_passed": false,
+    "passed": false,
+    "reasons": [
+      "The measured 4.983 tok/s and 5.379 s warm TTFT do not pass the Frontier performance thresholds.",
+      "The fixed response exhausted its 255-token completion budget before emitting a final answer, so this run is not accepted as a quality result.",
+      "Exact 64K context, broad quality, capability, and 60-minute endurance gates were not run for this artifact.",
+      "The host had pre-existing swap usage and recorded swap-ins, so the strict memory gate did not pass."
+    ]
+  },
+  "source": {
+    "summary": "KDA W8A16 optimization and controlled BF16-resident comparison",
+    "raw_artifact": "/home/lidaiqing/results/glm5.3-gb10/glm53_nvfp4_kda_fp8_final_mem096_decode256.jsonl",
+    "control_artifact": "/home/lidaiqing/results/glm5.3-gb10/glm53_nvfp4_bf16_control_decode256.jsonl"
+  },
+  "limitations": [
+    "This result establishes complete-checkpoint loading and a controlled performance improvement, not Frontier certification.",
+    "The KDA q/k/v/o projections are newly quantized to FP8 per output row; recurrent gates, DSA projections, shared experts, embeddings, and output head retain source precision.",
+    "Route-first prefill still reads prompt-selected routed experts from NVMe; those compulsory cache misses dominate cold and warm TTFT.",
+    "The 0.96 memory ratio preserves more operational headroom than the faster 0.97 experiment while retaining nearly identical decode throughput.",
+    "FlashInfer b12x cannot compile its fixed route-packing tile for 288 experts in the installed release, so the artifact uses FreeToken's Triton NVFP4 layout."
+  ]
+}

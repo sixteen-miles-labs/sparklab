@@ -36,6 +36,32 @@ _CT_NVFP4_SOURCE_SPEC = Nvfp4ExpertSourceSpec(
     desc="GLM-5.3 compressed-tensors NVFP4 experts",
 )
 
+_KDA_MAIN_WEIGHT = re.compile(
+    r"^model\.layers\.(?P<layer>\d+)\.self_attn\."
+    r"(?:q_proj|k_proj|v_proj|o_proj)\.weight$"
+)
+_FP8_MAX = 448.0
+
+
+def _quant_fp8_per_row(weight: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    """Quantize a BF16 matrix to the KDA artifact's W8A16 per-output-row format."""
+    if weight.ndim != 2 or weight.dtype != torch.bfloat16:
+        raise ValueError(
+            "GLM-5.3 KDA FP8 conversion expects a BF16 matrix, got "
+            f"shape={tuple(weight.shape)}, dtype={weight.dtype}"
+        )
+    source = weight.float()
+    scale = (source.abs().amax(dim=1) / _FP8_MAX).clamp(min=1e-12)
+    quantized = (source / scale[:, None]).clamp(-_FP8_MAX, _FP8_MAX).to(
+        torch.float8_e4m3fn
+    )
+    return quantized, scale
+
+
+def _is_kda_main_weight(name: str, config) -> bool:
+    match = _KDA_MAIN_WEIGHT.match(name)
+    return bool(match and config.is_linear_layer(int(match["layer"])))
+
 
 def map_weight_name(raw_name: str) -> str | None:
     """Map the multimodal HF wrapper onto FreeToken's text-only model."""
@@ -85,7 +111,16 @@ def iter_weights(
                     # pass through to Fp8BlockLinear unchanged.
                     if name.endswith((".input_scale", ".q_scale", ".k_scale", ".v_scale")):
                         continue
-                    yield name, handle.get_tensor(raw_name)
+                    weight = handle.get_tensor(raw_name)
+                    if (
+                        config.glm5_next_args.kda_quant == "fp8_pertensor"
+                        and _is_kda_main_weight(name, config)
+                    ):
+                        quantized, scale = _quant_fp8_per_row(weight)
+                        yield name, quantized
+                        yield name.removesuffix(".weight") + ".weight_scale", scale
+                    else:
+                        yield name, weight
 
     if include_moe_experts:
         # The common Qwen block-FP8 builder has exactly the same raw per-expert
@@ -145,4 +180,6 @@ __all__ = [
     "load_nvfp4_expert_sources",
     "map_weight_name",
     "setup_offload_expert_banks",
+    "_quant_fp8_per_row",
+    "_is_kda_main_weight",
 ]

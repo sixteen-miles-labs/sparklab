@@ -112,10 +112,10 @@ not a SparkLab support claim.
     <tr>
       <td><a href="https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW">GLM-5.3 Flash</a></td>
       <td>320B total / 18B active</td>
-      <td>NVFP4 · FTW</td>
+      <td>NVFP4 + KDA FP8 · FTW</td>
       <td>Experimental</td>
-      <td align="right">4.46</td>
-      <td align="right">5.760</td>
+      <td align="right">4.98</td>
+      <td align="right">5.379</td>
       <td><a href="docs/models/glm-5.3-flash.md">Instructions</a></td>
     </tr>
     <tr>
@@ -147,7 +147,7 @@ Displayed values are fixed, batch-one probes—not certification or capacity pro
 - [Qwen3.6 evidence](benchmarks/gb10/results/GB10-QWEN36-FAST-001.json)
 - [Qwen3.8 evidence](benchmarks/gb10/results/GB10-QWEN38-NVFP4-001.json)
 - [DeepSeek V4 evidence](benchmarks/gb10/results/GB10-DSV4-SPARSE-001.json)
-- [GLM-5.3 evidence](benchmarks/gb10/results/GB10-GLM53-NVFP4-001.json)
+- [GLM-5.3 evidence](benchmarks/gb10/results/GB10-GLM53-KDA-FP8-002.json)
 - [GLM-5.2 experiment](exps/exp_glm5_2_gb10.md)
 
 Status meanings:

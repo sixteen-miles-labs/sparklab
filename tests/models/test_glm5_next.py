@@ -11,6 +11,8 @@ from freetoken.models.glm5_next.hyper import Glm5NextHyperConnection
 from freetoken.models.glm5_next.kpool import pool_index_states, select_kpool_tokens
 from freetoken.models.glm5_next.weight import (
     _CT_NVFP4_SOURCE_SPEC,
+    _is_kda_main_weight,
+    _quant_fp8_per_row,
     load_nvfp4_expert_sources,
     map_weight_name,
 )
@@ -81,6 +83,49 @@ def _config(layers: int = 8):
     )
 
 
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
+def test_shared_expert_disk_overlap_launches_before_routed_staging():
+    from freetoken.models.glm5_next.moe import Glm5NextSparseMoe
+
+    order = []
+    cache = SimpleNamespace(
+        shared_expert_overlap=True,
+        disk_source=object(),
+        shared_expert_stream=None,
+        shared_expert_overlap_calls=0,
+    )
+
+    class Experts:
+        offload_cache = cache
+
+        @staticmethod
+        def routed_forward(hidden, weights, ids):
+            order.append("routed")
+            return torch.ones_like(hidden)
+
+    class Shared:
+        @staticmethod
+        def forward(hidden):
+            order.append("shared")
+            return hidden * 2
+
+    block = object.__new__(Glm5NextSparseMoe)
+    block.experts = Experts()
+    block.shared_experts = Shared()
+    block._route = lambda hidden: (
+        torch.ones(hidden.size(0), 1, dtype=torch.float32, device=hidden.device),
+        torch.zeros(hidden.size(0), 1, dtype=torch.int32, device=hidden.device),
+    )
+    hidden = torch.randn(3, 8, dtype=torch.bfloat16, device="cuda")
+
+    out = block.forward(hidden)
+    torch.cuda.synchronize()
+
+    torch.testing.assert_close(out, torch.ones_like(hidden) + hidden * 2)
+    assert order == ["shared", "routed"]
+    assert cache.shared_expert_overlap_calls == 1
+
+
 def test_parse_config_builds_glm53_hybrid_geometry():
     cfg = parse_config(_config())
     args = cfg.glm5_next_args
@@ -89,6 +134,7 @@ def test_parse_config_builds_glm53_hybrid_geometry():
     assert cfg.fp8_block_scale_dtype == "float32"
     assert args.kda_layer_ids == (0, 1, 2, 4, 5, 6)
     assert args.dsa_layer_ids == (3, 7)
+    assert args.kda_quant == "none"
     assert cfg.attn_type_for_layer(0) is AttnType.LINEAR
     assert cfg.attn_type_for_layer(3) is AttnType.DSA
     spec = cfg.kv_cache_group_specs()[0]
@@ -97,6 +143,53 @@ def test_parse_config_builds_glm53_hybrid_geometry():
     assert spec.num_index_layers == 2
     assert cfg.num_moe_layers == 5
     assert cfg.linear_state_snapshots is False
+
+
+def test_parse_config_builds_opt_in_kda_fp8_projections():
+    from freetoken.kernel.triton.fp8_pertensor_linear import Fp8PerTensorLinear
+    from freetoken.layers import LinearReplicated
+    from freetoken.models.glm5_next.kda import Glm5NextDeltaAttention
+
+    hf = _config()
+    hf.text_config.freetoken_kda_quant = "fp8_pertensor"
+    cfg = parse_config(hf)
+    attention = Glm5NextDeltaAttention(cfg, layer_id=0)
+
+    assert cfg.glm5_next_args.kda_quant == "fp8_pertensor"
+    assert isinstance(attention.q_proj, Fp8PerTensorLinear)
+    assert isinstance(attention.k_proj, Fp8PerTensorLinear)
+    assert isinstance(attention.v_proj, Fp8PerTensorLinear)
+    assert isinstance(attention.o_proj, Fp8PerTensorLinear)
+    assert isinstance(attention.f_a_proj, LinearReplicated)
+    assert isinstance(attention.g_b_proj, LinearReplicated)
+
+
+def test_parse_config_accepts_scoped_conversion_kda_override(monkeypatch):
+    monkeypatch.setenv("_FREETOKEN_CONVERT_GLM5_KDA_QUANT", "fp8_pertensor")
+
+    cfg = parse_config(_config())
+
+    assert cfg.glm5_next_args.kda_quant == "fp8_pertensor"
+
+
+def test_kda_fp8_per_row_quantization_matches_dequantized_reference():
+    torch.manual_seed(23)
+    source = torch.randn(16, 32, dtype=torch.bfloat16)
+    quantized, scale = _quant_fp8_per_row(source)
+
+    assert quantized.dtype == torch.float8_e4m3fn
+    assert quantized.shape == source.shape
+    assert scale.dtype == torch.float32
+    assert scale.shape == (source.shape[0],)
+    restored = quantized.float() * scale[:, None]
+    torch.testing.assert_close(restored, source.float(), rtol=0.065, atol=0.025)
+
+
+def test_kda_fp8_selector_excludes_sparse_mla_output_projection():
+    cfg = parse_config(_config())
+
+    assert _is_kda_main_weight("model.layers.0.self_attn.o_proj.weight", cfg)
+    assert not _is_kda_main_weight("model.layers.3.self_attn.o_proj.weight", cfg)
 
 
 def test_parse_config_accepts_redhat_expert_only_nvfp4():

@@ -39,6 +39,12 @@ def main(argv: list[str] | None = None, prog: str = "freetoken.checkpoint") -> i
         default=None,
         help="quantize uncompressed routed experts while writing FTW",
     )
+    p.add_argument(
+        "--kda-quantization",
+        choices=("fp8_pertensor",),
+        default=None,
+        help="store supported KDA main projections in the selected FTW format",
+    )
     p.add_argument("--shard-gib", type=float, default=8.0, help="max shard size in GiB")
     p.add_argument("--device", default=None, help="CUDA device for repack (default cuda:0)")
     ns = p.parse_args(argv)
@@ -50,6 +56,7 @@ def main(argv: list[str] | None = None, prog: str = "freetoken.checkpoint") -> i
         ns.model, ns.out, dtype=_DTYPES[ns.dtype],
         moe_backend=ns.moe_backend, nvfp4_backend=ns.nvfp4_backend,
         expert_quantization=ns.expert_quantization,
+        kda_quantization=ns.kda_quantization,
         shard_limit=shard_limit, device=ns.device,
     )
     dt = time.perf_counter() - t

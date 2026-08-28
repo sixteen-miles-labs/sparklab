@@ -65,10 +65,32 @@ class Glm5NextSparseMoe(BaseOP):
         shape = hidden_states.shape
         x = hidden_states.view(-1, shape[-1])
         weights, ids = self._route(x)
-        # Shared expert runs from the unmodified input; the offload path may reuse
-        # the routed input buffer internally.
-        shared = self.shared_experts.forward(x)
-        routed = self.experts.routed_forward(x, weights, ids)
+        cache = getattr(self.experts, "offload_cache", None)
+        overlap = bool(
+            cache is not None
+            and cache.shared_expert_overlap
+            and cache.disk_source is not None
+            and x.is_cuda
+        )
+        if overlap:
+            current = torch.cuda.current_stream(x.device)
+            if cache.shared_expert_stream is None:
+                cache.shared_expert_stream = torch.cuda.Stream(device=x.device)
+            shared_stream = cache.shared_expert_stream
+            shared_stream.wait_stream(current)
+            with torch.cuda.stream(shared_stream):
+                shared = self.shared_experts.forward(x)
+            # Routing is already known, so disk staging can proceed on the host while
+            # the resident shared MLP executes on its own CUDA stream. Join only when
+            # the elementwise sum consumes both results.
+            routed = self.experts.routed_forward(x, weights, ids)
+            current.wait_stream(shared_stream)
+            cache.shared_expert_overlap_calls += 1
+        else:
+            # Shared expert runs from the unmodified input; the offload path may reuse
+            # the routed input buffer internally.
+            shared = self.shared_experts.forward(x)
+            routed = self.experts.routed_forward(x, weights, ids)
         return (routed + shared).view(shape)
 
 

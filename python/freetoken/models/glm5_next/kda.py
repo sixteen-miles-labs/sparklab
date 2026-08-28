@@ -8,6 +8,15 @@ from freetoken.kernel.causal_conv1d import causal_conv1d_decode, causal_conv1d_v
 from freetoken.layers import BaseOP, LinearReplicated
 
 
+def _main_projection(quant: str, in_features: int, out_features: int) -> BaseOP:
+    """Build one bandwidth-dominant KDA projection in the artifact's stored format."""
+    if quant == "fp8_pertensor":
+        from freetoken.kernel.triton.fp8_pertensor_linear import Fp8PerTensorLinear
+
+        return Fp8PerTensorLinear(in_features, out_features, has_bias=False)
+    return LinearReplicated(in_features, out_features, has_bias=False)
+
+
 class _DepthwiseConv1d(BaseOP):
     def __init__(self, dim: int, kernel: int):
         self.weight = torch.empty(dim, 1, kernel)
@@ -49,10 +58,18 @@ class Glm5NextDeltaAttention(BaseOP):
         self.conv_kernel_size = args.kda_conv_kernel
         self.gate_lower_bound = args.kda_gate_lower_bound
 
-        # The public checkpoint deliberately leaves KDA projections in BF16.
-        self.q_proj = LinearReplicated(self.hidden_size, self.projection_size, has_bias=False)
-        self.k_proj = LinearReplicated(self.hidden_size, self.projection_size, has_bias=False)
-        self.v_proj = LinearReplicated(self.hidden_size, self.projection_size, has_bias=False)
+        # Publisher artifacts leave KDA in BF16. An optimized FTW can store only the four
+        # bandwidth-dominant projections as per-row FP8, freeing unified memory for the
+        # routed-expert cache. Recurrent gates stay BF16 to preserve their sensitive state.
+        self.q_proj = _main_projection(
+            args.kda_quant, self.hidden_size, self.projection_size
+        )
+        self.k_proj = _main_projection(
+            args.kda_quant, self.hidden_size, self.projection_size
+        )
+        self.v_proj = _main_projection(
+            args.kda_quant, self.hidden_size, self.projection_size
+        )
         self.q_conv1d = _DepthwiseConv1d(self.projection_size, self.conv_kernel_size)
         self.k_conv1d = _DepthwiseConv1d(self.projection_size, self.conv_kernel_size)
         self.v_conv1d = _DepthwiseConv1d(self.projection_size, self.conv_kernel_size)
@@ -64,7 +81,9 @@ class Glm5NextDeltaAttention(BaseOP):
         self.g_a_proj = LinearReplicated(self.hidden_size, self.head_dim, has_bias=False)
         self.g_b_proj = LinearReplicated(self.head_dim, self.projection_size, has_bias=False)
         self.o_norm = _SigmoidGatedRMSNorm(self.head_dim, config.rms_norm_eps)
-        self.o_proj = LinearReplicated(self.projection_size, self.hidden_size, has_bias=False)
+        self.o_proj = _main_projection(
+            args.kda_quant, self.projection_size, self.hidden_size
+        )
 
     def _conv_weight(self) -> torch.Tensor:
         return torch.cat(
