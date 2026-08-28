@@ -1,4 +1,10 @@
-# SparkLab
+<h1 align="center">SparkLab</h1>
+
+<p align="center">
+  <a href="https://github.com/NVIDIA/Model-Optimizer">
+    <img src="https://img.shields.io/badge/NVIDIA-Model%20Optimizer-76B900?logo=nvidia&amp;logoColor=white" alt="NVIDIA Model Optimizer">
+  </a>
+</p>
 
 > Run frontier open-weight models privately on one NVIDIA DGX Spark.
 
@@ -6,14 +12,6 @@ SparkLab is a GB10-native inference product for local, single-system deployments
 combines immutable model recipes, unified-memory admission, resumable checkpoint
 acquisition, FTW preparation, NVMe-backed MoE execution, and OpenAI- and
 Anthropic-compatible APIs.
-
-SparkLab is built on the [FreeToken](https://github.com/FlashML-org/FreeToken) engine.
-FreeToken remains the name of the underlying research runtime and FTW format; SparkLab is
-the user-facing product, CLI, model catalog, and validation program.
-
-> **Release status: Beta.** The runtime and operational workflow are available, but no
-> catalog recipe is currently **Certified**. Preview and Experimental recipes are suitable
-> for evaluation and controlled local use, not an unconditional production SLA.
 
 ## Supported production target
 
@@ -29,64 +27,6 @@ SparkLab deliberately supports one narrow hardware profile:
 Platform, memory, swap, dependency, and storage requirements fail closed before a recipe
 launch. Unsupported hardware may still work through engine compatibility paths, but it is
 not a SparkLab support claim.
-
-## Quick start
-
-Python 3.10 or newer is required. [`uv`](https://docs.astral.sh/uv/) is recommended.
-
-```bash
-uv venv
-source .venv/bin/activate
-uv pip install "freetoken[accel]"
-```
-
-The distribution retains the `freetoken` package name during the staged rebrand and
-installs both the primary `sparklab` command and the compatible `ft` alias. CUDA kernels
-compile on first use, so CUDA 13 and `nvcc` must be available.
-
-Validate the machine and inspect the versioned model catalog:
-
-```bash
-sparklab --version
-sparklab doctor --storage-path ~/models
-sparklab models
-```
-
-Plan disk and runtime-memory requirements before downloading anything. `pull` resumes
-interrupted transfers and resolves the immutable revision recorded by the recipe.
-
-```bash
-sparklab plan qwen3.8-flash-next --prepare
-sparklab pull qwen3.8-flash-next --prepare
-sparklab run qwen3.8-flash-next
-```
-
-`--prepare` prefers a recipe-pinned FTW runtime artifact when one is published; otherwise
-it performs a precision-preserving local FTW conversion. Use `--from-source` to force
-local conversion.
-
-The default endpoint listens on `127.0.0.1:1919`. Wait for `/health` to report `ok`, then
-send a request:
-
-```bash
-curl http://127.0.0.1:1919/health
-
-curl http://127.0.0.1:1919/v1/chat/completions \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "model": "served-model-id",
-    "messages": [{"role": "user", "content": "Explain unified memory."}],
-    "max_tokens": 256,
-    "stream": true
-  }'
-```
-
-For an uncataloged checkpoint or engine-level experiment, launch the compatibility
-surface directly:
-
-```bash
-sparklab serve --model /path/to/checkpoint
-```
 
 ## Why SparkLab
 
