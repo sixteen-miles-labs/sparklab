@@ -118,6 +118,30 @@ def test_native_backend_compiles_qwen_recipe_options_in_stable_order(tmp_path):
     )
 
 
+def test_native_backend_compiles_glm_residency_options(tmp_path):
+    recipe = get_recipe("glm-5.3-flash")
+    checkpoint = tmp_path / "checkpoint"
+    checkpoint.mkdir()
+    (checkpoint / "config.json").write_text("{}", encoding="utf-8")
+    deployment = replace(recipe.deployment, runtime_format="safetensors")
+
+    plan = get_backend("native").build_launch_plan(
+        RuntimeRequest(
+            recipe=recipe.slug,
+            recipe_version=recipe.recipe_version,
+            model=recipe.model,
+            checkpoint=checkpoint,
+            deployment=deployment,
+        )
+    )
+
+    assert "--moe-host-cache-gb" in plan.arguments
+    assert plan.arguments[plan.arguments.index("--moe-host-cache-gb") + 1] == "0"
+    assert "--memory-ratio" in plan.arguments
+    assert plan.arguments[plan.arguments.index("--memory-ratio") + 1] == "0.97"
+    assert "--disable-moe-prefill-overlap" in plan.arguments
+
+
 def test_native_prepare_preserves_qwen_nvfp4_source_precision(tmp_path, monkeypatch):
     recipe = get_recipe("qwen3.8-flash-next")
     backend = get_backend("native")
@@ -173,7 +197,12 @@ def test_schema_one_recipe_migrates_to_native_deployment():
         checkpoint_format="ftw",
         expert_quantization="nvfp4",
         execution_policy="nvme-moe",
-        runtime_args=["--attention-backend", "qsa", "--moe-cache-auto"],
+        runtime_args=[
+            "--attention-backend",
+            "qsa",
+            "--moe-cache-auto",
+            "--disable-moe-prefill-overlap",
+        ],
     )
 
     migrated = ModelRecipe.from_dict(current)
@@ -184,6 +213,7 @@ def test_schema_one_recipe_migrates_to_native_deployment():
     assert migrated.deployment.backend_options == {
         "attention_backend": "qsa",
         "moe_cache_auto": True,
+        "moe_prefill_overlap": False,
         "convert_expert_quantization": "nvfp4",
     }
     assert migrated.parameters == "Unknown"

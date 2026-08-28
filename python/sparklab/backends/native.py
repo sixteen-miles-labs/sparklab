@@ -21,6 +21,7 @@ _VALUE_OPTIONS: dict[str, tuple[str, type | tuple[type, ...]]] = {
     "moe_backend": ("--moe-backend", str),
     "moe_storage": ("--moe-storage", str),
     "moe_host_cache_gb": ("--moe-host-cache-gb", (int, float)),
+    "memory_ratio": ("--memory-ratio", (int, float)),
     "moe_cache_rate": ("--moe-cache-rate", (int, float)),
     "nvfp4_backend": ("--nvfp4-backend", str),
     "moe_prefill_sparse_max_tokens": ("--moe-prefill-sparse-max-tokens", int),
@@ -34,15 +35,20 @@ _FLAG_OPTIONS: dict[str, str] = {
     "moe_cache_auto": "--moe-cache-auto",
     "moe_prefill_hit_d2d": "--moe-prefill-hit-d2d",
 }
+_FALSE_FLAG_OPTIONS: dict[str, str] = {
+    "moe_prefill_overlap": "--disable-moe-prefill-overlap",
+}
 _OPTION_ORDER = (
     "attention_backend",
     "moe_backend",
     "moe_storage",
     "moe_host_cache_gb",
+    "memory_ratio",
     "moe_cache_rate",
     "moe_cache_auto",
     "nvfp4_backend",
     "moe_prefill_sparse_max_tokens",
+    "moe_prefill_overlap",
     "moe_prefill_hit_d2d",
     "cuda_graph_max_bs",
     "cache_type",
@@ -76,6 +82,12 @@ def _compile_options(options: Mapping[str, Any]) -> tuple[str, ...]:
             elif value is not False:
                 raise BackendError(f"native backend option {key!r} must be boolean")
             continue
+        if key in _FALSE_FLAG_OPTIONS:
+            if value is False:
+                arguments.append(_FALSE_FLAG_OPTIONS[key])
+            elif value is not True:
+                raise BackendError(f"native backend option {key!r} must be boolean")
+            continue
         flag, expected = _VALUE_OPTIONS[key]
         if isinstance(value, bool) or not isinstance(value, expected):
             raise BackendError(
@@ -88,12 +100,17 @@ def _compile_options(options: Mapping[str, Any]) -> tuple[str, ...]:
 def _parse_v1_arguments(arguments: Sequence[str]) -> dict[str, Any]:
     reverse_values = {flag: (key, expected) for key, (flag, expected) in _VALUE_OPTIONS.items()}
     reverse_flags = {flag: key for key, flag in _FLAG_OPTIONS.items()}
+    reverse_false_flags = {flag: key for key, flag in _FALSE_FLAG_OPTIONS.items()}
     options: dict[str, Any] = {}
     index = 0
     while index < len(arguments):
         flag = arguments[index]
         if flag in reverse_flags:
             options[reverse_flags[flag]] = True
+            index += 1
+            continue
+        if flag in reverse_false_flags:
+            options[reverse_false_flags[flag]] = False
             index += 1
             continue
         if flag not in reverse_values or index + 1 >= len(arguments):

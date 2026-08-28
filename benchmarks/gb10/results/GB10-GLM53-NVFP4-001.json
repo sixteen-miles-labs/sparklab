@@ -50,34 +50,36 @@
   "configuration": {
     "moe_backend": "offload",
     "expert_storage": "disk",
-    "expert_cache_slots": 5680,
-    "host_cache_gib": 4.0,
+    "expert_cache_slots": 6538,
+    "host_cache_gib": 0.0,
+    "memory_ratio": 0.97,
     "disk_read_workers": 16,
     "nvfp4_backend": "triton",
     "attention_backend": "dsa",
     "cuda_graph": false,
-    "kv_tokens": 8671,
+    "kv_tokens": 8883,
     "page_size": 1,
     "cache_type": "naive",
     "sparse_prefill_max_tokens": 512,
+    "prefill_overlap": false,
     "prefill_hit_d2d": true
   },
   "metrics": {
-    "decode_tokens_per_second": 3.272941188374269,
-    "decode_milliseconds_per_token": 305.53558479818537,
-    "warm_ttft_seconds": 7.121138163842261,
-    "latency_p50_milliseconds": 283.71881134808064,
-    "latency_p99_milliseconds": 527.1025002002716,
-    "device_allocation_gib": 92.044921875,
-    "minimum_mem_available_gib": 10.954734802246094,
-    "power_watts_average": 24.188048780487804,
-    "power_watts_peak": 27.96,
-    "gpu_temperature_celsius_peak": 51.0,
-    "expert_cache_miss_rate_percent": 12.254901960784313,
-    "expert_disk_read_operations": 83856,
-    "physical_io_gib": 184.4671630859375,
-    "physical_io_gib_per_second": 5.229,
-    "swap_in_pages": 193,
+    "decode_tokens_per_second": 4.4557343502045,
+    "decode_milliseconds_per_token": 224.4298967136818,
+    "warm_ttft_seconds": 5.760485886596143,
+    "latency_p50_milliseconds": 219.41869612783194,
+    "latency_p99_milliseconds": 290.0857897475362,
+    "device_allocation_gib": 103.373046875,
+    "minimum_mem_available_gib": 3.3932113647460938,
+    "power_watts_average": 28.267704918032784,
+    "power_watts_peak": 31.26,
+    "gpu_temperature_celsius_peak": 52.0,
+    "expert_cache_miss_rate_percent": 8.824696545284781,
+    "expert_disk_read_operations": 61878,
+    "physical_io_gib": 136.11976623535156,
+    "physical_io_gib_per_second": 7.171863847079325,
+    "swap_in_pages": 288,
     "swap_out_pages": 0
   },
   "validation": {
@@ -99,7 +101,7 @@
     "endurance_gate_run": false
   },
   "stability": {
-    "duration_minutes": 1.4121333042470117,
+    "duration_minutes": 1.0461105688785513,
     "oom_count": 0,
     "service_restarts": 0,
     "swap_growth_bytes": 0,
@@ -110,7 +112,7 @@
     "performance_gate_passed": false,
     "passed": false,
     "reasons": [
-      "The measured 3.273 tok/s and 7.121 s warm TTFT do not pass the Frontier performance thresholds.",
+      "The measured 4.456 tok/s and 5.760 s warm TTFT do not pass the Frontier performance thresholds.",
       "The single greedy probe is correct, but one problem is not the required quality suite.",
       "Exact 64K context, capability, quality, and 60-minute endurance gates were not run.",
       "The host had pre-existing unrelated swap resident before launch, although the measured request swapped no pages out."
@@ -118,11 +120,12 @@
   },
   "source": {
     "summary": "exps/exp_glm5_3_nvfp4_gb10.md",
-    "raw_artifact": "/home/lidaiqing/results/glm5.3-gb10/glm53_nvfp4_kda_stride_fix_decode256.jsonl"
+    "raw_artifact": "/home/lidaiqing/results/glm5.3-gb10/glm53_nvfp4_optimized_decode256.jsonl"
   },
   "limitations": [
     "This result establishes complete-checkpoint loading and serving, not Frontier certification.",
     "A real layer-0 weight probe matches the reference KDA recurrence at cosine 0.99999994; broader output parity and quality evaluation remain outstanding.",
+    "The optimized short-prompt policy reserves no pageable host LRU, disables the unused second prefill staging buffer, and uses a 0.97 memory ratio to maximize GPU expert residency.",
     "FlashInfer b12x cannot compile its fixed route-packing tile for 288 experts in the installed release, so the measured artifact uses FreeToken's Triton NVFP4 layout.",
     "Certification must be repeated after host swap usage returns to zero."
   ]

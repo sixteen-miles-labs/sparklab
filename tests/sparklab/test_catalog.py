@@ -115,7 +115,9 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     assert glm.deployment.runtime_format == "ftw-nvfp4"
     assert glm.deployment.quantization == "nvfp4"
     assert glm.deployment.backend_options["nvfp4_backend"] == "triton"
-    assert glm.deployment.backend_options["moe_host_cache_gb"] == 4
+    assert glm.deployment.backend_options["moe_host_cache_gb"] == 0
+    assert glm.deployment.backend_options["memory_ratio"] == 0.97
+    assert glm.deployment.backend_options["moe_prefill_overlap"] is False
     assert kimi.source_bytes == 1610038482254
     assert glm52.source_bytes == 464874323992
     assert qwen.execution_policy == glm.execution_policy == "nvme-moe"

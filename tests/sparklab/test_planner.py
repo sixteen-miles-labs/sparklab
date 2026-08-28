@@ -67,6 +67,7 @@ def test_artifact_plan_accounts_for_source_prepare_and_safety_margin(tmp_path, m
         source_bytes=10 * GIB,
         prepared_bytes=9 * GIB,
         minimum_free_bytes=24 * GIB,
+        runtime_artifact=None,
     )
     monkeypatch.setattr(
         "sparklab.planner.shutil.disk_usage",
