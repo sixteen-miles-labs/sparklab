@@ -34,7 +34,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW | `qwen3.6-35b-a3b` | Experimental; primary target | 67.46 | 0.320 |
 | **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |  |
 | [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW | `qwen3.8-flash-next` | Experimental | 12.58 | 0.786 |
-| [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | `deepseek-v4` | Preview | 9.22 | 14.045 |
+| [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | `deepseek-v4` | Preview | 10.28 | 0.604 |
 | [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 · FTW | `glm-5.3-flash` | Experimental | 4.46 | 5.760 |
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
 | [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | 753B total / 40B active | NVFP4 | `glm-5.2` | Experimental fallback | 0.80 | 2.570 |
@@ -60,6 +60,11 @@ results do not transfer across checkpoint and recipe-version boundaries.
 GLM-5.3's optimized complete-checkpoint probe measured 4.46 tok/s and 5.760 s warm TTFT
 and reached the fixed probe's reference answer. Performance and the broader certification
 gates remain outstanding. See the [full experiment](../exps/exp_glm5_3_nvfp4_gb10.md).
+DeepSeek V4's optimized route-first sparse prefill measured 10.28 tok/s and 0.604 s
+warm TTFT with an auto-sized 5,321-slot expert cache. The repeated fixed probe required
+no physical expert reads during the measured request and preserved the established greedy
+output hash. Longer prompts fall back to bounded full-layer streaming. See the
+[full experiment](../exps/exp_dsv4_gb10.md).
 The Kimi K3 recipe similarly preserves NVIDIA's mixed checkpoint: routed experts remain
 NVFP4, supported attention projections remain block FP8, and other tensors retain their
 source precision.

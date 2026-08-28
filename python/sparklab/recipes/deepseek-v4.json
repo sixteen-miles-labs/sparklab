@@ -1,10 +1,14 @@
 {
   "schema_version": "2.0",
-  "recipe_version": "0.1.0",
+  "recipe_version": "0.2.0",
   "slug": "deepseek-v4",
   "name": "DeepSeek V4 Flash",
   "model": "deepseek-ai/DeepSeek-V4-Flash-0731",
   "parameters": "284B total / 13B active",
+  "revision": "7872f01b1d1fe23eabc4c98b48bffcef5a386062",
+  "source_bytes": 166878536440,
+  "prepared_bytes": 157460918272,
+  "minimum_free_bytes": 461778408184,
   "intended_tier": "frontier",
   "status": "preview",
   "implementation": "available",
@@ -16,19 +20,33 @@
     "runtime_format": "ftw-ds-fp4",
     "quantization": "ds-fp4",
     "execution_policy": "nvme-moe",
-    "backend_options": {}
+    "backend_options": {
+      "moe_backend": "offload",
+      "moe_storage": "disk",
+      "moe_host_cache_gb": 4,
+      "memory_ratio": 0.9,
+      "moe_cache_auto": true,
+      "moe_prefill_sparse_max_tokens": 512,
+      "cuda_graph_max_bs": 0,
+      "cache_type": "radix",
+      "max_running_req": 1
+    }
   },
   "profile": "balanced",
-  "performance": {
-    "decode_tokens_per_second": 9.217,
-    "warm_ttft_seconds": 14.045,
-    "evidence": "GB10-BASELINE-001",
-    "note": "Fixed 64-token baseline probe; not a complete Frontier certification."
+  "runtime_memory": {
+    "total_bytes": 107374182400
   },
-  "description": "The measured GB10 baseline and first Frontier certification target.",
-  "evidence": ["GB10-BASELINE-001"],
+  "performance": {
+    "decode_tokens_per_second": 10.282266070445095,
+    "warm_ttft_seconds": 0.6035212678834796,
+    "evidence": "GB10-DSV4-SPARSE-001",
+    "note": "Auto-sized route-first sparse-prefill probe; not a complete Frontier certification."
+  },
+  "description": "Optimized DS-FP4 Frontier recipe with auto-sized expert residency and route-first sparse prefill on one NVIDIA GB10.",
+  "evidence": ["GB10-DSV4-SPARSE-001"],
   "limitations": [
     "The 64K context and 60-minute agent gates have not passed.",
-    "The measured configuration is not yet a certified release recipe."
+    "The fixed probe passed Frontier performance thresholds, but capability, quality, parser, and agent gates remain incomplete.",
+    "The 512-token sparse-prefill threshold is optimized for short interactive prompts; longer prefills retain the bounded full-layer streaming path."
   ]
 }

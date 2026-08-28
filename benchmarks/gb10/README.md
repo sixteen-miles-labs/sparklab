@@ -5,6 +5,9 @@ recipes. Raw logs and large result streams stay outside the source repository.
 
 - `result.schema.json` defines the versioned summary contract.
 - `results/GB10-BASELINE-001.json` records the measured DeepSeek V4 launch baseline.
+- `results/GB10-DSV4-SPARSE-001.json` records the optimized DeepSeek V4 route-first
+  sparse-prefill probe: 10.28 decode tok/s and 0.604 s warm TTFT, with the baseline
+  output hash preserved.
 - `results/GB10-QWEN36-FAST-001.json` records the Qwen3.6 NVFP4 Fast
   performance probe.
 - `results/GB10-QWEN38-FRONTIER-001.json` records the certified text-only

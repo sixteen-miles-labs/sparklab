@@ -142,6 +142,48 @@ def test_native_backend_compiles_glm_residency_options(tmp_path):
     assert "--disable-moe-prefill-overlap" in plan.arguments
 
 
+def test_native_backend_compiles_deepseek_sparse_prefill_options(tmp_path):
+    recipe = get_recipe("deepseek-v4")
+    checkpoint = tmp_path / "checkpoint"
+    checkpoint.mkdir()
+    (checkpoint / "config.json").write_text("{}", encoding="utf-8")
+    deployment = replace(recipe.deployment, runtime_format="safetensors")
+
+    plan = get_backend("native").build_launch_plan(
+        RuntimeRequest(
+            recipe=recipe.slug,
+            recipe_version=recipe.recipe_version,
+            model=recipe.model,
+            checkpoint=checkpoint,
+            deployment=deployment,
+        )
+    )
+
+    assert plan.arguments == (
+        "--model",
+        str(checkpoint),
+        "--served-model-name",
+        "deepseek-ai/DeepSeek-V4-Flash-0731",
+        "--moe-backend",
+        "offload",
+        "--moe-storage",
+        "disk",
+        "--moe-host-cache-gb",
+        "4",
+        "--memory-ratio",
+        "0.9",
+        "--moe-cache-auto",
+        "--moe-prefill-sparse-max-tokens",
+        "512",
+        "--cuda-graph-max-bs",
+        "0",
+        "--cache-type",
+        "radix",
+        "--max-running-req",
+        "1",
+    )
+
+
 def test_native_prepare_preserves_qwen_nvfp4_source_precision(tmp_path, monkeypatch):
     recipe = get_recipe("qwen3.8-flash-next")
     backend = get_backend("native")

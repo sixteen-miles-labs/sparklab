@@ -1,25 +1,26 @@
-# DeepSeek-V4 Stage A on NVIDIA GB10
+# DeepSeek-V4 optimization on NVIDIA GB10
 
-Last updated: 2026-08-26
+Last updated: 2026-08-28
 
 ## Result
 
-The best safe Stage A configuration measured on this GB10 is disk-backed MoE
-offload with prefill overlap, a 4 GiB pinned host budget, a 5,900-entry GPU
-expert cache, and 20 disk-read workers. On the 64-token AIME-25 probe it reached
-**9.217 decode tok/s** (108.489 ms/token) with a 14.045 s warm TTFT. A final
-independent run reached 8.967 tok/s with the same routing, I/O, and output hash.
+The selected configuration adds route-first sparse prefill for prompts up to 512
+tokens to disk-backed MoE offload, a 4 GiB host budget, and auto-sized GPU expert
+residency. On the 64-token AIME-25 probe it reached **10.282 decode tok/s**
+(97.255 ms/token) with a **0.604 s warm TTFT**. Two fixed-cache confirmations
+reached 10.335 and 10.417 tok/s with 0.601 s TTFT.
 
-This is 1.93x the 4.764 tok/s best no-overlap control. Prefill overlap reduced
-the measured expert-cache miss rate from 21.42% to 3.15% and physical expert I/O
-from 180.41 to 142.63 GiB. Greedy output stayed identical across every matched
-configuration.
+This improves the previous 9.217 tok/s Stage A baseline by 11.6% and reduces warm
+TTFT by 95.7%. The measured request used all 43 layers' sparse-prefill path,
+loaded 3,420 unique routed rows for 12,384 routes, retained a zero decode miss
+rate, and issued no physical expert reads. All accepted runs preserved greedy
+output SHA-1 `fbf178b2bde5`, matching the Stage A and RTX controls.
 
-The next larger 6,000-entry cache was rejected: it used 1.25 GiB more device
-memory and reached only 8.890 tok/s in the sustained probe, with exactly the same
-miss count and physical reads as 5,900. The selected setting also completed with
-2.79--3.52 GiB free after initialization across its sustained runs and no
-observed swap growth.
+The auto-sized run resolved 5,321 expert slots and left a 27.96 GiB host-memory
+floor during the measured request. The 5,900-slot confirmations left less
+headroom but produced the same output and near-identical latency, so the recipe
+uses auto sizing. Prompts above 512 tokens retain the bounded full-layer streaming
+path rather than forcing route-first GEMV at an inefficient density.
 
 ## System and environment
 
@@ -128,6 +129,28 @@ and reduced throughput while consuming more unified memory.
 All 16-token runs produced output SHA-1 `03c286207d6b`; all 64-token runs produced
 `fbf178b2bde5`, matching the existing RTX controls.
 
+## Route-first sparse-prefill optimization
+
+The Stage A prefill streamed every one of the 256 experts in each of 43 layers.
+Even after a warm request, this invalidated part of the persistent GPU cache and
+moved 142.63 GiB during the measured request. DeepSeek's 48-token prompt contains
+12,384 routes but only 3,420 unique layer-local expert rows, so the existing
+route-first path is a better fit:
+
+| Configuration | Cache | tok/s | TTFT | Decode miss | Physical I/O | Output hash |
+|---|---:|---:|---:|---:|---:|---|
+| Stage A full-layer prefill | 5,900 | 9.217 | 14.045 s | 3.15% | 142.63 GiB | `fbf178b2bde5` |
+| Prefill hit-D2D | 5,900 | 8.920 | 14.330 s | 3.15% | 142.63 GiB | `fbf178b2bde5` |
+| Sparse prefill, confirmation 1 | 5,900 | 10.335 | 0.601 s | 0.00% | 0 GiB | `fbf178b2bde5` |
+| Sparse prefill, confirmation 2 | 5,900 | 10.417 | 0.601 s | 0.00% | 0 GiB | `fbf178b2bde5` |
+| **Sparse prefill, auto cache** | **5,321** | **10.282** | **0.604 s** | **0.00%** | **0 GiB** | `fbf178b2bde5` |
+
+The measured I/O values are warm-request deltas; the first request still loads
+its active expert rows from NVMe. A DS-FP4 decode tile sweep found a 10.70 tok/s
+candidate, but its changed reduction order altered the greedy output hash, so it
+was rejected. CUDA graphs remain unavailable for disk-backed MoE because expert
+slot assignments and copies change between decode steps.
+
 ## Selected command
 
 Before a cold run, evict only the FTW shard pages from the Linux page cache. On
@@ -145,25 +168,23 @@ FREETOKEN_AIME25_JSONL=/home/lidaiqing/datasets/aime25/test.jsonl \
   --backend offload \
   --storage disk \
   --host-cache-gb 4 \
-  --cache 5900 \
   --decode 64 \
   --num-tokens 2048 \
   --mem-ratio 0.90 \
+  --prefill-sparse-max-tokens 512 \
   --collect-moe-stats \
   --greedy \
   --no-graph \
   --include-output \
-  --json /home/lidaiqing/results/dsv4-gb10/stage-a-final-overlap-host4-cache5900-decode64.jsonl
+  --json /home/lidaiqing/results/dsv4-gb10/optimized-sparse-prefill512-auto-confirm-decode64.jsonl
 ```
 
-The confirmation JSON records the requested configuration, 20 resolved reader
-workers, two staging buffers, and the cache geometry: 5,900 expert slots, 16 DSV4
-KV pages of 128 tokens, 43 MoE layers, 256 experts per layer, and 13,369,344 bytes
-per cached expert. Both sustained 5,900-slot runs used 45,820 disk reads and
-142.63 GiB physical I/O, with 0.56% host-LRU hits. The best run's p50/p99 event
-latencies were 94.058/569.993 ms and server-reported device allocation was 83.40
-GiB.
+The selected JSON records 20 resolved reader workers, two staging buffers, 5,321
+auto-sized expert slots, 16 DSV4 KV pages of 128 tokens, 43 MoE layers, 256 experts
+per layer, and 13,369,344 bytes per cached expert. Its p50/p99 event latencies were
+97.161/101.396 ms and server-reported device allocation was 76.19 GiB.
 
 Result artifacts are under `/home/lidaiqing/results/dsv4-gb10/`. The best measured
-row is `stage-a-overlap-host4-cache5900-decode64.jsonl`; the fully self-describing
-confirmation is `stage-a-final-overlap-host4-cache5900-decode64.jsonl`.
+fixed-cache row is `optimized-sparse-prefill512-cache5900-confirm-decode64.jsonl`;
+the selected auto-sized row is
+`optimized-sparse-prefill512-auto-confirm-decode64.jsonl`.

@@ -3,6 +3,9 @@
 DeepSeek V4 Flash is SparkLab's Preview Frontier recipe. It preserves the source DS-FP4
 precision and uses NVMe-backed MoE execution on one NVIDIA DGX Spark.
 
+For prompts up to 512 tokens, the recipe loads only the routed expert rows and preserves
+the warmed GPU expert cache. Longer prompts automatically use bounded full-layer streaming.
+
 ## Prepare
 
 Use fast local NVMe storage. `pull --prepare` automatically selects a pinned Hugging Face
@@ -17,6 +20,7 @@ sparklab pull deepseek-v4 --root /path/to/models --prepare
 ```
 
 Review the exact storage and runtime admission output from `plan` before continuing.
+The pinned recipe auto-sizes expert residency from safe available unified memory.
 
 ## Run
 

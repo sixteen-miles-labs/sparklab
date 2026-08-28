@@ -94,8 +94,8 @@ not a SparkLab support claim.
       <td>284B total / 13B active</td>
       <td>DS-FP4</td>
       <td>Preview</td>
-      <td align="right">9.22</td>
-      <td align="right">14.045</td>
+      <td align="right">10.28</td>
+      <td align="right">0.604</td>
       <td><a href="docs/models/deepseek-v4.md">Instructions</a></td>
     </tr>
     <tr>
@@ -135,7 +135,7 @@ Displayed values are fixed, batch-one probes—not certification or capacity pro
 
 - [Qwen3.6 evidence](benchmarks/gb10/results/GB10-QWEN36-FAST-001.json)
 - [Qwen3.8 evidence](benchmarks/gb10/results/GB10-QWEN38-NVFP4-001.json)
-- [DeepSeek V4 evidence](benchmarks/gb10/results/GB10-BASELINE-001.json)
+- [DeepSeek V4 evidence](benchmarks/gb10/results/GB10-DSV4-SPARSE-001.json)
 - [GLM-5.3 evidence](benchmarks/gb10/results/GB10-GLM53-NVFP4-001.json)
 - [GLM-5.2 experiment](exps/exp_glm5_2_gb10.md)
 
