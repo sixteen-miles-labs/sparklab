@@ -10,12 +10,13 @@
   <a href="LICENSE">
     <img src="https://img.shields.io/badge/License-Apache%202.0-D22128" alt="Apache License 2.0">
   </a>
-  <a href="https://github.com/NVIDIA/Model-Optimizer">
-    <img src="https://img.shields.io/badge/NVIDIA-Model%20Optimizer-76B900?logo=nvidia&amp;logoColor=white" alt="NVIDIA Model Optimizer">
-  </a>
 </p>
 
 > Run frontier open-weight models privately on one NVIDIA DGX Spark.
+
+<p align="center">
+  <img src="assets/sparklab-hero.png" alt="SparkLab — Frontier models. One compact system." width="100%">
+</p>
 
 SparkLab is a GB10-native inference product for local, single-system deployments. It
 combines immutable model recipes, unified-memory admission, resumable checkpoint
