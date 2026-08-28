@@ -14,8 +14,11 @@ sparklab plan qwen3.8-flash-next --root /path/to/models --prepare
 sparklab pull qwen3.8-flash-next --root /path/to/models --prepare
 ```
 
-`pull --prepare` downloads the pinned FTW artifact and preserves the publisher's ModelOpt
-NVFP4 precision.
+`pull --prepare` automatically downloads the pinned Hugging Face FTW artifact from
+[`oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW`](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW),
+then validates its immutable revision and fingerprint. The artifact preserves the
+publisher's ModelOpt NVFP4 precision. Use `--from-source` only to reproduce the FTW
+conversion locally.
 
 ## Run
 

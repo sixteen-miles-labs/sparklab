@@ -13,7 +13,10 @@ sparklab plan qwen3.6-35b-a3b --root /path/to/models --prepare
 sparklab pull qwen3.6-35b-a3b --root /path/to/models --prepare
 ```
 
-`pull --prepare` downloads the pinned FTW artifact; it does not requantize the model.
+`pull --prepare` automatically downloads the pinned Hugging Face FTW artifact from
+[`oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW`](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW),
+then validates its immutable revision and fingerprint. It does not requantize the model.
+Use `--from-source` only to reproduce the FTW conversion locally.
 
 ## Run
 

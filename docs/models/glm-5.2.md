@@ -5,8 +5,10 @@ Experimental and is not an interactive-latency target.
 
 ## Prepare
 
-Use fast local NVMe storage. The catalog currently requires about 1.03 TB of free space.
-This recipe prepares FTW locally from the selected source checkpoint.
+Use fast local NVMe storage. `pull --prepare` automatically selects a pinned Hugging Face
+FTW artifact when the recipe publishes one. GLM-5.2 does not currently declare one, so
+the same command downloads the pinned source checkpoint and prepares FTW locally. The
+catalog currently requires about 1.03 TB of free space.
 
 ```bash
 sparklab doctor --storage-path /path/to/models

@@ -5,9 +5,10 @@ It is Experimental, and its prebuilt FTW artifact is not yet published.
 
 ## Prepare
 
-Use fast local NVMe storage. The catalog currently requires about 3.36 TB of free space.
-Preparation downloads the source checkpoint and builds FTW locally, so it is a long,
-storage-intensive operation.
+Use fast local NVMe storage. `pull --prepare` automatically selects a pinned Hugging Face
+FTW artifact when the recipe publishes one. Kimi K3 does not have one yet, so the same
+command downloads the source checkpoint and builds FTW locally. The catalog currently
+requires about 3.36 TB of free space, making this a long, storage-intensive operation.
 
 ```bash
 sparklab doctor --storage-path /path/to/models

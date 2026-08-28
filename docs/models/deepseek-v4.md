@@ -5,8 +5,10 @@ precision and uses NVMe-backed MoE execution on one NVIDIA DGX Spark.
 
 ## Prepare
 
-Use fast local NVMe storage. This recipe currently prepares FTW locally from the selected
-source checkpoint, so allow time and space for both source and prepared artifacts.
+Use fast local NVMe storage. `pull --prepare` automatically selects a pinned Hugging Face
+FTW artifact when the recipe publishes one. DeepSeek V4 does not currently declare one,
+so the same command downloads the pinned source checkpoint and prepares FTW locally;
+allow time and space for both artifacts.
 
 ```bash
 sparklab doctor --storage-path /path/to/models

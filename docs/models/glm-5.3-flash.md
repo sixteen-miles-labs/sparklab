@@ -5,8 +5,8 @@ The recipe is Experimental.
 
 ## Prepare
 
-Use fast local NVMe storage. By default, `--prepare` downloads the pinned, validated FTW
-artifact from
+Use fast local NVMe storage. `pull --prepare` automatically downloads the pinned,
+validated Hugging Face FTW artifact from
 [`oakmindai/GLM-5.3-Flash-NVFP4-FTW`](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW).
 Use `--from-source` only when you intentionally want to download the Red Hat AI source
 checkpoint and reproduce the FTW conversion locally.
