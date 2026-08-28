@@ -1,6 +1,15 @@
 <h1 align="center">SparkLab</h1>
 
 <p align="center">
+  <a href="docs/">
+    <img src="https://img.shields.io/badge/Documentation-Read%20the%20docs-2563EB" alt="Documentation">
+  </a>
+  <a href="https://github.com/sixteen-miles-labs/freetoken/releases">
+    <img src="https://img.shields.io/github/v/release/sixteen-miles-labs/freetoken?label=Release" alt="Latest release">
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/License-Apache%202.0-D22128" alt="Apache License 2.0">
+  </a>
   <a href="https://github.com/NVIDIA/Model-Optimizer">
     <img src="https://img.shields.io/badge/NVIDIA-Model%20Optimizer-76B900?logo=nvidia&amp;logoColor=white" alt="NVIDIA Model Optimizer">
   </a>
@@ -110,7 +119,3 @@ If you use the underlying engine in research, cite the
   year={2026}
 }
 ```
-
-## License
-
-[Apache License 2.0](LICENSE).
