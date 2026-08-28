@@ -101,6 +101,50 @@ def test_config_detects_official_routed_only_block_fp8():
     assert config.shared_expert_quant == "none"
 
 
+def test_expert_wrapper_receives_conversion_streaming_controls(monkeypatch):
+    import freetoken.models.qwen3_5_moe.weight as shared_weight
+    from freetoken.moe.expert_banks import ExpertBanks, _build_expert_banks
+
+    captured = {}
+    expected = ExpertBanks("fp8_block", {})
+
+    def fake_setup(*args, **kwargs):
+        captured.update(kwargs)
+        return expected
+
+    monkeypatch.setattr(shared_weight, "setup_offload_expert_banks", fake_setup)
+    sink = object()
+    config = SimpleNamespace(
+        architectures=["Qwen4ExpForConditionalGeneration"],
+        expert_quant="fp8_block",
+    )
+
+    result = _build_expert_banks(
+        "unused",
+        config,
+        torch.device("cpu"),
+        torch.bfloat16,
+        False,
+        False,
+        3,
+        4096,
+        decode_target="cpu",
+        layer_sink=sink,
+    )
+
+    assert result is expected
+    assert captured == {
+        "device": torch.device("cpu"),
+        "dtype": torch.bfloat16,
+        "dummy": False,
+        "parallel": False,
+        "workers": 3,
+        "chunk": 4096,
+        "decode_target": "cpu",
+        "layer_sink": sink,
+    }
+
+
 def test_hyper_connection_matches_reference_equations():
     torch.manual_seed(4)
     op = Qwen4GatedResidual(8, 4, 5, 1e-6)

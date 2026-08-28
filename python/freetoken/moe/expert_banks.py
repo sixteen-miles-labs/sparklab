@@ -314,7 +314,15 @@ def _build_expert_banks(model_path, model_config, device, dtype, dummy, parallel
         import inspect
 
         params = inspect.signature(setup).parameters
-        supports_parallel = "parallel" in params
+        accepts_kwargs = any(
+            parameter.kind is inspect.Parameter.VAR_KEYWORD
+            for parameter in params.values()
+        )
+        # A forwarding wrapper commonly exposes ``**kwargs`` instead of repeating this
+        # entire internal contract. Treat that as accepting every optional control; otherwise
+        # conversion-only ``layer_sink`` can be silently dropped and materialize all expert
+        # layers in host memory before the FTW writer sees one.
+        supports_parallel = "parallel" in params or accepts_kwargs
         if parallel and not supports_parallel:
             arch = getattr(model_config, "architectures", ["?"])[0]
             raise NotImplementedError(
@@ -324,9 +332,9 @@ def _build_expert_banks(model_path, model_config, device, dtype, dummy, parallel
         kw = dict(device=device, dtype=dtype, dummy=dummy)
         if supports_parallel:
             kw.update(parallel=parallel, workers=workers, chunk=chunk)
-        if "decode_target" in params:
+        if "decode_target" in params or accepts_kwargs:
             kw["decode_target"] = decode_target
-        if "layer_sink" in params and layer_sink is not None:
+        if ("layer_sink" in params or accepts_kwargs) and layer_sink is not None:
             kw["layer_sink"] = layer_sink
         return setup(model_path, model_config, **kw)
 
