@@ -23,7 +23,17 @@
   },
   "profile": "balanced",
   "description": "Primary Fast certification target for routine chat and short agent loops.",
+  "performance": {
+    "decode_tokens_per_second": 67.46036500779391,
+    "warm_ttft_seconds": 0.31954073812812567,
+    "evidence": "GB10-QWEN36-FAST-001",
+    "note": "Fixed 64-token complete-checkpoint probe; the 32K context and 60-minute stability gates were not run."
+  },
+  "evidence": [
+    "GB10-QWEN36-FAST-001"
+  ],
   "limitations": [
-    "The Fast speed, TTFT, context, and 60-minute stability gates have not passed."
+    "The measured speed and TTFT pass the Fast performance thresholds, but the 32K context and 60-minute stability gates were not run.",
+    "The measurement host had 1.94 GiB of unrelated swap resident before launch, although the measured request swapped no pages in or out."
   ]
 }

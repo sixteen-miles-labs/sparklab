@@ -69,7 +69,7 @@ Spark Lab has three recipe tiers:
 | Model | Parameter | Quantization | Status | tok/s | TTFT(s) |
 |---|---|---|---|---:|---:|
 | **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |
-| [Qwen3.6-35B-A3B](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | 35B total / 3B active | NVFP4 | Experimental | — | — |
+| [Qwen3.6-35B-A3B](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | 35B total / 3B active | NVFP4 | Experimental | 67.46 | 0.320 |
 | **Frontier — quality-first coding, reasoning, and long agent work** |  |  |  |  |  |
 | [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next-FP8) | 125B LM + 55B auxiliary / 6B active | FP8 · FTW upload pending | Experimental | — | — |
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | Preview | 9.22 | 14.045 |
@@ -102,6 +102,12 @@ TTFT on the fixed 64-token probe, with identical output across matched controls.
 The compact evidence is checked in as
 [`GB10-BASELINE-001`](benchmarks/gb10/results/GB10-BASELINE-001.json); it is a
 Preview result, not yet a complete Frontier certification.
+
+Qwen3.6 NVFP4 measured 67.46 decode tok/s and 0.320 s warm TTFT on the same class
+of fixed 64-token GB10 probe. The compact
+[`GB10-QWEN36-FAST-001`](benchmarks/gb10/results/GB10-QWEN36-FAST-001.json)
+evidence establishes Fast-class latency, but the recipe stays Experimental until
+its context and endurance gates pass.
 
 The Beta 0.1 Qwen3.8 recipe uses Qwen's official FP8 checkpoint and preserves its
 block-FP8 weights and scales in FTW without conversion-time requantization. It is

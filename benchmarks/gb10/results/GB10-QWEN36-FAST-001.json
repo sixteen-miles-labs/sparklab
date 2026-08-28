@@ -1,0 +1,105 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWEN36-FAST-001",
+  "status": "measured",
+  "recipe": {
+    "slug": "qwen3.6-35b-a3b",
+    "recipe_version": "0.1.0",
+    "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce"
+  },
+  "engine": {
+    "name": "FreeToken",
+    "product_identity": "Spark Lab",
+    "git_revision": "7a785ce8dd1e3d2f3431ec4248567f0b637d4589",
+    "git_tracked_dirty": false
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "machine": "aarch64",
+    "os": "Linux 6.17.0-1014-nvidia",
+    "driver": "580.126.09",
+    "cuda": "13.0",
+    "torch": "2.11.0+cu130",
+    "triton": "3.6.0"
+  },
+  "checkpoint": {
+    "repository": "nvidia/Qwen3.6-35B-A3B-NVFP4",
+    "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce",
+    "full_model": true,
+    "format": "safetensors-nvfp4",
+    "fingerprint": "hf:491c2f1ea524c639598bf8fa787a93fed5a6fbce",
+    "indexed_tensor_bytes": 23407580856,
+    "repository_bytes": 23450872529,
+    "verified_files": 17
+  },
+  "workload": {
+    "name": "AIME-25 problem 0 fixed decode probe",
+    "batch_size": 1,
+    "sampling": "greedy",
+    "prompt_tokens": 54,
+    "requested_completion_tokens": 64,
+    "returned_completion_tokens": 63,
+    "timed_decode_steps": 62,
+    "warmup_requests": 1,
+    "measured_requests": 1,
+    "client_path": "OpenAI-compatible streaming HTTP API"
+  },
+  "configuration": {
+    "moe_backend": "offload",
+    "expert_storage": "ram",
+    "expert_cache_slots": 10240,
+    "expert_cache_rate": 1.0,
+    "nvfp4_backend": "triton",
+    "attention_backend": "flashinfer (auto-selected)",
+    "cuda_graph": true,
+    "kv_tokens": 8192,
+    "page_size": 1,
+    "cache_type": "hybrid_radix",
+    "prefill_hit_d2d": true
+  },
+  "metrics": {
+    "decode_tokens_per_second": 67.46036500779391,
+    "decode_milliseconds_per_token": 14.823518963831088,
+    "warm_ttft_seconds": 0.31954073812812567,
+    "latency_p50_milliseconds": 14.356181025505066,
+    "latency_p99_milliseconds": 28.409785591065884,
+    "device_allocation_gib": 20.50390625,
+    "minimum_mem_available_gib": 61.69485092163086,
+    "power_watts_average": 39.89,
+    "power_watts_peak": 40.11,
+    "gpu_temperature_celsius_peak": 50.0,
+    "swap_in_pages": 0,
+    "swap_out_pages": 0
+  },
+  "validation": {
+    "checkpoint_checksum_verified": true,
+    "complete_checkpoint_loaded": true,
+    "api_stream_completed": true,
+    "output_hash_algorithm": "sha1-prefix",
+    "output_hash": "2205dfe14c21",
+    "output_hash_reproduced_runs": 3,
+    "memory_bounded": true,
+    "swap_growth_bytes": 0,
+    "context_gate_run": false,
+    "endurance_gate_run": false
+  },
+  "admission": {
+    "tier": "fast",
+    "performance_gate_passed": true,
+    "passed": false,
+    "reasons": [
+      "The 32K context and 60-minute stability gates were not run.",
+      "The host had 1.94 GiB of unrelated swap resident before launch, although the measured request swapped no pages in or out."
+    ]
+  },
+  "source": {
+    "summary": "exps/exp_qwen3_6_gb10.md",
+    "raw_artifact": "/home/lidaiqing/results/qwen3.6-gb10/qwen36-nvfp4-cache-full-decode64-isolated.jsonl"
+  },
+  "limitations": [
+    "This result establishes Fast-class latency only; it is not a complete Fast certification.",
+    "The 64-token cap did not reach a final mathematical answer, so the probe validates stable serving output rather than task accuracy.",
+    "Certification must be repeated after host swap usage returns to zero."
+  ]
+}

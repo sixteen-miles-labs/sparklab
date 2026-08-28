@@ -66,7 +66,10 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert glm52.performance.decode_tokens_per_second == pytest.approx(0.802)
     assert glm52.performance.warm_ttft_seconds == pytest.approx(2.57)
     assert get_recipe("deepseek-v4").performance.warm_ttft_seconds == 14.045
-    assert get_recipe("qwen3.6-35b-a3b").performance is None
+    qwen36 = get_recipe("qwen3.6-35b-a3b")
+    assert qwen36.performance.decode_tokens_per_second == pytest.approx(67.46036500779391)
+    assert qwen36.performance.warm_ttft_seconds == pytest.approx(0.31954073812812567)
+    assert qwen36.evidence == ("GB10-QWEN36-FAST-001",)
     primary = select_recipes(load_catalog(), portfolio_role="primary")
     assert {(item.intended_tier, item.slug) for item in primary} == {
         ("fast", "qwen3.6-35b-a3b"),

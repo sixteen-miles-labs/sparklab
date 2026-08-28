@@ -286,6 +286,10 @@ still synchronized at the layer boundary.
 
 The current proof points are:
 
+- Qwen3.6-35B-A3B NVFP4 ran its complete pinned checkpoint at 67.46 decode tok/s
+  and 0.320 s warm TTFT on the selected fixed 64-token probe. The request caused
+  no swap traffic, but this is performance evidence only: the 32K context and
+  60-minute stability gates were not run, so the Fast recipe remains Experimental;
 - Qwen3.8-Flash-Next 0.3.0 historically demonstrated converted NVFP4/NVMe execution at
   12.51 decode tok/s, 0.870 s warm TTFT, exact 65,536-token recall, and 60.50 minutes
   uninterrupted with no model-attributed swap growth. This evidence is retained for
@@ -363,7 +367,8 @@ one real alternative backend as proof of portability before declaring the adapte
 
 - DeepSeek V4 remains the Preview Frontier recipe; GLM-5.3 Flash remains its primary
   Experimental Frontier peer.
-- Qwen3.6 NVFP4 remains the primary Experimental Fast recipe until it passes its gate.
+- Qwen3.6 NVFP4 remains the primary Experimental Fast recipe. Its measured speed and
+  TTFT pass the Fast performance thresholds, while context and endurance gates remain.
 - NVIDIA Kimi-K3-NVFP4 `0.2.0` remains the Experimental Research recipe. Its
   precision-preserving FTW target retains the checkpoint's NVFP4 experts, block-FP8
   attention projections, and the source precision of remaining tensors.
