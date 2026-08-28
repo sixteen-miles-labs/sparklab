@@ -3,6 +3,21 @@
 Kimi K3 is SparkLab's 2.8T-parameter Research recipe for inference beyond physical memory.
 It is Experimental, and its prebuilt FTW artifact is not yet published.
 
+## Install SparkLab
+
+Follow the [full installation guide](../install.md). On NVIDIA DGX Spark, the recommended
+package install is:
+
+```bash
+uv venv && source .venv/bin/activate
+uv pip install "freetoken[accel]"
+sparklab --version
+```
+
+The distribution is currently named `freetoken`; it installs the `sparklab` command.
+See [Install from source](../install.md#method-2-install-from-source) for a development
+checkout.
+
 ## Prepare
 
 Use fast local NVMe storage. `pull --prepare` automatically selects a pinned Hugging Face

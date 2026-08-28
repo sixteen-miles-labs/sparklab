@@ -3,6 +3,21 @@
 GLM-5.3 Flash is a text-only Frontier-tier NVFP4 recipe with NVMe-backed MoE execution.
 The recipe is Experimental.
 
+## Install SparkLab
+
+Follow the [full installation guide](../install.md). On NVIDIA DGX Spark, the recommended
+package install is:
+
+```bash
+uv venv && source .venv/bin/activate
+uv pip install "freetoken[accel]"
+sparklab --version
+```
+
+The distribution is currently named `freetoken`; it installs the `sparklab` command.
+See [Install from source](../install.md#method-2-install-from-source) for a development
+checkout.
+
 ## Prepare
 
 Use fast local NVMe storage. `pull --prepare` automatically downloads the pinned,
