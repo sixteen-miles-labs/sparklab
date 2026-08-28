@@ -49,13 +49,15 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert qwen.recipe_version == "0.4.0"
     assert qwen.intended_tier == "frontier"
     assert qwen.status == "experimental"
-    assert qwen.evidence == ()
+    assert qwen.evidence == ("GB10-QWEN38-FP8-001",)
     assert qwen.backend == "native"
     assert qwen.deployment.runtime_format == "ftw-fp8"
     assert qwen.deployment.backend_options["attention_backend"] == "qsa"
     assert qwen.deployment.quantization == "fp8"
     assert "convert_expert_quantization" not in qwen.deployment.backend_options
-    assert qwen.performance is None
+    assert qwen.performance.decode_tokens_per_second == pytest.approx(4.987115832105288)
+    assert qwen.performance.warm_ttft_seconds == pytest.approx(0.5798669513314962)
+    assert qwen.deployment.backend_options["moe_host_cache_gb"] == 3
     kimi = get_recipe("kimi-k3")
     assert kimi.recipe_version == "0.2.0"
     assert kimi.deployment.runtime_format == "ftw-nvfp4"
@@ -148,6 +150,22 @@ def test_historical_qwen_nvfp4_evidence_does_not_transfer_to_fp8_recipe():
     evaluation = evaluate_tier(recipe, result, "frontier")
     assert not evaluation.passed
     assert any("recipe_version mismatch" in reason for reason in evaluation.reasons)
+
+
+def test_qwen_fp8_recipe_points_to_measured_failed_frontier_evidence():
+    from sparklab.certification import evaluate_tier
+
+    recipe = get_recipe("qwen3.8-flash-next")
+    root = Path(__file__).resolve().parents[2]
+    result = json.loads(
+        (root / "benchmarks/gb10/results/GB10-QWEN38-FP8-001.json").read_text()
+    )
+    assert result["result_id"] == recipe.evidence[0]
+    assert result["metrics"]["decode_tokens_per_second"] == pytest.approx(4.987115832105288)
+    assert result["metrics"]["warm_ttft_seconds"] == pytest.approx(0.5798669513314962)
+    evaluation = evaluate_tier(recipe, result, "frontier")
+    assert not evaluation.passed
+    assert any("must be >= 5" in reason for reason in evaluation.reasons)
 
 
 def test_preview_and_certified_statuses_fail_closed_without_evidence_or_memory():

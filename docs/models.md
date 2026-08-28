@@ -33,7 +33,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |  |
 | [Qwen3.6-35B-A3B](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | 35B total / 3B active | NVFP4 | `qwen3.6-35b-a3b` | Experimental; primary target | 67.46 | 0.320 |
 | **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |  |
-| [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next-FP8) | 125B LM + 55B auxiliary / 6B active | FP8 · FTW upload pending | `qwen3.8-flash-next` | Experimental | — | — |
+| [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next-FP8) | 125B LM + 55B auxiliary / 6B active | FP8 · FTW upload pending | `qwen3.8-flash-next` | Experimental | 4.99 | 0.580 |
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | `deepseek-v4` | Preview | 9.22 | 14.045 |
 | [GLM-5.3 Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 320B total / 18B active | FP8 | `glm-5.3-flash` | Experimental | — | — |
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
@@ -54,8 +54,10 @@ means no accepted complete-checkpoint GB10 performance evidence is attached.
 
 The primary lineup is Qwen3.6 NVFP4 for Fast; Qwen3.8 Flash Next, GLM-5.3 Flash,
 and DeepSeek V4 Flash for Frontier; and Kimi K3 for Research. The Beta Qwen3.8
-recipe preserves its official checkpoint's FP8 precision and is not yet certified. Its
-historical NVFP4 result does not transfer across the quantization and recipe-version boundary.
+recipe preserves its official checkpoint's FP8 precision. Its complete-checkpoint probe
+measured 4.99 decode tok/s and 0.580 s warm TTFT, missing the Frontier throughput floor by
+0.01 tok/s; the remaining gates are outstanding. Its historical NVFP4 result does not
+transfer across the quantization and recipe-version boundary.
 The Kimi K3 recipe similarly preserves NVIDIA's mixed checkpoint: routed experts remain
 NVFP4, supported attention projections remain block FP8, and other tensors retain their
 source precision.

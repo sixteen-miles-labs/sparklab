@@ -98,7 +98,7 @@ def test_native_backend_compiles_qwen_recipe_options_in_stable_order(tmp_path):
         "--moe-storage",
         "disk",
         "--moe-host-cache-gb",
-        "2",
+        "3",
         "--moe-cache-auto",
         "--moe-prefill-sparse-max-tokens",
         "512",

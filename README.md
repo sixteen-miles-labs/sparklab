@@ -71,7 +71,7 @@ Spark Lab has three recipe tiers:
 | **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |
 | [Qwen3.6-35B-A3B](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | 35B total / 3B active | NVFP4 | Experimental | 67.46 | 0.320 |
 | **Frontier — quality-first coding, reasoning, and long agent work** |  |  |  |  |  |
-| [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next-FP8) | 125B LM + 55B auxiliary / 6B active | FP8 · FTW upload pending | Experimental | — | — |
+| [Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next-FP8) | 125B LM + 55B auxiliary / 6B active | FP8 · FTW upload pending | Experimental | 4.99 | 0.580 |
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | Preview | 9.22 | 14.045 |
 | [GLM-5.3 Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 320B total / 18B active | FP8 | Experimental | — | — |
 | **Research — correct, bounded execution beyond the interactive envelope** |  |  |  |  |  |
@@ -110,9 +110,10 @@ evidence establishes Fast-class latency, but the recipe stays Experimental until
 its context and endurance gates pass.
 
 The Beta 0.1 Qwen3.8 recipe uses Qwen's official FP8 checkpoint and preserves its
-block-FP8 weights and scales in FTW without conversion-time requantization. It is
-Experimental until that exact artifact completes the performance, context, quality, and
-endurance gates. The archived
+block-FP8 weights and scales in FTW without conversion-time requantization. The complete
+artifact measured 4.99 decode tok/s and 0.580 s warm TTFT; its throughput missed the
+5 tok/s Frontier floor by 0.01 tok/s, and the remaining gates have not run. See
+[`GB10-QWEN38-FP8-001`](benchmarks/gb10/results/GB10-QWEN38-FP8-001.json). The archived
 [`GB10-QWEN38-FRONTIER-001`](benchmarks/gb10/results/GB10-QWEN38-FRONTIER-001.json)
 result belongs to the superseded NVFP4-converted recipe and does not certify the official
 FP8 Beta artifact.
