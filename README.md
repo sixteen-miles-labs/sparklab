@@ -43,7 +43,7 @@ Spark Lab has three recipe tiers:
 | **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |
 | [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW | Experimental | 67.46 | 0.320 |
 | **Frontier — quality-first coding, reasoning, and long agent work** |  |  |  |  |  |
-| [Qwen3.8-Flash-Next](https://huggingface.co/Inferact/Qwen3.8-Flash-Next-NVFP4) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW upload pending | Experimental | — | — |
+| [Qwen3.8-Flash-Next](https://huggingface.co/Inferact/Qwen3.8-Flash-Next-NVFP4) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW upload pending | Experimental | 12.58 | 0.786 |
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | Preview | 9.22 | 14.045 |
 | [GLM-5.3 Flash](https://huggingface.co/zai-org/GLM-5.3-Flash) | 320B total / 18B active | FP8 | Experimental | — | — |
 | **Research — correct, bounded execution beyond the interactive envelope** |  |  |  |  |  |
@@ -56,6 +56,7 @@ the pinned source checkpoint. Qwen3.8 and Kimi K3 FTW artifacts remain pending.
 The measured results link to compact, machine-readable evidence:
 
 - Qwen3.6: [`GB10-QWEN36-FAST-001`](benchmarks/gb10/results/GB10-QWEN36-FAST-001.json)
+- Qwen3.8: [`GB10-QWEN38-NVFP4-001`](benchmarks/gb10/results/GB10-QWEN38-NVFP4-001.json)
 - DeepSeek V4: [`GB10-BASELINE-001`](benchmarks/gb10/results/GB10-BASELINE-001.json)
 - GLM-5.2: [`experiment and admission result`](exps/exp_glm5_2_gb10.md)
 
@@ -64,8 +65,9 @@ and endurance gates; DeepSeek V4 remains Preview; GLM-5.2 remains an Experimenta
 fallback after its selected trial recorded 680 KiB of swap-out.
 
 The Qwen3.8 recipe targets Inferact's publisher-quantized ModelOpt NVFP4 checkpoint and
-preserves its published precision during FTW preparation. It has not yet been prepared or
-measured on GB10, so the archived
+preserves its published precision during FTW preparation. Its complete-checkpoint probe
+measured 12.58 decode tok/s and 0.786 s warm TTFT, passing the Frontier performance
+thresholds; context, capability, quality, and endurance gates remain outstanding. The archived
 [`GB10-QWEN38-FP8-001`](benchmarks/gb10/results/GB10-QWEN38-FP8-001.json) and
 [`GB10-QWEN38-FRONTIER-001`](benchmarks/gb10/results/GB10-QWEN38-FRONTIER-001.json)
 results remain historical and do not certify it.

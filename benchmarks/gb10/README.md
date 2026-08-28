@@ -12,9 +12,12 @@ recipes. Raw logs and large result streams stay outside the source repository.
 - `results/GB10-QWEN38-FP8-001.json` records the official FP8 recipe's measured
   complete-checkpoint performance probe; it does not pass Frontier admission and predates
   the current Inferact NVFP4 recipe.
+- `results/GB10-QWEN38-NVFP4-001.json` records the current Inferact NVFP4 recipe's
+  complete-checkpoint performance probe: 12.58 decode tok/s and 0.786 s warm TTFT.
 
-The Qwen3.8 recipe version 0.5.0 has no accepted GB10 measurement yet. Neither historical
-Qwen3.8 result transfers across its checkpoint revision and recipe version.
+The Qwen3.8 recipe version 0.5.0 passes the Frontier performance thresholds but remains
+Experimental because its context, capability, quality, and endurance gates are outstanding.
+Neither historical Qwen3.8 result transfers across its checkpoint revision and recipe version.
 
 A model catalog entry may cite a result ID, but that evidence does not make the
 recipe Certified by itself. Tier latency, context, correctness, agent, and
