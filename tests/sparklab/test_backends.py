@@ -141,6 +141,29 @@ def test_native_prepare_preserves_qwen_nvfp4_source_precision(tmp_path, monkeypa
     assert calls[0][1]["moe_backend"] == "offload"
 
 
+def test_native_prepare_honors_resident_expert_bank_layout(tmp_path, monkeypatch):
+    recipe = get_recipe("qwen3.6-35b-a3b")
+    backend = get_backend("native")
+    calls = []
+
+    def converter(*args, **kwargs):
+        calls.append((args, kwargs))
+        return {"fingerprint": "test"}
+
+    expected = ArtifactValidation("ftw-nvfp4", "test", {})
+    monkeypatch.setattr(backend, "validate_artifact", lambda *_args: expected)
+    result = backend.prepare(
+        tmp_path / "source",
+        tmp_path / "runtime",
+        recipe.deployment,
+        implementation=converter,
+    )
+
+    assert result == expected
+    assert calls[0][1]["moe_backend"] == "offload"
+    assert calls[0][1]["nvfp4_backend"] == "triton"
+
+
 def test_schema_one_recipe_migrates_to_native_deployment():
     current = get_recipe("qwen3.8-flash-next").to_dict()
     current.pop("deployment")

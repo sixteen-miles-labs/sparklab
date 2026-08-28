@@ -1,13 +1,19 @@
 {
   "schema_version": "2.0",
-  "recipe_version": "0.1.0",
+  "recipe_version": "0.2.0",
   "slug": "qwen3.6-35b-a3b",
   "name": "Qwen3.6 35B A3B",
   "model": "nvidia/Qwen3.6-35B-A3B-NVFP4",
   "parameters": "35B total / 3B active",
   "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce",
   "source_bytes": 23450872529,
-  "prepared_bytes": 23450872529,
+  "prepared_bytes": 20916176722,
+  "runtime_artifact": {
+    "repo_id": "oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW",
+    "revision": "fecab7acfd0590d2b268d8fb9ea1c88431471111",
+    "bytes": 20916176722,
+    "fingerprint": "bda7268c3e0afd7b"
+  },
   "intended_tier": "fast",
   "status": "experimental",
   "implementation": "available",
@@ -16,10 +22,17 @@
     "backend": "native",
     "backend_api": "1.0",
     "source_format": "safetensors-nvfp4",
-    "runtime_format": "safetensors-nvfp4",
+    "runtime_format": "ftw-nvfp4",
     "quantization": "nvfp4",
     "execution_policy": "resident",
-    "backend_options": {}
+    "backend_options": {
+      "moe_backend": "offload",
+      "moe_storage": "ram",
+      "nvfp4_backend": "triton",
+      "moe_cache_rate": 1.0,
+      "num_tokens": 8192,
+      "moe_prefill_hit_d2d": true
+    }
   },
   "profile": "balanced",
   "description": "Primary Fast certification target for routine chat and short agent loops.",
@@ -27,13 +40,13 @@
     "decode_tokens_per_second": 67.46036500779391,
     "warm_ttft_seconds": 0.31954073812812567,
     "evidence": "GB10-QWEN36-FAST-001",
-    "note": "Fixed 64-token complete-checkpoint probe; the 32K context and 60-minute stability gates were not run."
+    "note": "The 64-token performance probe used the exact source revision before precision-preserving FTW repack; the published FTW artifact separately passed an 8,192-token-capacity startup and API generation smoke test. The 32K context and 60-minute stability gates were not run."
   },
   "evidence": [
     "GB10-QWEN36-FAST-001"
   ],
   "limitations": [
-    "The measured speed and TTFT pass the Fast performance thresholds, but the 32K context and 60-minute stability gates were not run.",
+    "The measured speed and TTFT pass the Fast performance thresholds on the source checkpoint, but the FTW artifact has only completed a short generation smoke test; the 32K context and 60-minute stability gates were not run.",
     "The measurement host had 1.94 GiB of unrelated swap resident before launch, although the measured request swapped no pages in or out."
   ]
 }

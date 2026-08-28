@@ -69,7 +69,7 @@ Spark Lab has three recipe tiers:
 | Model | Parameter | Quantization | Status | tok/s | TTFT(s) |
 |---|---|---|---|---:|---:|
 | **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |
-| [Qwen3.6-35B-A3B](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | 35B total / 3B active | NVFP4 | Experimental | 67.46 | 0.320 |
+| [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW | Experimental | 67.46 | 0.320 |
 | **Frontier — quality-first coding, reasoning, and long agent work** |  |  |  |  |  |
 | [Qwen3.8-Flash-Next](https://huggingface.co/Inferact/Qwen3.8-Flash-Next-NVFP4) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW upload pending | Experimental | — | — |
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | Preview | 9.22 | 14.045 |

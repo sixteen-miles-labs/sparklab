@@ -31,7 +31,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | Model | Parameter | Quantization | Recipe | Status | tok/s | TTFT(s) |
 |---|---|---|---|---|---:|---:|
 | **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |  |
-| [Qwen3.6-35B-A3B](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | 35B total / 3B active | NVFP4 | `qwen3.6-35b-a3b` | Experimental; primary target | 67.46 | 0.320 |
+| [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW | `qwen3.6-35b-a3b` | Experimental; primary target | 67.46 | 0.320 |
 | **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |  |
 | [Qwen3.8-Flash-Next](https://huggingface.co/Inferact/Qwen3.8-Flash-Next-NVFP4) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW upload pending | `qwen3.8-flash-next` | Experimental | — | — |
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | `deepseek-v4` | Preview | 9.22 | 14.045 |

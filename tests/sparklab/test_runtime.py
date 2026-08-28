@@ -45,9 +45,33 @@ def test_runtime_routes_resident_recipe_through_selected_backend(tmp_path):
         get_recipe("qwen3.6-35b-a3b"),
         runtime_memory={"total_bytes": 64 * GIB},
     )
-    checkpoint = source_path(recipe, str(tmp_path))
+    checkpoint = prepared_path(recipe, str(tmp_path))
     checkpoint.mkdir(parents=True)
     (checkpoint / "config.json").write_text("{}", encoding="utf-8")
+    writer = FTWWriter(str(checkpoint), shard_limit=4096)
+    writer.add_tensor("weight", torch.ones(1))
+    writer.finalize(
+        {
+            "fingerprint": recipe.runtime_artifact.fingerprint,
+            "quant_format": "nvfp4",
+            "counts": {"weight": 1},
+        }
+    )
+    manifest = {
+        "schema_version": "2.0",
+        "artifacts": {
+            "source": None,
+            "runtime": {
+                "path": str(checkpoint),
+                "repository": recipe.runtime_artifact.repo_id,
+                "revision": recipe.runtime_artifact.revision,
+            },
+        },
+    }
+    manifest_path(recipe, str(tmp_path)).parent.mkdir(parents=True, exist_ok=True)
+    manifest_path(recipe, str(tmp_path)).write_text(
+        json.dumps(manifest), encoding="utf-8"
+    )
 
     invocation = plan_invocation(
         recipe,

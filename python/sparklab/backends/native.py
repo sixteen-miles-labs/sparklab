@@ -21,12 +21,14 @@ _VALUE_OPTIONS: dict[str, tuple[str, type | tuple[type, ...]]] = {
     "moe_backend": ("--moe-backend", str),
     "moe_storage": ("--moe-storage", str),
     "moe_host_cache_gb": ("--moe-host-cache-gb", (int, float)),
+    "moe_cache_rate": ("--moe-cache-rate", (int, float)),
     "nvfp4_backend": ("--nvfp4-backend", str),
     "moe_prefill_sparse_max_tokens": ("--moe-prefill-sparse-max-tokens", int),
     "cuda_graph_max_bs": ("--cuda-graph-max-bs", int),
     "cache_type": ("--cache-type", str),
     "page_size": ("--page-size", int),
     "max_running_req": ("--max-running-req", int),
+    "num_tokens": ("--num-tokens", int),
 }
 _FLAG_OPTIONS: dict[str, str] = {
     "moe_cache_auto": "--moe-cache-auto",
@@ -37,6 +39,7 @@ _OPTION_ORDER = (
     "moe_backend",
     "moe_storage",
     "moe_host_cache_gb",
+    "moe_cache_rate",
     "moe_cache_auto",
     "nvfp4_backend",
     "moe_prefill_sparse_max_tokens",
@@ -45,6 +48,7 @@ _OPTION_ORDER = (
     "cache_type",
     "page_size",
     "max_running_req",
+    "num_tokens",
 )
 _SUPPORTED_FORMATS = (
     "safetensors",
@@ -235,10 +239,11 @@ class NativeBackend(RuntimeBackend):
         implementation(
             str(source),
             str(destination),
-            moe_backend=(
-                "offload" if deployment.execution_policy == "nvme-moe" else "fused"
+            moe_backend=deployment.backend_options.get(
+                "moe_backend",
+                "offload" if deployment.execution_policy == "nvme-moe" else "fused",
             ),
-            nvfp4_backend="auto",
+            nvfp4_backend=deployment.backend_options.get("nvfp4_backend", "auto"),
             expert_quantization=deployment.backend_options.get(
                 "convert_expert_quantization"
             ),
