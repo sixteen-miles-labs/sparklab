@@ -34,6 +34,7 @@ from .generation import (
     generate_events,
     generate_full,
     prerender_error,
+    public_generation_error,
     render_messages,
     resolve_sampling,
     submit_generation,
@@ -180,15 +181,15 @@ async def handle_chat_completion(
 
     try:
         spec = chat_request_to_genspec(req, model_sampling)
-    except ValueError as exc:
-        return create_error_response(str(exc))
+    except ValueError:
+        return create_error_response("invalid generation parameters")
 
     if req.stream:
         # Non-stream requests already surface render failures as a clean 400
         # through GenerationError; only the stream path needs the pre-check.
         err = await prerender_error(spec, state)
         if err is not None:
-            return create_error_response(str(err), code=err.code)
+            return create_error_response(public_generation_error(err), code=err.code)
 
     uid = await submit_generation(spec, state)
 
@@ -201,7 +202,7 @@ async def handle_chat_completion(
     try:
         result = await generate_full(uid, spec, state, source="/v1/chat/completions")
     except GenerationError as exc:
-        return create_error_response(str(exc), code=exc.code)
+        return create_error_response(public_generation_error(exc), code=exc.code)
     message: dict[str, Any] = {"role": "assistant", "content": result.content}
     if result.reasoning:
         message["reasoning_content"] = result.reasoning
@@ -260,7 +261,13 @@ async def stream_chat_completion_chunks(
             # Request failed before producing output — emit an error chunk + [DONE] so the
             # client gets a terminal signal instead of a stalled stream.
             yield _sse(
-                {"error": {"message": str(exc), "type": "invalid_request_error", "code": exc.code}}
+                {
+                    "error": {
+                        "message": public_generation_error(exc),
+                        "type": "invalid_request_error",
+                        "code": exc.code,
+                    }
+                }
             )
             break
         if isinstance(ev, ReasoningDelta):
@@ -387,8 +394,8 @@ async def handle_completion(
         return create_error_response(unsupported)
     try:  # surfaces an out-of-range max_tokens as a 400 rather than a 500 from the worker
         _resolve_sampling(req, model_sampling)
-    except ValueError as exc:
-        return create_error_response(str(exc), param="max_tokens")
+    except ValueError:
+        return create_error_response("invalid max_tokens", param="max_tokens")
 
     prompts = [req.prompt] if isinstance(req.prompt, str) else req.prompt
     assert isinstance(prompts, list)
@@ -415,7 +422,7 @@ async def handle_completion(
         finish_reason = "stop"
         async for ack in state.wait_for_ack(uid):
             if getattr(ack, "error", None):
-                return create_error_response(ack.error)
+                return create_error_response("the generation request failed")
             prompt_tokens += ack.prompt_tokens_delta
             completion_tokens += ack.completion_tokens_delta
             cached_tokens += ack.cached_tokens
@@ -442,7 +449,13 @@ async def stream_completion_chunks(uid: int, req: CompletionRequest, state: Any)
     finish_reason = "stop"
     async for ack in state.wait_for_ack(uid):
         if getattr(ack, "error", None):
-            yield _sse({"error": {"message": ack.error, "type": "invalid_request_error", "code": None}})
+            yield _sse({
+                "error": {
+                    "message": "the generation request failed",
+                    "type": "invalid_request_error",
+                    "code": None,
+                }
+            })
             yield b"data: [DONE]\n\n"
             return
         prompt_tokens += ack.prompt_tokens_delta

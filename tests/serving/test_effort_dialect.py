@@ -190,7 +190,8 @@ def test_stream_returns_400_when_the_template_rejects_the_render():
     assert isinstance(response, JSONResponse)
     assert response.status_code == 400
     message = json.loads(response.body)["error"]["message"]
-    assert message.startswith("could not encode request")
+    assert message == "the generation request failed"
+    assert "Unexpected reasoning effort" not in message
     assert state.sent is None  # rejected before submission
 
 

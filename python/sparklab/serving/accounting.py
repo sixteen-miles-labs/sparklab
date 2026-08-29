@@ -10,6 +10,7 @@ longer race the last sampled-token reply.
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from ipaddress import IPv6Address, ip_address
 from typing import Any, Callable
@@ -17,6 +18,8 @@ from typing import Any, Callable
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 
 class AdmissionClosedError(RuntimeError):
@@ -132,7 +135,8 @@ def _is_loopback(host: str | None) -> bool:
 
 def register_accounting_routes(app: FastAPI, get_state: Callable[[], Any]) -> None:
     async def _admission_closed(_: Request, exc: AdmissionClosedError) -> JSONResponse:
-        return JSONResponse(status_code=503, content={"error": str(exc)})
+        logger.info("request rejected while admission is closed", exc_info=exc)
+        return JSONResponse(status_code=503, content={"error": "request admission is closed"})
 
     app.add_exception_handler(AdmissionClosedError, _admission_closed)
 
@@ -151,7 +155,12 @@ def register_accounting_routes(app: FastAPI, get_state: Callable[[], Any]) -> No
                 abort_timeout_s=body.abort_timeout_s,
             )
         except AccountingDrainError as exc:
+            logger.warning("prepare-stop accounting drain failed", exc_info=exc)
             return JSONResponse(
                 status_code=503,
-                content={"error": str(exc), "drain_complete": False, "engine_preserved": True},
+                content={
+                    "error": "engine could not complete accounting drain",
+                    "drain_complete": False,
+                    "engine_preserved": True,
+                },
             )

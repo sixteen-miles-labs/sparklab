@@ -635,7 +635,8 @@ def test_stream_surfaces_generation_error_as_failed():
     assert types[-1] == "response.failed"
     failed = events[-1][1]
     assert failed["response"]["status"] == "failed"
-    assert "chat template rejected" in failed["response"]["error"]["message"]
+    assert failed["response"]["error"]["message"] == "the generation request failed"
+    assert "chat template rejected" not in failed["response"]["error"]["message"]
     # No specific class on this failure, so the generic one stands.
     assert failed["response"]["error"]["code"] == "server_error"
 
@@ -673,7 +674,8 @@ def test_route_nonstream_error_returns_400():
     client = _client(_ErrState([]))
     r = client.post("/v1/responses", json={"model": "gpt-x", "input": "hi"})
     assert r.status_code == 400, r.text
-    assert "too long" in r.json()["error"]["message"]
+    assert r.json()["error"]["message"] == "the generation request failed"
+    assert "too long" not in r.json()["error"]["message"]
 
 
 def test_route_stream_error_emits_failed_event():
