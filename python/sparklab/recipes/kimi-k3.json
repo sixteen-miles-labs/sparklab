@@ -8,6 +8,12 @@
   "revision": "f8c5234a0a880bcc6cbf779a315e7ee2f405b812",
   "source_bytes": 1610038482254,
   "prepared_bytes": 1610936311808,
+  "runtime_artifact": {
+    "repo_id": "oakmindai/Kimi-K3-NVFP4-FTW",
+    "revision": "793f1f8436cd7de11e7912c41b3d49d4c9e4d11c",
+    "bytes": 1610936311808,
+    "fingerprint": "534cbc4565d4279d"
+  },
   "minimum_free_bytes": 3357515917980,
   "intended_tier": "research",
   "status": "experimental",

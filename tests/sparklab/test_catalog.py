@@ -82,6 +82,11 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert kimi.performance.warm_ttft_seconds == pytest.approx(395.4053193805739)
     assert kimi.evidence == ("GB10-KIMI-001",)
     assert kimi.runtime_memory == {"total_bytes": 105804767232}
+    assert kimi.runtime_artifact is not None
+    assert kimi.runtime_artifact.repo_id == "oakmindai/Kimi-K3-NVFP4-FTW"
+    assert kimi.runtime_artifact.revision == "793f1f8436cd7de11e7912c41b3d49d4c9e4d11c"
+    assert kimi.runtime_artifact.bytes == 1610936311808
+    assert kimi.runtime_artifact.fingerprint == "534cbc4565d4279d"
     glm52 = get_recipe("glm-5.2")
     assert glm52.recipe_version == "0.2.0"
     assert glm52.performance.decode_tokens_per_second == pytest.approx(0.802)
