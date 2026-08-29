@@ -12,6 +12,7 @@ the moment it is added, and has to be dispositioned here to stay green.
 
 from __future__ import annotations
 
+import os
 from unittest.mock import patch
 
 import pytest
@@ -94,3 +95,26 @@ def test_an_explicit_choice_beats_inference():
         pinned, _ = parse_args(["--model", ANON_PATH, "--reasoning-parser", "qwen3"])
     assert off.reasoning_parser is None
     assert pinned.reasoning_parser == "qwen3"
+
+
+def test_kimi_gb10_flags_publish_compatibility_environment(monkeypatch):
+    monkeypatch.delenv("SPARKLAB_KIMI_MLP_FP8", raising=False)
+    monkeypatch.delenv("SPARKLAB_DISABLE_STARTUP_PREFILL_WARMUP", raising=False)
+
+    with patch(
+        "sparklab.utils.cached_load_hf_config",
+        lambda _path: _Config(
+            {"architectures": ["KimiK3ForConditionalGeneration"], "torch_dtype": "bfloat16"}
+        ),
+    ):
+        parse_args(
+            [
+                "--model",
+                ANON_PATH,
+                "--kimi-mlp-fp8",
+                "--disable-startup-prefill-warmup",
+            ]
+        )
+
+    assert os.environ["SPARKLAB_KIMI_MLP_FP8"] == "1"
+    assert os.environ["SPARKLAB_DISABLE_STARTUP_PREFILL_WARMUP"] == "1"
