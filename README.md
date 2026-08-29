@@ -169,16 +169,13 @@ fingerprints, implementation state, evidence IDs, and known constraints.
 - [CLI reference](docs/cli.md)
 - [GB10 benchmark evidence](benchmarks/gb10/README.md)
 
-## Community and stewardship
+## Contribution
 
 SparkLab is stewarded in public by SixteenMiles Labs. Oakmind AI provides organizational
 backing, legal stewardship, and commercial support.
 
-- [Project identity and public namespaces](BRANDING.md)
 - [Contributing guide](CONTRIBUTING.md)
 - [Governance](GOVERNANCE.md)
-- [Security policy](SECURITY.md)
-- [Code of Conduct](CODE_OF_CONDUCT.md)
 - [Release and package policy](RELEASING.md)
 
 ## Credits and citation
