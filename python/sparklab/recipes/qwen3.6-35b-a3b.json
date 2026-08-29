@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "recipe_version": "0.2.0",
+  "recipe_version": "0.3.0",
   "slug": "qwen3.6-35b-a3b",
   "name": "Qwen3.6 35B A3B",
   "model": "nvidia/Qwen3.6-35B-A3B-NVFP4",
@@ -30,11 +30,14 @@
       "moe_storage": "ram",
       "nvfp4_backend": "triton",
       "moe_cache_rate": 1.0,
-      "num_tokens": 8192,
+      "num_tokens": 32832,
       "moe_prefill_hit_d2d": true
     }
   },
   "profile": "balanced",
+  "runtime_memory": {
+    "total_bytes": 34359738368
+  },
   "description": "Primary Fast certification target for routine chat and short agent loops.",
   "performance": {
     "decode_tokens_per_second": 67.46036500779391,
