@@ -133,7 +133,8 @@ parsers all resolve automatically from the checkpoint and the GPU.
 
 ### MoE offload
 
-See [models.md](models.md#moe-backends) for what each backend does.
+See the [FTW and NVMe execution notes](models.md#ftw-and-nvme-execution) for
+the model-portfolio context behind offloaded execution.
 
 | Flag | Default | Meaning |
 |---|---|---|
@@ -213,8 +214,9 @@ sparklab checkpoint --model <hf_dir> --out <ftw_dir> [--dtype bfloat16] [--moe-b
 Converts an HF safetensors checkpoint to FTW, the engine's self-contained
 fast-load format; point `sparklab serve --model` at the output dir. `--moe-backend
 offload` (default) packs experts into offload banks; `--moe-backend triton`
-keeps them dense for resident serving. See the FTW caveats in
-[models.md](models.md#notes). NVFP4 layouts are backend-owned, so choose the
+keeps them dense for resident serving. See the
+[FTW and NVMe execution notes](models.md#ftw-and-nvme-execution). NVFP4 layouts
+are backend-owned, so choose the
 same `--nvfp4-backend` at conversion and serve time; `auto` selects by GPU,
 while `flashinfer` forces the SM12x b12x layout.
 
