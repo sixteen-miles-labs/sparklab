@@ -31,7 +31,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | Model | Parameter | Quantization | Recipe | Status | tok/s | TTFT(s) |
 |---|---|---|---|---|---:|---:|
 | **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |  |
-| [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW | `qwen3.6-35b-a3b` | Experimental; primary target | 67.46 | 0.320 |
+| [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW | `qwen3.6-35b-a3b` | Certified | 67.79 | 0.329 |
 | **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |  |
 | [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW | `qwen3.8-flash-next` | Experimental | 12.58 | 0.786 |
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | `deepseek-v4` | Preview | 10.28 | 0.604 |
@@ -57,6 +57,12 @@ preserves Inferact's publisher-quantized ModelOpt NVFP4 precision. Its complete-
 probe measured 12.58 decode tok/s and 0.786 s warm TTFT, passing the Frontier performance
 thresholds; the remaining gates are outstanding. Its historical FP8 and earlier NVFP4
 results do not transfer across checkpoint and recipe-version boundaries.
+Qwen3.6 recipe 0.3.0 passed the Fast gate on its pinned FTW artifact: 67.79 decode
+tok/s, 0.329 s warm TTFT, exact 32K recall, capability probes, and an uninterrupted
+60.28-minute zero-swap run. The fixed five-problem AIME sample hit the 2,048-token cap
+on every problem and scored 0/5, so the certification is an operational Fast-tier claim,
+not a quality-benchmark claim. See the
+[versioned evidence](../benchmarks/gb10/results/GB10-QWEN36-FAST-002.json).
 GLM-5.3's KDA-FP8 complete-checkpoint probe measured 4.98 tok/s and 5.379 s warm TTFT.
 Against the same-machine BF16-resident control, decode improved by 18.5% and warm TTFT
 by 4.0%. Prompt-selected NVMe expert reads still dominate TTFT, and the broader

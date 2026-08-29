@@ -1,7 +1,10 @@
 # Run Qwen3.6-35B-A3B
 
 Qwen3.6-35B-A3B is SparkLab's Fast-tier NVFP4 recipe. It uses a pinned, prebuilt FTW
-artifact and runs resident on one NVIDIA DGX Spark. The recipe is Experimental.
+artifact and runs resident on one NVIDIA DGX Spark. Recipe 0.3.0 is Fast-certified on
+one NVIDIA GB10: 67.79 decode tok/s, 0.329 s warm TTFT, exact 32K recall, and a stable
+60-minute zero-swap run. See the
+[versioned evidence](../../benchmarks/gb10/results/GB10-QWEN36-FAST-002.json).
 
 ## Install SparkLab
 

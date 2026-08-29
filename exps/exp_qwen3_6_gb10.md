@@ -1,17 +1,19 @@
 # Qwen3.6-35B-A3B NVFP4 on NVIDIA GB10
 
-Last updated: 2026-08-27
+Last updated: 2026-08-29
 
 ## Result
 
-The complete pinned `nvidia/Qwen3.6-35B-A3B-NVFP4` checkpoint ran through the
-OpenAI-compatible streaming API at **67.46 decode tok/s** with **0.320 s warm TTFT** on one
-NVIDIA GB10. This passes the Fast tier's performance thresholds, but the recipe remains
-Experimental because the 32K context and 60-minute stability gates were not run and the
-host had unrelated swap pages resident before launch.
+The pinned `oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW` artifact is **Fast-certified** on one
+NVIDIA GB10. The certification performance probe measured **67.79 decode tok/s** and
+**0.329 s warm TTFT**. The same artifact passed exact 32,768-token recall, reasoning/tool/
+coding capability probes, bounded resident memory, and an uninterrupted 60.28-minute
+endurance run with 122 requests, zero swap growth, zero OOMs, and zero parser failures.
 
-The compact evidence is
-[`GB10-QWEN36-FAST-001`](../benchmarks/gb10/results/GB10-QWEN36-FAST-001.json).
+The certification evidence is
+[`GB10-QWEN36-FAST-002`](../benchmarks/gb10/results/GB10-QWEN36-FAST-002.json). The earlier
+[`GB10-QWEN36-FAST-001`](../benchmarks/gb10/results/GB10-QWEN36-FAST-001.json) remains the
+historical source-checkpoint performance probe.
 
 ## Artifact and system
 
@@ -66,9 +68,8 @@ the catalog while retaining it as an explicit control.
 
 ## Interpretation
 
-The measured latency clears the Fast performance floor of 20 tok/s and 5 s warm TTFT by a
-wide margin. It does not promote the recipe: the short probe did not reach its mathematical
-final answer, usable 32K context was not tested, and no 60-minute agent trace was run.
-Additionally, SparkLab's doctor correctly reported `supported_not_ready` because about
-1.94 GiB of swap from unrelated host activity existed before the experiment. The measured
-request itself caused no swap-in or swap-out.
+The FTW certification clears every operational Fast gate by a wide margin. Its fixed
+five-problem AIME quality sample scored 0/5 because all five runs exhausted the 2,048-token
+reasoning budget before emitting a final answer. That result is retained explicitly:
+certification establishes complete-checkpoint serving correctness, parser behavior, exact
+32K context, bounded memory, Fast latency, and endurance—not a model-quality promise.

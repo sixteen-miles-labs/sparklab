@@ -15,7 +15,7 @@
     "fingerprint": "bda7268c3e0afd7b"
   },
   "intended_tier": "fast",
-  "status": "experimental",
+  "status": "certified",
   "implementation": "available",
   "portfolio_role": "primary",
   "deployment": {
@@ -40,16 +40,17 @@
   },
   "description": "Primary Fast certification target for routine chat and short agent loops.",
   "performance": {
-    "decode_tokens_per_second": 67.46036500779391,
-    "warm_ttft_seconds": 0.31954073812812567,
-    "evidence": "GB10-QWEN36-FAST-001",
-    "note": "The 64-token performance probe used the exact source revision before precision-preserving FTW repack; the pinned FTW artifact separately passed an 8,192-token-capacity startup and API generation smoke test. The 32K context and 60-minute stability gates were not run."
+    "decode_tokens_per_second": 67.7870954092827,
+    "warm_ttft_seconds": 0.32882933877408504,
+    "evidence": "GB10-QWEN36-FAST-002",
+    "note": "The exact pinned FTW artifact passed the Fast gate with exact 32K recall, complete capability probes, bounded resident memory, and a zero-swap 60-minute endurance run."
   },
   "evidence": [
-    "GB10-QWEN36-FAST-001"
+    "GB10-QWEN36-FAST-001",
+    "GB10-QWEN36-FAST-002"
   ],
   "limitations": [
-    "The measured speed and TTFT pass the Fast performance thresholds on the source checkpoint, but the FTW artifact has only completed a short generation smoke test; the 32K context and 60-minute stability gates were not run.",
-    "The measurement host had 1.94 GiB of unrelated swap resident before launch, although the measured request swapped no pages in or out."
+    "The fixed five-problem AIME sample scored 0/5 because all five sampled runs exhausted the 2,048-token reasoning budget before emitting a final answer; Fast certification establishes serving correctness and operational behavior, not benchmark-quality certification.",
+    "Certification covers text inference at batch one on one NVIDIA GB10."
   ]
 }
