@@ -57,13 +57,25 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--cpu-threads", type=int, default=0)
     p.add_argument("--mem-ratio", type=float, default=0.9)
     p.add_argument("--num-tokens", type=int, default=4096)
+    p.add_argument(
+        "--max-output-tokens",
+        type=int,
+        default=2048,
+        help="maximum reasoning tokens for each behavioral probe",
+    )
     p.add_argument("--disable-prefill-overlap", action="store_true")
     p.add_argument("--prefill-hit-d2d", action="store_true")
     p.add_argument("--prefill-sparse-max-tokens", type=int, default=0)
     p.add_argument("--shared-expert-overlap", action="store_true")
     p.add_argument("--no-graph", action="store_true")
     p.add_argument("--server-timeout", type=float, default=1800)
-    p.set_defaults(collect_moe_stats=True, normal_eos=True, decode=512)
+    p.add_argument(
+        "--request-timeout",
+        type=float,
+        default=1800,
+        help="minimum HTTP timeout in seconds for streamed reasoning generation",
+    )
+    p.set_defaults(collect_moe_stats=True, normal_eos=True, decode=2048)
     return p.parse_args()
 
 
@@ -141,7 +153,7 @@ def main() -> int:
             model_id = get_json(f"{origin}/v1/models")["data"][0]["id"]
 
             reasoning_args = SimpleNamespace(**vars(args))
-            reasoning_args.decode = 384
+            reasoning_args.decode = args.max_output_tokens
             reasoning = stream_generate(
                 origin,
                 model_id,
@@ -181,7 +193,7 @@ def main() -> int:
                 }],
                 "tool_choice": "auto",
                 "temperature": 0.0,
-                "max_tokens": 384,
+                "max_tokens": args.max_output_tokens,
                 "chat_template_kwargs": {"enable_thinking": True},
             }
             tool_response = post_json(f"{origin}/v1/chat/completions", tool_body)
@@ -211,7 +223,7 @@ def main() -> int:
                     ),
                 }],
                 "temperature": 0.0,
-                "max_tokens": 384,
+                "max_tokens": args.max_output_tokens,
                 "chat_template_kwargs": {"enable_thinking": True},
             }
             coding_response = post_json(f"{origin}/v1/chat/completions", coding_body)

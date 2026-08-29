@@ -20,7 +20,9 @@ def test_catalog_has_unique_versioned_three_tier_recipes():
     assert len({recipe.slug for recipe in recipes}) == len(recipes)
     assert all(recipe.schema_version == "2.0" and recipe.recipe_version for recipe in recipes)
     assert all(recipe.parameters for recipe in recipes)
-    assert not {recipe.slug for recipe in recipes if recipe.status == "certified"}
+    assert {recipe.slug for recipe in recipes if recipe.status == "certified"} == {
+        "qwen3.6-35b-a3b"
+    }
 
 
 def test_catalog_contains_requested_portfolio_without_overclaiming_status():
@@ -103,9 +105,11 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert deepseek.deployment.backend_options["moe_prefill_sparse_max_tokens"] == 512
     assert deepseek.deployment.backend_options["moe_cache_auto"] is True
     qwen36 = get_recipe("qwen3.6-35b-a3b")
-    assert qwen36.performance.decode_tokens_per_second == pytest.approx(67.46036500779391)
-    assert qwen36.performance.warm_ttft_seconds == pytest.approx(0.31954073812812567)
-    assert qwen36.evidence == ("GB10-QWEN36-FAST-001",)
+    assert qwen36.status == "certified"
+    assert qwen36.runtime_memory == {"total_bytes": 34359738368}
+    assert qwen36.performance.decode_tokens_per_second == pytest.approx(67.7870954092827)
+    assert qwen36.performance.warm_ttft_seconds == pytest.approx(0.32882933877408504)
+    assert qwen36.evidence == ("GB10-QWEN36-FAST-001", "GB10-QWEN36-FAST-002")
     assert qwen36.runtime_artifact is not None
     assert qwen36.runtime_artifact.repo_id == "oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW"
     assert qwen36.runtime_artifact.revision == "fecab7acfd0590d2b268d8fb9ea1c88431471111"

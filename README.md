@@ -92,9 +92,9 @@ a SparkLab support claim.
       <td><a href="https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW">Qwen3.6-35B-A3B</a></td>
       <td>35B total / 3B active</td>
       <td>NVFP4 · FTW</td>
-      <td>Experimental</td>
-      <td align="right">67.46</td>
-      <td align="right">0.320</td>
+      <td>Certified</td>
+      <td align="right">67.79</td>
+      <td align="right">0.329</td>
       <td><a href="docs/models/qwen3.6-35b-a3b.md">Instructions</a></td>
     </tr>
     <tr>

@@ -91,6 +91,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--greedy", action="store_true")
     p.add_argument("--server-timeout", type=float, default=1800)
     p.add_argument(
+        "--request-timeout",
+        type=float,
+        default=1800,
+        help="minimum HTTP timeout in seconds for each streamed generation request",
+    )
+    p.add_argument(
         "--minimum-duration-minutes",
         type=float,
         default=0.0,

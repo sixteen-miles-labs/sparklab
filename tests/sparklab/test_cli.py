@@ -53,10 +53,11 @@ def test_models_human_table_groups_tiers_and_shows_performance_metrics(capsys):
     assert "35B total / 3B active" in output
     assert "Qwen3.6 35B A3B NVFP4" not in output
     qwen36_row = next(line for line in output.splitlines() if line.startswith("Qwen3.6"))
-    assert qwen36_row.split()[-2:] == ["67.46", "0.320"]
+    assert "CERTIFIED" in qwen36_row
+    assert qwen36_row.split()[-2:] == ["67.79", "0.329"]
     qwen38_row = next(line for line in output.splitlines() if line.startswith("Qwen3.8"))
     assert qwen38_row.split()[-2:] == ["12.58", "0.786"]
-    assert "No recipe is certified yet" in output
+    assert "No recipe is certified yet" not in output
 
 
 def test_models_research_table_includes_measured_glm52_fallback(capsys):

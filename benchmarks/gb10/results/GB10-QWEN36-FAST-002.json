@@ -1,0 +1,107 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWEN36-FAST-002",
+  "status": "certified",
+  "tier": "fast",
+  "recipe": {
+    "slug": "qwen3.6-35b-a3b",
+    "recipe_version": "0.3.0",
+    "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce"
+  },
+  "engine": {
+    "name": "FreeToken",
+    "product_identity": "SparkLab",
+    "git_revision": "cf7f3b01935d592effbf1ce65d4217e5b88941e2"
+  },
+  "platform": {
+    "device": "NVIDIA GB10",
+    "memory_bytes": 130663591936,
+    "machine": "aarch64",
+    "driver": "580.126.09",
+    "cuda": "13.0",
+    "torch": "2.11.0+cu130",
+    "triton": "3.6.0"
+  },
+  "checkpoint": {
+    "repository": "oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW",
+    "source_repository": "nvidia/Qwen3.6-35B-A3B-NVFP4",
+    "source_revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce",
+    "full_model": true,
+    "format": "ftw-nvfp4",
+    "fingerprint": "bda7268c3e0afd7b",
+    "bytes": 20891578368
+  },
+  "metrics": {
+    "decode_tokens_per_second": 67.7870954092827,
+    "warm_ttft_seconds": 0.32882933877408504,
+    "endurance_steady_decode_tokens_per_second": 70.58943841020739,
+    "endurance_steady_ttft_seconds": 0.3402551240287721,
+    "device_allocation_gib": 21.9921875
+  },
+  "validation": {
+    "output_correctness": true,
+    "reasoning_parser": true,
+    "tool_parser": true,
+    "coding_agent_task": true,
+    "memory_bounded": true,
+    "context_tokens": 32768,
+    "context_exact": true,
+    "context_recall": true,
+    "nvme_behavior": "no_stalls"
+  },
+  "quality": {
+    "workload": "AIME-25 fixed five-problem sample",
+    "correct": 0,
+    "problems": 5,
+    "accuracy": 0.0,
+    "ended_by_eos": 0,
+    "hit_token_cap": 5,
+    "max_output_tokens": 2048
+  },
+  "stability": {
+    "duration_minutes": 60.27774197279165,
+    "oom_count": 0,
+    "service_restarts": 0,
+    "swap_start_bytes": 0,
+    "swap_end_bytes": 0,
+    "swap_growth_bytes": 0,
+    "parser_failures": 0,
+    "completed_requests": 122,
+    "scored_requests": 5,
+    "soak_requests": 117,
+    "uninterrupted": true
+  },
+  "sources": [
+    {
+      "kind": "performance",
+      "path": "$HOME/results/qwen3.6-certification/performance-d596c8f.jsonl",
+      "git_revision": "d596c8fbba1bcf2866d9dfda7349d15bcb7ce5cd",
+      "git_tracked_dirty": false
+    },
+    {
+      "kind": "capabilities",
+      "path": "$HOME/results/qwen3.6-certification/capabilities-d480e15.json",
+      "git_revision": "d480e159f8e255b2edd2d2bd9178534c881f2d85",
+      "git_tracked_dirty": false
+    },
+    {
+      "kind": "context_recall",
+      "path": "$HOME/results/qwen3.6-certification/context-32768-d596c8f.json",
+      "git_revision": "d596c8fbba1bcf2866d9dfda7349d15bcb7ce5cd",
+      "git_tracked_dirty": false,
+      "physical_disk_bytes": 0
+    },
+    {
+      "kind": "correctness_and_endurance",
+      "path": "$HOME/results/qwen3.6-certification/aime-endurance-5-cf7f3b0-noswap.jsonl",
+      "git_revision": "cf7f3b01935d592effbf1ce65d4217e5b88941e2",
+      "git_tracked_dirty": false,
+      "physical_disk_bytes": 0
+    }
+  ],
+  "limitations": [
+    "The fixed five-problem AIME sample scored 0/5 because all five sampled runs exhausted the 2,048-token reasoning budget before emitting a final answer; Fast certification establishes serving correctness and operational behavior, not benchmark-quality certification.",
+    "Certification covers text inference at batch one on one NVIDIA GB10.",
+    "The endurance process tree ran with a zero-swap cgroup ceiling after a prior unscoped attempt caused cold anonymous pages to enter swap despite ample available memory."
+  ]
+}
