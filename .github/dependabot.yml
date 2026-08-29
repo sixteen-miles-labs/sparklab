@@ -8,7 +8,11 @@ updates:
       day: monday
       time: "09:00"
       timezone: America/Toronto
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 1
+    groups:
+      github-actions:
+        patterns:
+          - "*"
     labels:
       - dependencies
       - github-actions
@@ -20,7 +24,20 @@ updates:
       day: monday
       time: "09:30"
       timezone: America/Toronto
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 1
+    # These packages are coupled to the validated CUDA 13 / libtorch ABI. Update
+    # them deliberately as one tested runtime migration, not as range-widening PRs.
+    ignore:
+      - dependency-name: torch
+      - dependency-name: triton
+      - dependency-name: sglang-kernel
+    groups:
+      python-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
     labels:
       - dependencies
       - python
