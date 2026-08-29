@@ -282,6 +282,10 @@ def test_iter_weights_bf16_matches_model_state_dict(tmp_path, monkeypatch):
     from sparklab.models.muse_glimmer.weight import iter_weights
 
     hf = _hf_config(num_layers=4)
+    text = hf.text_config
+    text.hidden_size, text.intermediate_size = 64, 96
+    text.num_attention_heads, text.num_key_value_heads, text.head_dim = 1, 1, 64
+    text.vocab_size = 128
     tensors = _bf16_checkpoint_tensors(hf)
     _write_shards(tmp_path, {"model-00001-of-00001.safetensors": tensors})
     import sparklab.models.muse_glimmer.weight as w
