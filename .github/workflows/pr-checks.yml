@@ -1,0 +1,48 @@
+name: PR checks
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  cpu-tests:
+    name: CPU tests
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CUDA_VISIBLE_DEVICES: ""
+      PYTHONPATH: python
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          version: "0.12.6"
+          enable-cache: true
+      - name: Install CPU test dependencies
+        shell: bash
+        run: |
+          uv venv --python 3.11 .venv
+          mapfile -t requirements < <(python3 - <<'PY'
+          import tomllib
+
+          with open("pyproject.toml", "rb") as source:
+              project = tomllib.load(source)["project"]
+          print(
+              *project["dependencies"],
+              *project["optional-dependencies"]["dev"],
+              sep="\n",
+          )
+          PY
+          )
+          uv pip install --python .venv/bin/python --torch-backend cpu "${requirements[@]}"
+      - name: Run CPU tests
+        run: .venv/bin/python -m pytest -q -m "not slow and not needs_weights"
