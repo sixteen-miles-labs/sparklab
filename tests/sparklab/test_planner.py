@@ -114,6 +114,22 @@ def test_artifact_plan_prefers_prebuilt_runtime_without_source_space(
     assert converted.required_bytes == 24 * GIB
 
 
+def test_qwen36_prepare_uses_pinned_source_conversion(tmp_path, monkeypatch):
+    recipe = get_recipe("qwen3.6-35b-a3b")
+    monkeypatch.setattr(
+        "sparklab.planner.shutil.disk_usage",
+        lambda _path: SimpleNamespace(total=100 * GIB, used=20 * GIB, free=80 * GIB),
+    )
+
+    plan = plan_artifacts(recipe, root=str(tmp_path), include_prepared=True)
+
+    assert recipe.runtime_artifact is None
+    assert recipe.model == "nvidia/Qwen3.6-35B-A3B-NVFP4"
+    assert recipe.revision == "491c2f1ea524c639598bf8fa787a93fed5a6fbce"
+    assert plan.acquisition == "source-conversion"
+    assert plan.ready is True
+
+
 def test_acquisition_is_pinned_and_manifest_marks_only_completed_download(tmp_path):
     recipe = replace(
         get_recipe("qwen3.8-flash-next"),

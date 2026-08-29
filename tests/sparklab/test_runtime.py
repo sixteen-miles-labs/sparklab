@@ -52,7 +52,7 @@ def test_runtime_routes_resident_recipe_through_selected_backend(tmp_path):
     writer.add_tensor("weight", torch.ones(1))
     writer.finalize(
         {
-            "fingerprint": recipe.runtime_artifact.fingerprint,
+            "fingerprint": "local-test",
             "quant_format": "nvfp4",
             "counts": {"weight": 1},
         }
@@ -63,8 +63,6 @@ def test_runtime_routes_resident_recipe_through_selected_backend(tmp_path):
             "source": None,
             "runtime": {
                 "path": str(checkpoint),
-                "repository": recipe.runtime_artifact.repo_id,
-                "revision": recipe.runtime_artifact.revision,
             },
         },
     }

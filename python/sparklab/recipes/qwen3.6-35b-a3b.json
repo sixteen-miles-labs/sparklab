@@ -8,12 +8,6 @@
   "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce",
   "source_bytes": 23450872529,
   "prepared_bytes": 20916176722,
-  "runtime_artifact": {
-    "repo_id": "oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW",
-    "revision": "fecab7acfd0590d2b268d8fb9ea1c88431471111",
-    "bytes": 20916176722,
-    "fingerprint": "bda7268c3e0afd7b"
-  },
   "intended_tier": "fast",
   "status": "experimental",
   "implementation": "available",
@@ -40,12 +34,13 @@
     "decode_tokens_per_second": 67.46036500779391,
     "warm_ttft_seconds": 0.31954073812812567,
     "evidence": "GB10-QWEN36-FAST-001",
-    "note": "The 64-token performance probe used the exact source revision before precision-preserving FTW repack; the published FTW artifact separately passed an 8,192-token-capacity startup and API generation smoke test. The 32K context and 60-minute stability gates were not run."
+    "note": "The 64-token performance probe used the exact source revision before precision-preserving FTW repack; a locally prepared FTW artifact separately passed an 8,192-token-capacity startup and API generation smoke test. The 32K context and 60-minute stability gates were not run."
   },
   "evidence": [
     "GB10-QWEN36-FAST-001"
   ],
   "limitations": [
+    "No public immutable prebuilt FTW artifact is currently configured; pull --prepare downloads the pinned NVIDIA checkpoint and repacks it locally.",
     "The measured speed and TTFT pass the Fast performance thresholds on the source checkpoint, but the FTW artifact has only completed a short generation smoke test; the 32K context and 60-minute stability gates were not run.",
     "The measurement host had 1.94 GiB of unrelated swap resident before launch, although the measured request swapped no pages in or out."
   ]
