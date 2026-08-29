@@ -16,8 +16,8 @@ scripts/build-release-wheels.sh
 By default, artifacts are written to `dist/`:
 
 ```text
-dist/sparklab-<version>-cp312-cp312-linux_x86_64.whl
-dist/sparklab_kernel_cache-<version>+cu130-py3-none-linux_x86_64.whl
+dist/sparklab-<version>-cp312-cp312-linux_aarch64.whl
+dist/sparklab_kernel_cache-<version>+cu130-py3-none-linux_aarch64.whl
 ```
 
 Useful knobs:
@@ -55,8 +55,8 @@ At runtime, `sparklab.kernels.utils.load_jit()` and `load_aot()` look for
 `install.sh` installs both wheels. Pass both explicitly:
 
 ```bash
-SPARKLAB_WHEEL=dist/sparklab-0.1.1-cp312-cp312-linux_x86_64.whl \
-SPARKLAB_KERNEL_CACHE_WHEEL=dist/sparklab_kernel_cache-0.1.1+cu130-py3-none-linux_x86_64.whl \
+SPARKLAB_WHEEL=dist/sparklab-0.1.1-cp312-cp312-linux_aarch64.whl \
+SPARKLAB_KERNEL_CACHE_WHEEL=dist/sparklab_kernel_cache-0.1.1+cu130-py3-none-linux_aarch64.whl \
 bash install.sh
 ```
 

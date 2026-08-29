@@ -33,6 +33,20 @@ def test_release_workflows_are_guarded_for_the_current_repository():
     assert 'gh release create "$TAG"' in publisher
 
 
+def test_release_wheels_target_dgx_spark_arm64():
+    release = _read(".github/workflows/release.yml")
+    nightly = _read(".github/workflows/nightly-wheels.yml")
+    builder = _read("scripts/ci/manylinux-build.sh")
+    publisher = _read("scripts/publish-wheels.sh")
+
+    for workflow in (release, nightly):
+        assert "runs-on: [self-hosted, linux, ARM64, engine-build]" in workflow
+    assert "manylinux*aarch64.whl" in release
+    assert "linux_aarch64" in nightly
+    assert "pytorch/manylinuxaarch64-builder:cuda13.0@sha256:" in builder
+    assert "*linux_aarch64*) echo linux_aarch64" in publisher
+
+
 def test_sparklab_is_the_primary_installer_and_service_identity():
     installer = _read("install.sh")
     service = _read("python/sparklab/daemon/sparklab.service")

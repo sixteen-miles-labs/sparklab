@@ -11,16 +11,17 @@
 # SPARKLAB_IN_CONTAINER guard runs in the container as root.
 #
 # Environment (host side):
-#   SPARKLAB_BUILDER_IMAGE   builder image (default: pytorch/manylinux2_28-builder:cuda13.0)
+#   SPARKLAB_BUILDER_IMAGE   builder image override. By default, select PyTorch's
+#                      CUDA 13 manylinux_2_28 image for the host architecture.
 #   SPARKLAB_CI_CACHE_DIR    persistent cache dir on the host, holds the uv binary and
 #                      uv's package cache across builds (default: ~/.cache/sparklab-ci)
 #   SPARKLAB_OUT_DIR         host dir that receives the wheels (default: <repo>/dist)
 #   SPARKLAB_PYTHON_MATRIX   space-separated cp tags to build the runtime wheel for
 #                      (default: cp312 -- the nightly/Desktop channel is cp312-only;
 #                      the release lane passes "cp310 cp311 cp312 cp313")
-#   SPARKLAB_MANYLINUX_RETAG retag runtime wheels linux_x86_64 -> detected manylinux (default: 0).
-#                      Release/PyPI lane only: shipped Desktops resolve the nightly
-#                      release's assets by name and expect linux_x86_64.
+#   SPARKLAB_MANYLINUX_RETAG retag native linux wheels -> detected manylinux (default: 0).
+#                      Release/PyPI lane only: rolling beta assets keep native
+#                      linux tags for compatibility with the installer.
 #   SPARKLAB_BUILD_NO_STAMP / _RELEASE / _DEV_STAMP / _STRIP and
 #   SPARKLAB_KERNEL_CACHE_* are forwarded into the container. Other
 #   SPARKLAB_BUILD_* vars are NOT: _CLEAN is set by this script per matrix
@@ -29,10 +30,25 @@
 set -euo pipefail
 
 say() { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
+die() { printf '\033[1;31m[error]\033[0m %s\n' "$*" >&2; exit 1; }
+
+default_builder_image() {
+  case "$(uname -m)" in
+    aarch64 | arm64)
+      # Pin the ARM64 CUDA 13 image used for the 0.1 release lane. A floating
+      # cuda13.0 tag can change the compiler and wheel bytes between rebuilds.
+      echo "pytorch/manylinuxaarch64-builder:cuda13.0@sha256:4b78d6020590313ec106ffe4a64a21f8cdee943991c46fcd31a99486777e1d0f"
+      ;;
+    x86_64 | amd64)
+      echo "pytorch/manylinux2_28-builder:cuda13.0@sha256:c82aaf3a4cd5db38eed631b2901a9253a5808f1f9a00fee5839c9c9aaf959870"
+      ;;
+    *) die "no default manylinux CUDA builder for host architecture $(uname -m)" ;;
+  esac
+}
 
 if [[ -z "${SPARKLAB_IN_CONTAINER:-}" ]]; then
   ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
-  IMAGE="${SPARKLAB_BUILDER_IMAGE:-pytorch/manylinux2_28-builder:cuda13.0}"
+  IMAGE="${SPARKLAB_BUILDER_IMAGE:-$(default_builder_image)}"
   CACHE_DIR="${SPARKLAB_CI_CACHE_DIR:-$HOME/.cache/sparklab-ci}"
   OUT_DIR="${SPARKLAB_OUT_DIR:-$ROOT/dist}"
   mkdir -p "$CACHE_DIR" "$OUT_DIR"
@@ -119,11 +135,11 @@ case " 1 true yes on " in *" $(printf '%s' "$RETAG" | tr '[:upper:]' '[:lower:]'
   say "retagging runtime wheels to their detected manylinux policy"
   uv pip install --quiet --python "$VENV/bin/python" "auditwheel==6.6.0"
   found=0
-  for whl in /ci-out/sparklab-*linux_x86_64.whl; do
+  for whl in /ci-out/sparklab-*linux_*.whl; do
     [[ -e "$whl" ]] || continue
     "$VENV/bin/python" scripts/ci/retag-manylinux.py "$whl"
     found=1
   done
-  [[ "$found" == 1 ]] || { echo "SPARKLAB_MANYLINUX_RETAG set but no linux_x86_64 runtime wheels in /ci-out" >&2; exit 1; }
+  [[ "$found" == 1 ]] || { echo "SPARKLAB_MANYLINUX_RETAG set but no native linux runtime wheels in /ci-out" >&2; exit 1; }
   ;;
 esac

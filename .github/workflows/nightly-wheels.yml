@@ -14,7 +14,7 @@
 #
 # The wheels carry the +g<sha> stamp from scripts/build-release-wheels.sh, so a
 # nightly is fully identified by the commit it was built from. Nights where HEAD is
-# already published are skipped before the EC2 node is ever started.
+# already published are skipped before the trusted build runner is touched.
 #
 # Formal (tagged) releases are out of scope here for now -- this workflow is the
 # nightly channel only.
@@ -65,7 +65,7 @@ jobs:
           # workflow only builds linux, so compare the linux runtime wheel only.
           published_stamp="$(gh api "repos/$WEB_REPO/releases/tags/$WEB_TAG" \
             --jq '.assets[].name' 2>/dev/null \
-            | grep -E '^sparklab-.*linux_x86_64\.whl$' \
+            | grep -E '^sparklab-.*linux_aarch64\.whl$' \
             | grep -oE '\+g[0-9a-f]{7,}' | head -1 || true)"
           echo "HEAD: $head_stamp  published: ${published_stamp:-<none>}"
           if [ "$FORCE" = "true" ] || [ "$head_stamp" != "$published_stamp" ]; then
@@ -78,7 +78,7 @@ jobs:
   build:
     needs: check
     if: needs.check.outputs.build == 'true'
-    runs-on: [self-hosted, linux, engine-build]
+    runs-on: [self-hosted, linux, ARM64, engine-build]
     timeout-minutes: 40
     steps:
       # The build container runs as root; an interrupted build can leave root-owned
