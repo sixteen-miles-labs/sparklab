@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   signoff:
-    if: github.repository == 'sixteen-miles-labs/freetoken'
+    if: github.repository == 'sixteen-miles-labs/sparklab'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

@@ -4,8 +4,8 @@ title: "SparkLab: Frontier Open-Weight Model Inference on NVIDIA DGX Spark"
 type: software
 authors:
   - name: "SixteenMiles Labs"
-repository-code: "https://github.com/sixteen-miles-labs/freetoken"
-url: "https://github.com/sixteen-miles-labs/freetoken"
+repository-code: "https://github.com/sixteen-miles-labs/sparklab"
+url: "https://github.com/sixteen-miles-labs/sparklab"
 license: Apache-2.0
 keywords:
   - artificial intelligence

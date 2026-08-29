@@ -14,7 +14,7 @@ def test_public_package_metadata_belongs_to_sixteenmiles_labs():
 
     for text in (pyproject, kernel_project):
         assert 'name = "SixteenMiles Labs"' in text
-        assert "https://github.com/sixteen-miles-labs/freetoken" in text
+        assert "https://github.com/sixteen-miles-labs/sparklab" in text
     assert 'description = "SparkLab:' in pyproject
     assert 'license-files = ["LICENSE", "NOTICE"]' in pyproject
 
@@ -25,11 +25,11 @@ def test_release_workflows_are_guarded_for_the_current_repository():
     publisher = _read("scripts/publish-wheels.sh")
 
     for workflow in (release, nightly):
-        assert "github.repository == 'sixteen-miles-labs/freetoken'" in workflow
+        assert "github.repository == 'sixteen-miles-labs/sparklab'" in workflow
         assert "github.repository == 'FlashML-org/FreeToken'" not in workflow
     assert "actions/attest@" in release
     assert "SHA256SUMS" in release
-    assert "sixteen-miles-labs/freetoken" in publisher
+    assert "sixteen-miles-labs/sparklab" in publisher
     assert 'gh release create "$TAG"' in publisher
 
 

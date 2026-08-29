@@ -25,9 +25,9 @@ maintainers = [{ name = "SixteenMiles Labs" }]
 dependencies = ["apache-tvm-ffi==0.1.13.post3"]
 
 [project.urls]
-Homepage = "https://github.com/sixteen-miles-labs/freetoken"
-Repository = "https://github.com/sixteen-miles-labs/freetoken"
-Issues = "https://github.com/sixteen-miles-labs/freetoken/issues"
+Homepage = "https://github.com/sixteen-miles-labs/sparklab"
+Repository = "https://github.com/sixteen-miles-labs/sparklab"
+Issues = "https://github.com/sixteen-miles-labs/sparklab/issues"
 
 # Provenance pin: PyPI's torch 2.11.0 is itself the cu130 build, but this index serves
 # ONLY cu130 wheels, so an isolated build can never resolve a different-CUDA torch and

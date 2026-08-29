@@ -13,7 +13,7 @@
 
 [Unit]
 Description=SparkLab engine supervisor
-Documentation=https://github.com/sixteen-miles-labs/freetoken/blob/main/python/freetoken/daemon/README.md
+Documentation=https://github.com/sixteen-miles-labs/sparklab/blob/main/python/freetoken/daemon/README.md
 After=network.target
 StartLimitIntervalSec=0
 

@@ -27,7 +27,7 @@ edit, reject, or remove contributions or restrict participation for behavior the
 inappropriate, threatening, offensive, or harmful.
 
 For a private report, use the repository's
-[private reporting channel](https://github.com/sixteen-miles-labs/freetoken/security/advisories/new)
+[private reporting channel](https://github.com/sixteen-miles-labs/sparklab/security/advisories/new)
 and identify it as a conduct report. Reports are reviewed by SixteenMiles Labs maintainers
 and handled with appropriate confidentiality. A maintainer who is the subject of a report
 must not participate in its resolution.

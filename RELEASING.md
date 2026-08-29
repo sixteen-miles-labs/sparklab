@@ -10,7 +10,7 @@ engine package and research identity.
 - Primary product command: `sparklab`
 - Compatibility command and Python imports: `ft`, `freetoken.*`
 - Companion binary package: `freetoken-kernel-cache`
-- GitHub release repository: `sixteen-miles-labs/freetoken`
+- GitHub release repository: `sixteen-miles-labs/sparklab`
 - Future container namespace: `ghcr.io/sixteen-miles-labs/sparklab`
 
 The `sparklab` PyPI name should be reserved only by publishing an intentional package with
@@ -47,6 +47,6 @@ Repository owners must configure these outside the source tree:
 - create a SixteenMiles Labs Hugging Face organization before moving model repositories;
 - preserve immutable model revisions and redirects during any repository transfer.
 
-The canonical rolling `beta` release now lives in `sixteen-miles-labs/freetoken`. The
+The canonical rolling `beta` release now lives in `sixteen-miles-labs/sparklab`. The
 publisher retains a `FREETOKEN_WEB_REPO` override only for coordinated compatibility
 migrations; formal SparkLab releases must not target an external upstream repository.

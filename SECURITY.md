@@ -8,7 +8,7 @@ may receive a fix when practical, but are not supported unless their release not
 ## Report a vulnerability
 
 Do not open a public issue. Use GitHub's
-[private vulnerability reporting](https://github.com/sixteen-miles-labs/freetoken/security/advisories/new)
+[private vulnerability reporting](https://github.com/sixteen-miles-labs/sparklab/security/advisories/new)
 to report vulnerabilities to the SixteenMiles Labs security responders.
 
 Include, when available:

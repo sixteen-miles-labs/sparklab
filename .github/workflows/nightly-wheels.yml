@@ -40,7 +40,7 @@ concurrency:
   group: nightly-wheels
 
 env:
-  WEB_REPO: sixteen-miles-labs/freetoken
+  WEB_REPO: sixteen-miles-labs/sparklab
   WEB_TAG: beta
 
 jobs:
@@ -48,7 +48,7 @@ jobs:
   # night costs nothing and never touches AWS.
   check:
     # Guard against fork code reaching the SixteenMiles Labs build runner.
-    if: github.repository == 'sixteen-miles-labs/freetoken'
+    if: github.repository == 'sixteen-miles-labs/sparklab'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:

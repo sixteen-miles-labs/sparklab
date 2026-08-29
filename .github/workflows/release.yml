@@ -57,7 +57,7 @@ jobs:
     # Mode is keyed on the EVENT, never on ref_type: a workflow_dispatch can be
     # pointed at a tag ref, and that must stay a rehearsal, not become a release.
     if: >-
-      github.repository == 'sixteen-miles-labs/freetoken' &&
+      github.repository == 'sixteen-miles-labs/sparklab' &&
       (github.event_name == 'push' || inputs.testpypi_rehearsal)
     runs-on: [self-hosted, linux, engine-build]
     timeout-minutes: 60

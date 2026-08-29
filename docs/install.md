@@ -23,7 +23,7 @@ package metadata are maintained by SixteenMiles Labs.
 ## Method 2: Install from source
 
 ```bash
-git clone https://github.com/sixteen-miles-labs/freetoken.git && cd freetoken
+git clone https://github.com/sixteen-miles-labs/sparklab.git && cd sparklab
 uv venv && source .venv/bin/activate
 uv pip install -e ".[accel]"
 ```

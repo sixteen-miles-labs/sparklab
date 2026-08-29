@@ -13,11 +13,11 @@
 # with write access to the target repo.
 #
 # Environment:
-#   FREETOKEN_WEB_REPO   target repo  (default: sixteen-miles-labs/freetoken)
+#   FREETOKEN_WEB_REPO   target repo  (default: sixteen-miles-labs/sparklab)
 #   FREETOKEN_WEB_TAG    release tag  (default: beta)
 set -euo pipefail
 
-REPO="${FREETOKEN_WEB_REPO:-sixteen-miles-labs/freetoken}"
+REPO="${FREETOKEN_WEB_REPO:-sixteen-miles-labs/sparklab}"
 TAG="${FREETOKEN_WEB_TAG:-beta}"
 DIST="${1:-dist}"
 

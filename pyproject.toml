@@ -66,11 +66,11 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/sixteen-miles-labs/freetoken"
-Repository = "https://github.com/sixteen-miles-labs/freetoken"
-Documentation = "https://github.com/sixteen-miles-labs/freetoken/tree/main/docs"
-Issues = "https://github.com/sixteen-miles-labs/freetoken/issues"
-Changelog = "https://github.com/sixteen-miles-labs/freetoken/releases"
+Homepage = "https://github.com/sixteen-miles-labs/sparklab"
+Repository = "https://github.com/sixteen-miles-labs/sparklab"
+Documentation = "https://github.com/sixteen-miles-labs/sparklab/tree/main/docs"
+Issues = "https://github.com/sixteen-miles-labs/sparklab/issues"
+Changelog = "https://github.com/sixteen-miles-labs/sparklab/releases"
 
 [project.scripts]
 ft = "freetoken.cli:main"

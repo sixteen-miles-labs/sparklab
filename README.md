@@ -4,8 +4,8 @@
   <a href="docs/">
     <img src="https://img.shields.io/badge/Documentation-Read%20the%20docs-2563EB" alt="Documentation">
   </a>
-  <a href="https://github.com/sixteen-miles-labs/freetoken/releases">
-    <img src="https://img.shields.io/github/v/release/sixteen-miles-labs/freetoken?label=Release" alt="Latest release">
+  <a href="https://github.com/sixteen-miles-labs/sparklab/releases">
+    <img src="https://img.shields.io/github/v/release/sixteen-miles-labs/sparklab?label=Release" alt="Latest release">
   </a>
   <a href="LICENSE">
     <img src="https://img.shields.io/badge/License-Apache%202.0-D22128" alt="Apache License 2.0">
@@ -202,7 +202,7 @@ If you use SparkLab, cite the software:
   title={SparkLab: Frontier Open-Weight Model Inference on NVIDIA DGX Spark},
   author={{SixteenMiles Labs}},
   year={2026},
-  url={https://github.com/sixteen-miles-labs/freetoken},
+  url={https://github.com/sixteen-miles-labs/sparklab},
   license={Apache-2.0}
 }
 ```
