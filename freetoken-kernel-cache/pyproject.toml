@@ -17,10 +17,17 @@ backend-path = ["."]
 [project]
 name = "freetoken-kernel-cache"
 dynamic = ["version"]
-description = "Prebuilt TVM FFI kernel cache for FreeToken"
+description = "Prebuilt TVM FFI kernel cache for the SparkLab FreeToken engine"
 requires-python = ">=3.10"
 license = "Apache-2.0"
+authors = [{ name = "SixteenMiles Labs" }]
+maintainers = [{ name = "SixteenMiles Labs" }]
 dependencies = ["apache-tvm-ffi==0.1.13.post3"]
+
+[project.urls]
+Homepage = "https://github.com/sixteen-miles-labs/freetoken"
+Repository = "https://github.com/sixteen-miles-labs/freetoken"
+Issues = "https://github.com/sixteen-miles-labs/freetoken/issues"
 
 # Provenance pin: PyPI's torch 2.11.0 is itself the cu130 build, but this index serves
 # ONLY cu130 wheels, so an isolated build can never resolve a different-CUDA torch and

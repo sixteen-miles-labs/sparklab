@@ -1,0 +1,15 @@
+title = "SparkLab secret scanning"
+
+[extend]
+useDefault = true
+
+# `_dsv4_arguments_str` is an internal tokenizer helper, not a credential. Its name
+# triggered the generic API-key rule in the initial open-source commit history.
+[[rules]]
+id = "generic-api-key"
+
+  [[rules.allowlists]]
+  condition = "AND"
+  regexTarget = "line"
+  paths = ['''^tests/tokenizer/test_tokenize\.py$''']
+  regexes = ['''_dsv4_arguments_str''']

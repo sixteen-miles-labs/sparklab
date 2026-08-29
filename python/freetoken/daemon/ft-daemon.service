@@ -1,4 +1,5 @@
-# FreeToken engine supervisor — reference systemd unit (WSL user service or native Linux).
+# Legacy FreeToken engine supervisor unit. New deployments should install
+# `sparklab.service`; this filename remains available for compatibility.
 #
 # Install (user service, works under WSL which supports systemd):
 #   mkdir -p ~/.config/systemd/user
@@ -20,6 +21,7 @@
 [Unit]
 Description=FreeToken engine supervisor (ft daemon)
 After=network.target
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
@@ -28,7 +30,6 @@ ExecStart=%h/FreeToken/.venv/bin/ft daemon --host 127.0.0.1 --port 1900
 Restart=always
 RestartSec=1
 # Do not give up restarting after N fast failures — the control plane must always come back.
-StartLimitIntervalSec=0
 # Only signal the main process on stop/restart, so the serve child survives for re-adoption.
 KillMode=process
 KillSignal=SIGTERM

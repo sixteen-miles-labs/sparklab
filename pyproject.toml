@@ -10,12 +10,14 @@ build-backend = "setuptools.build_meta"
 name = "freetoken"
 # Single source of truth: python/freetoken/version.py (read via the attr directive below).
 dynamic = ["version"]
-description = "Spark Lab: GB10-native frontier inference powered by the FreeToken engine"
+description = "SparkLab: GB10-native frontier inference powered by the FreeToken engine"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
-license-files = ["LICENSE"]
-authors = [{ name = "FlashML Team" }]
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "SixteenMiles Labs" }]
+maintainers = [{ name = "SixteenMiles Labs" }]
+keywords = ["ai", "dgx-spark", "gb10", "inference", "moe", "sparklab"]
 # No License:: classifier: setuptools>=77 rejects mixing one with the SPDX string above.
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -64,9 +66,11 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/FlashML-org/FreeToken"
-Repository = "https://github.com/FlashML-org/FreeToken"
-Issues = "https://github.com/FlashML-org/FreeToken/issues"
+Homepage = "https://github.com/sixteen-miles-labs/freetoken"
+Repository = "https://github.com/sixteen-miles-labs/freetoken"
+Documentation = "https://github.com/sixteen-miles-labs/freetoken/tree/main/docs"
+Issues = "https://github.com/sixteen-miles-labs/freetoken/issues"
+Changelog = "https://github.com/sixteen-miles-labs/freetoken/releases"
 
 [project.scripts]
 ft = "freetoken.cli:main"

@@ -9,7 +9,7 @@
 #
 # This lane is separate from nightly-wheels.yml on purpose:
 #   - nightly ships +g<sha>-stamped, linux_x86_64-tagged cp312 wheels to the
-#     FreeToken-Web rolling `beta` release, which shipped Desktops resolve by
+#     SixteenMiles Labs rolling `beta` release, which legacy Desktops resolve by
 #     asset name -- that channel's naming must not change.
 #   - release ships bare-versioned, manylinux-retagged cp310-cp313 wheels, which
 #     is what PyPI accepts.
@@ -17,9 +17,8 @@
 # Security shape mirrors nightly-wheels.yml: fork code never reaches the
 # self-hosted node (no pull_request trigger + repo guard), and credentials only
 # exist on hosted runners. The upload tokens are ENVIRONMENT secrets on `pypi` /
-# `testpypi`, so the environment's reviewers gate every use of them -- NOT the
-# existing `release` environment, which holds the FreeToken-Web PAT and must
-# stay off this lane.
+# `testpypi`, so the environments' reviewers gate every use. GitHub release publication
+# uses the job-scoped repository token; public builds additionally use OIDC for provenance.
 #
 # One-time owner setup:
 #   - GitHub environments `pypi` and `testpypi`, `pypi` WITH required reviewers:
@@ -54,11 +53,11 @@ concurrency:
 
 jobs:
   build:
-    # Guard against runs from forks of this repo; update on an org transfer.
+    # Guard against runs from forks: releases belong to SixteenMiles Labs.
     # Mode is keyed on the EVENT, never on ref_type: a workflow_dispatch can be
     # pointed at a tag ref, and that must stay a rehearsal, not become a release.
     if: >-
-      github.repository == 'FlashML-org/FreeToken' &&
+      github.repository == 'sixteen-miles-labs/freetoken' &&
       (github.event_name == 'push' || inputs.testpypi_rehearsal)
     runs-on: [self-hosted, linux, engine-build]
     timeout-minutes: 60
@@ -177,11 +176,23 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     steps:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: release-wheels
           path: dist
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum -- *.whl > SHA256SUMS
+      - name: Attest release wheels
+        if: ${{ !github.event.repository.private }}
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: dist/*.whl
       - name: Create draft release with all wheels
         env:
           GH_TOKEN: ${{ github.token }}
@@ -192,5 +203,6 @@ jobs:
             --title "$GITHUB_REF_NAME" \
             --notes "Draft -- edit notes, then publish." \
             -R "$GITHUB_REPOSITORY" \
-            dist/*.whl \
-          || gh release upload "$GITHUB_REF_NAME" dist/*.whl --clobber -R "$GITHUB_REPOSITORY"
+            dist/*.whl dist/SHA256SUMS \
+          || gh release upload "$GITHUB_REF_NAME" dist/*.whl dist/SHA256SUMS \
+            --clobber -R "$GITHUB_REPOSITORY"

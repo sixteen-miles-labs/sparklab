@@ -1,18 +1,18 @@
-# FreeToken to Spark Lab migration
+# FreeToken to SparkLab migration
 
-Spark Lab is being introduced as a product layer without forcing an immediate
+SparkLab is being introduced as a product layer without forcing an immediate
 engine-package rename.
 
-| Existing surface | Spark Lab surface | Current behavior |
+| Existing surface | SparkLab surface | Current behavior |
 |---|---|---|
 | `ft` | `sparklab` | Both commands are installed and supported |
 | `freetoken.*` imports | unchanged | The engine package remains `freetoken` |
 | `FREETOKEN_*` | `SPARKLAB_*` | Product name wins where migrated; legacy value is the fallback |
-| `~/.cache/freetoken` | `~/.cache/sparklab` | New bandwidth profiles use Spark Lab; old profiles are discovered read-only |
+| `~/.cache/freetoken` | `~/.cache/sparklab` | New bandwidth profiles use SparkLab; old profiles are discovered read-only |
 | API routes and schemas | unchanged | Existing OpenAI and Anthropic clients remain compatible |
 | FreeToken paper name | unchanged | Academic attribution remains FreeToken |
 
-The first product commands are:
+The first SparkLab product commands are:
 
 ```bash
 sparklab doctor

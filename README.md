@@ -171,6 +171,18 @@ fingerprints, implementation state, evidence IDs, and known constraints.
 - [GB10 benchmark evidence](benchmarks/gb10/README.md)
 - [Release scope and acceptance gates](docs/beta-0.1-release-plan.md)
 
+## Community and stewardship
+
+SparkLab and the FreeToken engine are stewarded in public by SixteenMiles Labs. Oakmind AI
+provides organizational backing, legal stewardship, and commercial support.
+
+- [Project identity and public namespaces](BRANDING.md)
+- [Contributing guide](CONTRIBUTING.md)
+- [Governance](GOVERNANCE.md)
+- [Security policy](SECURITY.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Release and package policy](RELEASING.md)
+
 ## Credits and citation
 
 SparkLab incorporates the [FreeToken](https://github.com/FlashML-org/FreeToken) research

@@ -1,5 +1,5 @@
-# Nightly engine wheels: build on the self-hosted EC2 node and publish to the
-# FreeToken-Web rolling `beta` release.
+# Nightly engine wheels: build on the self-hosted node and publish to the
+# SixteenMiles Labs rolling `beta` release in this repository.
 #
 # The node currently runs ALWAYS-ON, so this workflow does no power management.
 # Reintroduce the elastic variant (OIDC start-node/stop-node jobs around the build,
@@ -40,15 +40,15 @@ concurrency:
   group: nightly-wheels
 
 env:
-  WEB_REPO: FlashML-org/FreeToken-Web
+  WEB_REPO: sixteen-miles-labs/freetoken
   WEB_TAG: beta
 
 jobs:
   # Decide whether HEAD needs building at all. Runs on a hosted runner so a no-op
   # night costs nothing and never touches AWS.
   check:
-    # Guard against runs from forks of this repo; update on an org transfer.
-    if: github.repository == 'FlashML-org/FreeToken'
+    # Guard against fork code reaching the SixteenMiles Labs build runner.
+    if: github.repository == 'sixteen-miles-labs/freetoken'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -97,7 +97,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  # Publish from a hosted runner: the cross-repo token is never present on the
+  # Publish from a hosted runner: the repository token is never present on the
   # self-hosted node, so a compromised build node cannot reach the release channel.
   publish:
     needs: [check, build]
@@ -105,15 +105,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: release
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: wheels
           path: dist
+      - name: Attest beta wheels
+        if: ${{ !github.event.repository.private }}
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: dist/*.whl
       - name: Publish to the beta release
         env:
-          GH_TOKEN: ${{ secrets.FREETOKEN_WEB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           FREETOKEN_WEB_REPO: ${{ env.WEB_REPO }}
           FREETOKEN_WEB_TAG: ${{ env.WEB_TAG }}
         run: scripts/publish-wheels.sh dist

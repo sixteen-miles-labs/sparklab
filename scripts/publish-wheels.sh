@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Publish built engine wheels to the FreeToken-Web rolling `beta` release.
+# Publish built engine wheels to the SixteenMiles Labs rolling `beta` release.
 #
 # Usage:
 #   scripts/publish-wheels.sh [dist-dir]       (default: ./dist)
@@ -13,11 +13,11 @@
 # with write access to the target repo.
 #
 # Environment:
-#   FREETOKEN_WEB_REPO   target repo  (default: FlashML-org/FreeToken-Web)
+#   FREETOKEN_WEB_REPO   target repo  (default: sixteen-miles-labs/freetoken)
 #   FREETOKEN_WEB_TAG    release tag  (default: beta)
 set -euo pipefail
 
-REPO="${FREETOKEN_WEB_REPO:-FlashML-org/FreeToken-Web}"
+REPO="${FREETOKEN_WEB_REPO:-sixteen-miles-labs/freetoken}"
 TAG="${FREETOKEN_WEB_TAG:-beta}"
 DIST="${1:-dist}"
 
@@ -71,6 +71,15 @@ done <<<"$platforms"
 
 say "publishing to $REPO tag '$TAG':"
 for w in "${wheels[@]}"; do say "  $(basename "$w")"; done
+
+# Bootstrap the canonical rolling release when a repository has not published one yet.
+# Re-runs and established compatibility repositories keep their existing release metadata.
+if ! gh api "repos/$REPO/releases/tags/$TAG" >/dev/null 2>&1; then
+  say "creating rolling prerelease $REPO tag '$TAG'"
+  gh release create "$TAG" -R "$REPO" --prerelease \
+    --title "SparkLab rolling beta" \
+    --notes "Automated rolling wheels from SixteenMiles Labs. Assets may be replaced in place."
+fi
 
 # Prune the previous generation first (delete-then-upload; see header).
 existing="$(gh api "repos/$REPO/releases/tags/$TAG" --jq '.assets[].name')"

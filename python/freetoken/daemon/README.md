@@ -1,14 +1,14 @@
-# `ft daemon` — a simple daemon mode for FreeToken
+# `sparklab daemon` — the SparkLab engine supervisor
 
-A small, durable, **torch-free** control plane that owns an `ft serve` child's lifecycle and
+A small, durable, **torch-free** control plane that owns a `sparklab serve` child's lifecycle and
 exposes control / logs / metrics over HTTP. The engine becomes a persistent service; anything that
 speaks HTTP is a thin client. This file is the design reference.
 
 ```
-client (ft ctl / curl / any HTTP client)             chat traffic → serve DIRECTLY
+client (sparklab ctl / curl / any HTTP client)       chat traffic → serve DIRECTLY
         │ HTTP control plane (loopback :1900)                     │
         ▼                                                         ▼
-   ft daemon  ──spawn / signal / tail──▶  ft serve  (model · inference · MAY crash)
+sparklab daemon ──spawn / signal / tail──▶ sparklab serve (model · inference · MAY crash)
    (no torch)                              └─ /health /v1/stats  (per-serve control API)
         ▲
    systemd  Restart=always · RestartSec=1 · KillMode=process
@@ -27,29 +27,30 @@ sentinel.
 ## Run the server
 
 ```bash
-ft daemon --host 127.0.0.1 --port 1900         # bare/flags = run the daemon server
-# or as a service (survives logout, auto-restarts): see ft-daemon.service
+sparklab daemon --host 127.0.0.1 --port 1900   # bare/flags = run the daemon server
+# or as a service (survives logout, auto-restarts): see sparklab.service
 ```
 
 State (single-instance lock, serve pidfile for re-adoption, per-serve logs) lives under
 `--state-dir` (default `~/.freetoken/daemon`, override with `$FREETOKEN_DAEMON_DIR`).
 
-## Control it (`ft daemon <verb>` — its own entry, distinct from `ft ctl`)
+## Control it (`sparklab daemon <verb>` — distinct from `sparklab ctl`)
 
-`ft daemon` with a **verb** is the client (controls a running daemon over HTTP); bare `ft daemon`
-runs the server. `ft ctl` is left untouched — it targets a running *serve*, not the daemon.
+`sparklab daemon` with a **verb** is the client; bare `sparklab daemon` runs the server.
+`sparklab ctl` targets a running *serve*, not the daemon. The corresponding `ft` commands
+remain supported compatibility aliases.
 
 ```bash
-ft daemon self                                 # daemon self-health
-ft daemon start MODEL --port 1919 -- --moe-cache-auto   # args after -- go to ft serve
-ft daemon status
-ft daemon logs                                 # stream engine logs (SSE)
-ft daemon health                               # proxied serve /health (camelCased)
-ft daemon metrics                              # engine-only RAM(PSS)+VRAM footprint
-ft daemon switch OTHER_MODEL                    # stop old + start new
-ft daemon stop
+sparklab daemon self                                 # daemon self-health
+sparklab daemon start MODEL --port 1919 -- --moe-cache-auto
+sparklab daemon status
+sparklab daemon logs                                 # stream engine logs (SSE)
+sparklab daemon health                               # proxied serve /health
+sparklab daemon metrics                              # engine-only RAM(PSS)+VRAM
+sparklab daemon switch OTHER_MODEL
+sparklab daemon stop
 # Recovery only: permit a degraded receipt if the failed engine cannot seal final totals.
-ft daemon stop --force
+sparklab daemon stop --force
 ```
 
 Target a non-default daemon with `--url http://host:1900` (or `$FREETOKEN_DAEMON_URL`) and

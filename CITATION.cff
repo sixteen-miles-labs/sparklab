@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "If you use SparkLab, please cite this software and the underlying FreeToken research."
+title: "SparkLab: Frontier Open-Weight Model Inference on NVIDIA DGX Spark"
+type: software
+authors:
+  - name: "SixteenMiles Labs"
+repository-code: "https://github.com/sixteen-miles-labs/freetoken"
+url: "https://github.com/sixteen-miles-labs/freetoken"
+license: Apache-2.0
+keywords:
+  - artificial intelligence
+  - DGX Spark
+  - GB10
+  - inference
+  - mixture of experts

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# FreeToken engine installer (Linux, NVIDIA CUDA) — user-facing, wheel-based.
+# SparkLab installer (Linux, NVIDIA CUDA) — user-facing, wheel-based.
 #
-# Installs the `freetoken` runtime (the `ft` CLI) and its prebuilt kernel-cache
-# wheel into a managed venv, then wires it up so FreeToken Desktop can find it.
+# Installs the `freetoken` engine distribution (the primary `sparklab` CLI and compatible
+# `ft` alias) and its prebuilt kernel-cache wheel into a managed venv.
 # Dependencies come from PyPI via uv, except torch and sglang-kernel whose cu130
 # wheels live on dedicated indexes (see CU_INDEX_ARGS below).
 #
@@ -11,19 +11,26 @@
 #   curl -fsSL https://<host>/install.sh | bash
 #
 # Configurable via environment:
-#   FREETOKEN_WHEEL               runtime wheel — local path OR URL. Defaults to the
+#   SPARKLAB_WHEEL                runtime wheel — local path OR URL. Falls back to
+#                                 FREETOKEN_WHEEL for compatibility.
+#   FREETOKEN_WHEEL               legacy runtime-wheel variable. Defaults to the
 #                                 pinned release asset ($DEFAULT_WHEEL_URL); if that is
 #                                 empty and install.sh runs from a source checkout, the
 #                                 wheels are built from source via
 #                                 scripts/build-release-wheels.sh.
-#   FREETOKEN_KERNEL_CACHE_WHEEL  prebuilt kernel-cache wheel — local path OR URL.
+#   SPARKLAB_KERNEL_CACHE_WHEEL   prebuilt kernel-cache wheel — local path OR URL.
+#                                 Falls back to FREETOKEN_KERNEL_CACHE_WHEEL.
+#   FREETOKEN_KERNEL_CACHE_WHEEL  legacy kernel-cache variable.
 #                                 Defaults to $DEFAULT_KERNEL_CACHE_WHEEL_URL; if
 #                                 unset and FREETOKEN_WHEEL is local, the script
 #                                 auto-detects a sibling freetoken_kernel_cache-*.whl.
-#   FREETOKEN_HOME                install root (default: ~/.freetoken); venv at $FREETOKEN_HOME/venv
-#   FREETOKEN_PY_VERSION          python for the venv (default: 3.12 — must match the wheel tag)
-#   FREETOKEN_BIN_DIR             where to symlink `ft` (default: ~/.local/bin)
-#   FREETOKEN_ENV_DIR             environment.d dir (default: ~/.config/environment.d)
+#   SPARKLAB_INSTALL_ROOT         install root (default: ~/.freetoken during migration).
+#                                 Falls back to FREETOKEN_HOME.
+#   SPARKLAB_PY_VERSION           python for the venv (default: 3.12). Falls back to
+#                                 FREETOKEN_PY_VERSION.
+#   SPARKLAB_BIN_DIR              where to link `sparklab` and `ft` (default: ~/.local/bin).
+#                                 Falls back to FREETOKEN_BIN_DIR.
+#   SPARKLAB_ENV_DIR              environment.d directory. Falls back to FREETOKEN_ENV_DIR.
 #
 # NOTE: common TVM FFI kernels come from the kernel-cache wheel. A working CUDA
 # toolkit (nvcc) is still needed when falling back to JIT for an uncovered kernel
@@ -33,18 +40,17 @@ set -euo pipefail
 DEFAULT_WHEEL_URL=""   # filled in once GitHub Releases are live
 DEFAULT_KERNEL_CACHE_WHEEL_URL=""   # filled in once GitHub Releases are live
 
-FT_HOME="${FREETOKEN_HOME:-$HOME/.freetoken}"
+FT_HOME="${SPARKLAB_INSTALL_ROOT:-${FREETOKEN_HOME:-$HOME/.freetoken}}"
 VENV="$FT_HOME/venv"
-PY_VERSION="${FREETOKEN_PY_VERSION:-3.12}"
-BIN_DIR="${FREETOKEN_BIN_DIR:-$HOME/.local/bin}"
-ENV_DIR="${FREETOKEN_ENV_DIR:-$HOME/.config/environment.d}"
-WHEEL="${FREETOKEN_WHEEL:-$DEFAULT_WHEEL_URL}"
-KERNEL_CACHE_WHEEL="${FREETOKEN_KERNEL_CACHE_WHEEL:-$DEFAULT_KERNEL_CACHE_WHEEL_URL}"
+PY_VERSION="${SPARKLAB_PY_VERSION:-${FREETOKEN_PY_VERSION:-3.12}}"
+BIN_DIR="${SPARKLAB_BIN_DIR:-${FREETOKEN_BIN_DIR:-$HOME/.local/bin}}"
+ENV_DIR="${SPARKLAB_ENV_DIR:-${FREETOKEN_ENV_DIR:-$HOME/.config/environment.d}}"
+WHEEL="${SPARKLAB_WHEEL:-${FREETOKEN_WHEEL:-$DEFAULT_WHEEL_URL}}"
+KERNEL_CACHE_WHEEL="${SPARKLAB_KERNEL_CACHE_WHEEL:-${FREETOKEN_KERNEL_CACHE_WHEEL:-$DEFAULT_KERNEL_CACHE_WHEEL_URL}}"
 
-# --yes / -y (or FREETOKEN_ASSUME_YES=1): run non-interactively — in particular, bootstrap uv
-# without asking. FreeToken Desktop's in-app installer passes --yes (its stdout is piped into a
-# modal, so there is no terminal to prompt at).
-ASSUME_YES="${FREETOKEN_ASSUME_YES:-0}"
+# --yes / -y (or SPARKLAB_ASSUME_YES=1, with FREETOKEN_ASSUME_YES as a fallback): run
+# non-interactively. The legacy Desktop installer passes --yes and remains compatible.
+ASSUME_YES="${SPARKLAB_ASSUME_YES:-${FREETOKEN_ASSUME_YES:-0}}"
 for _arg in "$@"; do
   case "$_arg" in
     -y|--yes) ASSUME_YES=1 ;;
@@ -235,34 +241,42 @@ say "installing $WHEEL + accel (flashinfer prebuilt + sglang-kernel) + $KERNEL_C
   "${CU_INDEX_ARGS[@]}" "${INSTALL_WHEELS[@]}"
 
 FT_BIN="$VENV/bin/ft"
+SPARKLAB_BIN="$VENV/bin/sparklab"
 [ -x "$FT_BIN" ] || die "install finished but $FT_BIN is missing."
+[ -x "$SPARKLAB_BIN" ] || die "install finished but $SPARKLAB_BIN is missing."
 
-# --- 4. Wire up for PATH + FreeToken Desktop -------------------------------
+# --- 4. Wire up the SparkLab CLI and legacy engine alias --------------------
 mkdir -p "$BIN_DIR"
+ln -sf "$SPARKLAB_BIN" "$BIN_DIR/sparklab"
 ln -sf "$FT_BIN" "$BIN_DIR/ft"
+say "symlinked $BIN_DIR/sparklab -> $SPARKLAB_BIN"
 say "symlinked $BIN_DIR/ft -> $FT_BIN"
 
 mkdir -p "$ENV_DIR"
-printf 'FREETOKEN_FT_BIN=%s\n' "$FT_BIN" > "$ENV_DIR/50-freetoken.conf"
-say "wrote $ENV_DIR/50-freetoken.conf (FREETOKEN_FT_BIN) — GUI picks it up after next login"
+printf 'SPARKLAB_BIN=%s\nFREETOKEN_FT_BIN=%s\n' "$SPARKLAB_BIN" "$FT_BIN" \
+  > "$ENV_DIR/50-sparklab.conf"
+say "wrote $ENV_DIR/50-sparklab.conf (SparkLab + legacy engine paths)"
 
 # --- 5. Self-check ---------------------------------------------------------
-if "$FT_BIN" --help >/dev/null 2>&1; then
-  say "self-check: \`ft --help\` OK"
+if "$SPARKLAB_BIN" --help >/dev/null 2>&1; then
+  say "self-check: \`sparklab --help\` OK"
 else
-  warn "self-check: \`ft --help\` returned non-zero — inspect with: $FT_BIN --help"
+  warn "self-check: \`sparklab --help\` returned non-zero — inspect with: $SPARKLAB_BIN --help"
 fi
 
 cat <<EOF
 
-${C_GREEN}FreeToken engine installed.${C_RESET}
+${C_GREEN}SparkLab installed.${C_RESET}
 
+  sparklab binary  $SPARKLAB_BIN
   ft binary        $FT_BIN
-  on PATH as       $BIN_DIR/ft   (ensure $BIN_DIR is on PATH)
-  Desktop env      FREETOKEN_FT_BIN via environment.d (re-login to apply)
+  on PATH as       $BIN_DIR/sparklab
+  legacy alias     $BIN_DIR/ft
+  environment      SPARKLAB_BIN and FREETOKEN_FT_BIN (re-login to apply)
 
 Run in this shell without re-login:
+  export SPARKLAB_BIN="$SPARKLAB_BIN"
   export FREETOKEN_FT_BIN="$FT_BIN"
-  ft serve --model <path> --port 1919
+  sparklab serve --model <path> --port 1919
 
 EOF
