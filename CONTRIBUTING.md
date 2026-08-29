@@ -21,10 +21,12 @@ against `main`, and merge only after review and required checks pass. There is n
 long-lived `develop` branch; `main` remains the source for rolling beta builds and signed
 releases.
 
-Every pull request requires a passing DCO sign-off check, the hosted CPU test suite, and
-one approving review. New commits dismiss stale approvals. GPU, checkpoint, and release
-tests run only in trusted environments when the change requires them; pull requests from
-forks never execute on the self-hosted GB10 runner.
+Every pull request requires a passing DCO sign-off check and the hosted CPU test suite.
+During the single-maintainer beta, approval is not required because GitHub does not allow
+an author to approve their own pull request. Enable one approving review, with stale
+approvals dismissed by new commits, as soon as a second maintainer joins. GPU, checkpoint,
+and release tests run only in trusted environments when the change requires them; pull
+requests from forks never execute on the self-hosted GB10 runner.
 
 Direct pushes to `main` are prohibited. Maintainers use the same pull-request workflow as
 other contributors.
