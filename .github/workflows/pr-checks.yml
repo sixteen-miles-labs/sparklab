@@ -38,7 +38,7 @@ jobs:
             echo "::error::model weights and generated binary artifacts must not be committed"
             exit 1
           fi
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           version: "0.12.6"
           enable-cache: true
