@@ -1,7 +1,9 @@
-# Hugging Face uploads
+# Qwen3.8 Flash Next FP8 FTW upload
 
-Upload the Qwen NVFP4 FTW model directory to
+Upload the Qwen FP8 FTW model directory to
 `oakmindai/Qwen3.8-Flash-Next-FP8-FTW`:
+
+SparkLab source: <https://github.com/sixteen-miles-labs/sparklab>
 
 ```bash
 huggingface-cli login

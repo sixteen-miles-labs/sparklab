@@ -3,6 +3,8 @@
 This helper publishes SparkLab's prepared GLM-5.3 Flash artifact to
 [`oakmindai/GLM-5.3-Flash-NVFP4-FTW`](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW).
 
+SparkLab source: <https://github.com/sixteen-miles-labs/sparklab>
+
 The default source is the validated SparkLab artifact:
 
 ```text

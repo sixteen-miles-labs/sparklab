@@ -3,6 +3,8 @@
 This helper publishes SparkLab's validated Kimi K3 artifact to
 [`oakmindai/Kimi-K3-NVFP4-FTW`](https://huggingface.co/oakmindai/Kimi-K3-NVFP4-FTW).
 
+SparkLab source: <https://github.com/sixteen-miles-labs/sparklab>
+
 The default source is the validated local artifact:
 
 ```text
