@@ -69,10 +69,24 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert qwen.runtime_artifact.revision == "cbbcf69f52b9815b8a987fe839003fae12aa8050"
     assert qwen.runtime_artifact.fingerprint == "47e11ddb878adf4c"
     kimi = get_recipe("kimi-k3")
-    assert kimi.recipe_version == "0.2.0"
+    assert kimi.recipe_version == "0.3.0"
     assert kimi.deployment.runtime_format == "ftw-nvfp4"
     assert kimi.deployment.quantization == "nvfp4"
-    assert kimi.performance is None
+    assert kimi.deployment.backend_options["moe_cache_size"] == 896
+    assert kimi.deployment.backend_options["moe_cache_policy"] == "layer_lru"
+    assert kimi.deployment.backend_options["kimi_mlp_fp8"] is True
+    assert kimi.deployment.backend_options["disable_startup_prefill_warmup"] is True
+    assert kimi.performance.decode_tokens_per_second == pytest.approx(
+        0.16130749709147157
+    )
+    assert kimi.performance.warm_ttft_seconds == pytest.approx(395.4053193805739)
+    assert kimi.evidence == ("GB10-KIMI-001",)
+    assert kimi.runtime_memory == {"total_bytes": 105804767232}
+    assert kimi.runtime_artifact is not None
+    assert kimi.runtime_artifact.repo_id == "oakmindai/Kimi-K3-NVFP4-FTW"
+    assert kimi.runtime_artifact.revision == "793f1f8436cd7de11e7912c41b3d49d4c9e4d11c"
+    assert kimi.runtime_artifact.bytes == 1610936311808
+    assert kimi.runtime_artifact.fingerprint == "534cbc4565d4279d"
     glm52 = get_recipe("glm-5.2")
     assert glm52.recipe_version == "0.2.0"
     assert glm52.performance.decode_tokens_per_second == pytest.approx(0.802)
@@ -138,6 +152,7 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     assert glm.runtime_artifact.bytes == 184716947456
     assert glm.runtime_artifact.fingerprint == "4c021651a1e61802"
     assert kimi.source_bytes == 1610038482254
+    assert kimi.prepared_bytes == 1610936311808
     assert glm52.source_bytes == 464874323992
     assert deepseek.source_bytes == 166878536440
     assert deepseek.prepared_bytes == 157460918272
@@ -191,6 +206,32 @@ def test_glm53_recipe_points_to_checked_in_kda_fp8_evidence():
         recipe.performance.warm_ttft_seconds
     )
     assert result["comparison"]["decode_throughput_improvement_percent"] > 18
+
+
+def test_kimi_recipe_points_to_checked_in_bounded_capacity_evidence():
+    recipe = get_recipe("kimi-k3")
+    assert recipe.performance.evidence == "GB10-KIMI-001"
+    assert recipe.performance.evidence in recipe.evidence
+    root = Path(__file__).resolve().parents[2]
+    result = json.loads(
+        (root / "benchmarks/gb10/results/GB10-KIMI-001.json").read_text()
+    )
+    assert result["result_id"] == recipe.performance.evidence
+    assert result["status"] == "measured"
+    assert result["model"]["revision"] == recipe.revision
+    assert result["model"]["fingerprint"] == "534cbc4565d4279d"
+    assert result["model"]["checkpoint_bytes"] == recipe.prepared_bytes
+    assert result["metrics"]["decode_tokens_per_second"] == pytest.approx(
+        recipe.performance.decode_tokens_per_second
+    )
+    assert result["metrics"]["warm_ttft_seconds"] == pytest.approx(
+        recipe.performance.warm_ttft_seconds
+    )
+    assert result["workload"]["completion_tokens"] == 256
+    assert result["validation"]["oom_count"] == 0
+    assert result["validation"]["runtime_swap_growth_bytes"] == 0
+    assert result["validation"]["output_prefix_consistent_across_ladder"] is False
+    assert result["validation"]["output_correctness_evaluated"] is False
 
 
 def test_glm52_recipe_points_to_measured_failed_research_evidence():

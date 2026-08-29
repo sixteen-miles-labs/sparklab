@@ -111,7 +111,7 @@ def test_native_backend_compiles_qwen_recipe_options_in_stable_order(tmp_path):
         "naive",
         "--page-size",
         "16",
-        "--max-running-req",
+        "--max-running-requests",
         "1",
         "--port",
         "1919",
@@ -140,6 +140,42 @@ def test_native_backend_compiles_glm_residency_options(tmp_path):
     assert "--memory-ratio" in plan.arguments
     assert plan.arguments[plan.arguments.index("--memory-ratio") + 1] == "0.96"
     assert "--disable-moe-prefill-overlap" in plan.arguments
+
+
+def test_native_backend_compiles_kimi_bounded_gb10_options(tmp_path):
+    recipe = get_recipe("kimi-k3")
+    checkpoint = tmp_path / "checkpoint"
+    checkpoint.mkdir()
+    (checkpoint / "config.json").write_text("{}", encoding="utf-8")
+    deployment = replace(
+        recipe.deployment,
+        runtime_format="safetensors",
+        backend_options={
+            "moe_cache_size": 896,
+            "moe_cache_policy": "layer_lru",
+            "kimi_mlp_fp8": True,
+            "disable_startup_prefill_warmup": True,
+        },
+    )
+
+    plan = get_backend("native").build_launch_plan(
+        RuntimeRequest(
+            recipe=recipe.slug,
+            recipe_version=recipe.recipe_version,
+            model=recipe.model,
+            checkpoint=checkpoint,
+            deployment=deployment,
+        )
+    )
+
+    assert plan.arguments[-6:] == (
+        "--moe-cache-size",
+        "896",
+        "--moe-cache-policy",
+        "layer_lru",
+        "--kimi-mlp-fp8",
+        "--disable-startup-prefill-warmup",
+    )
 
 
 def test_native_backend_compiles_deepseek_sparse_prefill_options(tmp_path):
@@ -179,7 +215,7 @@ def test_native_backend_compiles_deepseek_sparse_prefill_options(tmp_path):
         "0",
         "--cache-type",
         "radix",
-        "--max-running-req",
+        "--max-running-requests",
         "1",
     )
 

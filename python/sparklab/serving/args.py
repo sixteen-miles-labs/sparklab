@@ -224,6 +224,23 @@ def parse_args(
     )
 
     parser.add_argument(
+        "--kimi-mlp-fp8",
+        action="store_true",
+        help=(
+            "Kimi K3 only: quantize dense/shared MLP, embedding, and output-head "
+            "weights to per-row FP8 while loading (the validated one-GB10 profile)."
+        ),
+    )
+    parser.add_argument(
+        "--disable-startup-prefill-warmup",
+        action="store_true",
+        help=(
+            "skip synthetic prefill warmup before readiness; the first request pays "
+            "JIT cost (required for multi-terabyte disk-backed expert pools)"
+        ),
+    )
+
+    parser.add_argument(
         "--tensor-parallel-size",
         "--tp-size",
         type=int,
@@ -664,6 +681,14 @@ def parse_args(
 
     # Parse arguments
     kwargs = parser.parse_args(args).__dict__.copy()
+
+    # These settings must be visible before the model configuration is parsed and are
+    # inherited by the engine subprocess. Keep the environment variables as compatibility
+    # aliases for existing benchmark/service invocations.
+    if kwargs.pop("kimi_mlp_fp8"):
+        os.environ["SPARKLAB_KIMI_MLP_FP8"] = "1"
+    if kwargs.pop("disable_startup_prefill_warmup"):
+        os.environ["SPARKLAB_DISABLE_STARTUP_PREFILL_WARMUP"] = "1"
 
     # resolve some arguments
     run_shell |= kwargs.pop("shell_mode")

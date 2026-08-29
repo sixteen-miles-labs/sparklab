@@ -38,12 +38,11 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 + KDA FP8 · FTW | `glm-5.3-flash` | Experimental | 4.98 | 5.379 |
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
 | [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | 753B total / 40B active | NVFP4 | `glm-5.2` | Experimental fallback | 0.80 | 2.570 |
-| [Kimi K3](https://huggingface.co/nvidia/Kimi-K3-NVFP4) | 2.8T total / 16 of 896 experts | NVFP4 · FTW upload pending | `kimi-k3` | Experimental | — | — |
+| [Kimi K3](https://huggingface.co/oakmindai/Kimi-K3-NVFP4-FTW) | 2.8T total / 16 of 896 experts | ModelOpt NVFP4/FP8 · FTW | `kimi-k3` | Experimental | 0.16 | 395.405 |
 
-Model links point to the selected source or published FTW checkpoints. Qwen3.6 uses a
-pinned prebuilt FTW artifact; its source-conversion path remains available for
-reproducibility. The Kimi K3 NVFP4 FTW link remains marked pending until its Hugging Face
-upload exists.
+Model links point to the selected source or published FTW checkpoints. Qwen3.6 and Kimi K3
+use pinned prebuilt FTW artifacts; their source-conversion paths remain available for
+reproducibility.
 
 Parameter values use publisher-reported architecture counts. Qwen3.8's auxiliary total is
 the 51B n-gram embedding plus its 4B MTP module. NVIDIA reports Kimi K3 activation as 16 of
@@ -68,9 +67,15 @@ warm TTFT with an auto-sized 5,321-slot expert cache. The repeated fixed probe r
 no physical expert reads during the measured request and preserved the established greedy
 output hash. Longer prompts fall back to bounded full-layer streaming. See the
 [full experiment](../exps/exp_dsv4_gb10.md).
-The Kimi K3 recipe similarly preserves NVIDIA's mixed checkpoint: routed experts remain
-NVFP4, supported attention projections remain block FP8, and other tensors retain their
-source precision.
+The Kimi K3 FTW artifact preserves NVIDIA's mixed checkpoint: routed experts remain NVFP4,
+supported attention projections remain block FP8, and other tensors retain their source
+precision on disk. Its validated GB10 resident profile converts 188 dense/shared/embedding/
+head matrices to per-row FP8 while loading so the minimum 896-slot expert cache fits. The
+exact 256-token probe measured 0.1613 tok/s and 395.405 s warm TTFT with zero scoped runtime
+OOM or swap-out. It stopped before a final AIME answer and diverged from shorter greedy
+rungs, so correctness and cross-rung determinism are not established. See the
+[versioned evidence](../benchmarks/gb10/results/GB10-KIMI-001.json) and
+[full experiment](../exps/exp_kimik3_gb10.md).
 
 GLM-5.2 is listed in Research because its selected GB10 experiment sustained 0.802 tok/s,
 below the 5 tok/s Frontier threshold. The displayed 2.57 s TTFT and throughput are measured,

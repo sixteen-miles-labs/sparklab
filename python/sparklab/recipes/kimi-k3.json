@@ -1,13 +1,19 @@
 {
   "schema_version": "2.0",
-  "recipe_version": "0.2.0",
+  "recipe_version": "0.3.0",
   "slug": "kimi-k3",
   "name": "Kimi K3",
   "model": "nvidia/Kimi-K3-NVFP4",
   "parameters": "2.8T total / 16 of 896 experts",
   "revision": "f8c5234a0a880bcc6cbf779a315e7ee2f405b812",
   "source_bytes": 1610038482254,
-  "prepared_bytes": 1610038482254,
+  "prepared_bytes": 1610936311808,
+  "runtime_artifact": {
+    "repo_id": "oakmindai/Kimi-K3-NVFP4-FTW",
+    "revision": "793f1f8436cd7de11e7912c41b3d49d4c9e4d11c",
+    "bytes": 1610936311808,
+    "fingerprint": "534cbc4565d4279d"
+  },
   "minimum_free_bytes": 3357515917980,
   "intended_tier": "research",
   "status": "experimental",
@@ -16,18 +22,49 @@
   "deployment": {
     "backend": "native",
     "backend_api": "1.0",
-    "source_format": "safetensors",
+    "source_format": "safetensors-nvfp4",
     "runtime_format": "ftw-nvfp4",
     "quantization": "nvfp4",
     "execution_policy": "nvme-moe",
-    "backend_options": {}
+    "backend_options": {
+      "moe_backend": "offload",
+      "moe_storage": "disk",
+      "moe_host_cache_gb": 0,
+      "memory_ratio": 0.85,
+      "moe_cache_size": 896,
+      "moe_cache_policy": "layer_lru",
+      "nvfp4_backend": "triton",
+      "moe_prefill_sparse_max_tokens": 256,
+      "moe_prefill_overlap": false,
+      "cuda_graph_max_bs": 0,
+      "cache_type": "radix",
+      "page_size": 1,
+      "max_running_req": 1,
+      "num_tokens": 1024,
+      "kimi_mlp_fp8": true,
+      "disable_startup_prefill_warmup": true
+    }
   },
   "profile": "research",
-  "description": "The 2.8T NVIDIA NVFP4 flagship demonstration for inference beyond physical memory.",
+  "runtime_memory": {
+    "total_bytes": 105804767232
+  },
+  "performance": {
+    "decode_tokens_per_second": 0.16130749709147157,
+    "warm_ttft_seconds": 395.4053193805739,
+    "evidence": "GB10-KIMI-001",
+    "note": "The complete FTW checkpoint returned exactly 256 tokens with zero scoped runtime OOM or swap-out. Cross-rung greedy determinism and answer correctness are not established."
+  },
+  "evidence": [
+    "GB10-KIMI-001"
+  ],
+  "description": "Bounded text inference for NVIDIA's 2.8T Kimi K3 ModelOpt NVFP4 checkpoint on one GB10 using a 1.5 TiB FTW expert bank and NVMe streaming.",
   "limitations": [
-    "Beta FTW preparation must preserve the checkpoint's mixed representation: NVFP4 routed experts, 128x128 block-FP8 attention projections, and the original precision of remaining tensors.",
-    "The NVIDIA ModelOpt mixed NVFP4/FP8 mapping is implemented and has exact index-level coverage, but still awaits full-checkpoint conversion and runtime validation.",
-    "Full-checkpoint FTW preparation and GPU parity are not yet validated.",
-    "No latency promise and no vision support."
+    "The validated 1,610,936,311,808-byte FTW artifact contains 194 shards with fingerprint 534cbc4565d4279d; routed experts retain ModelOpt NVFP4 and supported attention/KDA projections retain block FP8.",
+    "The one-GB10 runtime profile quantizes 188 remaining dense/shared/embedding/head matrices to per-row FP8 while loading, saving 14.176 GiB; this resident transform is separate from the FTW expert representation.",
+    "The 256-token probe measured 0.1613 tok/s and 395.405 s warm TTFT with zero scoped runtime OOM or swap-out, below the Research usability target and unsuitable for interactive use.",
+    "The 129-token prefill fallback scans all 896 experts across 92 MoE layers; decode remained storage-bound at an 80.23% expert-cache miss rate.",
+    "The 256-token response ended before emitting the expected AIME answer, and its greedy text diverged from the shorter promotion rungs, so correctness and cross-rung determinism are not established.",
+    "Text-only batch-one serving is validated. Vision, long context, concurrency, capability, agent, quality, and endurance gates remain outstanding."
   ]
 }

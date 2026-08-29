@@ -131,12 +131,12 @@ a SparkLab support claim.
       <td><a href="docs/models/glm-5.2.md">Instructions</a></td>
     </tr>
     <tr>
-      <td><a href="https://huggingface.co/nvidia/Kimi-K3-NVFP4">Kimi K3</a></td>
+      <td><a href="https://huggingface.co/oakmindai/Kimi-K3-NVFP4-FTW">Kimi K3</a></td>
       <td>2.8T total / 16 of 896 experts</td>
-      <td>NVFP4 · FTW pending</td>
+      <td>ModelOpt NVFP4/FP8 · FTW</td>
       <td>Experimental</td>
-      <td align="right">—</td>
-      <td align="right">—</td>
+      <td align="right">0.16</td>
+      <td align="right">395.405</td>
       <td><a href="docs/models/kimi-k3.md">Instructions</a></td>
     </tr>
   </tbody>
@@ -149,6 +149,7 @@ Displayed values are fixed, batch-one probes—not certification or capacity pro
 - [DeepSeek V4 evidence](benchmarks/gb10/results/GB10-DSV4-SPARSE-001.json)
 - [GLM-5.3 evidence](benchmarks/gb10/results/GB10-GLM53-KDA-FP8-002.json)
 - [GLM-5.2 experiment](exps/exp_glm5_2_gb10.md)
+- [Kimi K3 evidence](benchmarks/gb10/results/GB10-KIMI-001.json)
 
 Status meanings:
 

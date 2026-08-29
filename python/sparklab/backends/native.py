@@ -22,16 +22,20 @@ _VALUE_OPTIONS: dict[str, tuple[str, type | tuple[type, ...]]] = {
     "moe_storage": ("--moe-storage", str),
     "moe_host_cache_gb": ("--moe-host-cache-gb", (int, float)),
     "memory_ratio": ("--memory-ratio", (int, float)),
+    "moe_cache_size": ("--moe-cache-size", int),
+    "moe_cache_policy": ("--moe-cache-policy", str),
     "moe_cache_rate": ("--moe-cache-rate", (int, float)),
     "nvfp4_backend": ("--nvfp4-backend", str),
     "moe_prefill_sparse_max_tokens": ("--moe-prefill-sparse-max-tokens", int),
     "cuda_graph_max_bs": ("--cuda-graph-max-bs", int),
     "cache_type": ("--cache-type", str),
     "page_size": ("--page-size", int),
-    "max_running_req": ("--max-running-req", int),
+    "max_running_req": ("--max-running-requests", int),
     "num_tokens": ("--num-tokens", int),
 }
 _FLAG_OPTIONS: dict[str, str] = {
+    "disable_startup_prefill_warmup": "--disable-startup-prefill-warmup",
+    "kimi_mlp_fp8": "--kimi-mlp-fp8",
     "moe_cache_auto": "--moe-cache-auto",
     "moe_prefill_hit_d2d": "--moe-prefill-hit-d2d",
 }
@@ -44,6 +48,8 @@ _OPTION_ORDER = (
     "moe_storage",
     "moe_host_cache_gb",
     "memory_ratio",
+    "moe_cache_size",
+    "moe_cache_policy",
     "moe_cache_rate",
     "moe_cache_auto",
     "nvfp4_backend",
@@ -55,6 +61,8 @@ _OPTION_ORDER = (
     "page_size",
     "max_running_req",
     "num_tokens",
+    "kimi_mlp_fp8",
+    "disable_startup_prefill_warmup",
 )
 _SUPPORTED_FORMATS = (
     "safetensors",
