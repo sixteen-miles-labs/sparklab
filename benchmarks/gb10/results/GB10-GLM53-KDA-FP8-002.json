@@ -132,8 +132,8 @@
   },
   "source": {
     "summary": "KDA W8A16 optimization and controlled BF16-resident comparison",
-    "raw_artifact": "/home/lidaiqing/results/glm5.3-gb10/glm53_nvfp4_kda_fp8_final_mem096_decode256.jsonl",
-    "control_artifact": "/home/lidaiqing/results/glm5.3-gb10/glm53_nvfp4_bf16_control_decode256.jsonl"
+    "raw_artifact": "$HOME/results/glm5.3-gb10/glm53_nvfp4_kda_fp8_final_mem096_decode256.jsonl",
+    "control_artifact": "$HOME/results/glm5.3-gb10/glm53_nvfp4_bf16_control_decode256.jsonl"
   },
   "limitations": [
     "This result establishes complete-checkpoint loading and a controlled performance improvement, not Frontier certification.",

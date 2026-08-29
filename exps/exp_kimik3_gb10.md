@@ -70,8 +70,8 @@ physical bytes are present, with no partial files. The strict metadata/header au
 passed with complete 2,946/2,946 model-state mapping, 992,508 indexed tensors,
 741,888 indexed expert entries, no cross-shard resident scales, and no errors.
 The final acquisition records are
-`/home/lidaiqing/results/kimi-k3-gb10/acquisition-final.json` and
-`/home/lidaiqing/results/kimi-k3-gb10/source-audit-final.json`.
+`$HOME/results/kimi-k3-gb10/acquisition-final.json` and
+`$HOME/results/kimi-k3-gb10/source-audit-final.json`.
 
 Acquisition recorded zero new OOM kills and one isolated swap-out page (4 KiB)
 over the full 8.49-hour window; the counter did not continue increasing. This is
@@ -141,11 +141,11 @@ Pre-conversion index audits passed:
 
 The reproducible metadata-only auditor is
 `benchmarks/audit_kimi_k3_checkpoint.py`. During acquisition it writes
-`/home/lidaiqing/results/kimi-k3-gb10/source-audit-partial.json` with
+`$HOME/results/kimi-k3-gb10/source-audit-partial.json` with
 `--allow-partial`; the final evidence audit reruns it without that flag after all
 96 indexed shards are present. The real-layer payload probe is
 `benchmarks/probe_kimi_k3_expert_layer.py`; its payload and supervisor records are
-`/home/lidaiqing/results/kimi-k3-gb10/expert-layer1.json` and
+`$HOME/results/kimi-k3-gb10/expert-layer1.json` and
 `expert-layer1-supervision.json`.
 The conversion-seam round trip is `benchmarks/probe_kimi_k3_ftw_layer.py`; its
 payload and supervisor records are `ftw-layer1.json` and
@@ -191,7 +191,7 @@ projection, not proof of the eventual prepared size; the live disk guard remains
 authoritative. Runtime admission remains correctly closed because no full Kimi
 runtime-memory budget has been measured and the machine has pre-existing swap
 occupancy. The record is
-`/home/lidaiqing/results/kimi-k3-gb10/plan-partial.json`; artifact capacity is not
+`$HOME/results/kimi-k3-gb10/plan-partial.json`; artifact capacity is not
 being misreported as runtime certification.
 
 Conversion is guarded by:
@@ -208,7 +208,7 @@ Conversion is guarded by:
 conversion and serving. In addition to successful exit and intact memory/disk
 telemetry, it requires zero `oom_kill`, zero `pswpout`, and zero swap-occupancy
 growth; missing counters fail the gate. Its record is
-`/home/lidaiqing/results/kimi-k3-gb10/conversion-gate.json`. The supervisor/gate
+`$HOME/results/kimi-k3-gb10/conversion-gate.json`. The supervisor/gate
 schema was exercised end to end with a short child process before queuing the full
 conversion.
 
@@ -230,12 +230,12 @@ The conversion command is:
 CUDA_HOME=/usr/local/cuda PATH=/usr/local/cuda/bin:$PATH \
 SPARKLAB_CONVERT_PROGRESS=1 PYTHONPATH=python \
 .venv/bin/python benchmarks/supervise_process.py \
-  --output /home/lidaiqing/results/kimi-k3-gb10/conversion.json \
-  --log /home/lidaiqing/results/kimi-k3-gb10/conversion.log \
-  --disk-path /home/lidaiqing --min-memory-gib 12 --min-disk-gib 140 \
+  --output $HOME/results/kimi-k3-gb10/conversion.json \
+  --log $HOME/results/kimi-k3-gb10/conversion.log \
+  --disk-path $HOME --min-memory-gib 12 --min-disk-gib 140 \
   -- .venv/bin/sparklab checkpoint \
-  --model /home/lidaiqing/.sparklab/models/kimi-k3/source/f8c5234a0a88 \
-  --out /home/lidaiqing/.sparklab/models/kimi-k3/prepared/0.2.0 \
+  --model $HOME/.sparklab/models/kimi-k3/source/f8c5234a0a88 \
+  --out $HOME/.sparklab/models/kimi-k3/prepared/0.2.0 \
   --dtype bfloat16 --moe-backend offload --nvfp4-backend triton \
   --shard-gib 8 --device cuda:0
 ```
@@ -247,13 +247,13 @@ The first complete-checkpoint probe uses the minimum expert cache and a fail-clo
 
 ```bash
 PYTHONPATH=python .venv/bin/python benchmarks/bench_decode_moe.py \
-  --model /home/lidaiqing/.sparklab/models/kimi-k3/prepared/0.2.0 \
+  --model $HOME/.sparklab/models/kimi-k3/prepared/0.2.0 \
   --recipe kimi-k3 --backend offload --storage disk --nvfp4-backend triton \
   --host-cache-gb 0 --cache 896 --cache-policy lru --mem-ratio 0.85 \
   --num-tokens 2048 --disable-prefill-overlap \
   --prefill-sparse-max-tokens 256 --decode 1 --no-graph \
   --collect-moe-stats --greedy --include-output --min-memory-gib 12 \
-  --json /home/lidaiqing/results/kimi-k3-gb10/probe-1.jsonl
+  --json $HOME/results/kimi-k3-gb10/probe-1.jsonl
 ```
 
 Promotion is strictly one token, then 16, 64, and finally 256 tokens. A stage is
@@ -267,7 +267,7 @@ benchmark results.
 JSONL row before the next server launch. It also requires an identified FTW
 checkpoint, complete token/event accounting, a nonempty output hash and payload,
 and both lifecycle-wide and measured-request safety telemetry. Gate records are
-saved as `/home/lidaiqing/results/kimi-k3-gb10/gate-{1,16,64,256}.json`; a missing
+saved as `$HOME/results/kimi-k3-gb10/gate-{1,16,64,256}.json`; a missing
 counter is a failure rather than an assumed zero.
 
 `benchmarks/finalize_kimi_k3_result.py` performs the publication handoff. It
@@ -945,10 +945,10 @@ the refactor pause, no usable FTW conversion, runtime probe, or benchmark result
 was produced. A pre-queued conversion watcher raced the final source audit and ran
 for 16.5 seconds before it was caught and stopped. Its two incomplete FTW shards
 (16,621,034,424 bytes) were moved out of the active prepared path to
-`/home/lidaiqing/.sparklab/models/kimi-k3/prepared-interrupted-20260829T020606Z`;
+`$HOME/.sparklab/models/kimi-k3/prepared-interrupted-20260829T020606Z`;
 the canonical prepared path and `conversion.json` are absent. The interruption is
 recorded in
-`/home/lidaiqing/results/kimi-k3-gb10/conversion-interrupted-20260829T020606Z.json`.
+`$HOME/results/kimi-k3-gb10/conversion-interrupted-20260829T020606Z.json`.
 
 1. After the refactor, run the supervised FTW conversion; stop on the disk or
    memory floor, any OOM or

@@ -35,8 +35,8 @@ path rather than forcing route-first GEMV at an inefficient density.
 | FlashInfer / SGLang kernel | 0.6.15.post1 / 0.4.5 |
 | FreeToken revision | `ddc3b34` plus the benchmark-metadata change in this experiment |
 | Model | `deepseek-ai/DeepSeek-V4-Flash-0731` |
-| Source checkpoint | `/home/lidaiqing/models/DeepSeek-V4-Flash-0731` |
-| FTW checkpoint | `/home/lidaiqing/ftw/DeepSeek-V4-Flash-0731` |
+| Source checkpoint | `$HOME/models/DeepSeek-V4-Flash-0731` |
+| FTW checkpoint | `$HOME/ftw/DeepSeek-V4-Flash-0731` |
 
 The environment was created with `uv` and the checkout installed editable with
 the development dependencies. CUDA allocation and a real GB10 tensor operation
@@ -60,7 +60,7 @@ FlashInfer dependency.
 | Recommended backend | `offload` |
 
 The profile is saved at
-`/home/lidaiqing/results/dsv4-gb10/benchbw-dsfp4.json`. The large gap between
+`$HOME/results/dsv4-gb10/benchbw-dsfp4.json`. The large gap between
 CPU MoE and GPU expert gather is why Stage A uses `offload`, not `hybrid`.
 
 ## Checkpoint preparation
@@ -76,8 +76,8 @@ CUDA_HOME=/usr/local/cuda \
 PATH=/usr/local/cuda/bin:$PATH \
 SPARKLAB_CONVERT_PROGRESS=1 \
 .venv/bin/sparklab checkpoint \
-  --model /home/lidaiqing/models/DeepSeek-V4-Flash-0731 \
-  --out /home/lidaiqing/ftw/DeepSeek-V4-Flash-0731 \
+  --model $HOME/models/DeepSeek-V4-Flash-0731 \
+  --out $HOME/ftw/DeepSeek-V4-Flash-0731 \
   --dtype bfloat16 \
   --moe-backend offload \
   --shard-gib 8 \
@@ -97,7 +97,7 @@ SPARKLAB_CONVERT_PROGRESS=1 \
 All 23 on-disk shard sizes and their sum match the FTW index. All 1,693 tensor
 ranges are in bounds, the reader sees the indexed 1,521 weights and 172 expert
 banks, and the fingerprint matches. The conversion log is
-`/home/lidaiqing/results/dsv4-gb10/conversion.log`.
+`$HOME/results/dsv4-gb10/conversion.log`.
 
 ## Stage A tuning
 
@@ -162,9 +162,9 @@ reports as free even when Linux still reports ample `MemAvailable`; targeted
 CUDA_HOME=/usr/local/cuda \
 PATH=/usr/local/cuda/bin:$PATH \
 SPARKLAB_DISK_READ_WORKERS=20 \
-SPARKLAB_AIME25_JSONL=/home/lidaiqing/datasets/aime25/test.jsonl \
+SPARKLAB_AIME25_JSONL=$HOME/datasets/aime25/test.jsonl \
 .venv/bin/python benchmarks/bench_decode_moe.py \
-  --model /home/lidaiqing/ftw/DeepSeek-V4-Flash-0731 \
+  --model $HOME/ftw/DeepSeek-V4-Flash-0731 \
   --backend offload \
   --storage disk \
   --host-cache-gb 4 \
@@ -176,7 +176,7 @@ SPARKLAB_AIME25_JSONL=/home/lidaiqing/datasets/aime25/test.jsonl \
   --greedy \
   --no-graph \
   --include-output \
-  --json /home/lidaiqing/results/dsv4-gb10/optimized-sparse-prefill512-auto-confirm-decode64.jsonl
+  --json $HOME/results/dsv4-gb10/optimized-sparse-prefill512-auto-confirm-decode64.jsonl
 ```
 
 The selected JSON records 20 resolved reader workers, two staging buffers, 5,321
@@ -184,7 +184,7 @@ auto-sized expert slots, 16 DSV4 KV pages of 128 tokens, 43 MoE layers, 256 expe
 per layer, and 13,369,344 bytes per cached expert. Its p50/p99 event latencies were
 97.161/101.396 ms and server-reported device allocation was 76.19 GiB.
 
-Result artifacts are under `/home/lidaiqing/results/dsv4-gb10/`. The best measured
+Result artifacts are under `$HOME/results/dsv4-gb10/`. The best measured
 fixed-cache row is `optimized-sparse-prefill512-cache5900-confirm-decode64.jsonl`;
 the selected auto-sized row is
 `optimized-sparse-prefill512-auto-confirm-decode64.jsonl`.

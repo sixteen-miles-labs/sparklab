@@ -448,7 +448,7 @@ SPARKLAB_DISK_READ_WORKERS=16 \
 SPARKLAB_DISK_CACHE_POLICY=layer_lru \
 .venv/bin/python benchmarks/bench_aime_suite.py \
   --model /mnt/ssd/freetoken/ftw/DeepSeek-V4-Flash-0731 \
-  --aime /home/lidaiqing/.cache/huggingface/hub/datasets--math-ai--aime25/snapshots/563bb8404243c5f09de6ec262f2db674fe5bce9b/test.jsonl \
+  --aime $HOME/.cache/huggingface/hub/datasets--math-ai--aime25/snapshots/563bb8404243c5f09de6ec262f2db674fe5bce9b/test.jsonl \
   --problems all --decode 1024 \
   --backend hybrid --storage disk --host-cache-gb 40 \
   --hybrid-fetch 3 --cpu-threads 8 --mem-ratio 0.90 \

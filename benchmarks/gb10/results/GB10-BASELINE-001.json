@@ -66,7 +66,7 @@
   },
   "source": {
     "summary": "exps/exp_dsv4_gb10.md",
-    "raw_artifact": "/home/lidaiqing/results/dsv4-gb10/stage-a-final-overlap-host4-cache5900-decode64.jsonl",
+    "raw_artifact": "$HOME/results/dsv4-gb10/stage-a-final-overlap-host4-cache5900-decode64.jsonl",
     "raw_artifact_committed": false
   }
 }
