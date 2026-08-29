@@ -252,6 +252,7 @@ SUPPORTED_MODELS: tuple[AotModel, ...] = (
         top_k=8,
         moe_intermediate_size=2048,
         expert_formats=_NVFP4_FORMATS,
+        aliases=("Inferact/GLM-5.3-NVFP4",),
     ),
     AotModel(
         # MiniMaxAI/MiniMax-M2.5 ships block-fp8, which has no expert-bank

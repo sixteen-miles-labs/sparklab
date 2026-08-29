@@ -36,6 +36,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert get_recipe("qwen3.6-35b-a3b").name == "Qwen3.6 35B A3B"
     assert get_recipe("glm-5.2").name == "GLM-5.2"
     assert get_recipe("glm-5.2").intended_tier == "research"
+    assert get_recipe("glm-5.3").model == "Inferact/GLM-5.3-NVFP4"
     assert {
         recipe.slug: recipe.parameters for recipe in load_catalog()
     } == {
@@ -44,6 +45,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
         "glm-5.3-flash": "320B total / 18B active",
         "qwen3.8-flash-next": "125B LM + 55B aux / 6B active",
         "glm-5.2": "753B total / 40B active",
+        "glm-5.3": "753B total / 40B active",
         "kimi-k3": "2.8T total / 16 of 896 experts",
     }
     assert get_recipe("deepseek-v4").status == "preview"
@@ -124,7 +126,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     }
     assert {
         item.slug for item in select_recipes(load_catalog(), portfolio_role="fallback")
-    } == {"glm-5.2"}
+    } == {"glm-5.2", "glm-5.3"}
 
 
 def test_next_model_recipes_are_immutable_and_capacity_plannable():
@@ -132,12 +134,14 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     glm = get_recipe("glm-5.3-flash")
     kimi = get_recipe("kimi-k3")
     glm52 = get_recipe("glm-5.2")
+    glm53 = get_recipe("glm-5.3")
     deepseek = get_recipe("deepseek-v4")
     assert qwen.revision == "103a7608316173ca6edd49929544244de7ffda70"
     assert glm.recipe_version == "0.3.2"
     assert glm.revision == "9eaeadaf026871a90640e32c0604f6ab0b2d641d"
     assert kimi.revision == "f8c5234a0a880bcc6cbf779a315e7ee2f405b812"
     assert glm52.revision == "aec724e8c7b8ee9db3b48c01c320f63f9cdaf8aa"
+    assert glm53.revision == "ce67b36f3669192b5bb233819f0fda6c8a9837f8"
     assert deepseek.revision == "7872f01b1d1fe23eabc4c98b48bffcef5a386062"
     assert qwen.source_bytes == 182838060595
     assert qwen.expert_quantization == "nvfp4"
@@ -158,6 +162,11 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     assert kimi.source_bytes == 1610038482254
     assert kimi.prepared_bytes == 1610936311808
     assert glm52.source_bytes == 464874323992
+    assert glm53.source_bytes == 464867183339
+    assert glm53.deployment.quantization == "nvfp4"
+    assert glm53.deployment.runtime_format == "ftw-nvfp4"
+    assert glm53.performance is None
+    assert glm53.evidence == ()
     assert deepseek.source_bytes == 166878536440
     assert deepseek.prepared_bytes == 157460918272
     assert qwen.execution_policy == glm.execution_policy == "nvme-moe"
@@ -165,6 +174,7 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     assert glm.minimum_free_bytes > glm.source_bytes + glm.prepared_bytes
     assert kimi.minimum_free_bytes > kimi.source_bytes + kimi.prepared_bytes
     assert glm52.minimum_free_bytes > glm52.source_bytes + glm52.prepared_bytes
+    assert glm53.minimum_free_bytes > glm53.source_bytes + glm53.prepared_bytes
     assert deepseek.minimum_free_bytes > deepseek.source_bytes + deepseek.prepared_bytes
 
 
