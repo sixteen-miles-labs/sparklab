@@ -52,6 +52,7 @@ class KimiSparseMoeBlock(BaseOP):
             config.moe_intermediate_size * config.n_shared_experts,
             args.situ_beta,
             args.situ_linear_beta,
+            quantization=config.dense_quant,
         )
 
     def _route(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:

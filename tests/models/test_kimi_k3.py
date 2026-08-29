@@ -13,8 +13,10 @@ from sparklab.models.kimi_k3.ops import apply_attention_residual, situ_and_mul
 from sparklab.models.kimi_k3.weight import (
     _MODEL_OPT_EXPERT_RE,
     _NVFP4_SOURCE_SPEC,
+    _quant_fp8_per_row,
     _iter_modelopt_weights,
     map_weight_name,
+    transform_ftw_weights,
 )
 
 
@@ -124,6 +126,65 @@ def test_parse_config_detects_nvidia_modelopt_mixed_layout():
     assert cfg.attn_quant == "fp8_block"
     assert cfg.weight_block_size == (128, 128)
     assert cfg.fp8_block_scale_dtype == "float32"
+
+
+def test_kimi_resident_mlp_fp8_is_explicit(monkeypatch):
+    monkeypatch.delenv("SPARKLAB_KIMI_MLP_FP8", raising=False)
+    cfg = parse_config(_config())
+    assert cfg.dense_quant == cfg.lm_head_quant == "none"
+    monkeypatch.setenv("SPARKLAB_KIMI_MLP_FP8", "1")
+    cfg = parse_config(_config())
+    assert cfg.dense_quant == cfg.lm_head_quant == "fp8_pertensor"
+
+
+def test_ftw_transform_quantizes_only_resident_mlp():
+    from types import SimpleNamespace
+
+    shared = torch.linspace(-2, 2, 32, dtype=torch.float32).reshape(4, 8).bfloat16()
+    attention = torch.ones(4, 8, dtype=torch.bfloat16)
+    shared_name = (
+        "model.layers.1.block_sparse_moe.shared_experts.gate_up_proj.weight"
+    )
+    attention_name = "model.layers.1.self_attn.q_proj.weight"
+    embedding_name = "model.embed_tokens.weight"
+    embedding = torch.linspace(-1, 1, 24, dtype=torch.float32).reshape(3, 8).bfloat16()
+    got = dict(
+        transform_ftw_weights(
+            iter(
+                (
+                    (shared_name, shared),
+                    (embedding_name, embedding),
+                    (attention_name, attention),
+                )
+            ),
+            SimpleNamespace(dense_quant="fp8_pertensor"),
+        )
+    )
+    assert got[shared_name].dtype == torch.float8_e4m3fn
+    scale_name = shared_name.removesuffix(".weight") + ".weight_scale"
+    assert got[scale_name].shape == (4,)
+    restored = got[shared_name].float() * got[scale_name][:, None]
+    # E4M3 has four mantissa bits; per-row max scaling bounds relative rounding to
+    # approximately half an FP8 bin (6.25%).
+    torch.testing.assert_close(restored, shared.float(), rtol=0.07, atol=0.01)
+    assert got[embedding_name].dtype == torch.float8_e4m3fn
+    assert got["model.embed_tokens.weight_scale"].shape == (3,)
+    assert got[attention_name] is attention
+
+
+def test_ftw_transform_is_passthrough_when_disabled():
+    from types import SimpleNamespace
+
+    weight = torch.ones(4, 8, dtype=torch.bfloat16)
+    items = [("model.layers.0.mlp.down_proj.weight", weight)]
+    assert list(transform_ftw_weights(iter(items), SimpleNamespace(dense_quant="none"))) == items
+
+
+def test_quant_fp8_per_row_handles_zero_rows():
+    q, scale = _quant_fp8_per_row(torch.zeros(2, 8, dtype=torch.bfloat16))
+    assert q.dtype == torch.float8_e4m3fn
+    assert scale.dtype == torch.float32
+    assert scale.gt(0).all()
 
 
 def test_nvidia_modelopt_expert_key_mapping_excludes_activation_scale():

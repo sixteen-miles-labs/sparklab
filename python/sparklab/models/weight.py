@@ -239,8 +239,18 @@ def load_weight(
         # stack. Vision is opt-in (default OFF, see vision_load_enabled): when it is off the
         # model never builds the tower, so replaying those tensors would trip load_state_dict's
         # strict unexpected-key check. Skip them here to match the model the engine built.
+        config, spec = _spec_for_model_path(model_path)
+        weights = iter_ftw_weights(model_path)
+        transform = _model_override(spec, "transform_ftw_weights")
+        if transform is not None:
+            # A converted checkpoint normally replays model-agnostically. A model may opt
+            # into a streaming transform when the runtime configuration deliberately uses
+            # a different resident representation from an older FTW artifact. The hook
+            # still sees one tensor at a time, preserving the reader's bounded-memory
+            # contract; strict model load catches missing or unexpected transformed keys.
+            weights = transform(weights, config)
         skip_vision = not vision_load_enabled()
-        for name, tensor in iter_ftw_weights(model_path):
+        for name, tensor in weights:
             if skip_vision and name.startswith(VISION_KEY_PREFIXES):
                 continue
             yield name, tensor

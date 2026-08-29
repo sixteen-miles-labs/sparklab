@@ -68,3 +68,28 @@ def test_missing_telemetry_is_not_treated_as_zero():
         "gpu_telemetry.swap_out_pages_delta is missing",
         "gpu_telemetry.swap_growth_bytes is missing",
     ]
+
+
+def test_no_swap_cgroup_attributes_global_pageouts_correctly():
+    row = _valid_row()
+    for name in ("lifecycle_telemetry", "gpu_telemetry"):
+        telemetry = row[name]
+        telemetry["swap_out_pages_delta"] = 100
+        telemetry["swap_growth_bytes"] = 4096
+        telemetry["cgroup"] = {
+            "end": {"swap_max": "0", "swap_current_bytes": 0},
+            "delta": {"oom_kill": 0, "swap_current_bytes": 0},
+        }
+    assert validate_row(row, 16) == []
+
+
+def test_no_swap_cgroup_rejects_local_oom_or_swap():
+    row = _valid_row()
+    row["gpu_telemetry"]["cgroup"] = {
+        "end": {"swap_max": "0", "swap_current_bytes": 1},
+        "delta": {"oom_kill": 1, "swap_current_bytes": 1},
+    }
+    errors = validate_row(row, 16)
+    assert any("gpu_telemetry.cgroup.delta.oom_kill" in error for error in errors)
+    assert any("gpu_telemetry.cgroup.delta.swap_current_bytes" in error for error in errors)
+    assert any("gpu_telemetry.cgroup.end.swap_current_bytes" in error for error in errors)

@@ -10,7 +10,7 @@ from benchmarks.finalize_kimi_k3_result import (
     build_result,
     validate_bundle,
 )
-from benchmarks.bench_decode_moe import extract_answer
+from benchmarks.bench_decode_moe import checkpoint_provenance, extract_answer
 
 
 def _write(path, value) -> None:
@@ -150,6 +150,9 @@ def test_builds_schema_shaped_result_from_complete_promoted_bundle(tmp_path):
     assert result["validation"]["oom_count"] == 0
     assert result["validation"]["output_correctness_evaluated"] is True
     assert result["validation"]["output_correctness"] is True
+    assert result["validation"]["output_prefix_consistent_across_ladder"] is True
+    assert result["validation"]["acquisition_global_swap_out_pages"] == 0
+    assert result["validation"]["caveats"] == []
     assert result["metrics"]["decode_tokens_per_second"] == 1.25
 
 
@@ -163,7 +166,52 @@ def test_rejects_nonzero_swap_out_even_when_gate_file_claims_passed(tmp_path):
     assert any("swap_out_pages_delta=1" in error for error in errors)
 
 
+def test_preserves_unscoped_acquisition_pageout_and_prefix_divergence(tmp_path):
+    results = _bundle(tmp_path)
+    acquisition = json.loads((results / "acquisition-final.json").read_text())
+    acquisition["swap_out_pages_delta"] = 1
+    _write(results / "acquisition-final.json", acquisition)
+    row = json.loads((results / "probe-256.jsonl").read_text())
+    row["output_text"] = "A different but coherent reasoning path reaches \\boxed{42}"
+    _write(results / "probe-256.jsonl", row)
+
+    rows, errors = validate_bundle(results)
+    assert errors == []
+    result = build_result(results, rows)
+    validation = result["validation"]
+    assert validation["acquisition_global_swap_out_pages"] == 1
+    assert validation["output_prefix_consistent_across_ladder"] is False
+    assert len(validation["caveats"]) == 2
+
+
 def test_extract_answer_distinguishes_finished_from_unfinished_reasoning():
     assert extract_answer("reasoning only") is None
     assert extract_answer("therefore the final answer is 42") == "42"
     assert extract_answer("first \\boxed{7}, finally \\boxed{42}") == "42"
+
+
+def test_checkpoint_provenance_recognizes_current_ftw_index(tmp_path):
+    shard = tmp_path / "freetoken-00000.ftw"
+    shard.write_bytes(b"ftw")
+    _write(
+        tmp_path / "freetoken_weight.json",
+        {
+            "shards": [{"file": shard.name}],
+            "fingerprint": "0123456789abcdef",
+            "quant_format": "nvfp4",
+            "source_model_path": "/source",
+            "external_artifacts": [{"nbytes": 5}],
+        },
+    )
+
+    value = checkpoint_provenance(str(tmp_path))
+
+    assert value == {
+        "path": str(tmp_path.resolve()),
+        "format": "ftw",
+        "bytes": 8,
+        "fingerprint": "0123456789abcdef",
+        "quant_format": "nvfp4",
+        "source_model_path": "/source",
+        "external_artifacts": [{"nbytes": 5}],
+    }

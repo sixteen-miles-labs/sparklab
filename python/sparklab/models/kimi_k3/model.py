@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import torch
 from sparklab.core import get_global_ctx
+from sparklab.kernels.triton.fp8_pertensor_linear import fp8_pertensor_linear
 from sparklab.layers import (
     BaseOP,
     LinearReplicated,
@@ -11,12 +12,53 @@ from sparklab.layers import (
     VocabParallelEmbedding,
 )
 from sparklab.models.blocks import BaseLLMModel
+from sparklab.runtime.distributed import get_tp_info
 from sparklab.utils import nvtx_annotate
 
 from .attention import KimiMLAAttention
 from .kda import KimiDeltaAttention
 from .moe import KimiSparseMoeBlock
 from .ops import KimiSituMLP, apply_attention_residual
+
+
+class KimiFp8Embedding(VocabParallelEmbedding):
+    """Per-row FP8 token embedding for the opt-in GB10 resident profile."""
+
+    def __init__(self, num_embeddings: int, embedding_dim: int):
+        if get_tp_info().size != 1:
+            raise NotImplementedError("Kimi K3 FP8 embedding currently requires TP=1")
+        super().__init__(num_embeddings, embedding_dim)
+        self.weight = torch.empty(
+            self.num_embeddings_tp, embedding_dim, dtype=torch.float8_e4m3fn
+        )
+        self.weight_scale = torch.empty(self.num_embeddings_tp, dtype=torch.float32)
+
+    @nvtx_annotate("Embedding")
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        from sparklab.kernels import indexing
+
+        values = indexing(weights=self.weight, indices=x).to(torch.bfloat16)
+        scales = self.weight_scale[x.long()].to(values.dtype).unsqueeze(-1)
+        return values * scales
+
+
+class KimiFp8LMHead(ParallelLMHead):
+    """Per-row FP8 W8A16 head for K3's untied vocabulary projection."""
+
+    def __init__(self, num_embeddings: int, embedding_dim: int):
+        if get_tp_info().size != 1:
+            raise NotImplementedError("Kimi K3 FP8 lm_head currently requires TP=1")
+        super().__init__(num_embeddings, embedding_dim, tie_word_embeddings=False)
+        self.weight = torch.empty(num_embeddings, embedding_dim, dtype=torch.float8_e4m3fn)
+        self.weight_scale = torch.empty(num_embeddings, dtype=torch.float32)
+
+    @nvtx_annotate("LMHead")
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        batch = get_global_ctx().batch
+        if batch.is_prefill:
+            indices = batch.attn_metadata.get_last_indices(batch.size)
+            x = x[indices].contiguous()
+        return fp8_pertensor_linear(x, self.weight, self.weight_scale)
 
 
 class KimiK3DecoderLayer(BaseOP):
@@ -39,6 +81,7 @@ class KimiK3DecoderLayer(BaseOP):
                 config.intermediate_size,
                 args.situ_beta,
                 args.situ_linear_beta,
+                quantization=config.dense_quant,
             )
         self.input_layernorm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
         self.post_attention_layernorm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
@@ -85,7 +128,11 @@ class KimiK3DecoderLayer(BaseOP):
 
 class KimiK3Model(BaseOP):
     def __init__(self, config):
-        self.embed_tokens = VocabParallelEmbedding(config.vocab_size, config.hidden_size)
+        self.embed_tokens = (
+            KimiFp8Embedding(config.vocab_size, config.hidden_size)
+            if config.lm_head_quant == "fp8_pertensor"
+            else VocabParallelEmbedding(config.vocab_size, config.hidden_size)
+        )
         self.layers = OPList(
             [KimiK3DecoderLayer(config, layer) for layer in range(config.num_layers)]
         )
@@ -111,12 +158,20 @@ class KimiK3Model(BaseOP):
 
 class KimiK3ForCausalLM(BaseLLMModel):
     def __init__(self, config):
+        if config.lm_head_quant == "fp8_pertensor" and config.tie_word_embeddings:
+            raise NotImplementedError(
+                "Kimi K3's FP8 resident profile requires untied embeddings"
+            )
         self.model = KimiK3Model(config)
-        self.lm_head = ParallelLMHead(
-            config.vocab_size,
-            config.hidden_size,
-            tie_word_embeddings=config.tie_word_embeddings,
-            tied_embedding=self.model.embed_tokens if config.tie_word_embeddings else None,
+        self.lm_head = (
+            KimiFp8LMHead(config.vocab_size, config.hidden_size)
+            if config.lm_head_quant == "fp8_pertensor"
+            else ParallelLMHead(
+                config.vocab_size,
+                config.hidden_size,
+                tie_word_embeddings=config.tie_word_embeddings,
+                tied_embedding=self.model.embed_tokens if config.tie_word_embeddings else None,
+            )
         )
         super().__init__()
 
@@ -132,4 +187,4 @@ class KimiK3ForCausalLM(BaseLLMModel):
         return self.lm_head.forward(output)
 
 
-__all__ = ["KimiK3ForCausalLM"]
+__all__ = ["KimiFp8Embedding", "KimiFp8LMHead", "KimiK3ForCausalLM"]

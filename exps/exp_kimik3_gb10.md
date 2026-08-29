@@ -1,10 +1,10 @@
-# Frontier Models on One GB10: DSV4 Flash to GLM-5.2 to Kimi K3
+# SparkLab Frontier Models on One GB10: DSV4 Flash to GLM-5.2 to Kimi K3
 
-Last updated: 2026-08-28
+Last updated: 2026-08-29
 
 ## Summary
 
-This document defines one ordered FreeToken experiment on an NVIDIA GB10 system
+This document defines one ordered SparkLab experiment on an NVIDIA GB10 system
 with 128 GB of coherent unified memory. The work deliberately starts with the
 smallest model whose behavior is already known, then increases model and storage
 pressure only after the shared runtime has passed correctness and performance
@@ -28,6 +28,14 @@ claim of performance parity with hosted Kimi K3:
 > Starting from a reproduced DSV4 Flash control, demonstrate that the same bounded
 > GB10 runtime can scale to GLM-5.2 and ultimately generate reference-validated
 > output from a 2.8T-parameter, approximately 1.5 TB Kimi K3 checkpoint.
+
+The completed Kimi run establishes full-checkpoint FTW conversion, bounded-memory
+serving, and a promoted 1/16/64/256-token ladder. The selected 256-token result is
+0.1613 decode tok/s with 395.4-second TTFT. It does **not** establish answer
+correctness: generation ended while the model was still reasoning, and its greedy
+text diverged from the shorter ladder after a 53-character shared prefix. Those
+limitations are retained in `GB10-KIMI-001` rather than upgraded into a capability
+or determinism claim.
 
 The following target table is the original pre-measurement hypothesis. Values in
 the current execution record are measured only where their evidence is explicitly
@@ -76,8 +84,8 @@ The final acquisition records are
 Acquisition recorded zero new OOM kills and one isolated swap-out page (4 KiB)
 over the full 8.49-hour window; the counter did not continue increasing. This is
 preserved in the final telemetry rather than rounded away. Conversion and runtime
-promotion, when resumed, must establish fresh baselines and independently satisfy
-their zero-delta safety gates.
+promotion subsequently established fresh baselines and independently passed their
+scoped zero-swap/OOM safety gates.
 
 The NVIDIA checkpoint differs materially from the original Moonshot artifact. It
 uses ModelOpt mixed quantization: routed experts are NVFP4, aligned resident
@@ -188,9 +196,10 @@ and prepared artifacts, 38.3 GiB above the 140 GiB conversion stop floor.
 
 The plan reports `artifacts.ready=true` and zero storage shortfall. It is a capacity
 projection, not proof of the eventual prepared size; the live disk guard remains
-authoritative. Runtime admission remains correctly closed because no full Kimi
-runtime-memory budget has been measured and the machine has pre-existing swap
-occupancy. The record is
+authoritative. At this preflight stage runtime admission remained closed because no
+full Kimi runtime-memory budget had yet been measured and the machine had
+pre-existing swap occupancy. The later isolated runtime ladder supplied that
+evidence. The preflight record is
 `/home/lidaiqing/results/kimi-k3-gb10/plan-partial.json`; artifact capacity is not
 being misreported as runtime certification.
 
@@ -206,8 +215,10 @@ Conversion is guarded by:
 
 `benchmarks/validate_conversion_promotion.py` is the fail-closed handoff between
 conversion and serving. In addition to successful exit and intact memory/disk
-telemetry, it requires zero `oom_kill`, zero `pswpout`, and zero swap-occupancy
-growth; missing counters fail the gate. Its record is
+telemetry, it requires zero `oom_kill` and zero attributable swap. For a service
+cgroup with `MemorySwapMax=0`, the cgroup's swap and OOM counters are authoritative;
+otherwise the global `pswpout` and swap-occupancy deltas must be zero. Missing
+counters fail the gate. Its record is
 `/home/lidaiqing/results/kimi-k3-gb10/conversion-gate.json`. The supervisor/gate
 schema was exercised end to end with a short child process before queuing the full
 conversion.
@@ -240,28 +251,72 @@ SPARKLAB_CONVERT_PROGRESS=1 PYTHONPATH=python \
   --shard-gib 8 --device cuda:0
 ```
 
+The resumed production conversion completed in 2,636.1 seconds and wrote a
+1,610,936,311,808-byte FTW artifact in 194 shards with fingerprint
+`534cbc4565d4279d`. Minimum filesystem headroom was 148.98 GiB, minimum
+`MemAvailable` was 88.28 GiB, and process-group peak RSS was 37.08 GiB. Its
+`MemorySwapMax=0` cgroup recorded zero swap current/peak and zero OOM kills. Global
+swap counters moved because other workloads shared the host, so the passing gate
+uses the isolated cgroup evidence rather than attributing those system-wide deltas
+to conversion. After the conversion gate and runtime validation passed, the source
+checkpoint was removed, reclaiming 1,575,094,878,208 physical bytes; recovery
+requires re-downloading the pinned Hugging Face revision.
+
 ### Staged runtime ladder
 
-The first complete-checkpoint probe uses the minimum expert cache and a fail-closed
-12 GiB memory floor:
+The complete-checkpoint probes use the minimum 896-slot expert cache, a fail-closed
+12 GiB memory floor, and an explicit resident-weight optimization. NVIDIA's routed
+experts remain checkpoint-native ModelOpt NVFP4 and its aligned attention/KDA
+matrices remain checkpoint-native block FP8. The leading dense SiTU MLP, 92 shared
+SiTU MLPs, token embedding, and untied output head are quantized while streaming
+from FTW from BF16 to per-output-row FP8 W8A16 by
+`SPARKLAB_KIMI_MLP_FP8=1`. The 188 selected matrices shrink from 28.369 GiB to
+14.193 GiB including scales, saving 14.176 GiB. This is therefore a mixed-resident
+optimization result, not an untouched official-weight result; the 1.5 TiB FTW
+expert bank and fingerprint are unchanged.
 
 ```bash
-PYTHONPATH=python .venv/bin/python benchmarks/bench_decode_moe.py \
+SPARKLAB_KIMI_MLP_FP8=1 PYTHONPATH=python \
+.venv/bin/python benchmarks/bench_decode_moe.py \
   --model /home/lidaiqing/.sparklab/models/kimi-k3/prepared/0.2.0 \
   --recipe kimi-k3 --backend offload --storage disk --nvfp4-backend triton \
-  --host-cache-gb 0 --cache 896 --cache-policy lru --mem-ratio 0.85 \
-  --num-tokens 2048 --disable-prefill-overlap \
-  --prefill-sparse-max-tokens 256 --decode 1 --no-graph \
+  --host-cache-gb 0 --cache 896 --cache-policy layer_lru --mem-ratio 0.85 \
+  --num-tokens 1024 --disable-prefill-overlap \
+  --prefill-sparse-max-tokens 256 --decode 256 --no-graph \
+  --disable-startup-prefill-warmup \
   --collect-moe-stats --greedy --include-output --min-memory-gib 12 \
-  --json /home/lidaiqing/results/kimi-k3-gb10/probe-1.jsonl
+  --request-timeout 3600 \
+  --json /home/lidaiqing/results/kimi-k3-gb10/probe-256.jsonl
 ```
 
-Promotion is strictly one token, then 16, 64, and finally 256 tokens. A stage is
-promoted only after the prior result shows a complete API response, no memory-guard
-trigger, zero OOM-kill delta, zero swap-out delta, zero swap growth, and plausible
-greedy output. Throughput and correctness remain **not measured** until those
-full-checkpoint probes finish; analytical ceilings elsewhere in this report are not
-benchmark results.
+The 1, 16, 64, and 256-token rungs all passed their single-run promotion gates.
+Each ran as a separate systemd service with `MemorySwapMax=0`; every service and
+measured request recorded zero cgroup swap, zero OOM kills, zero swap growth, and
+no memory-guard trigger.
+
+| Rung | Returned/events | Decode tok/s | TTFT | Min `MemAvailable` | Miss rate | Physical I/O | Read rate |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 1 / 1 | N/A | 391.2 s | 16.78 GiB | N/A | 1,428.09 GiB | 3.93 GiB/s |
+| 16 | 16 / 16 | 0.1854 | 395.1 s | 17.57 GiB | 75.91% | 1,718.48 GiB | 3.93 GiB/s |
+| 64 | 64 / 64 | 0.1664 | 392.7 s | 17.53 GiB | 79.57% | 2,706.53 GiB | 3.88 GiB/s |
+| 256 | 256 / 256 | 0.1613 | 395.4 s | 17.68 GiB | 80.23% | 6,645.07 GiB | 3.77 GiB/s |
+
+The approximately 6.5-minute TTFT is dominated by the 129-token sparse-prefill
+fallback: it scans all 896 routed experts in each of 92 layers, producing about
+1.43 TiB of physical I/O per request. Startup prefill warmup is disabled because
+the generic three-shape warmup otherwise reads roughly 2.4 TiB before the API can
+serve. Decode is also storage-bound: the 256-token request misses 12.84 of 16 active
+experts per layer and reads 25.96 physical GiB per returned token when its prefill
+traffic is included. The 0.1613 tok/s result is below the original 0.2 tok/s lower
+target and identifies expert I/O/cache locality as the dominant GB10 limit.
+
+The first 16-token attempt exposed a runtime scheduler bug: overlap scheduling
+advanced the shared request before draining the prior token, marking the
+penultimate token as the length limit and dropping the true final token. That
+attempt returned 15/16 tokens and is preserved as
+`probe-16-attempt-1-token-shortfall.jsonl`. Per-forward completion snapshots fixed
+the issue; the rerun and both longer rungs returned their exact requested counts
+with `finish_reason="length"`.
 
 `benchmarks/validate_decode_promotion.py` enforces that contract against each raw
 JSONL row before the next server launch. It also requires an identified FTW
@@ -272,15 +327,26 @@ counter is a failure rather than an assumed zero.
 
 `benchmarks/finalize_kimi_k3_result.py` performs the publication handoff. It
 independently rereads the acquisition, strict source audit, conversion telemetry,
-conversion gate, four raw decode rows, and four decode gates; it also requires one
-consistent FTW fingerprint/byte size and prefix-consistent greedy output across the
-ladder. Only then does it write the schema-conforming compact result
-`benchmarks/gb10/results/GB10-KIMI-001.json`.
+conversion gate, four raw decode rows, and four decode gates, and requires one
+consistent FTW fingerprint/byte size. Cross-rung prefix consistency is reported as
+a validation field rather than assumed: rungs 1/16/64 share prefixes, while rung
+256 diverges after 53 characters. The compact result therefore records
+`output_prefix_consistent_across_ladder=false`. Acquisition's one unscoped global
+swap-out page is likewise preserved separately from the zero-swap conversion and
+decode cgroups.
 
 Each raw rung also records the dataset's expected AIME answer, an extracted boxed or
-explicit final answer when present, and the exact match result. Unfinished reasoning
-therefore remains valid serving/safety evidence but is not mislabeled as task
-correctness in the compact benchmark.
+explicit final answer when present, and the exact match result. The 256-token text
+correctly derives that `b+7` must divide 56 and reaches candidate divisors 28 and 56,
+but ends before stating or boxing the requested sum 70. It is valid serving/safety
+evidence; `output_correctness_evaluated=false` avoids labeling unfinished reasoning
+as a passed capability result.
+
+The final implementation audit passes 168 focused FTW loader, checkpoint, Kimi,
+engine, scheduler, promotion-gate, and publication tests. The compact result at
+`benchmarks/gb10/results/GB10-KIMI-001.json` validates against
+`benchmarks/gb10/result.schema.json` and regenerates byte-for-byte from the raw
+evidence directory.
 
 ## Program order and promotion gates
 
@@ -926,36 +992,39 @@ the best Kimi run:
 | DSV4 selected GB10 run | Official DS-FP4 | 76.19 GiB device | 0.604 s | 10.282 tok/s | 0 GiB | 100% | 37.95 W avg |
 | GLM G1 synchronous control | Official NVFP4 | 30.44 GiB device | 45.760 s | 0.619 tok/s | 17.909 GiB | 0% | 15.00 W avg |
 | GLM selected GB10 run | Official NVFP4 | 33.70 GiB device | 2.569 s | 0.802 tok/s | 8.769 GiB | 26.5% | 16.57 W avg |
-| Kimi 1-token admission probe | NVIDIA ModelOpt NVFP4 experts + FP8 resident | Pending gated run | Pending | N/A | Pending | Pending | Pending |
-| Kimi 16-token promoted probe | NVIDIA ModelOpt NVFP4 experts + FP8 resident | Pending gated run | Pending | Pending | Pending | Pending | Pending |
-| Kimi 64-token correctness probe | NVIDIA ModelOpt NVFP4 experts + FP8 resident | Pending gated run | Pending | Pending | Pending | Pending | Pending |
-| Kimi 256-token sustained probe | NVIDIA ModelOpt NVFP4 experts + FP8 resident | Pending gated run | Pending | Pending | Pending | Pending | Pending |
+| Kimi 1-token admission probe | ModelOpt NVFP4 experts + native block FP8 + row-FP8 resident profile | 74.86 GiB device | 391.219 s | N/A | 1,428.089 GiB | N/A | 15.15 W avg |
+| Kimi 16-token promoted probe | ModelOpt NVFP4 experts + native block FP8 + row-FP8 resident profile | 74.86 GiB device | 395.068 s | 0.185 tok/s | 107.405 GiB | 24.1% | 15.2 W avg |
+| Kimi 64-token promoted probe | ModelOpt NVFP4 experts + native block FP8 + row-FP8 resident profile | 74.86 GiB device | 392.674 s | 0.166 tok/s | 42.290 GiB | 20.4% | 15.4 W avg |
+| Kimi 256-token sustained probe | ModelOpt NVFP4 experts + native block FP8 + row-FP8 resident profile | 74.86 GiB device | 395.405 s | 0.161 tok/s | 25.957 GiB | 19.8% | 15.55 W avg |
 | Kimi best mixed cold-tier run | Separate experiment | Not run | Not run | Not run | Not run | Not run | Not run |
 | Hosted K3 API observation | Official service | N/A | Not measured | Not measured | N/A | N/A | Not measured |
 
 Peak memory in this matrix is the server's reported device allocation. Physical
-GiB/token divides measured-request physical I/O by returned completion tokens; it
-is not an SSD bandwidth figure. The pending Kimi cells are populated only from
+GiB/token divides measured-request physical I/O, including prefill, by returned
+completion tokens; it is not an SSD bandwidth figure. The Kimi cells come only from
 their promoted raw rows, never from layer probes or analytical projections.
 
-## Deferred actions for the Kimi run
+## Completed Kimi execution and remaining work
 
-The pinned source acquisition and strict complete-source audit are finished. Per
-the refactor pause, no usable FTW conversion, runtime probe, or benchmark result
-was produced. A pre-queued conversion watcher raced the final source audit and ran
-for 16.5 seconds before it was caught and stopped. Its two incomplete FTW shards
-(16,621,034,424 bytes) were moved out of the active prepared path to
+The pinned source acquisition, strict audit, FTW conversion, source cleanup, and
+1/16/64/256 runtime ladder are complete. A pre-queued conversion watcher had raced
+the final source audit before the refactor pause and ran for 16.5 seconds before it
+was stopped. Its two incomplete FTW shards (16,621,034,424 bytes) were moved out of
+the active prepared path to
 `/home/lidaiqing/.sparklab/models/kimi-k3/prepared-interrupted-20260829T020606Z`;
-the canonical prepared path and `conversion.json` are absent. The interruption is
-recorded in
+the later production conversion did not reuse them. The interruption is recorded in
 `/home/lidaiqing/results/kimi-k3-gb10/conversion-interrupted-20260829T020606Z.json`.
 
-1. After the refactor, run the supervised FTW conversion; stop on the disk or
-   memory floor, any OOM or
-   swap-out delta, conversion failure, or structural FTW validation error.
-2. Promote the complete checkpoint through 1, 16, 64, and 256 greedy tokens only
-   after each raw row passes safety, provenance, output, and accounting checks.
-3. Run the fail-closed result finalizer, populate the pending Kimi matrix cells from
-   the promoted rows, and add `GB10-KIMI-001` to the GB10 benchmark index.
-4. Update recipe evidence and limitations only to the level proven by the full run,
-   then rerun focused tests, JSON/schema checks, and the completion audit.
+The remaining work is optimization and capability validation, not completion of
+this systems experiment:
+
+1. Replace the 92-layer full-expert prefill fallback with a correct route-first
+   implementation; it currently makes TTFT roughly 6.5 minutes.
+2. Improve decode locality or scheduling so the 80.23% expert-cache miss rate and
+   25.96 GiB/token physical traffic fall without reducing the 12 GiB reserve.
+3. Investigate the greedy divergence between the 64- and 256-token runs with
+   token/logit-level evidence before claiming deterministic parity.
+4. Run a longer generation or the full quality suite before claiming the AIME
+   answer; 256 tokens stop before the final sum is emitted.
+5. Context, capability, parser, agent, and endurance gates remain outstanding, so
+   this result does not change the recipe's experimental/research status.

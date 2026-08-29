@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from sparklab.models.config import (
@@ -59,6 +60,11 @@ def _modelopt_quant_kinds(hf_config: Any) -> set[str]:
         for spec in layers.values()
         if _get(spec or {}, "quant_algo")
     }
+
+
+def resident_mlp_quant() -> str:
+    """Resolved representation for K3's dense and shared-expert MLP weights."""
+    return "fp8_pertensor" if os.getenv("SPARKLAB_KIMI_MLP_FP8", "0") == "1" else "none"
 
 
 def parse_config(hf_config: Any) -> ModelConfig:
@@ -142,6 +148,11 @@ def parse_config(hf_config: Any) -> ModelConfig:
     mxfp4 = _is_mxfp4(text)
     expert_quant = "nvfp4" if "NVFP4" in modelopt_kinds else ("mxfp4" if mxfp4 else "none")
     resident_quant = "fp8_block" if "FP8_PB_WO" in modelopt_kinds else "none"
+    # K3's released NVFP4 checkpoint leaves the dense layer and every shared expert in
+    # BF16. On a 128-GiB GB10 those always-resident matrices prevent the mandatory
+    # one-slot-per-expert GPU cache from fitting. This opt-in W8A16 mode is resolved into
+    # ModelConfig so model construction and both source/FTW loaders cannot disagree.
+    mlp_quant = resident_mlp_quant()
     return ModelConfig(
         num_layers=num_layers,
         num_qo_heads=int(_get(text, "num_attention_heads")),
@@ -167,6 +178,11 @@ def parse_config(hf_config: Any) -> ModelConfig:
         weight_block_size=(128, 128) if resident_quant == "fp8_block" else None,
         fp8_block_scale_dtype="float32",
         attn_quant=resident_quant,
+        dense_quant=mlp_quant,
+        # The GB10 resident profile also keeps the untied embedding/head in per-row
+        # FP8. K3 does not currently expose a separate embedding-quant field, so the
+        # model deliberately keys both vocabulary matrices off this same resolved mode.
+        lm_head_quant=mlp_quant,
         moe_weight_format=expert_quant if expert_quant != "none" else None,
         first_k_dense_replace=int(_get(text, "first_k_dense_replace", 0)),
         n_shared_experts=int(_get(text, "num_shared_experts", 0) or 0),

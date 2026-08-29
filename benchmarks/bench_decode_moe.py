@@ -96,6 +96,7 @@ class GpuTelemetry:
         self._started = 0.0
         self._vm_start: dict[str, int] = {}
         self._swap_start = 0
+        self._cgroup_start: dict = {}
         self.guard_triggered = False
         self.guard_available_gib: float | None = None
 
@@ -146,10 +147,36 @@ class GpuTelemetry:
             return 0
         return max(0, values.get("SwapTotal", 0) - values.get("SwapFree", 0))
 
+    @staticmethod
+    def _cgroup_snapshot() -> dict:
+        try:
+            relative = next(
+                line.split("::", 1)[1]
+                for line in Path("/proc/self/cgroup").read_text().splitlines()
+                if line.startswith("0::")
+            )
+            root = Path("/sys/fs/cgroup") / relative.lstrip("/")
+            events = {
+                key: int(value)
+                for key, value in map(
+                    str.split, (root / "memory.events.local").read_text().splitlines()
+                )
+            }
+            return {
+                "path": relative,
+                "swap_max": (root / "memory.swap.max").read_text().strip(),
+                "swap_current_bytes": int((root / "memory.swap.current").read_text()),
+                "swap_peak_bytes": int((root / "memory.swap.peak").read_text()),
+                "oom_kill": events.get("oom_kill", 0),
+            }
+        except (OSError, StopIteration, ValueError):
+            return {}
+
     def start(self) -> None:
         self._started = time.perf_counter()
         self._vm_start = self._vmstat()
         self._swap_start = self._swap_used_bytes()
+        self._cgroup_start = self._cgroup_snapshot()
         have_nvidia_smi = shutil.which("nvidia-smi") is not None
 
         def sample() -> None:
@@ -205,6 +232,17 @@ class GpuTelemetry:
         swap_end = self._swap_used_bytes()
         result["swap_end_bytes"] = swap_end
         result["swap_growth_bytes"] = max(0, swap_end - self._swap_start)
+        cgroup_end = self._cgroup_snapshot()
+        result["cgroup"] = {
+            "start": self._cgroup_start,
+            "end": cgroup_end,
+            "delta": {
+                "oom_kill": cgroup_end.get("oom_kill", 0)
+                - self._cgroup_start.get("oom_kill", 0),
+                "swap_current_bytes": cgroup_end.get("swap_current_bytes", 0)
+                - self._cgroup_start.get("swap_current_bytes", 0),
+            },
+        }
         if self.samples:
             powers = [sample[1] for sample in self.samples]
             temperatures = [sample[2] for sample in self.samples]
@@ -269,9 +307,18 @@ def runtime_provenance() -> dict:
 def checkpoint_provenance(model_path: str) -> dict:
     """Cheap checkpoint identity for a benchmark row (metadata/stat only)."""
     path = Path(model_path).expanduser().resolve()
-    ftw_index = path / "sparklab_weight.json"
+    # ``freetoken_weight.json`` is the shipped FTW index name.  Keep accepting the
+    # pre-release name so older converted checkpoints remain benchmarkable.
+    ftw_index = next(
+        (
+            candidate
+            for name in ("freetoken_weight.json", "sparklab_weight.json")
+            if (candidate := path / name).is_file()
+        ),
+        None,
+    )
     hf_index = path / "model.safetensors.index.json"
-    if ftw_index.is_file():
+    if ftw_index is not None:
         value = json.loads(ftw_index.read_text(encoding="utf-8"))
         shards = value.get("shards") or []
         shard_bytes = sum(
@@ -408,6 +455,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="overlap supported resident shared experts with disk staging",
     )
     p.add_argument(
+        "--disable-startup-prefill-warmup",
+        action="store_true",
+        help=(
+            "skip the server's synthetic three-shape prefill warmup; the first measured "
+            "request pays JIT cost (useful for multi-terabyte disk-backed expert pools)"
+        ),
+    )
+    p.add_argument(
         "--collect-moe-stats", action="store_true",
         help="collect expert-cache counters and report the measured-request delta",
     )
@@ -426,6 +481,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=float,
         default=1800,
         help="seconds to wait for the spawned server to become ready",
+    )
+    p.add_argument(
+        "--request-timeout",
+        type=float,
+        default=1800,
+        help="minimum HTTP timeout in seconds for each streamed generation request",
     )
     p.add_argument("--json", dest="json_out", default=None, help="append the result rows here")
     return p.parse_args(argv)
@@ -629,7 +690,7 @@ def stream_generate(origin: str, model_id: str, problem: str, sampling: dict,
     finish_reason: str | None = None
     t0 = time.perf_counter()
     try:
-        resp = urllib.request.urlopen(req, timeout=max(1800, args.decode * 3))
+        resp = urllib.request.urlopen(req, timeout=max(args.request_timeout, args.decode * 3))
     except urllib.error.HTTPError as e:
         sys.exit(f"[bench] request failed: HTTP {e.code}: {e.read()[:500]!r}")
     # Iterate the SSE stream line by line as bytes; json.loads decodes UTF-8 itself.
@@ -709,8 +770,15 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
     lifecycle_telemetry = {}
     try:
         with os.fdopen(fd, "wb") as log_f:
+            child_env = os.environ.copy()
+            if args.disable_startup_prefill_warmup:
+                child_env["SPARKLAB_DISABLE_STARTUP_PREFILL_WARMUP"] = "1"
             proc = subprocess.Popen(
-                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+                env=child_env,
             )
             lifecycle = GpuTelemetry(
                 min_available_gib=args.min_memory_gib,
@@ -792,7 +860,9 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
             "prefill_hit_d2d": args.prefill_hit_d2d,
             "prefill_sparse_max_tokens": args.prefill_sparse_max_tokens,
             "shared_expert_overlap": args.shared_expert_overlap,
+            "startup_prefill_warmup": not args.disable_startup_prefill_warmup,
             "cuda_graph": not args.no_graph,
+            "request_timeout_s": args.request_timeout,
         },
         "cache_geometry": cache_status.get("geometry", {}),
         "problem": args.problem,
@@ -802,6 +872,8 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
             if first_request["stamps"]
             else None
         ),
+        "first_request_completion_tokens": first_request["usage"]["completion_tokens"],
+        "first_request_finish_reason": first_request["finish_reason"],
         "decode_steps": steps,
         "decode_tok_s": steps / decode_time if decode_time > 0 else 0.0,
         "ms_per_token": decode_time / steps * 1e3 if steps > 0 else 0.0,
@@ -810,6 +882,7 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
         "ttft_ms": (stamps[0] - r["t0"]) * 1e3,
         "events": len(stamps),
         "completion_tokens": completion,
+        "finish_reason": r["finish_reason"],
         "vram_gib": stats.get("vram_bytes", 0) / 2**30,
         "sampling": sampling,
         "output_sha1": hashlib.sha1(r["text"].encode()).hexdigest()[:12],
@@ -909,6 +982,8 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    if args.request_timeout <= 0:
+        sys.exit("--request-timeout must be positive")
     backends = [b.strip() for b in args.backend.split(",") if b.strip()]
     unknown = [b for b in backends if b not in ("offload", "cpu", "hybrid")]
     if unknown:

@@ -20,6 +20,10 @@ recipes. Raw logs and large result streams stay outside the source repository.
 - `results/GB10-GLM53-NVFP4-001.json` records the GLM-5.3 Flash NVFP4
   complete-checkpoint probe: 4.46 decode tok/s and 5.760 s warm TTFT. Its corrected
   greedy probe reaches the reference answer; the broader quality gates remain outstanding.
+- `results/GB10-KIMI-001.json` records the full Kimi K3 ModelOpt NVFP4 FTW
+  capacity experiment with SparkLab's GB10 resident FP8 profile: 0.161 decode tok/s,
+  395.405 s warm TTFT, exact 256-token completion, and zero runtime OOM/swap-out.
+  Cross-rung greedy determinism and answer correctness are explicitly not established.
 
 The Qwen3.8 recipe version 0.5.0 passes the Frontier performance thresholds but remains
 Experimental because its context, capability, quality, and endurance gates are outstanding.

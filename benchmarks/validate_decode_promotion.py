@@ -21,6 +21,26 @@ def _zero(telemetry: dict[str, Any], key: str, errors: list[str], scope: str) ->
         errors.append(f"{scope}.{key}={telemetry[key]!r}, expected 0")
 
 
+def _validate_safety_telemetry(
+    telemetry: dict[str, Any], errors: list[str], scope: str
+) -> None:
+    _zero(telemetry, "oom_kill_delta", errors, scope)
+    cgroup = telemetry.get("cgroup") or {}
+    end = cgroup.get("end") or {}
+    delta = cgroup.get("delta") or {}
+    if end.get("swap_max") == "0":
+        for key in ("oom_kill", "swap_current_bytes"):
+            _zero(delta, key, errors, f"{scope}.cgroup.delta")
+        if end.get("swap_current_bytes") != 0:
+            errors.append(
+                f"{scope}.cgroup.end.swap_current_bytes="
+                f"{end.get('swap_current_bytes')!r}, expected 0"
+            )
+    else:
+        for key in ("swap_out_pages_delta", "swap_growth_bytes"):
+            _zero(telemetry, key, errors, scope)
+
+
 def validate_row(row: dict[str, Any], expected_tokens: int) -> list[str]:
     errors: list[str] = []
     if row.get("status") == "failed":
@@ -63,12 +83,10 @@ def validate_row(row: dict[str, Any], expected_tokens: int) -> list[str]:
         )
     if not isinstance(lifecycle.get("mem_available_gib_min"), (int, float)):
         errors.append("lifecycle_telemetry.mem_available_gib_min is missing")
-    for key in ("oom_kill_delta", "swap_out_pages_delta", "swap_growth_bytes"):
-        _zero(lifecycle, key, errors, "lifecycle_telemetry")
+    _validate_safety_telemetry(lifecycle, errors, "lifecycle_telemetry")
 
     request = row.get("gpu_telemetry") or {}
-    for key in ("oom_kill_delta", "swap_out_pages_delta", "swap_growth_bytes"):
-        _zero(request, key, errors, "gpu_telemetry")
+    _validate_safety_telemetry(request, errors, "gpu_telemetry")
     return errors
 
 
