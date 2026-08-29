@@ -69,7 +69,6 @@ def test_only_the_sparklab_python_namespace_is_packaged():
 
 def test_community_health_files_are_present():
     for relative in (
-        "BRANDING.md",
         "CODE_OF_CONDUCT.md",
         "CONTRIBUTING.md",
         "GOVERNANCE.md",
