@@ -153,7 +153,11 @@ def main() -> int:
                 (calibration_response.get("usage") or {}).get("prompt_tokens", 0)
             )
             template_offset = calibration_local - calibration_observed
-            if calibration_observed <= 0 or not 0 <= template_offset <= 256:
+            # The serving tokenizer may add or remove a small, stable set of
+            # control tokens relative to the local Transformers template.  A
+            # signed offset is valid; the measured request below remains the
+            # authority for the exact-token gate.
+            if calibration_observed <= 0 or abs(template_offset) > 256:
                 raise ValueError(
                     "unexpected local/server chat-template offset: "
                     f"local={calibration_local}, observed={calibration_observed}"
