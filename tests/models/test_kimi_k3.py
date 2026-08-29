@@ -77,6 +77,17 @@ def _config(layers: int = 8):
     )
 
 
+def test_package_exports_nvfp4_expert_loader_contract():
+    import sparklab.models.kimi_k3 as package
+    from sparklab.models.kimi_k3 import weight
+
+    assert package.load_nvfp4_expert_sources is weight.load_nvfp4_expert_sources
+    assert (
+        package.load_nvfp4_expert_sources_parallel
+        is weight.load_nvfp4_expert_sources_parallel
+    )
+
+
 def test_parse_config_builds_one_based_hybrid_partition():
     cfg = parse_config(_config())
     assert cfg.num_layers == 8
