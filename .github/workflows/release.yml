@@ -94,7 +94,7 @@ jobs:
           kc="$(ls dist/sparklab_kernel_cache-*linux_aarch64.whl 2>/dev/null | wc -l)"
           [ "$rt" -eq 4 ] || { echo "expected 4 ARM64 manylinux runtime wheels, got $rt" >&2; exit 1; }
           [ "$kc" -eq 1 ] || { echo "expected 1 ARM64 kernel-cache wheel, got $kc" >&2; exit 1; }
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-wheels
           path: dist/*.whl
