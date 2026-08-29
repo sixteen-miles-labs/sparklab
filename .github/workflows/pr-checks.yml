@@ -21,6 +21,7 @@ jobs:
     env:
       CUDA_VISIBLE_DEVICES: ""
       PYTHONPATH: python
+      SPARKLAB_DISABLE_JIT: "1"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
@@ -45,4 +46,13 @@ jobs:
           )
           uv pip install --python .venv/bin/python --torch-backend cpu "${requirements[@]}"
       - name: Run CPU tests
-        run: .venv/bin/python -m pytest -q -m "not slow and not needs_weights"
+        run: |
+          .venv/bin/python -m pytest -q \
+            tests/checkpoint \
+            tests/daemon \
+            tests/models \
+            tests/serving \
+            tests/sparklab \
+            tests/tokenizer \
+            tests/test_*.py \
+            -m "not slow and not needs_weights"
