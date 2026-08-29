@@ -35,6 +35,7 @@ wheels=("$DIST"/sparklab-*.whl "$DIST"/sparklab_kernel_cache-*.whl)
 # publish leaves the win_amd64 assets alone.
 platforms="$(for w in "${wheels[@]}"; do
   case "${w##*/}" in
+    *linux_aarch64*) echo linux_aarch64 ;;
     *linux_x86_64*) echo linux_x86_64 ;;
     *win_amd64*) echo win_amd64 ;;
     *) echo UNKNOWN ;;

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Retag `linux_x86_64` runtime wheels to their detected manylinux policy.
+"""Retag native Linux runtime wheels to their detected manylinux policy.
 
 setuptools tags C-extension wheels `linux_<arch>`, which PyPI rejects at upload.
 The CI build already runs inside the pytorch manylinux_2_28 container, so the
@@ -57,7 +57,7 @@ def detect_platform_tag(wheel: Path) -> str:
     )
     # Deliberately not winfo.overall_policy: that folds in the external-library
     # check, and libtorch/libcudart are not on any manylinux whitelist, so it
-    # always collapses to linux_x86_64. sym_policy (glibc symbols) and
+    # always collapses to a plain linux platform tag. sym_policy (glibc symbols) and
     # machine_policy (required ISA extensions) are the two components that do
     # apply to us. min() by priority picks the stricter one -- the same
     # combinator auditwheel itself uses -- so a future global -march= that

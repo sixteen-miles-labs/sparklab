@@ -8,7 +8,7 @@
 # this in SPARKLAB_BUILD_RELEASE mode and refuses otherwise.
 #
 # This lane is separate from nightly-wheels.yml on purpose:
-#   - nightly ships +g<sha>-stamped, linux_x86_64-tagged cp312 wheels to the
+#   - nightly ships +g<sha>-stamped, linux_aarch64-tagged cp312 wheels to the
 #     SixteenMiles Labs rolling `beta` release, which legacy Desktops resolve by
 #     asset name -- that channel's naming must not change.
 #   - release ships bare-versioned, manylinux-retagged cp310-cp313 wheels, which
@@ -57,7 +57,7 @@ jobs:
     if: >-
       github.repository == 'sixteen-miles-labs/sparklab' &&
       (github.event_name == 'push' || inputs.testpypi_rehearsal)
-    runs-on: [self-hosted, linux, engine-build]
+    runs-on: [self-hosted, linux, ARM64, engine-build]
     timeout-minutes: 60
     steps:
       # The build container runs as root; an interrupted build can leave root-owned
@@ -90,10 +90,10 @@ jobs:
       - name: Check the wheel set
         run: |
           ls -l dist/
-          rt="$(ls dist/sparklab-*manylinux*.whl 2>/dev/null | wc -l)"
-          kc="$(ls dist/sparklab_kernel_cache-*.whl 2>/dev/null | wc -l)"
-          [ "$rt" -eq 4 ] || { echo "expected 4 manylinux runtime wheels, got $rt" >&2; exit 1; }
-          [ "$kc" -eq 1 ] || { echo "expected 1 kernel-cache wheel, got $kc" >&2; exit 1; }
+          rt="$(ls dist/sparklab-*manylinux*aarch64.whl 2>/dev/null | wc -l)"
+          kc="$(ls dist/sparklab_kernel_cache-*linux_aarch64.whl 2>/dev/null | wc -l)"
+          [ "$rt" -eq 4 ] || { echo "expected 4 ARM64 manylinux runtime wheels, got $rt" >&2; exit 1; }
+          [ "$kc" -eq 1 ] || { echo "expected 1 ARM64 kernel-cache wheel, got $kc" >&2; exit 1; }
       - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: release-wheels
@@ -122,7 +122,7 @@ jobs:
       - name: Select the PyPI wheel set (runtime only, no local versions)
         run: |
           mkdir pypi-dist
-          cp dist/sparklab-*manylinux*.whl pypi-dist/
+          cp dist/sparklab-*manylinux*aarch64.whl pypi-dist/
           # The kernel-cache wheel stays on GitHub releases; a +local version
           # here would be rejected by (Test)PyPI anyway -- fail early and loudly.
           if ls pypi-dist/ | grep -qF '+'; then
@@ -156,7 +156,7 @@ jobs:
       - name: Select the PyPI wheel set (runtime only, no local versions)
         run: |
           mkdir pypi-dist
-          cp dist/sparklab-*manylinux*.whl pypi-dist/
+          cp dist/sparklab-*manylinux*aarch64.whl pypi-dist/
           if ls pypi-dist/ | grep -qF '+'; then
             echo "local-versioned wheel in the PyPI upload set:" >&2; ls pypi-dist/ >&2; exit 1
           fi

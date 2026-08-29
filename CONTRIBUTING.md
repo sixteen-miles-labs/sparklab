@@ -52,6 +52,13 @@ product-layer changes, run:
 GPU, checkpoint, and slow tests have explicit markers and environment requirements; see
 [tests/README.md](tests/README.md).
 
+Contributors can run SparkLab from source and build native development wheels on their
+own machines; release credentials and the trusted runner are not required. On a supported
+DGX Spark, `scripts/build-release-wheels.sh` produces local `linux_aarch64` wheels, while
+`scripts/ci/manylinux-build.sh` uses the architecture-matched container when a
+PyPI-compatible development wheel is needed. Formal wheels are built only from protected
+`main` or a protected release tag. Fork pull requests never run either release workflow.
+
 ## Pull requests
 
 - Explain the user-visible outcome and important tradeoffs.
