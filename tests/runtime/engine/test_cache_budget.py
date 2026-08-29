@@ -215,7 +215,7 @@ def test_adjust_config_resolves_num_tokens_generic():
         cuda_graph_bs = [1, 2]
         max_seq_len = 1024
         page_size = 1
-        attention_backend = "fi"
+        attention_backend = "triton"
         nvfp4_backend = "auto"
         num_page_override = None
         num_token_override = 5000
@@ -404,7 +404,7 @@ def _offload_engine_config(**overrides):
         model_path="/tmp/sparklab-test-model",
         tp_info=DistributedInfo(rank=0, size=1),
         dtype=torch.bfloat16,
-        attention_backend="fi",
+        attention_backend="triton",
         **overrides,
     )
     object.__setattr__(

@@ -14,6 +14,21 @@ by **SixteenMiles Labs**, a research lab under **Oakmind AI**.
 Security vulnerabilities must follow [SECURITY.md](SECURITY.md), not the public issue
 tracker.
 
+## Development workflow
+
+SparkLab uses trunk-based development. Create a short-lived branch, open a pull request
+against `main`, and merge only after review and required checks pass. There is no
+long-lived `develop` branch; `main` remains the source for rolling beta builds and signed
+releases.
+
+Every pull request requires a passing DCO sign-off check, the hosted CPU test suite, and
+one approving review. New commits dismiss stale approvals. GPU, checkpoint, and release
+tests run only in trusted environments when the change requires them; pull requests from
+forks never execute on the self-hosted GB10 runner.
+
+Direct pushes to `main` are prohibited. Maintainers use the same pull-request workflow as
+other contributors.
+
 ## Development setup
 
 On the supported NVIDIA GB10 environment:
@@ -44,6 +59,8 @@ GPU, checkpoint, and slow tests have explicit markers and environment requiremen
   versioned evidence for the exact checkpoint and recipe.
 - Disclose generated code or content when it materially affects review, and verify that you
   have the right to contribute every submitted file.
+- Prefer a squash merge for a focused change. Preserve the DCO sign-off in the resulting
+  commit; use a rebase merge when a meaningful, fully signed commit series should remain.
 
 ## Developer Certificate of Origin
 
