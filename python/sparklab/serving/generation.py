@@ -54,6 +54,13 @@ class GenerationError(Exception):
         self.code = code
 
 
+def public_generation_error(exc: GenerationError) -> str:
+    """Return a stable client-safe message without exposing backend exception text."""
+    if exc.code == "context_length_exceeded":
+        return "the request exceeds the available model context"
+    return "the generation request failed"
+
+
 # --------------------------------------------------------------------------- #
 # Protocol-neutral generation events.
 #

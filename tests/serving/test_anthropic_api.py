@@ -545,9 +545,10 @@ def test_stream_request_error_is_invalid_request_not_internal():
     assert types[-1] == "error", types
     err = events[-1][1]["error"]
     assert err["type"] == "invalid_request_error", err
-    assert "7223" in err["message"]
-    # No error `code` on this wire, so the text is the whole signal — must survive verbatim.
-    assert err["message"].startswith("prompt is too long: 8181 tokens > 7223")
+    assert err["message"] == "the request exceeds the available model context"
+    assert "7223" not in err["message"]
+    # Anthropic has no error `code` on this wire, so preserve the context classification in a
+    # stable message without returning backend limits or exception text verbatim.
 
 
 def test_stream_tool_block_closes_before_following_text():

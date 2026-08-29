@@ -18,6 +18,7 @@ back into their assistant turn as ``reasoning_content``.
 from __future__ import annotations
 
 import json
+import logging
 import time
 import uuid
 from collections.abc import AsyncIterator, Callable
@@ -71,6 +72,7 @@ from .generation import (
     ToolCallStart,
     generate_events,
     generate_full,
+    public_generation_error,
     render_messages,
     resolve_sampling,
     split_tool_lists,
@@ -78,6 +80,8 @@ from .generation import (
     with_keepalive,
 )
 from .request_logger import log_request
+
+logger = logging.getLogger(__name__)
 
 # Seconds of event silence before a keep-alive frame is emitted on the stream.
 # codex's stream-idle timeout (default 300s) only resets on a data-bearing SSE
@@ -157,8 +161,8 @@ async def handle_responses(
             reasoning_parser=getattr(state.config, "reasoning_parser", None),
         )
         uid = await submit_generation(spec, state)
-    except ValueError as exc:
-        return _error_response(400, str(exc))
+    except ValueError:
+        return _error_response(400, "invalid response parameters")
 
     cache_report = getattr(state.config, "enable_cache_report", False)
     if req.stream:
@@ -173,7 +177,7 @@ async def handle_responses(
     try:
         result = await generate_full(uid, spec, state, source="/v1/responses")
     except GenerationError as exc:
-        return _error_response(400, str(exc), exc.code)
+        return _error_response(400, public_generation_error(exc), exc.code)
     response = build_responses_response(result, req, response_id, created, cache_report=cache_report)
     return JSONResponse(content=response.model_dump(mode="json"))
 
@@ -714,11 +718,12 @@ async def responses_stream_generator(
                 # codex reads this code to tell a blown context window from a generic failure.
                 # model_construct because ResponseError.code is a closed Literal in the SDK.
                 error=ResponseError.model_construct(
-                    code=exc.code or "server_error", message=str(exc)
+                    code=exc.code or "server_error", message=public_generation_error(exc)
                 ),
             ),
         ))
     except Exception as exc:  # noqa: BLE001 — never leave the client without a terminal event
+        logger.exception("Responses stream failed")
         for f in close_current():
             yield f
         yield _sse(ResponseFailedEvent(
@@ -726,7 +731,7 @@ async def responses_stream_generator(
             response=_response_obj(
                 response_id, created, req.model, output_items, status="failed",
                 usage=_usage(usage_pt, usage_ct, usage_cached),
-                error=ResponseError(code="server_error", message=str(exc)),
+                error=ResponseError(code="server_error", message="the response stream failed"),
             ),
         ))
 

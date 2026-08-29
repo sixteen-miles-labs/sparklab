@@ -12,6 +12,7 @@ import asyncio
 import collections
 import functools
 import json
+import logging
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -24,6 +25,8 @@ from pydantic import BaseModel
 from .accounting import AccountingOutboxError, AccountingPrepareError
 from .serve_manager import Conflict
 from .version import DAEMON_VERSION
+
+logger = logging.getLogger(__name__)
 
 
 class StartBody(BaseModel):
@@ -142,10 +145,11 @@ def build_app(
             if isinstance(exc, AccountingOutboxError)
             else "accounting_prepare_failed"
         )
+        logger.warning("daemon accounting operation failed", exc_info=exc)
         return JSONResponse(
             status_code=503,
             content={
-                "error": str(exc),
+                "error": "accounting operation failed",
                 "code": code,
                 "enginePreserved": True,
             },
@@ -171,18 +175,20 @@ def build_app(
         try:
             return await run(lifecycle_pool, manager.start, body.model, port, list(body.args))
         except Conflict as exc:
+            logger.info("engine start conflict", exc_info=exc)
             st = manager.status()
             return JSONResponse(
                 status_code=409,
                 content={
-                    "error": str(exc),
+                    "error": "engine is already running with another configuration",
                     "code": "serve_conflict",
                     "currentModel": st.get("model"),
                     "currentPort": st.get("port"),
                 },
             )
         except Exception as exc:  # noqa: BLE001 — never propagate a 500-as-crash
-            raise HTTPException(status_code=500, detail=f"start failed: {exc}")
+            logger.exception("engine start failed")
+            raise HTTPException(status_code=500, detail="engine start failed") from exc
 
     @app.post("/engine/stop", dependencies=auth)
     async def engine_stop(body: StopBody | None = None):
@@ -224,7 +230,8 @@ def build_app(
         except (AccountingPrepareError, AccountingOutboxError) as exc:
             return accounting_error(exc)
         except Exception as exc:  # noqa: BLE001
-            raise HTTPException(status_code=500, detail=f"switch failed: {exc}")
+            logger.exception("engine switch failed")
+            raise HTTPException(status_code=500, detail="engine switch failed") from exc
 
     # ---- durable accounting outbox ----
 
@@ -241,7 +248,8 @@ def build_app(
         try:
             return await run(lifecycle_pool, manager.ack_accounting, body.receiptId)
         except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc))
+            logger.info("invalid accounting acknowledgement", exc_info=exc)
+            raise HTTPException(status_code=400, detail="invalid accounting receipt") from exc
         except AccountingOutboxError as exc:
             return accounting_error(exc)
 
@@ -296,9 +304,11 @@ def build_app(
             try:
                 return await run(lifecycle_pool, checkpoints.start, body.id, list(body.args))
             except Conflict as exc:
-                raise HTTPException(status_code=409, detail=str(exc))
+                logger.info("checkpoint start conflict", exc_info=exc)
+                raise HTTPException(status_code=409, detail="checkpoint is already running") from exc
             except Exception as exc:  # noqa: BLE001
-                raise HTTPException(status_code=500, detail=f"checkpoint start failed: {exc}")
+                logger.exception("checkpoint start failed")
+                raise HTTPException(status_code=500, detail="checkpoint start failed") from exc
 
         @app.post("/checkpoint/cancel", dependencies=auth)
         async def checkpoint_cancel(body: CancelBody):
@@ -328,7 +338,8 @@ def build_app(
                     *argv, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT, env=env
                 )
             except Exception as exc:  # noqa: BLE001
-                yield _bench_sse("error", {"message": f"failed to spawn bench: {exc}"})
+                logger.exception("failed to spawn bandwidth benchmark")
+                yield _bench_sse("error", {"message": "failed to start bandwidth benchmark"})
                 return
             tail: collections.deque = collections.deque(maxlen=8)  # last non-progress lines (errors)
             assert proc.stdout is not None

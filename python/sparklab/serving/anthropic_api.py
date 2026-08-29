@@ -11,6 +11,7 @@ It consumes typed events, not a re-parsed OpenAI stream.
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from collections.abc import AsyncIterator, Callable
 from typing import Any
@@ -46,6 +47,7 @@ from .generation import (
     count_prompt_tokens,
     generate_events,
     generate_full,
+    public_generation_error,
     render_messages,
     resolve_sampling,
     split_tool_lists,
@@ -53,6 +55,8 @@ from .generation import (
     with_keepalive,
 )
 from .request_logger import log_request
+
+logger = logging.getLogger(__name__)
 
 # Emit a protocol-native `ping` event after this many seconds of stream silence,
 # bridging long queue/prefill/decode gaps for clients with stream-idle timeouts.
@@ -118,8 +122,8 @@ async def handle_anthropic_messages(
             reasoning_parser=getattr(state.config, "reasoning_parser", None),
         )
         uid = await submit_generation(spec, state)
-    except ValueError as exc:
-        return _anthropic_error_response(400, "invalid_request_error", str(exc))
+    except ValueError:
+        return _anthropic_error_response(400, "invalid_request_error", "invalid message parameters")
 
     cache_report = getattr(state.config, "enable_cache_report", False)
     if req.stream:
@@ -134,7 +138,9 @@ async def handle_anthropic_messages(
     try:
         result = await generate_full(uid, spec, state, source="/v1/messages")
     except GenerationError as exc:
-        return _anthropic_error_response(400, "invalid_request_error", str(exc))
+        return _anthropic_error_response(
+            400, "invalid_request_error", public_generation_error(exc)
+        )
     response = anthropic_full_response(result, req.model, uid, cache_report=cache_report)
     return JSONResponse(content=response.model_dump(exclude_none=True))
 
@@ -151,8 +157,8 @@ async def handle_anthropic_count_tokens(req: AnthropicCountTokensRequest, state:
         messages, template_tools, _, ctk = convert_anthropic_prompt(
             req, reasoning_parser=getattr(state.config, "reasoning_parser", None)
         )
-    except ValueError as exc:
-        return _anthropic_error_response(400, "invalid_request_error", str(exc))
+    except ValueError:
+        return _anthropic_error_response(400, "invalid_request_error", "invalid message content")
     if not messages:
         # Non-empty on the wire but nothing survived conversion (e.g. image-only blocks on
         # this text-only server) — a client error, not a tokenizer fault.
@@ -164,9 +170,12 @@ async def handle_anthropic_count_tokens(req: AnthropicCountTokensRequest, state:
     except GenerationError as exc:
         # The chat template could not render this conversation (bad role ordering, an unmatched
         # tool_result, ...) — a client error, exactly as /v1/messages classifies the same failure.
-        return _anthropic_error_response(400, "invalid_request_error", str(exc))
+        return _anthropic_error_response(
+            400, "invalid_request_error", public_generation_error(exc)
+        )
     except Exception as exc:  # noqa: BLE001 — tokenizer init / other failure -> server error
-        return _anthropic_error_response(500, "api_error", f"token counting failed: {exc}")
+        logger.exception("Anthropic token counting failed")
+        return _anthropic_error_response(500, "api_error", "token counting failed")
     response = AnthropicCountTokensResponse(input_tokens=n_tokens)
     return JSONResponse(content=response.model_dump())
 
@@ -564,14 +573,19 @@ async def anthropic_event_stream(
             for f in _stop_block():
                 yield f
         yield _event(AnthropicStreamEvent(
-            type="error", error=AnthropicError(type="invalid_request_error", message=str(exc)),
+            type="error",
+            error=AnthropicError(
+                type="invalid_request_error", message=public_generation_error(exc)
+            ),
         ))
     except Exception as exc:  # noqa: BLE001 — surface as an Anthropic error event
+        logger.exception("Anthropic message stream failed")
         if block_open:
             for f in _stop_block():
                 yield f
         yield _event(AnthropicStreamEvent(
-            type="error", error=AnthropicError(type="internal_error", message=str(exc)),
+            type="error",
+            error=AnthropicError(type="internal_error", message="the message stream failed"),
         ))
 
 
