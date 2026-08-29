@@ -7,14 +7,14 @@ from types import SimpleNamespace
 import torch
 from safetensors.torch import save_file
 
-from freetoken.attention import AttnType
-from freetoken.attention.qsa import QSAAttnBackend
-from freetoken.models.qwen4_exp.config import parse_config
-from freetoken.models.qwen4_exp.hyper import GroupedPlusOneRMSNorm, Qwen4GatedResidual
-from freetoken.models.qwen4_exp.ple import DiskNGramEmbedding, RawNGramStore
-from freetoken.models.qwen4_exp.weight import copy_external_artifacts
-from freetoken.models.qwen4_exp.weight import _iter_experts_layer_order
-from freetoken.models.qwen4_exp.weight import iter_weights
+from sparklab.attention import AttnType
+from sparklab.attention.qsa import QSAAttnBackend
+from sparklab.models.qwen4_exp.config import parse_config
+from sparklab.models.qwen4_exp.hyper import GroupedPlusOneRMSNorm, Qwen4GatedResidual
+from sparklab.models.qwen4_exp.ple import DiskNGramEmbedding, RawNGramStore
+from sparklab.models.qwen4_exp.weight import copy_external_artifacts
+from sparklab.models.qwen4_exp.weight import _iter_experts_layer_order
+from sparklab.models.qwen4_exp.weight import iter_weights
 
 
 def _config(layers: int = 8):
@@ -83,7 +83,7 @@ def test_config_declares_qsa_separately_from_minimax_bsa():
 
 def test_config_accepts_conversion_owned_nvfp4_experts():
     source = _config()
-    source.text_config.freetoken_expert_quant = "nvfp4"
+    source.text_config.sparklab_expert_quant = "nvfp4"
     assert parse_config(source).expert_quant == "nvfp4"
 
 
@@ -116,8 +116,8 @@ def test_config_detects_inferact_modelopt_nvfp4_experts():
 
 
 def test_expert_wrapper_receives_conversion_streaming_controls(monkeypatch):
-    import freetoken.models.qwen3_5_moe.weight as shared_weight
-    from freetoken.moe.expert_banks import ExpertBanks, _build_expert_banks
+    import sparklab.models.qwen3_5_moe.weight as shared_weight
+    from sparklab.moe.expert_banks import ExpertBanks, _build_expert_banks
 
     captured = {}
     expected = ExpertBanks("fp8_block", {})
@@ -285,7 +285,7 @@ def test_external_ngram_artifact_preserves_official_fp8_payload(tmp_path):
 
 def test_official_per_expert_fp8_tensors_do_not_enter_dense_loader(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        "freetoken.models.qwen4_exp.weight.get_tp_info",
+        "sparklab.models.qwen4_exp.weight.get_tp_info",
         lambda: SimpleNamespace(size=1),
     )
     expert = "model.language_model.layers.0.mlp.experts.0.gate_proj"
@@ -308,7 +308,7 @@ def test_official_per_expert_fp8_tensors_do_not_enter_dense_loader(tmp_path, mon
 
 def test_modelopt_nvfp4_expert_tensors_do_not_enter_dense_loader(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        "freetoken.models.qwen4_exp.weight.get_tp_info",
+        "sparklab.models.qwen4_exp.weight.get_tp_info",
         lambda: SimpleNamespace(size=1),
     )
     expert = "model.language_model.layers.0.mlp.experts.0.gate_proj"
@@ -334,7 +334,7 @@ def test_modelopt_nvfp4_expert_tensors_do_not_enter_dense_loader(tmp_path, monke
 
 
 def test_inferact_nvfp4_source_spec_matches_served_experts_only():
-    from freetoken.models.qwen4_exp.weight import _NVFP4_SOURCE_SPEC
+    from sparklab.models.qwen4_exp.weight import _NVFP4_SOURCE_SPEC
 
     name = (
         "model.language_model.layers.47.mlp.experts.511.down_proj.weight_scale_2"
@@ -444,7 +444,7 @@ def test_qsa_dense_budget_fast_path_does_not_need_index_keys():
 
 
 def test_registry_has_qwen_wrapper_and_text_architectures():
-    from freetoken.models.register import get_model_spec
+    from sparklab.models.register import get_model_spec
 
     for architecture in ("Qwen4ExpForConditionalGeneration", "Qwen4ExpForCausalLM"):
-        assert get_model_spec(architecture).module == "freetoken.models.qwen4_exp"
+        assert get_model_spec(architecture).module == "sparklab.models.qwen4_exp"

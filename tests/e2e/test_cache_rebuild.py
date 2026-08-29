@@ -1,6 +1,6 @@
 """Runtime cache rebuild against a real server.
 
-Boots ``ft serve`` on a small checkpoint and drives POST /v1/cache/rebuild for real: the whole
+Boots ``sparklab serve`` on a small checkpoint and drives POST /v1/cache/rebuild for real: the whole
 chain of HTTP route -> control message -> scheduler idle gate -> engine teardown -> pool resize
 -> page-table refresh -> CUDA-graph re-capture, then checks the server still generates.
 
@@ -12,9 +12,9 @@ server/test_rebuild_maintenance.py and kvcache/test_kv_cache_rebuild.py.
 
 Gated behind ``needs_weights``:
 
-  FREETOKEN_REBUILD_TEST_MODEL  small local model dir (falls back to FREETOKEN_TEST_MODEL)
-  FREETOKEN_REBUILD_MIN_FREE_GIB  free-GPU-memory gate (default 20)
-  FREETOKEN_REBUILD_BOOT_TIMEOUT  seconds to wait for "serving" (default 300)
+  SPARKLAB_REBUILD_TEST_MODEL  small local model dir (falls back to SPARKLAB_TEST_MODEL)
+  SPARKLAB_REBUILD_MIN_FREE_GIB  free-GPU-memory gate (default 20)
+  SPARKLAB_REBUILD_BOOT_TIMEOUT  seconds to wait for "serving" (default 300)
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ GROWN_PAGES = 6000
 
 
 def _model_dir() -> Path | None:
-    value = os.environ.get("FREETOKEN_REBUILD_TEST_MODEL") or os.environ.get("FREETOKEN_TEST_MODEL")
+    value = os.environ.get("SPARKLAB_REBUILD_TEST_MODEL") or os.environ.get("SPARKLAB_TEST_MODEL")
     return Path(value).expanduser() if value else None
 
 
@@ -111,11 +111,11 @@ def _generate(base: str) -> str:
 def test_cache_rebuild_resizes_a_live_engine_and_keeps_serving(tmp_path):
     model_dir = _model_dir()
     if model_dir is None:
-        pytest.skip("set FREETOKEN_REBUILD_TEST_MODEL to a small local model directory")
+        pytest.skip("set SPARKLAB_REBUILD_TEST_MODEL to a small local model directory")
     if not model_dir.is_dir():
         pytest.skip(f"model is not downloaded: {model_dir}")
 
-    min_free = float(os.environ.get("FREETOKEN_REBUILD_MIN_FREE_GIB", "20"))
+    min_free = float(os.environ.get("SPARKLAB_REBUILD_MIN_FREE_GIB", "20"))
     free_gib = _free_gpu_gib()
     if free_gib < min_free:
         pytest.skip(f"needs ~{min_free:.0f} GiB free; only {free_gib:.2f} GiB")
@@ -125,7 +125,7 @@ def test_cache_rebuild_resizes_a_live_engine_and_keeps_serving(tmp_path):
     log = (tmp_path / "serve.log").open("w")
     proc = subprocess.Popen(
         [
-            sys.executable, "-m", "freetoken",
+            sys.executable, "-m", "sparklab",
             "--model-path", str(model_dir),
             "--served-model-name", "rebuild-test",
             "--host", "127.0.0.1",
@@ -137,7 +137,7 @@ def test_cache_rebuild_resizes_a_live_engine_and_keeps_serving(tmp_path):
         env={**os.environ, "PYTHONPATH": "python"},
     )
     try:
-        boot_timeout = float(os.environ.get("FREETOKEN_REBUILD_BOOT_TIMEOUT", "300"))
+        boot_timeout = float(os.environ.get("SPARKLAB_REBUILD_BOOT_TIMEOUT", "300"))
         _wait_until_serving(base, proc, time.monotonic() + boot_timeout)
 
         geometry = _get(base, "/v1/cache/status")["geometry"]

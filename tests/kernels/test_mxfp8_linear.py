@@ -31,7 +31,7 @@ def _make_mxfp8(N: int, K: int, seed: int = 0):
 # of the 32-wide scale block but not of BLOCK_K=128 (k-mask + OOB scale codes).
 @pytest.mark.parametrize("N,K", [(512, 6144), (9216, 6144), (640, 6144), (511, 6144), (640, 6112)])
 def test_mxfp8_linear_matches_dequant_reference(M: int, N: int, K: int):
-    from freetoken.kernel.triton.mxfp8_linear import mxfp8_dequant, mxfp8_linear
+    from sparklab.kernels.triton.mxfp8_linear import mxfp8_dequant, mxfp8_linear
 
     w8, codes = _make_mxfp8(N, K, seed=M)
     ref_w = mxfp8_dequant(w8, codes, torch.float32)
@@ -43,7 +43,7 @@ def test_mxfp8_linear_matches_dequant_reference(M: int, N: int, K: int):
 
 
 def test_mxfp8_module_shapes_and_forward():
-    from freetoken.kernel.triton.mxfp8_linear import Mxfp8Linear
+    from sparklab.kernels.triton.mxfp8_linear import Mxfp8Linear
 
     lin = Mxfp8Linear(6144, 512)
     assert lin.weight.shape == (512, 6144) and lin.weight.dtype == torch.float8_e4m3fn
@@ -56,7 +56,7 @@ def test_mxfp8_module_shapes_and_forward():
 
 def test_gemma_plus_one_norm_matches_flashinfer_semantics():
     """Triton fallback vs the (1+w) definition; per-head 3D strided in-place."""
-    from freetoken.kernel.triton.norm import gemma_fused_add_rmsnorm, gemma_rmsnorm
+    from sparklab.kernels.triton.norm import gemma_fused_add_rmsnorm, gemma_rmsnorm
 
     torch.manual_seed(0)
     x = torch.randn(64, 6144, device=DEV, dtype=torch.bfloat16)
@@ -89,7 +89,7 @@ def test_gemma_plus_one_norm_matches_flashinfer_semantics():
 
 
 def test_swigluoai_and_mul_uninterleaved():
-    from freetoken.layers import swigluoai_and_mul
+    from sparklab.layers import swigluoai_and_mul
 
     torch.manual_seed(1)
     d = 3072

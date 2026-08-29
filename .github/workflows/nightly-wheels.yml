@@ -65,7 +65,7 @@ jobs:
           # workflow only builds linux, so compare the linux runtime wheel only.
           published_stamp="$(gh api "repos/$WEB_REPO/releases/tags/$WEB_TAG" \
             --jq '.assets[].name' 2>/dev/null \
-            | grep -E '^freetoken-.*linux_x86_64\.whl$' \
+            | grep -E '^sparklab-.*linux_x86_64\.whl$' \
             | grep -oE '\+g[0-9a-f]{7,}' | head -1 || true)"
           echo "HEAD: $head_stamp  published: ${published_stamp:-<none>}"
           if [ "$FORCE" = "true" ] || [ "$head_stamp" != "$published_stamp" ]; then
@@ -124,6 +124,6 @@ jobs:
       - name: Publish to the beta release
         env:
           GH_TOKEN: ${{ github.token }}
-          FREETOKEN_WEB_REPO: ${{ env.WEB_REPO }}
-          FREETOKEN_WEB_TAG: ${{ env.WEB_TAG }}
+          SPARKLAB_WEB_REPO: ${{ env.WEB_REPO }}
+          SPARKLAB_WEB_TAG: ${{ env.WEB_TAG }}
         run: scripts/publish-wheels.sh dist

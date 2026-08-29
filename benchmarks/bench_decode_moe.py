@@ -1,6 +1,6 @@
 """Single-stream (bs=1) decode benchmark for any MoE model on any offload backend.
 
-Measures through the real serving path: for each backend the bench spawns ``ft serve``,
+Measures through the real serving path: for each backend the bench spawns ``sparklab serve``,
 sends a warmed chat request over /v1/chat/completions with ``stream=true``, and
 timestamps every SSE event as it arrives. Numbers therefore include the scheduler,
 detokenizer, and HTTP/SSE hop -- what a client actually sees -- not bare engine forwards.
@@ -49,6 +49,7 @@ import importlib.metadata
 import json
 import os
 import platform
+import re
 import shutil
 import signal
 import socket
@@ -78,14 +79,25 @@ BOXED_INSTRUCTION = (
 class GpuTelemetry:
     """Low-rate GPU and host telemetry scoped to one request (best effort)."""
 
-    def __init__(self, interval: float = 1.0):
+    def __init__(
+        self,
+        interval: float = 1.0,
+        *,
+        min_available_gib: float = 0.0,
+        abort_process_group: int | None = None,
+    ):
         self.interval = interval
+        self.min_available_gib = min_available_gib
+        self.abort_process_group = abort_process_group
         self.samples: list[tuple[float, float, float, float]] = []
         self.system_samples: list[tuple[float, float, float | None]] = []
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._started = 0.0
         self._vm_start: dict[str, int] = {}
+        self._swap_start = 0
+        self.guard_triggered = False
+        self.guard_available_gib: float | None = None
 
     @staticmethod
     def _vmstat() -> dict[str, int]:
@@ -95,7 +107,7 @@ class GpuTelemetry:
                 for key, value in (
                     line.split() for line in Path("/proc/vmstat").read_text().splitlines()
                 )
-                if key in {"pswpin", "pswpout", "pgfault", "pgmajfault"}
+                if key in {"pswpin", "pswpout", "pgfault", "pgmajfault", "oom_kill"}
             }
         except (OSError, ValueError):
             return {}
@@ -122,9 +134,22 @@ class GpuTelemetry:
                 continue
         return available_gib, nvme_temp
 
+    @staticmethod
+    def _swap_used_bytes() -> int:
+        values: dict[str, int] = {}
+        try:
+            for line in Path("/proc/meminfo").read_text().splitlines():
+                key, sep, value = line.partition(":")
+                if sep and key in {"SwapTotal", "SwapFree"}:
+                    values[key] = int(value.split()[0]) * 1024
+        except (OSError, ValueError, IndexError):
+            return 0
+        return max(0, values.get("SwapTotal", 0) - values.get("SwapFree", 0))
+
     def start(self) -> None:
         self._started = time.perf_counter()
         self._vm_start = self._vmstat()
+        self._swap_start = self._swap_used_bytes()
         have_nvidia_smi = shutil.which("nvidia-smi") is not None
 
         def sample() -> None:
@@ -146,6 +171,18 @@ class GpuTelemetry:
                         pass
                 available_gib, nvme_temp = self._system_sample()
                 self.system_samples.append((time.perf_counter(), available_gib, nvme_temp))
+                if (
+                    self.min_available_gib > 0
+                    and available_gib < self.min_available_gib
+                    and not self.guard_triggered
+                ):
+                    self.guard_triggered = True
+                    self.guard_available_gib = available_gib
+                    if self.abort_process_group is not None:
+                        try:
+                            os.killpg(self.abort_process_group, signal.SIGTERM)
+                        except ProcessLookupError:
+                            pass
                 self._stop.wait(self.interval)
 
         self._thread = threading.Thread(target=sample, name="bench-gpu-telemetry", daemon=True)
@@ -159,7 +196,15 @@ class GpuTelemetry:
         result = {
             "samples": len(self.system_samples),
             "duration_s": elapsed,
+            "swap_start_bytes": self._swap_start,
+            "memory_guard_gib": self.min_available_gib,
+            "memory_guard_triggered": self.guard_triggered,
         }
+        if self.guard_available_gib is not None:
+            result["memory_guard_available_gib"] = self.guard_available_gib
+        swap_end = self._swap_used_bytes()
+        result["swap_end_bytes"] = swap_end
+        result["swap_growth_bytes"] = max(0, swap_end - self._swap_start)
         if self.samples:
             powers = [sample[1] for sample in self.samples]
             temperatures = [sample[2] for sample in self.samples]
@@ -183,6 +228,7 @@ class GpuTelemetry:
             ("pswpout", "swap_out_pages_delta"),
             ("pgfault", "page_faults_delta"),
             ("pgmajfault", "major_faults_delta"),
+            ("oom_kill", "oom_kill_delta"),
         ):
             if key in self._vm_start and key in vm_end:
                 result[label] = vm_end[key] - self._vm_start[key]
@@ -223,7 +269,7 @@ def runtime_provenance() -> dict:
 def checkpoint_provenance(model_path: str) -> dict:
     """Cheap checkpoint identity for a benchmark row (metadata/stat only)."""
     path = Path(model_path).expanduser().resolve()
-    ftw_index = path / "freetoken_weight.json"
+    ftw_index = path / "sparklab_weight.json"
     hf_index = path / "model.safetensors.index.json"
     if ftw_index.is_file():
         value = json.loads(ftw_index.read_text(encoding="utf-8"))
@@ -277,7 +323,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--model", required=True, help="checkpoint dir (or .ftw)")
     p.add_argument(
         "--recipe", default=None,
-        help="Spark Lab recipe slug to embed as immutable benchmark provenance",
+        help="SparkLab recipe slug to embed as immutable benchmark provenance",
     )
     p.add_argument(
         "--backend",
@@ -317,8 +363,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     p.add_argument(
         "--aime",
-        default=os.environ.get("FREETOKEN_AIME25_JSONL"),
-        help=f"local jsonl instead of downloading {AIME_REPO}; default $FREETOKEN_AIME25_JSONL",
+        default=os.environ.get("SPARKLAB_AIME25_JSONL"),
+        help=f"local jsonl instead of downloading {AIME_REPO}; default $SPARKLAB_AIME25_JSONL",
     )
     p.add_argument("--problem", type=int, default=0, help="0-based AIME problem index")
     p.add_argument("--decode", type=int, default=256, help="decode tokens to measure (D)")
@@ -337,6 +383,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="hybrid: max PCIe fetches/layer; -1 = auto (benched pcie/cpu bandwidth fraction)",
     )
     p.add_argument("--mem-ratio", type=float, default=0.9, help="target VRAM utilization")
+    p.add_argument(
+        "--min-memory-gib", type=float, default=0.0,
+        help="terminate the server if system MemAvailable drops below this floor; 0 disables",
+    )
     p.add_argument(
         "--num-tokens", type=int, default=0,
         help="explicit KV capacity; 0 keeps server auto-sizing",
@@ -403,6 +453,17 @@ def load_problem(path: str | None, index: int) -> tuple[str, str]:
     return text, str(row.get("answer", ""))
 
 
+def extract_answer(text: str) -> str | None:
+    """Extract the final AIME answer without treating unfinished reasoning as correct."""
+    boxed = re.findall(r"\\boxed\{([^{}]+)\}", text)
+    if boxed:
+        return boxed[-1].strip()
+    matches = re.findall(
+        r"(?:final answer|answer is|final result)\D{0,40}(-?\d+)", text, re.I
+    )
+    return matches[-1].strip() if matches else None
+
+
 def resolve_sampling(model_path: str, greedy: bool) -> tuple[dict, str]:
     """Checkpoint-recommended sampling with per-field fallback; returns (params, source).
 
@@ -439,7 +500,7 @@ def free_port() -> int:
 def serve_cmd(args: argparse.Namespace, backend: str, port: int) -> list[str]:
     max_seq_len = args.max_seq_len or (8192 + args.decode)
     cmd = [
-        sys.executable, "-m", "freetoken.cli", "serve",
+        sys.executable, "-m", "sparklab.cli", "serve",
         "--model", args.model,
         "--host", "127.0.0.1", "--port", str(port),
         "--moe-backend", backend,
@@ -482,6 +543,16 @@ def serve_cmd(args: argparse.Namespace, backend: str, port: int) -> list[str]:
 def die_with_log(msg: str, log_path: str) -> None:
     tail = "".join(Path(log_path).read_text().splitlines(keepends=True)[-30:])
     sys.exit(f"[bench] {msg}\n[bench] server log tail ({log_path}):\n{tail}")
+
+
+def oom_marker_count(log_text: str) -> int:
+    patterns = (
+        r"CUDA out of memory",
+        r"torch\.OutOfMemoryError",
+        r"Cannot allocate memory",
+        r"MemoryError",
+    )
+    return sum(len(re.findall(pattern, log_text, re.I)) for pattern in patterns)
 
 
 def wait_ready(origin: str, proc: subprocess.Popen, log_path: str, timeout: float) -> None:
@@ -591,7 +662,7 @@ def stream_generate(origin: str, model_id: str, problem: str, sampling: dict,
                     content_pieces.append(content)
                     pieces.append(content)
     if usage is None:
-        sys.exit("[bench] stream ended without a usage chunk; is this a FreeToken server?")
+        sys.exit("[bench] stream ended without a usage chunk; is this a SparkLab server?")
     return {
         "t0": t0,
         "stamps": stamps,
@@ -635,34 +706,54 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
         flush=True,
     )
 
-    with os.fdopen(fd, "wb") as log_f:
-        proc = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True
-        )
-        pump = threading.Thread(target=pump_output, args=(proc.stdout, log_f), daemon=True)
-        pump.start()
-        try:
-            wait_ready(origin, proc, log_path, args.server_timeout)
-            cache_status = get_json(f"{origin}/v1/cache/status")
-            model_id = get_json(f"{origin}/v1/models")["data"][0]["id"]
-            print(f"[bench] model_id={model_id}", flush=True)
-            print(f"[bench] AIME25 #{args.problem} (answer {answer})", flush=True)
-
-            # Record the first-request TTFT separately, then warm the expert cache to a
-            # steady-state decode working set. This catches server-ready-before-JIT bugs
-            # without changing the established warm throughput/TTFT comparison below.
-            first_request = stream_generate(origin, model_id, problem, sampling, args)
-            stats_before = get_json(f"{origin}/v1/stats")
-            telemetry = GpuTelemetry()
-            telemetry.start()
+    lifecycle_telemetry = {}
+    try:
+        with os.fdopen(fd, "wb") as log_f:
+            proc = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True
+            )
+            lifecycle = GpuTelemetry(
+                min_available_gib=args.min_memory_gib,
+                abort_process_group=proc.pid,
+            )
+            lifecycle.start()
+            pump = threading.Thread(target=pump_output, args=(proc.stdout, log_f), daemon=True)
+            pump.start()
             try:
-                r = stream_generate(origin, model_id, problem, sampling, args)
+                wait_ready(origin, proc, log_path, args.server_timeout)
+                cache_status = get_json(f"{origin}/v1/cache/status")
+                model_id = get_json(f"{origin}/v1/models")["data"][0]["id"]
+                print(f"[bench] model_id={model_id}", flush=True)
+                print(f"[bench] AIME25 #{args.problem} (answer {answer})", flush=True)
+
+                # Record the first-request TTFT separately, then warm the expert cache to a
+                # steady-state decode working set. This catches server-ready-before-JIT bugs
+                # without changing the established warm throughput/TTFT comparison below.
+                first_request = stream_generate(origin, model_id, problem, sampling, args)
+                stats_before = get_json(f"{origin}/v1/stats")
+                telemetry = GpuTelemetry()
+                telemetry.start()
+                try:
+                    r = stream_generate(origin, model_id, problem, sampling, args)
+                finally:
+                    gpu_telemetry = telemetry.stop()
+                stats = get_json(f"{origin}/v1/stats")
             finally:
-                gpu_telemetry = telemetry.stop()
-            stats = get_json(f"{origin}/v1/stats")
-        finally:
-            stop_server(proc)
-            pump.join(timeout=10)
+                stop_server(proc)
+                pump.join(timeout=10)
+                lifecycle_telemetry = lifecycle.stop()
+    except BaseException as exc:
+        log_text = Path(log_path).read_text(encoding="utf-8", errors="replace")
+        setattr(exc, "_bench_failure_context", {
+            "server_log": log_path,
+            "serve_command": cmd,
+            "lifecycle_telemetry": lifecycle_telemetry,
+            "oom_markers": oom_marker_count(log_text),
+        })
+        raise
+
+    log_text = Path(log_path).read_text(encoding="utf-8", errors="replace")
+    oom_markers = oom_marker_count(log_text)
 
     stamps, usage = r["stamps"], r["usage"]
     if len(stamps) < 2 and args.decode > 1:
@@ -673,6 +764,7 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
     steps = max(0, completion - 1)
     decode_time = stamps[-1] - stamps[0] if len(stamps) >= 2 else 0.0
     gaps = sorted((b - a) * 1e3 for a, b in zip(stamps, stamps[1:]))
+    extracted_answer = extract_answer(r["text"])
     row = {
         "schema_version": "1.0",
         "model": args.model,
@@ -694,7 +786,7 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
             "requested_num_tokens": args.num_tokens,
             "cpu_threads": args.cpu_threads,
             "hybrid_fetch": args.hybrid_fetch,
-            "disk_read_workers": int(os.getenv("FREETOKEN_DISK_READ_WORKERS", "16")),
+            "disk_read_workers": int(os.getenv("SPARKLAB_DISK_READ_WORKERS", "16")),
             "cache_policy": args.cache_policy,
             "prefill_overlap": not args.disable_prefill_overlap,
             "prefill_hit_d2d": args.prefill_hit_d2d,
@@ -721,8 +813,15 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
         "vram_gib": stats.get("vram_bytes", 0) / 2**30,
         "sampling": sampling,
         "output_sha1": hashlib.sha1(r["text"].encode()).hexdigest()[:12],
+        "expected_answer": answer or None,
+        "extracted_answer": extracted_answer,
+        "answer_correct": (
+            extracted_answer == answer if extracted_answer is not None and answer else None
+        ),
         "server_log": log_path,
         "gpu_telemetry": gpu_telemetry,
+        "lifecycle_telemetry": lifecycle_telemetry,
+        "oom_markers": oom_markers,
         "provenance": runtime_provenance(),
     }
     if args.include_output:
@@ -822,9 +921,28 @@ def main(argv: list[str] | None = None) -> int:
         # SystemExit inherits BaseException, not Exception, so name both: a mid-decode
         # connection drop (server crash) must not abort the remaining backends either.
         except (SystemExit, Exception) as e:
-            if len(backends) == 1:
-                raise
+            context = getattr(e, "_bench_failure_context", {})
             print(f"\n[bench] backend {backend} failed: {e!r}", flush=True)
+            failure = {
+                "schema_version": "1.0",
+                "status": "failed",
+                "model": args.model,
+                "backend": backend,
+                "error_type": type(e).__name__,
+                "error": str(e),
+                "server_log": context.get("server_log"),
+                "serve_command": context.get("serve_command"),
+                "lifecycle_telemetry": context.get("lifecycle_telemetry", {}),
+                "oom_markers": context.get("oom_markers", 0),
+                "checkpoint": checkpoint_provenance(args.model),
+                "platform": gb10_evidence(args.model),
+                "provenance": runtime_provenance(),
+            }
+            if args.json_out:
+                with open(args.json_out, "a") as f:
+                    f.write(json.dumps(failure) + "\n")
+            elif len(backends) == 1:
+                raise
             failed.append(backend)
             continue
         if args.json_out:

@@ -1,13 +1,13 @@
 """Expert-bank load benchmark: baseline vs parallel vs ftw, all through the FRAMEWORK.
 
 Measures the dominant startup cost -- loading the offload expert banks -- via the real
-``freetoken`` code paths, with NO bench-local reimplementations of the readers:
+``sparklab`` code paths, with NO bench-local reimplementations of the readers:
 
   baseline   load_expert_banks(...)                 serial loader (scattered read + pin)
   parallel         load_expert_banks(..., parallel=True)   chunked multi-threaded O_DIRECT read of
                                                      the ORIGINAL checkpoint, no repack
   ftw         load_expert_banks(<ftw_dir>)          read the post-repack banks from the
-             unified FTW checkpoint -- i.e. freetoken.checkpoint.load_ftw_banks -- after
+             unified FTW checkpoint -- i.e. sparklab.checkpoint.load_ftw_banks -- after
              a one-time convert_checkpoint(model -> ftw_dir) (build cost reported apart)
 
 All three return the SAME ``ExpertBanks.sources``; checksums must match baseline. Each mode
@@ -135,8 +135,8 @@ def _checksum(banks: dict) -> dict:
 
 # ---------------- subprocess workers (framework code only) ----------------
 def _model_config(model_path: str):
-    from freetoken.distributed import DistributedInfo, set_tp_info, try_get_tp_info
-    from freetoken.engine.config import EngineConfig
+    from sparklab.runtime.distributed import DistributedInfo, set_tp_info, try_get_tp_info
+    from sparklab.runtime.engine.config import EngineConfig
 
     if try_get_tp_info() is None:
         set_tp_info(rank=0, size=1)
@@ -167,7 +167,7 @@ def _evict_cache(model_path: str) -> int:
 def _bench_load(mode: str, model_path: str, *, parallel: bool, workers: int, chunk: int,
                 drop_cache: bool = True) -> None:
     """Time load_expert_banks end-to-end (alloc + read + pin) and checksum the sources."""
-    from freetoken.moe.expert_banks import load_expert_banks
+    from sparklab.moe.expert_banks import load_expert_banks
 
     mc = _model_config(model_path)
     if drop_cache:
@@ -212,7 +212,7 @@ def worker_ftw(ns):
 
 def worker_build(ns):
     """One-time offline convert: HF safetensors -> FTW checkpoint (whole model)."""
-    from freetoken.checkpoint.convert import convert_checkpoint
+    from sparklab.checkpoint.convert import convert_checkpoint
 
     shutil.rmtree(ns.ftw_dir, ignore_errors=True)
     shard_limit = int(ns.shard_gib * (1 << 30))
@@ -271,7 +271,7 @@ def main():
     if ns._worker:
         return _WORKERS[ns._worker](ns)
 
-    from freetoken.checkpoint.ftw import is_ftw_checkpoint
+    from sparklab.checkpoint.ftw import is_ftw_checkpoint
 
     assert os.path.isdir(ns.model), f"model not found: {ns.model}"
     modes = [m.strip() for m in ns.modes.split(",") if m.strip()]

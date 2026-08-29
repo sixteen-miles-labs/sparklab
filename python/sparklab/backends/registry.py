@@ -38,7 +38,7 @@ def get_backend(backend_id: str) -> RuntimeBackend:
     try:
         return _BACKENDS[backend_id]
     except KeyError as exc:
-        raise BackendError(f"unknown Spark Lab runtime backend: {backend_id!r}") from exc
+        raise BackendError(f"unknown SparkLab runtime backend: {backend_id!r}") from exc
 
 
 def list_backends() -> tuple[RuntimeBackend, ...]:

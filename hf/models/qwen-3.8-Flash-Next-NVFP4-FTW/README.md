@@ -1,9 +1,9 @@
 # Qwen3.8 Flash Next NVFP4 FTW upload
 
-This helper publishes the prepared Spark Lab/FreeToken artifact to
+This helper publishes the prepared SparkLab FTW artifact to
 [`oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW`](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW).
 
-The default source is Spark Lab's prepared artifact:
+The default source is SparkLab's prepared artifact:
 
 ```text
 ~/.sparklab/models/qwen3.8-flash-next/prepared/0.5.0

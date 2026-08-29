@@ -7,10 +7,10 @@ requires = ["setuptools>=77", "torch>=2.11,<2.12", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "freetoken"
-# Single source of truth: python/freetoken/version.py (read via the attr directive below).
+name = "sparklab"
+# Single source of truth: python/sparklab/version.py (read via the attr directive below).
 dynamic = ["version"]
-description = "SparkLab: GB10-native frontier inference powered by the FreeToken engine"
+description = "SparkLab: GB10-native frontier open-weight model inference"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
@@ -73,18 +73,17 @@ Issues = "https://github.com/sixteen-miles-labs/sparklab/issues"
 Changelog = "https://github.com/sixteen-miles-labs/sparklab/releases"
 
 [project.scripts]
-ft = "freetoken.cli:main"
 sparklab = "sparklab.cli:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=6.0"]
 # Native fused-kernel packages. Without them the runtime falls back to the pure-Triton
-# kernels in freetoken.kernel.triton (and the 'triton' attention backend). Install
-# `freetoken[accel]` for the full native fast path.
+# kernels in sparklab.kernels.triton (and the 'triton' attention backend). Install
+# `sparklab[accel]` for the full native fast path.
 fi = ["flashinfer-python[cu13]>=0.6,<0.7"]
 # renamed from sgl-kernel at 0.4; still imports as `sgl_kernel`, so never co-install both
 sgl = ["sglang-kernel==0.4.5"]
-accel = ["freetoken[fi,sgl]"]
+accel = ["sparklab[fi,sgl]"]
 # NOTE: the Marlin W4A16 NVFP4 expert-GEMM path (sm_80-99) borrows vLLM's AOT wheel
 # (vllm>=0.14,<0.15), which pins transformers>=4.56,<5 and so is INCOMPATIBLE with the
 # core transformers>=5.5 requirement. It is therefore not a lockable extra and is left
@@ -115,7 +114,7 @@ include-package-data = true
 package-dir = {"" = "python"}
 
 [tool.setuptools.dynamic]
-version = {attr = "freetoken.version.__version__"}
+version = {attr = "sparklab.version.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["python"]

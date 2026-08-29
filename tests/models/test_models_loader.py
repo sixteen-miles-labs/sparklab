@@ -7,7 +7,7 @@ import torch
 
 
 def test_shard_tensor_splits_vocab_with_ceil_partition():
-    from freetoken.models.loader import shard_tensor
+    from sparklab.models.loader import shard_tensor
 
     value = torch.arange(5 * 2, dtype=torch.float32).reshape(5, 2)
 
@@ -32,7 +32,7 @@ def test_shard_tensor_splits_vocab_with_ceil_partition():
 
 def test_iter_root_safetensor_files_from_index_keeps_only_root_index_shards(tmp_path):
     import json
-    from freetoken.models.loader import iter_root_safetensor_files_from_index
+    from sparklab.models.loader import iter_root_safetensor_files_from_index
 
     root_a = tmp_path / "model-00000-of-00002.safetensors"
     root_b = tmp_path / "model-00001-of-00002.safetensors"
@@ -62,7 +62,7 @@ def test_iter_root_safetensor_files_from_index_keeps_only_root_index_shards(tmp_
 
 def test_iter_root_safetensor_files_from_index_rejects_subdirectory_model_path(tmp_path):
     import pytest
-    from freetoken.models.loader import iter_root_safetensor_files_from_index
+    from sparklab.models.loader import iter_root_safetensor_files_from_index
 
     subdir = tmp_path / "original"
     subdir.mkdir()
@@ -73,14 +73,14 @@ def test_iter_root_safetensor_files_from_index_rejects_subdirectory_model_path(t
 
 def test_iter_root_safetensor_files_from_index_requires_root_shards(tmp_path):
     import pytest
-    from freetoken.models.loader import iter_root_safetensor_files_from_index
+    from sparklab.models.loader import iter_root_safetensor_files_from_index
 
     with pytest.raises(ValueError, match="No root GPT-OSS safetensors shards"):
         iter_root_safetensor_files_from_index(str(tmp_path))
 
 
 def test_shard_tensor_replicates_kv_heads_when_tp_exceeds_kv_heads():
-    from freetoken.models.loader import shard_tensor
+    from sparklab.models.loader import shard_tensor
 
     value = torch.arange(2 * 4, dtype=torch.float32).reshape(2, 4)
 
@@ -120,7 +120,7 @@ def test_shard_tensor_replicates_kv_heads_when_tp_exceeds_kv_heads():
 
 
 def test_merge_stream_buffers_qkv_until_all_slots_arrive():
-    from freetoken.models.loader import MergeRule, iter_merged_tensors
+    from sparklab.models.loader import MergeRule, iter_merged_tensors
 
     tensors = [
         ("model.layers.0.self_attn.q_proj.weight", torch.full((1, 2), 1.0)),
@@ -142,7 +142,7 @@ def test_merge_stream_buffers_qkv_until_all_slots_arrive():
 
 def test_iter_merged_tensors_reports_incomplete_merge_with_model_name():
     import pytest
-    from freetoken.models.loader import MergeRule, iter_merged_tensors
+    from sparklab.models.loader import MergeRule, iter_merged_tensors
 
     rules = {
         ".q_proj": MergeRule(".qkv_proj", "q", ("q", "k", "v")),
@@ -155,7 +155,7 @@ def test_iter_merged_tensors_reports_incomplete_merge_with_model_name():
 
 
 def test_stack_expert_tensors_after_all_experts_arrive():
-    from freetoken.models.loader import iter_stacked_experts
+    from sparklab.models.loader import iter_stacked_experts
 
     expert_pattern = re.compile(
         r"^(?P<prefix>.+\.experts)\.(?P<idx>\d+)\.(?P<name>.+)$"
@@ -182,7 +182,7 @@ def test_stack_expert_tensors_after_all_experts_arrive():
 
 
 def test_stream_moe_expert_sources_writes_layers_into_final_banks():
-    from freetoken.models.loader import stream_moe_expert_sources
+    from sparklab.models.loader import stream_moe_expert_sources
 
     config = SimpleNamespace(num_layers=2, num_experts=2)
     tensors = [

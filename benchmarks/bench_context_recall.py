@@ -1,4 +1,4 @@
-"""Exact-token long-context recall gate for a complete Spark Lab checkpoint."""
+"""Exact-token long-context recall gate for a complete SparkLab checkpoint."""
 
 from __future__ import annotations
 

@@ -295,7 +295,7 @@ def test_runtime_artifact_round_trips_and_requires_immutable_revision():
 
     base = get_recipe("qwen3.8-flash-next")
     artifact = RuntimeArtifact(
-        repo_id="freetoken/qwen-ftw",
+        repo_id="sparklab/qwen-ftw",
         revision="d" * 40,
         bytes=123,
         fingerprint="source-fingerprint",
@@ -305,6 +305,6 @@ def test_runtime_artifact_round_trips_and_requires_immutable_revision():
     loaded = replace(base, runtime_artifact=artifact).from_dict(value)
     assert loaded.runtime_artifact == artifact
     with pytest.raises(ValueError, match="full 40-character commit"):
-        RuntimeArtifact("freetoken/qwen-ftw", "main", 123, "fingerprint").validate()
+        RuntimeArtifact("sparklab/qwen-ftw", "main", 123, "fingerprint").validate()
     with pytest.raises(ValueError, match="fingerprint is required"):
-        RuntimeArtifact("freetoken/qwen-ftw", "d" * 40, 123, "").validate()
+        RuntimeArtifact("sparklab/qwen-ftw", "d" * 40, 123, "").validate()

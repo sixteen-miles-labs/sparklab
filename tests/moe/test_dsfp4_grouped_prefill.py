@@ -62,12 +62,12 @@ def _assert_one_ulp(out, ref):
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 @pytest.mark.parametrize("block_m", [16, 64])
 def test_grouped_gemms_within_one_ulp_of_gemv(block_m):
-    from freetoken.kernel.triton.dsv4.fp8_linear import (
+    from sparklab.kernels.triton.dsv4.fp8_linear import (
         act_quant_fp8_inplace,
         act_quant_fp8_roundtrip,
     )
-    from freetoken.moe.fused import moe_align_block_size
-    from freetoken.moe.fused_ds_fp4 import _grouped_decode, _grouped_prefill
+    from sparklab.moe.fused import moe_align_block_size
+    from sparklab.moe.fused_ds_fp4 import _grouped_decode, _grouped_prefill
 
     device = "cuda"
     gup, gus, dp, ds = _banks(device)
@@ -101,7 +101,7 @@ def test_grouped_gemms_within_one_ulp_of_gemv(block_m):
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 @pytest.mark.parametrize("T", [256, 1024])  # BLOCK_M=16 and BLOCK_M=64 wrapper tiers
 def test_full_chain_statistics(T):
-    import freetoken.moe.fused_ds_fp4 as fmod
+    import sparklab.moe.fused_ds_fp4 as fmod
 
     device = "cuda"
     gup, gus, dp, ds = _banks(device)
@@ -119,7 +119,7 @@ def test_full_chain_statistics(T):
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 def test_sparse_chunk_falls_back_to_gemv():
-    import freetoken.moe.fused_ds_fp4 as fmod
+    import sparklab.moe.fused_ds_fp4 as fmod
 
     device = "cuda"
     gup, gus, dp, ds = _banks(device)

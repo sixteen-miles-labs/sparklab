@@ -24,7 +24,7 @@ import torch
 if not torch.cuda.is_available():  # pragma: no cover
     pytest.skip("CUDA required for the M3 sparse kernels", allow_module_level=True)
 
-from freetoken.kernel.triton.minimax_m3_sparse import (
+from sparklab.kernels.triton.minimax_m3_sparse import (
     SPARSE_BLOCK_SIZE,
     m3_index_decode,
     m3_index_score_prefill,

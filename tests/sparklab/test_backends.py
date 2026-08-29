@@ -327,15 +327,40 @@ def test_fake_backend_satisfies_prepare_plan_launch_and_health_contract(tmp_path
     }
 
 
-def test_product_modules_only_import_engine_inside_native_adapter():
+def test_native_runtime_does_not_import_the_product_control_plane():
     package = Path(__file__).resolve().parents[2] / "python" / "sparklab"
-    violations = []
-    allowed = {
-        package / "backends" / "native.py",
-        package / "backends" / "native_artifacts.py",
+    runtime_roots = {
+        "attention",
+        "benchmark",
+        "checkpoint",
+        "daemon",
+        "kernels",
+        "layers",
+        "llm",
+        "message",
+        "models",
+        "moe",
+        "runtime",
+        "serving",
+        "shell",
+        "tokenizer",
+        "utils",
     }
+    product_modules = {
+        "sparklab.acquire",
+        "sparklab.backends",
+        "sparklab.catalog",
+        "sparklab.certification",
+        "sparklab.cli",
+        "sparklab.deployment",
+        "sparklab.paths",
+        "sparklab.planner",
+        "sparklab.platform",
+        "sparklab.recipes",
+    }
+    violations = []
     for source in package.rglob("*.py"):
-        if source in allowed:
+        if source.relative_to(package).parts[0] not in runtime_roots:
             continue
         tree = ast.parse(source.read_text(encoding="utf-8"), filename=str(source))
         for node in ast.walk(tree):
@@ -344,6 +369,10 @@ def test_product_modules_only_import_engine_inside_native_adapter():
                 names = [alias.name for alias in node.names]
             elif isinstance(node, ast.ImportFrom) and node.module:
                 names = [node.module]
-            if any(name == "freetoken" or name.startswith("freetoken.") for name in names):
+            if any(
+                name == product or name.startswith(product + ".")
+                for name in names
+                for product in product_modules
+            ):
                 violations.append(str(source.relative_to(package)))
     assert violations == []

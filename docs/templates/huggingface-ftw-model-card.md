@@ -14,13 +14,12 @@ base_model:
 - {{QUANTIZED_SOURCE_REPO}}
 - {{BASE_MODEL_REPO}}
 license: {{LICENSE_ID}}
-library_name: freetoken
+library_name: sparklab
 tags:
 - {{MODEL_FAMILY_TAG}}
 - {{QUANTIZATION_TAG}}
 - quantized
 - sparklab
-- freetoken
 - ftw
 ---
 
@@ -46,31 +45,30 @@ or DGX OS, CUDA 13, SM121 kernels, 128 GB coherent unified memory, and local NVM
 
 This repository does **not** introduce a new model or a new quantization. It repackages
 the existing [`{{QUANTIZATION_NAME}}` checkpoint](https://huggingface.co/{{QUANTIZED_SOURCE_REPO}})
-into FreeToken Weight (FTW) format:
+into the FTW execution format:
 
 1. **[{{BASE_MODEL_AUTHOR}}](https://huggingface.co/{{BASE_MODEL_AUTHOR}})** developed the
    original [`{{MODEL_NAME}}`](https://huggingface.co/{{BASE_MODEL_REPO}}) model.
 2. **[{{QUANTIZATION_AUTHOR}}]({{QUANTIZATION_AUTHOR_URL}})** produced the
    [`{{QUANTIZED_SOURCE_REPO}}`](https://huggingface.co/{{QUANTIZED_SOURCE_REPO}})
    quantized checkpoint using {{QUANTIZATION_TOOL}}.
-3. **[FreeToken]({{FREETOKEN_REPOSITORY_URL}})** provides the native inference backend,
-   FTW format, conversion tooling, low-precision kernels, and MoE expert-bank layout.
-4. **SparkLab** provides the DGX Spark product experience: model recipes, GB10 readiness
-   checks, capacity planning, artifact lifecycle, deployment policy, and serving workflow.
-5. **[{{PUBLISHER_NAME}}]({{PUBLISHER_URL}})** performed, validated, documented, and
+3. **[SparkLab]({{SPARKLAB_REPOSITORY_URL}})** provides the native inference runtime,
+   FTW format, conversion tooling, low-precision kernels, model recipes, GB10 readiness
+   checks, capacity planning, artifact lifecycle, and serving workflow.
+4. **[{{PUBLISHER_NAME}}]({{PUBLISHER_URL}})** performed, validated, documented, and
    published this FTW conversion.
 
 The exact source revision is `{{SOURCE_COMMIT_SHA}}`. Conversion is
 precision-preserving: the model remains {{QUANTIZATION_NAME}}, while its tensors are
-aligned and sharded for FreeToken's native loader. No training or additional quantization
+aligned and sharded for SparkLab's native loader. No training or additional quantization
 was performed.
 
 ## Why use FTW?
 
-FreeToken may be able to load the original Hugging Face safetensors checkpoint directly.
+SparkLab may be able to load the original Hugging Face safetensors checkpoint directly.
 FTW is an optional deployment format that performs layout work ahead of time. For MoE
 models, it stores routed experts in independently addressable expert banks and enables
-FreeToken's native loading and expert-caching paths.
+SparkLab's native loading and expert-caching paths.
 
 {{RESIDENCY_OR_NVME_EXPLANATION}}
 
@@ -130,10 +128,9 @@ Please credit each project for its part of this artifact:
   [{{BASE_MODEL_AUTHOR}}](https://huggingface.co/{{BASE_MODEL_REPO}})
 - Quantization: [{{QUANTIZATION_AUTHOR}}]({{QUANTIZATION_AUTHOR_URL}}), using
   [{{QUANTIZATION_TOOL}}]({{QUANTIZATION_TOOL_URL}})
-- DGX Spark product, orchestration, model workflow, and deployment guidance:
+- Native inference runtime, FTW format, conversion, kernels, model workflow, and deployment:
   **[SparkLab]({{SPARKLAB_REPOSITORY_URL}})**
-- Native inference engine, FTW format, conversion, and kernels:
-  **[FreeToken]({{FREETOKEN_REPOSITORY_URL}})**
+- Research ancestry: [FreeToken](https://github.com/FlashML-org/FreeToken)
 - FTW conversion and publishing: [{{PUBLISHER_NAME}}]({{PUBLISHER_URL}})
 
 The upstream model is distributed under {{LICENSE_NAME}}. This repository preserves its

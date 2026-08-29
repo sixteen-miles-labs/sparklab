@@ -5,7 +5,7 @@
 #
 # INERT until a v* tag is pushed. The tag must point at a commit whose version.py
 # matches (vX.Y.Z == __version__ X.Y.Z); scripts/build-release-wheels.sh enforces
-# this in FREETOKEN_BUILD_RELEASE mode and refuses otherwise.
+# this in SPARKLAB_BUILD_RELEASE mode and refuses otherwise.
 #
 # This lane is separate from nightly-wheels.yml on purpose:
 #   - nightly ships +g<sha>-stamped, linux_x86_64-tagged cp312 wheels to the
@@ -25,7 +25,7 @@
 #     once this workflow is on main, any v* tag reaches publish-pypi, and that
 #     reviewer gate is the only thing in front of it.
 #   - Environment secret `PYPI_TOKEN` on `pypi` and `TEST_PYPI_TOKEN` on
-#     `testpypi`. Scope each token to the single project `freetoken`, never
+#     `testpypi`. Scope each token to the single project `sparklab`, never
 #     account-wide, and store them per-environment rather than repo-wide.
 
 name: Release wheels
@@ -76,7 +76,7 @@ jobs:
       - name: Build wheels (manylinux container, cp310-cp313)
         run: |
           if [ "${{ github.event_name }}" = "push" ]; then
-            export FREETOKEN_BUILD_RELEASE=1
+            export SPARKLAB_BUILD_RELEASE=1
           else
             # Rehearsal: .dev<run_id> versions -- PEP 440-clean (no local
             # segment) AND unique per run, so repeated rehearsals never collide
@@ -84,16 +84,16 @@ jobs:
             # run_number is stable across "Re-run all jobs", which would rebuild
             # the identical filenames and let --skip-existing turn a re-run into
             # a green no-op that leaves the previous attempt's bytes published.
-            export FREETOKEN_BUILD_DEV_STAMP="${{ github.run_id }}"
+            export SPARKLAB_BUILD_DEV_STAMP="${{ github.run_id }}"
           fi
-          export FT_PYTHON_MATRIX="cp310 cp311 cp312 cp313"
-          export FT_MANYLINUX_RETAG=1
+          export SPARKLAB_PYTHON_MATRIX="cp310 cp311 cp312 cp313"
+          export SPARKLAB_MANYLINUX_RETAG=1
           scripts/ci/manylinux-build.sh
       - name: Check the wheel set
         run: |
           ls -l dist/
-          rt="$(ls dist/freetoken-*manylinux*.whl 2>/dev/null | wc -l)"
-          kc="$(ls dist/freetoken_kernel_cache-*.whl 2>/dev/null | wc -l)"
+          rt="$(ls dist/sparklab-*manylinux*.whl 2>/dev/null | wc -l)"
+          kc="$(ls dist/sparklab_kernel_cache-*.whl 2>/dev/null | wc -l)"
           [ "$rt" -eq 4 ] || { echo "expected 4 manylinux runtime wheels, got $rt" >&2; exit 1; }
           [ "$kc" -eq 1 ] || { echo "expected 1 kernel-cache wheel, got $kc" >&2; exit 1; }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -120,7 +120,7 @@ jobs:
       - name: Select the PyPI wheel set (runtime only, no local versions)
         run: |
           mkdir pypi-dist
-          cp dist/freetoken-*manylinux*.whl pypi-dist/
+          cp dist/sparklab-*manylinux*.whl pypi-dist/
           # The kernel-cache wheel stays on GitHub releases; a +local version
           # here would be rejected by (Test)PyPI anyway -- fail early and loudly.
           if ls pypi-dist/ | grep -qF '+'; then
@@ -152,7 +152,7 @@ jobs:
       - name: Select the PyPI wheel set (runtime only, no local versions)
         run: |
           mkdir pypi-dist
-          cp dist/freetoken-*manylinux*.whl pypi-dist/
+          cp dist/sparklab-*manylinux*.whl pypi-dist/
           if ls pypi-dist/ | grep -qF '+'; then
             echo "local-versioned wheel in the PyPI upload set:" >&2; ls pypi-dist/ >&2; exit 1
           fi

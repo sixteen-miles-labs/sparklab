@@ -11,8 +11,8 @@ ROOT = Path(__file__).parent
 
 
 def _check_toolchain() -> None:
-    path = ROOT / "python" / "freetoken" / "kernel" / "_toolchain.py"
-    spec = importlib.util.spec_from_file_location("_freetoken_toolchain", path)
+    path = ROOT / "python" / "sparklab" / "kernels" / "_toolchain.py"
+    spec = importlib.util.spec_from_file_location("_sparklab_toolchain", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     module.check_nvcc_matches_torch()
@@ -21,7 +21,7 @@ def _check_toolchain() -> None:
 def _cuda_runtime_paths() -> tuple[list[str], list[str]]:
     if CUDA_HOME is None:
         raise RuntimeError(
-            "CUDA_HOME is required to build freetoken.kernel._pinned_tensor "
+            "CUDA_HOME is required to build sparklab.kernels._pinned_tensor "
             "because it links against the CUDA runtime API."
         )
     cuda_home = Path(CUDA_HOME)
@@ -38,9 +38,9 @@ _check_toolchain()
 setup(
     ext_modules=[
         CppExtension(
-            name="freetoken.kernel._pinned_tensor",
+            name="sparklab.kernels._pinned_tensor",
             sources=[
-                "python/freetoken/kernel/csrc/pinned_tensor.cpp",
+                "python/sparklab/kernels/csrc/pinned_tensor.cpp",
             ],
             include_dirs=cuda_include_dirs,
             library_dirs=cuda_library_dirs,
@@ -53,9 +53,9 @@ setup(
         # __builtin_cpu_supports dispatch, so the single binary stays portable
         # (scalar fallback) -- no global -march is set.
         CppExtension(
-            name="freetoken.kernel._cpu_moe",
+            name="sparklab.kernels._cpu_moe",
             sources=[
-                "python/freetoken/kernel/csrc/cpu_moe/cpu_moe_ext.cpp",
+                "python/sparklab/kernels/csrc/cpu_moe/cpu_moe_ext.cpp",
             ],
             include_dirs=cuda_include_dirs,
             library_dirs=cuda_library_dirs,

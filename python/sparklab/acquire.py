@@ -381,7 +381,7 @@ def read_manifest(recipe: ModelRecipe, root: str | None = None) -> dict[str, Any
         return _normalize_v1_manifest(recipe, value)
     if value.get("schema_version") != "2.0":
         raise AcquisitionError(
-            f"unsupported Spark Lab manifest schema: {value.get('schema_version')!r}"
+            f"unsupported SparkLab manifest schema: {value.get('schema_version')!r}"
         )
     return value
 

@@ -7,7 +7,7 @@ import torch
 def test_pinned_extension_uses_packaged_module_not_runtime_jit(monkeypatch):
     import torch.utils.cpp_extension as cpp_extension
 
-    import freetoken.kernel.pinned as pinned
+    import sparklab.kernels.pinned as pinned
 
     class FakeExtension:
         pass
@@ -16,7 +16,7 @@ def test_pinned_extension_uses_packaged_module_not_runtime_jit(monkeypatch):
     real_import_module = importlib.import_module
 
     def fake_import_module(name):
-        if name == "freetoken.kernel._pinned_tensor":
+        if name == "sparklab.kernels._pinned_tensor":
             return fake_extension
         return real_import_module(name)
 
@@ -37,7 +37,7 @@ def test_copy_to_pinned_tensor_preserves_strided_cpu_tensor_values():
     if not torch.cuda.is_available():
         pytest.skip("cudaMallocHost requires CUDA")
 
-    from freetoken.kernel import copy_to_pinned_tensor
+    from sparklab.kernels import copy_to_pinned_tensor
 
     source = torch.arange(24, dtype=torch.float32).reshape(4, 6).t()
 
@@ -54,7 +54,7 @@ def test_fast_index_copy_accepts_exact_pinned_cpu_source():
     if not torch.cuda.is_available():
         pytest.skip("CUDA is required for fast index copy")
 
-    from freetoken.kernel import copy_to_pinned_tensor, fast_index_copy_jit
+    from sparklab.kernels import copy_to_pinned_tensor, fast_index_copy_jit
 
     source = copy_to_pinned_tensor(torch.arange(6 * 32, dtype=torch.float32).reshape(6, 32))
     output = torch.empty((3, 32), dtype=torch.float32, device="cuda")
@@ -72,7 +72,7 @@ def test_fast_index_copy_accepts_non_128_byte_feature_row(columns):
     if not torch.cuda.is_available():
         pytest.skip("CUDA is required for fast index copy")
 
-    from freetoken.kernel import copy_to_pinned_tensor, fast_index_copy_jit
+    from sparklab.kernels import copy_to_pinned_tensor, fast_index_copy_jit
 
     # Qwen3.8's block-FP8 scale banks have 100/200 BF16 values = 200/400 bytes per expert.
     # The vector-copy kernel must predicate its final partial worker group rather than
@@ -91,7 +91,7 @@ def test_fast_index_copy_accepts_non_128_byte_feature_row(columns):
 
 
 def test_fast_index_copy_skip_env_noops_without_jit(monkeypatch):
-    import freetoken.kernel.fast_index_copy as fast_index_copy
+    import sparklab.kernels.fast_index_copy as fast_index_copy
 
     source = torch.arange(6 * 32, dtype=torch.float32).reshape(6, 32)
     output = torch.full((3, 32), -1.0, dtype=torch.float32)
@@ -113,7 +113,7 @@ def test_device_ptr_pinned_bank_resolves():
     if not torch.cuda.is_available():
         pytest.skip("needs CUDA")
 
-    from freetoken.kernel.pinned import _host_ptr_identity, alloc_pinned_tensor, device_ptr
+    from sparklab.kernels.pinned import _host_ptr_identity, alloc_pinned_tensor, device_ptr
 
     t = alloc_pinned_tensor(8, 16, dtype=torch.bfloat16)
     if _host_ptr_identity():
@@ -128,7 +128,7 @@ def test_device_ptr_cuda_tensor_passthrough():
     if not torch.cuda.is_available():
         pytest.skip("needs CUDA")
 
-    from freetoken.kernel.pinned import device_ptr
+    from sparklab.kernels.pinned import device_ptr
 
     t = torch.empty(4, device="cuda")
     assert device_ptr(t) == t.data_ptr()
@@ -138,7 +138,7 @@ def test_host_device_ptr_is_identity_under_uva():
     if not torch.cuda.is_available():
         pytest.skip("needs CUDA")
 
-    from freetoken.kernel.pinned import _host_ptr_identity, _load_pinned_extension
+    from sparklab.kernels.pinned import _host_ptr_identity, _load_pinned_extension
 
     torch.cuda.init()
     if not _host_ptr_identity():
@@ -155,8 +155,8 @@ def test_host_bank_pin_registers_and_translates():
     if not torch.cuda.is_available():
         pytest.skip("needs CUDA")
 
-    from freetoken.kernel.pinned import _host_ptr_identity, _load_pinned_extension
-    from freetoken.moe.host_banks import HostBank
+    from sparklab.kernels.pinned import _host_ptr_identity, _load_pinned_extension
+    from sparklab.moe.host_banks import HostBank
 
     bank = HostBank((4, 32), torch.bfloat16)
     bank.tensor.fill_(1.0)

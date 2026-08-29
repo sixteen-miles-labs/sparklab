@@ -12,7 +12,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from freetoken.kernel.triton.dsv4.indexer import indexer_decode_logits
+from sparklab.kernels.triton.dsv4.indexer import indexer_decode_logits
 
 pytestmark = pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 

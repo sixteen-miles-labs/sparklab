@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://sparklab.local/schemas/gb10-certification-1.0.json",
-  "title": "Spark Lab complete-checkpoint certification evidence",
+  "title": "SparkLab complete-checkpoint certification evidence",
   "type": "object",
   "required": [
     "schema_version", "result_id", "recipe", "engine", "checkpoint",

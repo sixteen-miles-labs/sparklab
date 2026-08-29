@@ -1,4 +1,4 @@
-"""Figure-3-style AIME-25 serving evaluation for one long-lived FreeToken server.
+"""Figure-3-style AIME-25 serving evaluation for one long-lived SparkLab server.
 
 Unlike ``bench_decode_moe.py`` (a deterministic fixed-length regression probe), this
 runner evaluates every selected problem once with checkpoint-recommended sampling,
@@ -45,9 +45,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--recipe",
         default=None,
-        help="Spark Lab recipe slug to embed as immutable benchmark provenance",
+        help="SparkLab recipe slug to embed as immutable benchmark provenance",
     )
-    p.add_argument("--aime", default=os.environ.get("FREETOKEN_AIME25_JSONL"))
+    p.add_argument("--aime", default=os.environ.get("SPARKLAB_AIME25_JSONL"))
     p.add_argument("--problems", default="all", help="all, comma list, or inclusive range (e.g. 0-4)")
     p.add_argument("--decode", type=int, default=1024, help="maximum output tokens per problem")
     p.add_argument("--backend", default="hybrid", choices=("offload", "cpu", "hybrid"))
@@ -347,7 +347,7 @@ def summarize(
             "nvfp4_backend": args.nvfp4_backend,
             "hybrid_fetch": args.hybrid_fetch,
             "cpu_threads": args.cpu_threads,
-            "disk_read_workers": int(os.getenv("FREETOKEN_DISK_READ_WORKERS", "16")),
+            "disk_read_workers": int(os.getenv("SPARKLAB_DISK_READ_WORKERS", "16")),
             "cache_policy": args.cache_policy,
             "prefill_overlap": not args.disable_prefill_overlap,
             "prefill_hit_d2d": args.prefill_hit_d2d,

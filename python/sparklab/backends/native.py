@@ -1,4 +1,4 @@
-"""Adapter for Spark Lab's built-in native inference engine."""
+"""Adapter for SparkLab's built-in native inference engine."""
 
 from __future__ import annotations
 
@@ -136,7 +136,7 @@ class NativeBackend(RuntimeBackend):
 
     @property
     def backend_version(self) -> str:
-        from freetoken.version import __version__
+        from sparklab.version import __version__
 
         return __version__
 
@@ -221,7 +221,7 @@ class NativeBackend(RuntimeBackend):
         if not path.is_dir() or not (path / "config.json").is_file():
             return False
         if deployment.runtime_format.startswith("ftw"):
-            from freetoken.checkpoint import is_ftw_checkpoint
+            from sparklab.checkpoint import is_ftw_checkpoint
 
             return is_ftw_checkpoint(str(path))
         return True
@@ -256,7 +256,7 @@ class NativeBackend(RuntimeBackend):
                 f"native preparation for {deployment.runtime_format!r} is not required"
             )
         if implementation is None:
-            from freetoken.checkpoint import convert_checkpoint
+            from sparklab.checkpoint import convert_checkpoint
 
             implementation = convert_checkpoint
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -305,48 +305,48 @@ class NativeBackend(RuntimeBackend):
         )
 
     def launch(self, plan: BackendLaunchPlan, *, prog: str) -> None:
-        from freetoken.server import launch_server
+        from sparklab.serving import launch_server
 
         launch_server(argv=list(plan.arguments), prog=prog)
 
-    def run_compat_command(
+    def run_command(
         self, command: str, argv: Sequence[str], *, prog: str
     ) -> int:
         arguments = list(argv)
         if command == "serve":
-            from freetoken.server import launch_server
+            from sparklab.serving import launch_server
 
             launch_server(argv=arguments, prog=prog)
             return 0
         if command == "shell":
-            from freetoken.shell import main
+            from sparklab.shell import main
 
             return main(arguments, prog=prog)
         if command == "ctl":
-            from freetoken.control_cli import main
+            from sparklab.control_cli import main
 
             return main(arguments, prog=prog)
         if command == "daemon":
-            from freetoken.daemon import main
+            from sparklab.daemon import main
 
             return main(arguments, prog=prog)
         if command == "status":
-            from freetoken.daemon.client import main
+            from sparklab.daemon.client import main
 
             return main(["status", *arguments], prog=prog)
         if command == "launch":
-            from freetoken.launch import main
+            from sparklab.launch import main
 
             return main(arguments, prog=prog)
         if command == "checkpoint":
-            from freetoken.checkpoint.__main__ import main
+            from sparklab.checkpoint.__main__ import main
 
             return main(arguments, prog=prog)
         if command == "bench-bw":
-            from freetoken.moe.benchbw import main
+            from sparklab.moe.benchbw import main
 
             return main(arguments, prog=prog)
-        return super().run_compat_command(command, arguments, prog=prog)
+        return super().run_command(command, arguments, prog=prog)
 
 
 __all__ = ["NativeBackend"]

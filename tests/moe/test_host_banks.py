@@ -3,7 +3,7 @@ import mmap
 import pytest
 import torch
 
-from freetoken.moe.host_banks import HostBank
+from sparklab.moe.host_banks import HostBank
 
 
 class _FakeBuffer:

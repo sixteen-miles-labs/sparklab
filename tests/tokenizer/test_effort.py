@@ -1,7 +1,7 @@
 """Unit tests for the reasoning-effort dialect layer (tokenizer/effort.py)."""
 from __future__ import annotations
 
-from freetoken.tokenizer.effort import (
+from sparklab.tokenizer.effort import (
     EFFORT_SCALE,
     EffortProfile,
     KNOWN_REASONING_EFFORTS,

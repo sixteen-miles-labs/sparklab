@@ -1,6 +1,6 @@
 # Governance
 
-SparkLab and its FreeToken engine are open-source projects stewarded by
+SparkLab is an open-source project stewarded by
 **SixteenMiles Labs**, a research lab under **Oakmind AI**.
 
 ## Roles

@@ -72,7 +72,7 @@ shapes rather than using peak hardware specifications.
 | Current 3090 | RTX 3090, 24 GiB VRAM | PCIe 3.0 ×16 | 12.08 GB/s | Core i9-9900K, 16 threads | 64 GiB DDR4 | 23.28 GB/s |
 | GB10 | GB10 Blackwell, 128 GB unified | Coherent unified memory | N/A | 20-core Arm | 128 GB LPDDR5x | TBD |
 
-The current-system values were measured with `ft bench bw --dtype nvfp4` using Qwen NVFP4
+The current-system values were measured with `sparklab bench bw --dtype nvfp4` using Qwen NVFP4
 expert shapes, so they should not be treated as directly equivalent to every paper row.
 
 GB10 does not copy experts over a discrete PCIe host-to-device link, so `B_P` is not
@@ -110,12 +110,12 @@ tokens for the matched RAM/disk comparison.
 Command:
 
 ```bash
-ft bench bw --dtype nvfp4
+sparklab bench bw --dtype nvfp4
 ```
 
 | Method | CPU streaming | Host to GPU | Qwen NVFP4 CPU MoE | Expert gather |
 |---|---:|---:|---:|---:|
-| `ft bench bw` | ~28 GB/s | 12.08 GB/s | 23.28 GB/s | 7.35 GB/s |
+| `sparklab bench bw` | ~28 GB/s | 12.08 GB/s | 23.28 GB/s | 7.35 GB/s |
 
 ## Experiment 2: Controlled RAM baseline
 
@@ -228,7 +228,7 @@ the dominant decode cost.
 4. Sweep 0.5, 1, 2, 4, 8, and 16 GiB host-cache budgets.
 5. Measure peak process RSS and verify the host-memory budget.
 6. Compare cold, warm, repeated, and distinct prompts.
-7. Run `ft bench bw --dtype nvfp4` on GB10 and fill in its `B_H` result.
+7. Run `sparklab bench bw --dtype nvfp4` on GB10 and fill in its `B_H` result.
 
 ## Overall inference results
 

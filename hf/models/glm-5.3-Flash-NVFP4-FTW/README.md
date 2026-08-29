@@ -1,9 +1,9 @@
 # GLM-5.3 Flash NVFP4 FTW upload
 
-This helper publishes Spark Lab's prepared GLM-5.3 Flash artifact to
+This helper publishes SparkLab's prepared GLM-5.3 Flash artifact to
 [`oakmindai/GLM-5.3-Flash-NVFP4-FTW`](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW).
 
-The default source is the validated Spark Lab artifact:
+The default source is the validated SparkLab artifact:
 
 ```text
 ~/.sparklab/models/glm-5.3-flash/prepared/0.3.2

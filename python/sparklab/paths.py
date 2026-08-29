@@ -1,4 +1,4 @@
-"""Stable Spark Lab state and artifact paths."""
+"""Stable SparkLab state and artifact paths."""
 
 from __future__ import annotations
 

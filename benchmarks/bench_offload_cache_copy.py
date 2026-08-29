@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 import torch
 
-from freetoken.moe.offload_cache import _BANK_SCHEMAS, OffloadMoeCache
+from sparklab.moe.offload_cache import _BANK_SCHEMAS, OffloadMoeCache
 
 
 LAYER_ID = 0

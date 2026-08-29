@@ -3,7 +3,7 @@
 Run from the repo root with `PYTHONPATH=python:.`, pinned to one GPU
 (`CUDA_VISIBLE_DEVICES=0`). Each script's `--help` / docstring has the details.
 
-**`bench_decode_moe.py`** — bs=1 decode tok/s of a served MoE model. Spawns `ft serve`
+**`bench_decode_moe.py`** — bs=1 decode tok/s of a served MoE model. Spawns `sparklab serve`
 per backend and times token arrivals over streamed `/v1/chat/completions`, so numbers
 include the full serving path. AIME-25 prompt, checkpoint-recommended sampling.
 
@@ -27,5 +27,5 @@ batch size x miss rate.
 python benchmarks/bench_offload_cache_copy.py
 ```
 
-For host RAM vs PCIe bandwidth and the offload/hybrid backend pick, use `ft bench bw`
+For host RAM vs PCIe bandwidth and the offload/hybrid backend pick, use `sparklab bench bw`
 instead — it writes the JSON profile the engine reads.

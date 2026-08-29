@@ -25,7 +25,7 @@ def test_gemma_rmsnorm_uses_sgl_kernel_semantics(
     with_scale: bool,
     shape: tuple[int, ...],
 ):
-    from freetoken.layers import GemmaRMSNorm
+    from sparklab.layers import GemmaRMSNorm
 
     torch.manual_seed(0)
     x = torch.randn(shape, device="cuda", dtype=torch.bfloat16)
@@ -43,7 +43,7 @@ def test_gemma_rmsnorm_uses_sgl_kernel_semantics(
 
 @pytest.mark.parametrize("hidden_size", [8, 5376])
 def test_gemma_add_rmsnorm_uses_sgl_kernel_semantics(hidden_size: int):
-    from freetoken.layers import GemmaRMSNorm
+    from sparklab.layers import GemmaRMSNorm
 
     torch.manual_seed(4)
     x = torch.randn((2, hidden_size), device="cuda", dtype=torch.bfloat16)
@@ -65,7 +65,7 @@ def test_gemma_dual_rmsnorm_residual_scalar_matches_reference(
     tokens: int,
     hidden_size: int,
 ):
-    from freetoken.kernel.triton.gemma4_fused import gemma_dual_rmsnorm_residual_scalar
+    from sparklab.kernels.triton.gemma4_fused import gemma_dual_rmsnorm_residual_scalar
 
     torch.manual_seed(7)
     x1 = torch.randn((tokens, hidden_size), device="cuda", dtype=torch.bfloat16)
@@ -95,7 +95,7 @@ def test_gemma_dual_rmsnorm_residual_scalar_matches_reference(
 
 
 def test_gemma4_router_uses_sgl_kernel_topk_softmax_semantics():
-    from freetoken.models.gemma4 import Gemma4Router
+    from sparklab.models.gemma4 import Gemma4Router
 
     cfg = SimpleNamespace(
         hidden_size=16,

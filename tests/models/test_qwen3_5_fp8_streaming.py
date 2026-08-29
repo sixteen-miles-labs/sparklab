@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import torch
 
-import freetoken.models.qwen3_5_moe.weight as weight
+import sparklab.models.qwen3_5_moe.weight as weight
 
 
 class _FakeBank:
@@ -68,7 +68,7 @@ def test_serial_fp8_conversion_allocates_and_releases_one_layer_at_a_time(monkey
         "get_tp_info",
         lambda: SimpleNamespace(size=1, is_primary=lambda: True),
     )
-    monkeypatch.setattr("freetoken.moe.host_banks.alloc_banks", alloc_banks)
+    monkeypatch.setattr("sparklab.moe.host_banks.alloc_banks", alloc_banks)
 
     seen = []
 
@@ -122,7 +122,7 @@ def test_serial_fp8_conversion_releases_partial_layer_when_reader_fails(monkeypa
         "get_tp_info",
         lambda: SimpleNamespace(size=1, is_primary=lambda: True),
     )
-    monkeypatch.setattr("freetoken.moe.host_banks.alloc_banks", alloc_banks)
+    monkeypatch.setattr("sparklab.moe.host_banks.alloc_banks", alloc_banks)
 
     try:
         weight._build_fp8_expert_banks(

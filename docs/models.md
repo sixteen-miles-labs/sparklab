@@ -1,4 +1,4 @@
-# Spark Lab model portfolio
+# SparkLab model portfolio
 
 The catalog is a set of versioned **checkpoint + GB10 recipe** entries. A model
 family, parameter count, or successful import does not earn a product tier.
@@ -41,7 +41,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | [Kimi K3](https://huggingface.co/nvidia/Kimi-K3-NVFP4) | 2.8T total / 16 of 896 experts | NVFP4 · FTW upload pending | `kimi-k3` | Experimental | — | — |
 
 Model links point to the selected source checkpoints. Quantization links point to
-Spark Lab's converted FTW checkpoints when those artifacts are published. The Kimi K3
+SparkLab's converted FTW checkpoints when those artifacts are published. The Kimi K3
 NVFP4 FTW link remains marked pending until its Hugging Face upload exists.
 
 Parameter values use publisher-reported architecture counts. Qwen3.8's auxiliary total is
@@ -78,9 +78,9 @@ not pass the strict Research gate. See the [full experiment](../exps/exp_glm5_2_
 
 ## Engine architecture support
 
-The underlying FreeToken engine can load additional checkpoints, including
+SparkLab's native runtime can load additional checkpoints, including
 GLM-4.7, Qwen3.x, GPT-OSS, Gemma-4, MiniMax, and Muse-Glimmer variants. That
-compatibility is not a Spark Lab support or performance claim. Only entries
+compatibility is not a SparkLab support or performance claim. Only entries
 returned by `sparklab models` participate in the GB10 product portfolio.
 
 ## FTW and NVMe execution

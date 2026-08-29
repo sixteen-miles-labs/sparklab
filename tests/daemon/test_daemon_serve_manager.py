@@ -6,14 +6,14 @@ import time
 
 import pytest
 
-from freetoken.daemon.accounting import (
+from sparklab.daemon.accounting import (
     AccountingOutbox,
     AccountingOutboxError,
     AccountingPrepareError,
 )
-from freetoken.daemon.logring import LogRing
-from freetoken.daemon.pidfile import ServeState, ServeStateStore
-from freetoken.daemon.serve_manager import Conflict, ExitInfo, ServeManager
+from sparklab.daemon.logring import LogRing
+from sparklab.daemon.pidfile import ServeState, ServeStateStore
+from sparklab.daemon.serve_manager import Conflict, ExitInfo, ServeManager
 
 
 # --------------------------------------------------------------------------- test doubles

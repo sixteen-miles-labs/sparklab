@@ -26,7 +26,7 @@
   "description": "The 2.8T NVIDIA NVFP4 flagship demonstration for inference beyond physical memory.",
   "limitations": [
     "Beta FTW preparation must preserve the checkpoint's mixed representation: NVFP4 routed experts, 128x128 block-FP8 attention projections, and the original precision of remaining tensors.",
-    "The native Kimi loader currently supports Moonshot's compressed-tensors MXFP4 layout; NVIDIA's ModelOpt mixed NVFP4/FP8 tensor layout still requires a dedicated precision-preserving mapping.",
+    "The NVIDIA ModelOpt mixed NVFP4/FP8 mapping is implemented and has exact index-level coverage, but still awaits full-checkpoint conversion and runtime validation.",
     "Full-checkpoint FTW preparation and GPU parity are not yet validated.",
     "No latency promise and no vision support."
   ]

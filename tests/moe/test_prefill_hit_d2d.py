@@ -10,11 +10,11 @@ import os
 import pytest
 import torch
 
-from freetoken.moe.offload_cache import OffloadMoeCache
+from sparklab.moe.offload_cache import OffloadMoeCache
 
 CUDA = pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 JIT = pytest.mark.skipif(
-    os.getenv("FREETOKEN_DISABLE_JIT", "").strip().lower() in {"1", "true", "yes", "on"},
+    os.getenv("SPARKLAB_DISABLE_JIT", "").strip().lower() in {"1", "true", "yes", "on"},
     reason="batch_memcpy has no AOT prebuild; needs runtime JIT",
 )
 
@@ -61,7 +61,7 @@ def _seed_resident(cache, sources, layer_id: int, expert_id: int, slot: int) -> 
 @JIT
 @BATCH_API
 def test_batch_memcpy_roundtrip():
-    from freetoken.kernel.batch_memcpy import batch_memcpy_jit
+    from sparklab.kernels.batch_memcpy import batch_memcpy_jit
 
     rows, feat = 16, 1024
     src = torch.randint(0, 256, (rows, feat), dtype=torch.uint8).pin_memory()

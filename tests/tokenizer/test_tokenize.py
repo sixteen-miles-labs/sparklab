@@ -5,9 +5,9 @@ import json
 import pytest
 import torch
 
-from freetoken.core import SamplingParams
-from freetoken.message import TokenizeMsg
-from freetoken.tokenizer.tokenize import TokenizeManager, _dsv4_arguments_str
+from sparklab.core import SamplingParams
+from sparklab.message import TokenizeMsg
+from sparklab.tokenizer.tokenize import TokenizeManager, _dsv4_arguments_str
 
 
 class FakeTokenizer:

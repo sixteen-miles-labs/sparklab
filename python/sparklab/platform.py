@@ -1,8 +1,7 @@
 """Read-only NVIDIA GB10 platform inspection.
 
-Spark Lab owns this product policy while legacy engine imports remain compatibility
-facades. Collection is separated from assessment so the policy is deterministic and
-unit-testable without CUDA hardware.
+SparkLab owns this product policy. Collection is separated from assessment so the
+policy is deterministic and unit-testable without CUDA hardware.
 """
 
 from __future__ import annotations
@@ -167,7 +166,7 @@ def _check(name: str, status: str, observed: Any, expected: str, detail: str) ->
 
 
 def assess_gb10(snapshot: GB10Snapshot) -> dict[str, Any]:
-    """Apply Spark Lab's GB10 production policy to a collected snapshot."""
+    """Apply SparkLab's GB10 production policy to a collected snapshot."""
     checks: list[dict[str, Any]] = []
     checks.append(
         _check(
@@ -175,7 +174,7 @@ def assess_gb10(snapshot: GB10Snapshot) -> dict[str, Any]:
             "pass" if snapshot.os_name == "Linux" else "fail",
             snapshot.os_name,
             "Linux / DGX OS",
-            "Spark Lab's supported runtime is Linux-only.",
+            "SparkLab's supported runtime is Linux-only.",
         )
     )
     checks.append(
@@ -207,7 +206,7 @@ def assess_gb10(snapshot: GB10Snapshot) -> dict[str, Any]:
             "pass" if cuda_major == 13 else "fail",
             snapshot.cuda_version,
             "13.x",
-            "Spark Lab's GB10 kernel contract targets CUDA 13.",
+            "SparkLab's GB10 kernel contract targets CUDA 13.",
         )
     )
     checks.append(
@@ -316,7 +315,7 @@ def assess_gb10(snapshot: GB10Snapshot) -> dict[str, Any]:
 
     return {
         "schema_version": "1.0",
-        "product": "Spark Lab",
+        "product": "SparkLab",
         "profile": "gb10",
         "status": status,
         "supported": not platform_failures,

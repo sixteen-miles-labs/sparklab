@@ -1,6 +1,6 @@
 # Contributing to SparkLab
 
-Thank you for contributing to SparkLab and the FreeToken engine. The project is maintained
+Thank you for contributing to SparkLab. The project is maintained
 by **SixteenMiles Labs**, a research lab under **Oakmind AI**.
 
 ## Before opening a change

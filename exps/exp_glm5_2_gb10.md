@@ -21,7 +21,7 @@ This experiment has two distinct outcomes:
 
 A successful bring-up does not by itself make GLM-5.2 a Frontier model.
 
-## Spark Lab tier gate
+## SparkLab tier gate
 
 GLM-5.2 is retained as an Experimental Research fallback rather than a Frontier
 fallback. Assign the result according to the exact checkpoint and recipe tested:
@@ -36,7 +36,7 @@ fallback. Assign the result according to the exact checkpoint and recipe tested:
 Interpretation:
 
 - Below 0.5 tok/s: correct feasibility result, but not yet usable.
-- From 0.5 to below 5 tok/s: Spark Lab Research tier.
+- From 0.5 to below 5 tok/s: SparkLab Research tier.
 - At least 5 tok/s: eligible for Frontier only after every other certification
   gate passes.
 
@@ -106,14 +106,14 @@ copy bandwidth is not sensitive to the tested cache allocation size.
 ## Checkpoint conversion
 
 The conversion must explicitly select the same backend-owned layout used at
-serve time. The experiment added `--nvfp4-backend` to `ft checkpoint` and both
+serve time. The experiment added `--nvfp4-backend` to `sparklab checkpoint` and both
 serving benchmark harnesses; result JSON records the choice.
 
 ```bash
 CUDA_HOME=/usr/local/cuda \
 PATH=/usr/local/cuda/bin:$PATH \
-FREETOKEN_CONVERT_PROGRESS=1 \
-.venv/bin/ft checkpoint \
+SPARKLAB_CONVERT_PROGRESS=1 \
+.venv/bin/sparklab checkpoint \
   --model /home/lidaiqing/models/GLM-5.2-NVFP4 \
   --out /home/lidaiqing/ftw/GLM-5.2-NVFP4-b12x \
   --dtype bfloat16 \
@@ -217,7 +217,7 @@ temperature drift, but its nonzero swap delta fails the strict gate.
 ```bash
 CUDA_HOME=/usr/local/cuda \
 LD_LIBRARY_PATH=/usr/local/cuda/lib64 \
-FREETOKEN_DISK_READ_WORKERS=20 \
+SPARKLAB_DISK_READ_WORKERS=20 \
 .venv/bin/python benchmarks/bench_decode_moe.py \
   --model /home/lidaiqing/ftw/GLM-5.2-NVFP4-b12x \
   --backend offload --storage disk --nvfp4-backend flashinfer \
@@ -249,7 +249,7 @@ these distinct prompts. The suite read 2,755.78 GiB at an effective 9.71 GiB/s.
   64-token correctness is exact, and the 256-token path is thermally and
   throughput stable.
 - The 0.802 tok/s confirmation clears the experiment-usability performance
-  threshold, but no Spark Lab tier is awarded because the prerequisite
+  threshold, but no SparkLab tier is awarded because the prerequisite
   zero-swap-growth gate failed twice.
 - It is far below the 5 tok/s Frontier-candidate threshold and has not run the
   separate `GB10-INTERACTIVE-001` 4K/512 test, 64K context, 60-minute endurance,

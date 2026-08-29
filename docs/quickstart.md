@@ -1,7 +1,7 @@
-# Spark Lab quick start
+# SparkLab quick start
 
-This early product path assumes the compatibility distribution is installed; see
-[install.md](install.md). The supported production target is one NVIDIA GB10.
+Install the SparkLab distribution first; see [install.md](install.md). The supported
+production target is one NVIDIA GB10.
 
 ## 1. Inspect the machine
 
@@ -51,8 +51,8 @@ The server is ready when the log reports that the API is listening on
 `127.0.0.1:1919`.
 
 Experimental recipes print a warning and remain non-certified. For an
-uncataloged checkpoint or engine-level experimentation, use the compatibility
-surface directly:
+uncataloged checkpoint or native-runtime experimentation, use the direct serving
+command:
 
 ```bash
 sparklab serve --model /path/to/checkpoint
@@ -73,7 +73,7 @@ curl http://127.0.0.1:1919/v1/chat/completions \
   }'
 ```
 
-Spark Lab serves the OpenAI Chat Completions and Responses APIs and the
+SparkLab serves the OpenAI Chat Completions and Responses APIs and the
 Anthropic Messages API.
 
 ## 5. Use the terminal or a coding agent
@@ -82,5 +82,3 @@ Anthropic Messages API.
 sparklab shell
 sparklab launch codex
 ```
-
-The legacy `ft` forms remain valid. See [migration.md](migration.md).

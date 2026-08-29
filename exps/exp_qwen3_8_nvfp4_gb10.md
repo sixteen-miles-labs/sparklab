@@ -5,7 +5,7 @@ Last updated: 2026-08-28
 ## Result
 
 The complete pinned `Inferact/Qwen3.8-Flash-Next-NVFP4` checkpoint was prepared into
-Spark Lab's FTW layout and ran through the OpenAI-compatible streaming API at **12.58
+SparkLab's FTW layout and ran through the OpenAI-compatible streaming API at **12.58
 decode tok/s** with **0.786 s warm TTFT** on one NVIDIA GB10. Both numbers pass the
 Frontier performance thresholds. The recipe remains Experimental because the exact 64K
 context, capability, quality, and endurance gates were not run.
@@ -39,7 +39,7 @@ HTTP API. The runtime used QSA attention, NVMe-backed MoE, 3 GiB of host expert 
 CUDA graph.
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 FREETOKEN_DISK_READ_WORKERS=16 PYTHONPATH=python:. \
+CUDA_VISIBLE_DEVICES=0 SPARKLAB_DISK_READ_WORKERS=16 PYTHONPATH=python:. \
   .venv/bin/python benchmarks/bench_decode_moe.py \
   --model /path/to/qwen3.8-flash-next/prepared/0.5.0 \
   --recipe qwen3.8-flash-next \

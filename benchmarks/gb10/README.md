@@ -1,6 +1,6 @@
-# Spark Lab GB10 benchmark evidence
+# SparkLab GB10 benchmark evidence
 
-This directory contains compact, reviewable summaries for Spark Lab model
+This directory contains compact, reviewable summaries for SparkLab model
 recipes. Raw logs and large result streams stay outside the source repository.
 
 - `result.schema.json` defines the versioned summary contract.

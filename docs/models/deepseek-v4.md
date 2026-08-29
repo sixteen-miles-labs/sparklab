@@ -13,11 +13,11 @@ package install is:
 
 ```bash
 uv venv && source .venv/bin/activate
-uv pip install "freetoken[accel]"
+uv pip install "sparklab[accel]"
 sparklab --version
 ```
 
-The distribution is currently named `freetoken`; it installs the `sparklab` command.
+The `sparklab` distribution provides the `sparklab` command.
 See [Install from source](../install.md#method-2-install-from-source) for a development
 checkout.
 

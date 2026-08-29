@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import torch
 
-from freetoken.core import Batch, Context, Req, SamplingParams, get_global_ctx, set_global_ctx
-from freetoken.kvcache.dsv4_paged_pool import DSV4PagedKVCache
-from freetoken.kvcache.dsv4_cost_model import dsv4_pool_sizes
-from freetoken.models.deepseek_v4.args import DeepseekV4Args
+from sparklab.core import Batch, Context, Req, SamplingParams, get_global_ctx, set_global_ctx
+from sparklab.runtime.kvcache.dsv4_paged_pool import DSV4PagedKVCache
+from sparklab.runtime.kvcache.dsv4_cost_model import dsv4_pool_sizes
+from sparklab.models.deepseek_v4.args import DeepseekV4Args
 
 P, MRR, DEVICE = 128, 4, torch.device("cpu")
 RATIOS = (0, 4, 128, 4)
@@ -50,7 +50,7 @@ def _stack(num_pages=32, max_seq_len=8192):
 
     from types import SimpleNamespace
 
-    from freetoken.attention.dsv4_sparse import DSV4SparseAttnBackend
+    from sparklab.attention.dsv4_sparse import DSV4SparseAttnBackend
 
     # the backend reads only dsv4_args off the model config
     return DSV4SparseAttnBackend(SimpleNamespace(dsv4_args=args)), pool, pt

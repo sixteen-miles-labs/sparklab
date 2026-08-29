@@ -15,7 +15,7 @@
   },
   "engine": {
     "name": "FreeToken",
-    "product_identity": "Spark Lab",
+    "product_identity": "SparkLab",
     "revision": "ddc3b34+experiment-metadata"
   },
   "model": {

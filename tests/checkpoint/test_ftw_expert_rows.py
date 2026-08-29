@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from freetoken.checkpoint.ftw import (
+from sparklab.checkpoint.ftw import (
     FTWDiskExpertSource,
     FTWReader,
     FTWWriter,

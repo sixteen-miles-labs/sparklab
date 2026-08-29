@@ -10,7 +10,7 @@ def _read(relative: str) -> str:
 
 def test_public_package_metadata_belongs_to_sixteenmiles_labs():
     pyproject = _read("pyproject.toml")
-    kernel_project = _read("freetoken-kernel-cache/pyproject.toml")
+    kernel_project = _read("sparklab-kernel-cache/pyproject.toml")
 
     for text in (pyproject, kernel_project):
         assert 'name = "SixteenMiles Labs"' in text
@@ -35,13 +35,22 @@ def test_release_workflows_are_guarded_for_the_current_repository():
 
 def test_sparklab_is_the_primary_installer_and_service_identity():
     installer = _read("install.sh")
-    service = _read("python/freetoken/daemon/sparklab.service")
+    service = _read("python/sparklab/daemon/sparklab.service")
 
     assert 'ln -sf "$SPARKLAB_BIN" "$BIN_DIR/sparklab"' in installer
-    assert 'ln -sf "$FT_BIN" "$BIN_DIR/ft"' in installer
+    assert '"$BIN_DIR/ft"' not in installer
     assert "SPARKLAB_INSTALL_ROOT" in installer
     assert "ExecStart=%h/.local/bin/sparklab daemon" in service
     assert "Description=SparkLab engine supervisor" in service
+
+
+def test_only_the_sparklab_python_namespace_is_packaged():
+    assert (ROOT / "python" / "sparklab").is_dir()
+    assert not (ROOT / "python" / "freetoken").exists()
+    pyproject = _read("pyproject.toml")
+    assert 'name = "sparklab"' in pyproject
+    assert 'sparklab = "sparklab.cli:main"' in pyproject
+    assert '\nft = ' not in pyproject
 
 
 def test_community_health_files_are_present():

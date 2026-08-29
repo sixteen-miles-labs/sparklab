@@ -74,8 +74,8 @@ Conversion command:
 ```bash
 CUDA_HOME=/usr/local/cuda \
 PATH=/usr/local/cuda/bin:$PATH \
-FREETOKEN_CONVERT_PROGRESS=1 \
-.venv/bin/ft checkpoint \
+SPARKLAB_CONVERT_PROGRESS=1 \
+.venv/bin/sparklab checkpoint \
   --model /home/lidaiqing/models/DeepSeek-V4-Flash-0731 \
   --out /home/lidaiqing/ftw/DeepSeek-V4-Flash-0731 \
   --dtype bfloat16 \
@@ -161,8 +161,8 @@ reports as free even when Linux still reports ample `MemAvailable`; targeted
 ```bash
 CUDA_HOME=/usr/local/cuda \
 PATH=/usr/local/cuda/bin:$PATH \
-FREETOKEN_DISK_READ_WORKERS=20 \
-FREETOKEN_AIME25_JSONL=/home/lidaiqing/datasets/aime25/test.jsonl \
+SPARKLAB_DISK_READ_WORKERS=20 \
+SPARKLAB_AIME25_JSONL=/home/lidaiqing/datasets/aime25/test.jsonl \
 .venv/bin/python benchmarks/bench_decode_moe.py \
   --model /home/lidaiqing/ftw/DeepSeek-V4-Flash-0731 \
   --backend offload \

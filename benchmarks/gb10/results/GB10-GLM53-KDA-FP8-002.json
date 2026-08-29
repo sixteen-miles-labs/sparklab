@@ -9,7 +9,7 @@
   },
   "engine": {
     "name": "FreeToken",
-    "product_identity": "Spark Lab",
+    "product_identity": "SparkLab",
     "git_revision": "ad6a0acdcb2a42e29025cf73f5ce02c02e7f1063",
     "git_tracked_dirty": true
   },

@@ -17,7 +17,7 @@ CUDA = pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 
 def _tiny_config():
     """Minimal gpt-oss-like ModelConfig for the mxfp4 offload path."""
-    from freetoken.models.config import ModelConfig, RotaryConfig
+    from sparklab.models.config import ModelConfig, RotaryConfig
     rotary = RotaryConfig(
         head_dim=64,
         rotary_dim=64,
@@ -51,9 +51,9 @@ def _tiny_config():
 
 @pytest.fixture
 def tp1(monkeypatch):
-    import freetoken.layers.moe as moe_mod
-    import freetoken.models.gpt_oss.weight as gpt_weight
-    from freetoken.distributed import DistributedInfo
+    import sparklab.layers.moe as moe_mod
+    import sparklab.models.gpt_oss.weight as gpt_weight
+    from sparklab.runtime.distributed import DistributedInfo
 
     tp_info = DistributedInfo(rank=0, size=1)
     monkeypatch.setattr(moe_mod, "get_tp_info", lambda: tp_info)
@@ -62,8 +62,8 @@ def tp1(monkeypatch):
 
 
 def _make_offload_cache(config, device, *, cache_size=None, prefill_overlap=False):
-    from freetoken.moe.expert_banks import load_expert_banks
-    from freetoken.moe.offload_cache import OffloadMoeCache
+    from sparklab.moe.expert_banks import load_expert_banks
+    from sparklab.moe.offload_cache import OffloadMoeCache
 
     banks = load_expert_banks(
         None,
@@ -92,7 +92,7 @@ def _make_offload_cache(config, device, *, cache_size=None, prefill_overlap=Fals
 @CUDA
 @pytest.mark.parametrize("num_experts", [40, 128])  # 40 exercises the non-pow2 mask path
 def test_gpt_oss_fused_routing_matches_softmax_topk_renorm(num_experts):
-    from freetoken.kernel import gpt_oss_fused_routing
+    from sparklab.kernels import gpt_oss_fused_routing
 
     device = torch.device("cuda")
     torch.manual_seed(0)
@@ -122,7 +122,7 @@ def test_gpt_oss_fused_routing_matches_softmax_topk_renorm(num_experts):
 def _mxfp4_dequant_reference(run, M, seed):
     """Run `run` (a split-K decode or _t prefill helper) on random mxfp4 experts and
     compare against a full dequant -> linear -> swiglu -> linear reference."""
-    from freetoken.moe.fused_mxfp4 import (
+    from sparklab.moe.fused_mxfp4 import (
         _transpose_mxfp4_for_decode,
         dequant_mxfp4_blocks,
         gpt_oss_swiglu,
@@ -169,7 +169,7 @@ def _mxfp4_dequant_reference(run, M, seed):
 @CUDA
 @pytest.mark.parametrize("M", [1, 3])  # M=1 broadcast path; M>1 gather path
 def test_run_mxfp4_splitk_decode_experts_matches_reference(M):
-    from freetoken.moe.fused_mxfp4 import run_mxfp4_splitk_decode_experts
+    from sparklab.moe.fused_mxfp4 import run_mxfp4_splitk_decode_experts
 
     _mxfp4_dequant_reference(run_mxfp4_splitk_decode_experts, M, seed=21)
 
@@ -177,7 +177,7 @@ def test_run_mxfp4_splitk_decode_experts_matches_reference(M):
 @CUDA
 @pytest.mark.parametrize("M", [24])  # M > MXFP4_DECODE_MAX_TOKENS (16): prefill path
 def test_run_mxfp4_prefill_experts_t_matches_reference(M):
-    from freetoken.moe.fused_mxfp4 import run_mxfp4_prefill_experts_t
+    from sparklab.moe.fused_mxfp4 import run_mxfp4_prefill_experts_t
 
     _mxfp4_dequant_reference(run_mxfp4_prefill_experts_t, M, seed=31)
 
@@ -188,8 +188,8 @@ def test_run_mxfp4_prefill_experts_t_matches_reference(M):
 @CUDA
 def test_offload_decode_bit_identical_under_eviction(tp1):
     """Offload decode matches direct split-K across a real evict+reload cycle."""
-    from freetoken.models.gpt_oss.moe import GptOssMxfp4OffloadMoELayer
-    from freetoken.moe.fused_mxfp4 import (
+    from sparklab.models.gpt_oss.moe import GptOssMxfp4OffloadMoELayer
+    from sparklab.moe.fused_mxfp4 import (
         run_mxfp4_splitk_decode_experts as _run_mxfp4_splitk_decode_experts,
     )
 
@@ -241,8 +241,8 @@ def test_offload_decode_bit_identical_under_eviction(tp1):
 @pytest.mark.parametrize("M", [16])
 def test_offload_prefill_overlap_matches_reference(M, tp1):
     """Prefill overlap must not crash and must match the direct _t kernel."""
-    from freetoken.models.gpt_oss.moe import GptOssMxfp4OffloadMoELayer
-    from freetoken.moe.fused_mxfp4 import (
+    from sparklab.models.gpt_oss.moe import GptOssMxfp4OffloadMoELayer
+    from sparklab.moe.fused_mxfp4 import (
         run_mxfp4_prefill_experts_t as _run_mxfp4_prefill_experts_t,
     )
 

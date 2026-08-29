@@ -41,7 +41,7 @@ def _reference_fused_experts_decode(
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is required")
 def test_fused_topk_accepts_triton_kernel_tuple_output():
-    from freetoken.moe.fused import fused_topk
+    from sparklab.moe.fused import fused_topk
 
     logits = torch.tensor(
         [[4.0, 1.0, -1.0, 2.0], [0.5, 3.0, 2.0, -2.0]],
@@ -60,7 +60,7 @@ def test_fused_topk_accepts_triton_kernel_tuple_output():
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is required")
 def test_fused_topk_falls_back_for_qwen4_top10():
-    from freetoken.moe.fused import fused_topk
+    from sparklab.moe.fused import fused_topk
 
     torch.manual_seed(7)
     logits = torch.randn(3, 512, device="cuda", dtype=torch.bfloat16)
@@ -78,7 +78,7 @@ def test_fused_topk_falls_back_for_qwen4_top10():
 @pytest.mark.parametrize("batch_size", [1, 2, 4, 8, 16, 24])
 @pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16])
 def test_fused_experts_decode_matches_reference_for_non_contiguous_slots(batch_size, dtype):
-    from freetoken.moe.fused import fused_experts_decode_impl
+    from sparklab.moe.fused import fused_experts_decode_impl
 
     device = torch.device("cuda")
     cache_size = 37
@@ -118,7 +118,7 @@ def test_fused_experts_decode_matches_reference_for_non_contiguous_slots(batch_s
 @pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16])
 @pytest.mark.parametrize("apply_router_weight_on_input", [False, True])
 def test_fused_experts_decode_matches_grouped_impl(dtype, apply_router_weight_on_input):
-    from freetoken.moe.fused import fused_experts_decode_impl, fused_experts_impl
+    from sparklab.moe.fused import fused_experts_decode_impl, fused_experts_impl
 
     device = torch.device("cuda")
     batch_size = 4
@@ -174,7 +174,7 @@ def test_fused_experts_decode_matches_grouped_impl(dtype, apply_router_weight_on
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is required")
 def test_fused_experts_grouped_impl_is_cuda_graph_capturable():
-    from freetoken.moe.fused import fused_experts_impl
+    from sparklab.moe.fused import fused_experts_impl
 
     device = torch.device("cuda")
     dtype = torch.float16
@@ -232,7 +232,7 @@ def test_fused_experts_decode_activation_and_router_weight_modes(
     activation,
     apply_router_weight_on_input,
 ):
-    from freetoken.moe.fused import fused_experts_decode_impl
+    from sparklab.moe.fused import fused_experts_decode_impl
 
     device = torch.device("cuda")
     batch_size = 3

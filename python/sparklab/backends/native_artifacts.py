@@ -1,4 +1,4 @@
-"""Prepared-artifact validation for Spark Lab's built-in native backend."""
+"""Prepared-artifact validation for SparkLab's built-in native backend."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from .base import ArtifactValidation, BackendError
 
 def validate_ftw(path: Path, *, runtime_format: str) -> ArtifactValidation:
     """Validate a complete FTW checkpoint without reading weight payloads."""
-    from freetoken.checkpoint.ftw import ALIGN, FORMAT_TAG, FORMAT_VERSION, INDEX_NAME
+    from sparklab.checkpoint.ftw import ALIGN, FORMAT_TAG, FORMAT_VERSION, INDEX_NAME
 
     index_path = path / INDEX_NAME
     try:

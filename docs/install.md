@@ -11,14 +11,12 @@
 
 ```bash
 uv venv && source .venv/bin/activate
-uv pip install "freetoken[accel]"
+uv pip install "sparklab[accel]"
 ```
 
 CUDA kernels are JIT-compiled on first use, need a CUDA 13 toolkit with `nvcc` on PATH.
 
-The distribution is still named `freetoken` during the staged rebrand. It installs
-both the primary `sparklab` command and the compatible `ft` alias. Public releases and
-package metadata are maintained by SixteenMiles Labs.
+The `sparklab` distribution and package metadata are maintained by SixteenMiles Labs.
 
 ## Method 2: Install from source
 
@@ -44,12 +42,11 @@ Then head to [quickstart.md](quickstart.md).
 
 ## Optional persistent supervisor
 
-The source tree includes a SparkLab-branded systemd user unit. The legacy
-`ft-daemon.service` remains available for existing installations.
+The source tree includes a SparkLab systemd user unit.
 
 ```bash
 mkdir -p ~/.config/systemd/user
-cp python/freetoken/daemon/sparklab.service ~/.config/systemd/user/
+cp python/sparklab/daemon/sparklab.service ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now sparklab
 systemctl --user status sparklab

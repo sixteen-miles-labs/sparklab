@@ -8,7 +8,7 @@ import pytest
 import torch
 from safetensors.torch import save_file
 
-from freetoken.checkpoint.ftw import FTWWriter
+from sparklab.checkpoint.ftw import FTWWriter
 from sparklab.acquire import (
     AcquisitionError,
     acquire_recipe,
@@ -127,7 +127,7 @@ def test_acquire_recipe_downloads_and_manifests_pinned_prebuilt_ftw(tmp_path):
         prepared_bytes=1,
         minimum_free_bytes=2,
         runtime_artifact=RuntimeArtifact(
-            repo_id="freetoken/qwen-ftw",
+            repo_id="sparklab/qwen-ftw",
             revision="a" * 40,
             bytes=1,
             fingerprint="0123456789abcdef",
@@ -152,7 +152,7 @@ def test_acquire_recipe_downloads_and_manifests_pinned_prebuilt_ftw(tmp_path):
 
     assert calls == [
         {
-            "repo_id": "freetoken/qwen-ftw",
+            "repo_id": "sparklab/qwen-ftw",
             "revision": "a" * 40,
             "local_dir": result["artifact_plan"]["prepared_path"],
         }
@@ -160,7 +160,7 @@ def test_acquire_recipe_downloads_and_manifests_pinned_prebuilt_ftw(tmp_path):
     assert result["acquisition"] == "prebuilt-runtime"
     assert result["manifest"]["artifacts"]["source"] is None
     runtime = result["manifest"]["artifacts"]["runtime"]
-    assert runtime["repository"] == "freetoken/qwen-ftw"
+    assert runtime["repository"] == "sparklab/qwen-ftw"
     assert runtime["revision"] == "a" * 40
     assert runtime["fingerprint"] == "0123456789abcdef"
 
@@ -172,7 +172,7 @@ def test_acquire_recipe_rejects_wrong_prebuilt_fingerprint(tmp_path):
         prepared_bytes=1,
         minimum_free_bytes=2,
         runtime_artifact=RuntimeArtifact(
-            repo_id="freetoken/qwen-ftw",
+            repo_id="sparklab/qwen-ftw",
             revision="b" * 40,
             bytes=1,
             fingerprint="wrong",
@@ -202,7 +202,7 @@ def test_acquire_recipe_can_force_source_instead_of_prebuilt(tmp_path):
         prepared_bytes=1,
         minimum_free_bytes=2,
         runtime_artifact=RuntimeArtifact(
-            repo_id="freetoken/qwen-ftw",
+            repo_id="sparklab/qwen-ftw",
             revision="c" * 40,
             bytes=1,
             fingerprint="0123456789abcdef",

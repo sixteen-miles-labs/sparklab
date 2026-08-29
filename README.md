@@ -42,8 +42,8 @@ SparkLab deliberately supports one narrow hardware profile:
 - One local DGX Spark; multi-node and high-concurrency serving are outside the Beta scope
 
 Platform, memory, swap, dependency, and storage requirements fail closed before a recipe
-launch. Unsupported hardware may still work through engine compatibility paths, but it is
-not a SparkLab support claim.
+launch. Unsupported hardware may still work through native runtime fallbacks, but it is not
+a SparkLab support claim.
 
 ## Why SparkLab
 
@@ -167,14 +167,12 @@ fingerprints, implementation state, evidence IDs, and known constraints.
 - [Quick start](docs/quickstart.md)
 - [Model catalog and runtime behavior](docs/models.md)
 - [CLI reference](docs/cli.md)
-- [Migration from the legacy `ft` surface](docs/migration.md)
 - [GB10 benchmark evidence](benchmarks/gb10/README.md)
-- [Release scope and acceptance gates](docs/beta-0.1-release-plan.md)
 
 ## Community and stewardship
 
-SparkLab and the FreeToken engine are stewarded in public by SixteenMiles Labs. Oakmind AI
-provides organizational backing, legal stewardship, and commercial support.
+SparkLab is stewarded in public by SixteenMiles Labs. Oakmind AI provides organizational
+backing, legal stewardship, and commercial support.
 
 - [Project identity and public namespaces](BRANDING.md)
 - [Contributing guide](CONTRIBUTING.md)
@@ -185,8 +183,8 @@ provides organizational backing, legal stewardship, and commercial support.
 
 ## Credits and citation
 
-SparkLab incorporates the [FreeToken](https://github.com/FlashML-org/FreeToken) research
-work and builds on open inference projects including
+SparkLab incorporates source and research contributions from
+[FreeToken](https://github.com/FlashML-org/FreeToken) and builds on open inference projects including
 [mini-sglang](https://github.com/sgl-project/mini-sglang),
 [SGLang](https://github.com/sgl-project/sglang),
 [vLLM](https://github.com/vllm-project/vllm),
@@ -207,7 +205,7 @@ If you use SparkLab, cite the software:
 }
 ```
 
-If you use the underlying engine in research, cite the
+For work that builds on SparkLab's FreeToken-derived execution techniques, also cite the
 [FreeToken paper](https://arxiv.org/abs/2608.16157):
 
 ```bibtex

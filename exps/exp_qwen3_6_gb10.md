@@ -69,6 +69,6 @@ the catalog while retaining it as an explicit control.
 The measured latency clears the Fast performance floor of 20 tok/s and 5 s warm TTFT by a
 wide margin. It does not promote the recipe: the short probe did not reach its mathematical
 final answer, usable 32K context was not tested, and no 60-minute agent trace was run.
-Additionally, Spark Lab's doctor correctly reported `supported_not_ready` because about
+Additionally, SparkLab's doctor correctly reported `supported_not_ready` because about
 1.94 GiB of swap from unrelated host activity existed before the experiment. The measured
 request itself caused no swap-in or swap-out.

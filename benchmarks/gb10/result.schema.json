@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://sparklab.local/schemas/gb10-result-1.0.json",
-  "title": "Spark Lab GB10 benchmark result",
+  "title": "SparkLab GB10 benchmark result",
   "type": "object",
   "additionalProperties": false,
   "required": [

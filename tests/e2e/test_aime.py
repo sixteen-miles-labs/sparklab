@@ -6,22 +6,22 @@ sampling protocol is always taken from the checkpoint's own
 ``generation_config.json`` -- pass@N at the recommended temperature, or a single
 deterministic sample when (and only when) the checkpoint itself recommends greedy.
 
-Gated behind ``needs_weights``: set ``FREETOKEN_TEST_MODEL`` to the model dir and
+Gated behind ``needs_weights``: set ``SPARKLAB_TEST_MODEL`` to the model dir and
 the series jsonl env var (see below), and run on an idle GPU.
 
 Env knobs:
-  FREETOKEN_TEST_MODEL          local model directory (required)
-  FREETOKEN_AIME_SERIES         aime24 | aime25 | aime26 (default aime25)
-  FREETOKEN_AIME{24,25,26}_JSONL  path to the chosen series' jsonl (required)
-  FREETOKEN_AIME_REQ            1-based problem id, comma list, or 'all' (default '1')
-  FREETOKEN_AIME_MAX_TOKENS     per-sample token budget (default 16384)
-  FREETOKEN_AIME_SAMPLES        pass@N sample count when sampling (default 3)
-  FREETOKEN_AIME_MIN_FREE_GIB   free-GPU-memory gate (default 70; raise for a big resident model)
-  FREETOKEN_TEST_MOE_CACHE_SIZE >0 switches to the offload MoE backend (fp8/GLM/MiniMax)
-  FREETOKEN_TEST_MEM_RATIO      offload memory ratio (default 0.9)
+  SPARKLAB_TEST_MODEL          local model directory (required)
+  SPARKLAB_AIME_SERIES         aime24 | aime25 | aime26 (default aime25)
+  SPARKLAB_AIME{24,25,26}_JSONL  path to the chosen series' jsonl (required)
+  SPARKLAB_AIME_REQ            1-based problem id, comma list, or 'all' (default '1')
+  SPARKLAB_AIME_MAX_TOKENS     per-sample token budget (default 16384)
+  SPARKLAB_AIME_SAMPLES        pass@N sample count when sampling (default 3)
+  SPARKLAB_AIME_MIN_FREE_GIB   free-GPU-memory gate (default 70; raise for a big resident model)
+  SPARKLAB_TEST_MOE_CACHE_SIZE >0 switches to the offload MoE backend (fp8/GLM/MiniMax)
+  SPARKLAB_TEST_MEM_RATIO      offload memory ratio (default 0.9)
 
-fp8 / offload recipe: point FREETOKEN_TEST_MODEL at the fp8 checkpoint dir and set
-FREETOKEN_TEST_MOE_CACHE_SIZE (e.g. 8192).
+fp8 / offload recipe: point SPARKLAB_TEST_MODEL at the fp8 checkpoint dir and set
+SPARKLAB_TEST_MOE_CACHE_SIZE (e.g. 8192).
 """
 
 from __future__ import annotations
@@ -36,16 +36,16 @@ import pytest
 import torch
 from transformers import AutoTokenizer
 
-from freetoken.core import SamplingParams
-from freetoken.llm import LLM
+from sparklab.core import SamplingParams
+from sparklab.llm import LLM
 
 pytestmark = pytest.mark.needs_weights
 
 # Series -> env var holding that series' jsonl path. The aime25 name is unchanged.
 AIME_SERIES_JSONL_ENV = {
-    "aime24": "FREETOKEN_AIME24_JSONL",
-    "aime25": "FREETOKEN_AIME25_JSONL",
-    "aime26": "FREETOKEN_AIME26_JSONL",
+    "aime24": "SPARKLAB_AIME24_JSONL",
+    "aime25": "SPARKLAB_AIME25_JSONL",
+    "aime26": "SPARKLAB_AIME26_JSONL",
 }
 
 
@@ -62,12 +62,12 @@ def series_jsonl_env(series: str) -> str:
         return AIME_SERIES_JSONL_ENV[series]
     except KeyError:
         raise ValueError(
-            f"unknown FREETOKEN_AIME_SERIES {series!r}; want one of {sorted(AIME_SERIES_JSONL_ENV)}"
+            f"unknown SPARKLAB_AIME_SERIES {series!r}; want one of {sorted(AIME_SERIES_JSONL_ENV)}"
         )
 
 
 def parse_req_selection(value: str, n_rows: int) -> list[int]:
-    """Parse FREETOKEN_AIME_REQ into 0-based row indices into a jsonl of ``n_rows`` problems.
+    """Parse SPARKLAB_AIME_REQ into 0-based row indices into a jsonl of ``n_rows`` problems.
 
     Ids are 1-based: ``'1'`` -> ``[0]``, ``'1,3,7'`` -> ``[0, 2, 6]``, ``'all'`` ->
     ``list(range(n_rows))``. Raises ValueError on junk or an out-of-range id.
@@ -94,7 +94,7 @@ def parse_req_selection(value: str, n_rows: int) -> list[int]:
 
 
 def max_tokens() -> int:
-    return int(os.environ.get("FREETOKEN_AIME_MAX_TOKENS", "16384"))
+    return int(os.environ.get("SPARKLAB_AIME_MAX_TOKENS", "16384"))
 
 
 def extract_answer(text: str) -> str | None:
@@ -146,30 +146,30 @@ def recommended_sampling(model_dir: Path) -> tuple[SamplingParams, int]:
     sp = SamplingParams(
         temperature=temperature, top_p=top_p, top_k=top_k, max_tokens=max_tokens(), ignore_eos=False
     )
-    n_samples = int(os.environ.get("FREETOKEN_AIME_SAMPLES", "3"))
+    n_samples = int(os.environ.get("SPARKLAB_AIME_SAMPLES", "3"))
     return sp, n_samples
 
 
 def build_llm(model_path: Path) -> LLM:
-    """Resident by default; set FREETOKEN_TEST_MOE_CACHE_SIZE>0 to run an offload model
+    """Resident by default; set SPARKLAB_TEST_MOE_CACHE_SIZE>0 to run an offload model
     (fp8 Qwen3.5-MoE, GLM-4.7, MiniMax, ... -- routed experts that do not fit in HBM)."""
     kwargs = dict(
         model_path=str(model_path),
         dtype=torch.bfloat16,
-        # "auto" is what `ft serve` resolves, so the gate exercises the backend a model
+        # "auto" is what `sparklab serve` resolves, so the gate exercises the backend a model
         # actually ships with -- including the ones a hardcoded "fi" cannot reach at all
         # (DSV4 -> dsv4_sparse, SWA models -> triton).
         attention_backend="auto",
         max_running_req=1,
         max_extend_tokens=8192,
     )
-    cache_size = int(os.environ.get("FREETOKEN_TEST_MOE_CACHE_SIZE", "0"))
+    cache_size = int(os.environ.get("SPARKLAB_TEST_MOE_CACHE_SIZE", "0"))
     if cache_size > 0:
         kwargs.update(
             moe_backend="offload",
             moe_cache_size=cache_size,
             moe_cache_policy="lru",
-            memory_ratio=float(os.environ.get("FREETOKEN_TEST_MEM_RATIO", "0.9")),
+            memory_ratio=float(os.environ.get("SPARKLAB_TEST_MEM_RATIO", "0.9")),
             max_seq_len_override=max_tokens() + 2048,
             cuda_graph_max_bs=1,
         )
@@ -205,13 +205,13 @@ def free_gpu_memory_gib() -> float:
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="AIME e2e needs CUDA")
 def test_aime():
-    model_path = _optional_path("FREETOKEN_TEST_MODEL")
+    model_path = _optional_path("SPARKLAB_TEST_MODEL")
     if model_path is None:
-        pytest.skip("set FREETOKEN_TEST_MODEL to a local model directory")
+        pytest.skip("set SPARKLAB_TEST_MODEL to a local model directory")
     if not model_path.is_dir():
         pytest.skip(f"model is not downloaded: {model_path}")
 
-    series = os.environ.get("FREETOKEN_AIME_SERIES", "aime25").strip().lower()
+    series = os.environ.get("SPARKLAB_AIME_SERIES", "aime25").strip().lower()
     try:
         jsonl_env = series_jsonl_env(series)
     except ValueError as e:
@@ -222,17 +222,17 @@ def test_aime():
 
     # Enough for the documented fp8 + offload recipe on an 80 GiB card; a resident bf16 checkpoint
     # of this size needs more, so raise the knob rather than lowering the default further.
-    min_free_gib = int(os.environ.get("FREETOKEN_AIME_MIN_FREE_GIB", "70"))
+    min_free_gib = int(os.environ.get("SPARKLAB_AIME_MIN_FREE_GIB", "70"))
     free_gib = free_gpu_memory_gib()
     if free_gib < min_free_gib:
         pytest.skip(f"AIME e2e needs ~{min_free_gib} GiB free; only {free_gib:.2f} GiB")
 
     rows = [json.loads(line) for line in jsonl_path.read_text().splitlines() if line.strip()]
-    req_value = os.environ.get("FREETOKEN_AIME_REQ", "1")
+    req_value = os.environ.get("SPARKLAB_AIME_REQ", "1")
     try:
         selected = parse_req_selection(req_value, len(rows))
     except ValueError as e:
-        pytest.fail(f"FREETOKEN_AIME_REQ={req_value!r}: {e}")
+        pytest.fail(f"SPARKLAB_AIME_REQ={req_value!r}: {e}")
 
     tokenizer = AutoTokenizer.from_pretrained(str(model_path), trust_remote_code=True)
     # Build the engine once and reuse it across every selected problem.

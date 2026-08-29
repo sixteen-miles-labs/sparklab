@@ -1,4 +1,4 @@
-"""Fail-closed evaluation of Spark Lab GB10 model-certification evidence."""
+"""Fail-closed evaluation of SparkLab GB10 model-certification evidence."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ def _at_most(value: Any, threshold: float, label: str, reasons: list[str]) -> No
 def evaluate_tier(recipe: ModelRecipe, evidence: dict[str, Any], tier: str) -> TierGate:
     """Evaluate one complete-checkpoint evidence record against a public tier gate."""
     if tier not in TIERS:
-        raise ValueError(f"unknown Spark Lab tier: {tier!r}")
+        raise ValueError(f"unknown SparkLab tier: {tier!r}")
     reasons: list[str] = []
     if evidence.get("schema_version") != "1.0":
         reasons.append("evidence schema_version must be '1.0'")

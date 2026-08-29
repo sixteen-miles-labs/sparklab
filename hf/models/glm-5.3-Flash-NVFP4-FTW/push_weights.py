@@ -36,7 +36,7 @@ DEFAULT_IGNORE_PATTERNS = [
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Upload Spark Lab's validated GLM-5.3 Flash NVFP4 FTW artifact with "
+            "Upload SparkLab's validated GLM-5.3 Flash NVFP4 FTW artifact with "
             "Hugging Face's resumable large-folder uploader."
         )
     )

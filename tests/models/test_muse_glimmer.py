@@ -12,8 +12,8 @@ from __future__ import annotations
 
 import pytest
 
-from freetoken.attention.base import AttnType
-from freetoken.models.muse_glimmer.config import parse_config
+from sparklab.attention.base import AttnType
+from sparklab.models.muse_glimmer.config import parse_config
 
 
 class _Cfg:
@@ -143,9 +143,9 @@ def test_per_layer_theta_beats_shared_rope_theta():
 
 
 def test_pool_family_and_backend_resolution():
-    from freetoken.engine.engine import _required_attn_types, _resolve_auto_attention_backend
-    from freetoken.kvcache import resolve_pool_class
-    from freetoken.kvcache.hybrid_swa_pool import HybridSWAKVCache
+    from sparklab.runtime.engine.engine import _required_attn_types, _resolve_auto_attention_backend
+    from sparklab.runtime.kvcache import resolve_pool_class
+    from sparklab.runtime.kvcache.hybrid_swa_pool import HybridSWAKVCache
 
     cfg = parse_config(_hf_config())
     assert resolve_pool_class(cfg) is HybridSWAKVCache
@@ -157,15 +157,15 @@ def test_pool_family_and_backend_resolution():
 
 
 def test_registry_resolves_architecture():
-    from freetoken.models.register import get_model_spec
+    from sparklab.models.register import get_model_spec
 
     spec = get_model_spec("MuseGlimmerForConditionalGeneration")
-    assert spec.module == "freetoken.models.muse_glimmer"
+    assert spec.module == "sparklab.models.muse_glimmer"
     assert spec.model_cls == "MuseGlimmerForCausalLM"
 
 
 def test_aot_table_covers_the_checkpoints():
-    from freetoken.kernel.aot_models import SUPPORTED_MODELS
+    from sparklab.kernels.aot_models import SUPPORTED_MODELS
 
     entry = next(m for m in SUPPORTED_MODELS if m.architecture == "MuseGlimmerForConditionalGeneration")
     assert entry.hidden_size == 6656
@@ -177,8 +177,8 @@ def test_aot_table_covers_the_checkpoints():
 def test_weight_rename_and_fusion():
     import torch
 
-    from freetoken.models.loader import ct_bf16_fuse
-    from freetoken.models.muse_glimmer.weight import _FUSIONS, _rename
+    from sparklab.models.loader import ct_bf16_fuse
+    from sparklab.models.muse_glimmer.weight import _FUSIONS, _rename
 
     # Text tower renamed, vision dropped, lm_head untouched.
     assert _rename("model.language_model.layers.0.self_attn.q_proj.weight") == (
@@ -274,17 +274,17 @@ def test_iter_weights_bf16_matches_model_state_dict(tmp_path, monkeypatch):
     right shapes (rename + qkvg / gate_up fusion, vision dropped, norms raw)."""
     import torch
 
-    from freetoken.distributed import set_tp_info, try_get_tp_info
+    from sparklab.runtime.distributed import set_tp_info, try_get_tp_info
 
     if try_get_tp_info() is None:
         set_tp_info(rank=0, size=1)
-    from freetoken.models.muse_glimmer.model import MuseGlimmerForCausalLM
-    from freetoken.models.muse_glimmer.weight import iter_weights
+    from sparklab.models.muse_glimmer.model import MuseGlimmerForCausalLM
+    from sparklab.models.muse_glimmer.weight import iter_weights
 
     hf = _hf_config(num_layers=4)
     tensors = _bf16_checkpoint_tensors(hf)
     _write_shards(tmp_path, {"model-00001-of-00001.safetensors": tensors})
-    import freetoken.models.muse_glimmer.weight as w
+    import sparklab.models.muse_glimmer.weight as w
 
     monkeypatch.setattr(w, "cached_load_hf_config", lambda _p: hf)
 
@@ -313,7 +313,7 @@ def test_iter_weights_nvfp4_cross_shard_scales(tmp_path, monkeypatch):
     layer 49's down_proj across the shard boundary)."""
     import torch
 
-    from freetoken.models.muse_glimmer.weight import iter_weights
+    from sparklab.models.muse_glimmer.weight import iter_weights
 
     hf = _hf_config(num_layers=1, quantized=True)
     text = hf.text_config
@@ -360,7 +360,7 @@ def test_iter_weights_nvfp4_cross_shard_scales(tmp_path, monkeypatch):
         "model-00001-of-00002.safetensors": shard1,
         "model-00002-of-00002.safetensors": shard2,
     })
-    import freetoken.models.muse_glimmer.weight as w
+    import sparklab.models.muse_glimmer.weight as w
 
     monkeypatch.setattr(w, "cached_load_hf_config", lambda _p: hf)
 
@@ -385,7 +385,7 @@ def test_raw_config_shim_serves_unknown_model_type(tmp_path):
     still parse: cached_load_hf_config falls back to the raw config.json."""
     import json as _json
 
-    from freetoken.utils.hf import RawConfigShim, _load_hf_config, cached_load_hf_config
+    from sparklab.utils.hf import RawConfigShim, _load_hf_config, cached_load_hf_config
 
     raw = {
         "architectures": ["MuseGlimmerForConditionalGeneration"],
@@ -414,11 +414,11 @@ def test_raw_config_shim_serves_unknown_model_type(tmp_path):
 def test_model_state_dict_matches_loader_keys():
     import torch
 
-    from freetoken.distributed import set_tp_info, try_get_tp_info
+    from sparklab.runtime.distributed import set_tp_info, try_get_tp_info
 
     if try_get_tp_info() is None:
         set_tp_info(rank=0, size=1)
-    from freetoken.models.muse_glimmer.model import MuseGlimmerForCausalLM
+    from sparklab.models.muse_glimmer.model import MuseGlimmerForCausalLM
 
     cfg = parse_config(_hf_config(num_layers=4))
     model = MuseGlimmerForCausalLM(cfg)
@@ -448,7 +448,7 @@ def test_model_state_dict_matches_loader_keys():
     assert layers[0].self_attn.attn_spec.sm_scale == pytest.approx(3.87 * 128**-0.5)
 
     # NVFP4 build swaps every text Linear for the W4A16 kernels.
-    from freetoken.kernel.triton.nvfp4_linear import Nvfp4DenseColMerged, Nvfp4DenseLinear
+    from sparklab.kernels.triton.nvfp4_linear import Nvfp4DenseColMerged, Nvfp4DenseLinear
 
     qcfg = parse_config(_hf_config(num_layers=4, quantized=True))
     qmodel = MuseGlimmerForCausalLM(qcfg)

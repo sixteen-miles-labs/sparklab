@@ -1,4 +1,4 @@
-"""Backend-neutral runtime contracts owned by the Spark Lab product layer."""
+"""Backend-neutral runtime contracts owned by the SparkLab product layer."""
 
 from __future__ import annotations
 
@@ -80,7 +80,7 @@ class BackendLaunchPlan:
 
 
 class RuntimeBackend(ABC):
-    """A runtime implementation behind Spark Lab's product contract.
+    """A runtime implementation behind SparkLab's product contract.
 
     Preparation and planning are explicit and independently testable. ``launch`` may
     block for an in-process backend or supervise a subprocess for an external backend.
@@ -136,7 +136,7 @@ class RuntimeBackend(ABC):
         raise NotImplementedError
 
     def normalize_health(self, payload: Mapping[str, Any]) -> dict[str, Any]:
-        """Normalize backend health into the minimal Spark Lab lifecycle schema."""
+        """Normalize backend health into the minimal SparkLab lifecycle schema."""
         status = str(payload.get("status", "unknown"))
         return {
             "status": status,
@@ -149,10 +149,10 @@ class RuntimeBackend(ABC):
     def normalize_metrics(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         return dict(payload)
 
-    def run_compat_command(
+    def run_command(
         self, command: str, argv: Sequence[str], *, prog: str
     ) -> int:
-        raise BackendError(f"backend {self.backend_id!r} has no compatibility command {command!r}")
+        raise BackendError(f"backend {self.backend_id!r} has no command {command!r}")
 
 
 __all__ = [

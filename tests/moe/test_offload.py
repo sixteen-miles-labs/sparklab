@@ -3,7 +3,7 @@ from contextlib import contextmanager
 import pytest
 import torch
 
-from freetoken.distributed import set_tp_info, try_get_tp_info
+from sparklab.runtime.distributed import set_tp_info, try_get_tp_info
 
 
 def _init_tp():
@@ -12,8 +12,8 @@ def _init_tp():
 
 
 def _make_layer_and_cache():
-    from freetoken.layers.moe import OffloadMoELayer
-    from freetoken.moe.offload_cache import OffloadMoeCache
+    from sparklab.layers.moe import OffloadMoELayer
+    from sparklab.moe.offload_cache import OffloadMoeCache
 
     _init_tp()
     layer = OffloadMoELayer(
@@ -51,7 +51,7 @@ def _exercise_layer_lru(cache):
 
 
 def test_layer_lru_borrows_then_protects_each_layers_quota_cpu():
-    from freetoken.moe.offload_cache import OffloadMoeCache
+    from sparklab.moe.offload_cache import OffloadMoeCache
 
     cache = OffloadMoeCache(
         num_layers=3,
@@ -72,7 +72,7 @@ def test_layer_lru_borrows_then_protects_each_layers_quota_cpu():
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 def test_layer_lru_cuda_matches_cpu_reference():
-    from freetoken.moe.offload_cache import OffloadMoeCache
+    from sparklab.moe.offload_cache import OffloadMoeCache
 
     cpu = OffloadMoeCache(3, 4, 6, torch.device("cpu"), cache_policy="layer_lru")
     gpu = OffloadMoeCache(3, 4, 6, torch.device("cuda"), cache_policy="layer_lru")
@@ -85,7 +85,7 @@ def test_layer_lru_cuda_matches_cpu_reference():
 
 
 def test_layer_lru_rejects_prefill_buffer_slot_borrowing():
-    from freetoken.moe.offload_cache import OffloadMoeCache
+    from sparklab.moe.offload_cache import OffloadMoeCache
 
     with pytest.raises(AssertionError, match="incompatible with prefill overlap"):
         OffloadMoeCache(
@@ -161,7 +161,7 @@ def test_copy_missing_skips_disk_stage_after_combined_hybrid_stage(monkeypatch):
     cache.src_indices[0] = 2
     cache.stage_disk_hybrid(0, torch.tensor([1], dtype=torch.int32))
     monkeypatch.setattr(
-        "freetoken.kernel.fast_index_copy_jit", lambda *args, **kwargs: None
+        "sparklab.kernels.fast_index_copy_jit", lambda *args, **kwargs: None
     )
 
     cache.copy_missing()
@@ -173,7 +173,7 @@ def test_copy_missing_skips_disk_stage_after_combined_hybrid_stage(monkeypatch):
 def test_dummy_expert_sources_use_moe_layer_count(monkeypatch):
     from types import SimpleNamespace
 
-    import freetoken.models.weight as weight
+    import sparklab.models.weight as weight
 
     _init_tp()
     config = SimpleNamespace(
@@ -209,7 +209,7 @@ def test_offload_moe_layer_prefill_forward_uses_single_layer_cache_view(monkeypa
     calls = {}
 
     monkeypatch.setattr(
-        "freetoken.layers.moe.fused_topk",
+        "sparklab.layers.moe.fused_topk",
         lambda *, hidden_states, gating_output, topk, renormalize: (topk_weights, topk_ids),
     )
     monkeypatch.setattr(cache, "materialize_layer", lambda layer_id: calls.setdefault("layer_id", layer_id))
@@ -230,7 +230,7 @@ def test_offload_moe_layer_prefill_forward_uses_single_layer_cache_view(monkeypa
         calls["topk_ids"] = got_topk_ids.clone()
         return hidden_states
 
-    monkeypatch.setattr("freetoken.layers.moe.fused_experts_impl", fake_fused)
+    monkeypatch.setattr("sparklab.layers.moe.fused_experts_impl", fake_fused)
 
     out = layer.prefill_forward(hidden_states, router_logits)
 
@@ -284,7 +284,7 @@ def test_offload_moe_layer_sparse_prefill_routes_through_persistent_cache(monkey
         calls["topk_ids"] = got_topk_ids.clone()
         return hidden_states
 
-    monkeypatch.setattr("freetoken.layers.moe.fused_experts_impl", fake_fused)
+    monkeypatch.setattr("sparklab.layers.moe.fused_experts_impl", fake_fused)
 
     out = layer._prefill_routed(hidden_states, topk_weights, topk_ids.clone())
 
@@ -303,7 +303,7 @@ def test_native_nvfp4_sparse_prefill_sorts_logical_ids_and_maps_slots(monkeypatc
     """Native NVFP4 sparse prefill keeps E as its sort domain and maps slots in-kernel."""
     from types import SimpleNamespace
 
-    from freetoken.layers.moe import OffloadMoELayer
+    from sparklab.layers.moe import OffloadMoELayer
 
     _init_tp()
     layer = OffloadMoELayer(
@@ -338,7 +338,7 @@ def test_native_nvfp4_sparse_prefill_sorts_logical_ids_and_maps_slots(monkeypatc
         calls["slot_map"] = slot_map
         return hidden_states
 
-    monkeypatch.setattr("freetoken.moe.fused_nvfp4.fused_experts_nvfp4", fake_fused)
+    monkeypatch.setattr("sparklab.moe.fused_nvfp4.fused_experts_nvfp4", fake_fused)
     out = layer._expert_gemm(
         SimpleNamespace(quant_format="nvfp4"),
         hidden_states,
@@ -361,7 +361,7 @@ def test_fp8_sparse_prefill_sorts_logical_ids_and_maps_slots(monkeypatch):
     """Block-FP8 sparse prefill keeps E as its sort domain and maps slots in-kernel."""
     from types import SimpleNamespace
 
-    from freetoken.layers.moe import OffloadMoELayer
+    from sparklab.layers.moe import OffloadMoELayer
 
     _init_tp()
     layer = OffloadMoELayer(
@@ -394,7 +394,7 @@ def test_fp8_sparse_prefill_sorts_logical_ids_and_maps_slots(monkeypatch):
         calls["slot_map"] = slot_map
         return hidden_states
 
-    monkeypatch.setattr("freetoken.moe.fused_fp8_block.fused_experts_fp8_block", fake_fused)
+    monkeypatch.setattr("sparklab.moe.fused_fp8_block.fused_experts_fp8_block", fake_fused)
     out = layer._expert_gemm(
         SimpleNamespace(quant_format="fp8_block"),
         hidden_states,
@@ -414,8 +414,8 @@ def test_fp8_sparse_prefill_sorts_logical_ids_and_maps_slots(monkeypatch):
 
 
 def test_offload_moe_layer_prefill_overlap_prefetches_layers_into_two_buffers(monkeypatch):
-    from freetoken.layers.moe import OffloadMoELayer
-    from freetoken.moe.offload_cache import OffloadMoeCache
+    from sparklab.layers.moe import OffloadMoELayer
+    from sparklab.moe.offload_cache import OffloadMoeCache
 
     _init_tp()
     num_layers = 3
@@ -454,7 +454,7 @@ def test_offload_moe_layer_prefill_overlap_prefetches_layers_into_two_buffers(mo
     fused_calls = []
 
     monkeypatch.setattr(
-        "freetoken.layers.moe.fused_topk",
+        "sparklab.layers.moe.fused_topk",
         lambda *, hidden_states, gating_output, topk, renormalize: (
             topk_weights,
             topk_ids.clone(),
@@ -464,7 +464,7 @@ def test_offload_moe_layer_prefill_overlap_prefetches_layers_into_two_buffers(mo
     def unexpected_fast_index_copy(*args, **kwargs):
         raise AssertionError("prefill overlap should use direct async copy")
 
-    monkeypatch.setattr("freetoken.kernel.fast_index_copy_jit", unexpected_fast_index_copy)
+    monkeypatch.setattr("sparklab.kernels.fast_index_copy_jit", unexpected_fast_index_copy)
 
     def fake_fused(
         hidden_states,
@@ -488,7 +488,7 @@ def test_offload_moe_layer_prefill_overlap_prefetches_layers_into_two_buffers(mo
         )
         return hidden_states + layer_id
 
-    monkeypatch.setattr("freetoken.layers.moe.fused_experts_impl", fake_fused)
+    monkeypatch.setattr("sparklab.layers.moe.fused_experts_impl", fake_fused)
 
     out = hidden_states
     for layer in layers:
@@ -511,7 +511,7 @@ def test_offload_moe_layer_prefill_overlap_prefetches_layers_into_two_buffers(mo
 
 
 def test_offload_moe_cache_prefill_overlap_requires_two_layer_slots():
-    from freetoken.moe.offload_cache import OffloadMoeCache
+    from sparklab.moe.offload_cache import OffloadMoeCache
 
     with pytest.raises(AssertionError):
         OffloadMoeCache(
@@ -524,7 +524,7 @@ def test_offload_moe_cache_prefill_overlap_requires_two_layer_slots():
 
 
 def test_offload_moe_cache_marlin_rejects_slot_count_beyond_kernel_limit():
-    from freetoken.moe.offload_cache import OffloadMoeCache
+    from sparklab.moe.offload_cache import OffloadMoeCache
 
     with pytest.raises(ValueError, match="992"):
         OffloadMoeCache(
@@ -537,7 +537,7 @@ def test_offload_moe_cache_marlin_rejects_slot_count_beyond_kernel_limit():
 
 
 def test_prefill_overlap_prefetch_invalidates_borrowed_unified_cache_slots():
-    from freetoken.moe.offload_cache import OffloadMoeCache
+    from sparklab.moe.offload_cache import OffloadMoeCache
 
     num_layers = 3
     num_experts = 4
@@ -574,7 +574,7 @@ def test_prefill_overlap_prefetch_invalidates_borrowed_unified_cache_slots():
 
 
 def test_prefill_overlap_waits_for_previous_prefill_release_after_begin(monkeypatch):
-    from freetoken.moe.offload_cache import OffloadMoeCache
+    from sparklab.moe.offload_cache import OffloadMoeCache
 
     num_layers = 2
     num_experts = 4
@@ -635,7 +635,7 @@ def test_offload_moe_layer_decode_forward_uses_remapped_slot_ids(monkeypatch):
     calls = {}
 
     monkeypatch.setattr(
-        "freetoken.layers.moe.fused_topk",
+        "sparklab.layers.moe.fused_topk",
         lambda *, hidden_states, gating_output, topk, renormalize: (topk_weights, topk_ids),
     )
 
@@ -662,7 +662,7 @@ def test_offload_moe_layer_decode_forward_uses_remapped_slot_ids(monkeypatch):
         calls["topk_ids"] = got_topk_ids.clone()
         return hidden_states
 
-    monkeypatch.setattr("freetoken.layers.moe.fused_experts_decode_impl", fake_fused_decode)
+    monkeypatch.setattr("sparklab.layers.moe.fused_experts_decode_impl", fake_fused_decode)
 
     out = layer.decode_forward(hidden_states, router_logits)
 
@@ -680,7 +680,7 @@ def test_offload_moe_layer_decode_forward_uses_remapped_slot_ids(monkeypatch):
 
 def test_lru_gpu_cache_assigns_unique_slots_for_large_miss_batch():
     import pytest
-    from freetoken.moe.offload_cache import OffloadMoeCache
+    from sparklab.moe.offload_cache import OffloadMoeCache
 
     if not torch.cuda.is_available():
         pytest.skip("CUDA is required for the GPU offload cache kernel")
@@ -709,12 +709,12 @@ def test_lru_gpu_cache_assigns_unique_slots_for_large_miss_batch():
 def test_adjust_config_converts_moe_cache_rate_to_cache_size():
     from types import SimpleNamespace
 
-    from freetoken.distributed import DistributedInfo
-    from freetoken.engine.config import EngineConfig
-    from freetoken.engine.engine import _adjust_config
+    from sparklab.runtime.distributed import DistributedInfo
+    from sparklab.runtime.engine.config import EngineConfig
+    from sparklab.runtime.engine.engine import _adjust_config
 
     config = EngineConfig(
-        model_path="/tmp/freetoken-test-model",
+        model_path="/tmp/sparklab-test-model",
         tp_info=DistributedInfo(rank=0, size=1),
         dtype=torch.float16,
         attention_backend="fi",
@@ -737,7 +737,7 @@ def test_adjust_config_converts_moe_cache_rate_to_cache_size():
 
     _adjust_config(config)
 
-    from freetoken.moe import is_offload_moe_backend
+    from sparklab.moe import is_offload_moe_backend
 
     assert config.moe_cache_size == 24
     # Family, not member: a box with a benchbw profile resolves bf16 experts to hybrid.
@@ -745,9 +745,9 @@ def test_adjust_config_converts_moe_cache_rate_to_cache_size():
 
 
 def test_graph_capture_reuses_warm_offload_cache_before_capture(monkeypatch):
-    import freetoken.core as core
-    from freetoken.core import Context, Req, get_global_ctx
-    from freetoken.engine.graph import GraphRunner
+    import sparklab.core as core
+    from sparklab.core import Context, Req, get_global_ctx
+    from sparklab.runtime.engine.graph import GraphRunner
 
     events = []
     _init_tp()
@@ -785,7 +785,7 @@ def test_graph_capture_reuses_warm_offload_cache_before_capture(monkeypatch):
     monkeypatch.setattr("torch.cuda.synchronize", lambda device=None: None)
     monkeypatch.setattr("torch.cuda.empty_cache", lambda: None)
     monkeypatch.setattr("torch.cuda.reset_peak_memory_stats", lambda device=None: None)
-    monkeypatch.setattr("freetoken.engine.graph.get_free_memory", lambda device: 1024)
+    monkeypatch.setattr("sparklab.runtime.engine.graph.get_free_memory", lambda device: 1024)
 
     dummy_req = Req(
         input_ids=torch.tensor([0], dtype=torch.int32),
@@ -827,7 +827,7 @@ def test_nvfp4_materialize_keeps_bookkeeping_consistent_across_requests():
     decode "hits" a stale slot_for_id entry and silently reads another expert's
     weights. materialize_layer must keep bookkeeping == slot contents."""
     import pytest
-    from freetoken.moe.offload_cache import OffloadMoeCache
+    from sparklab.moe.offload_cache import OffloadMoeCache
 
     if not torch.cuda.is_available():
         pytest.skip("CUDA is required for the GPU offload cache kernel")
@@ -904,7 +904,7 @@ def test_nvfp4_materialize_keeps_bookkeeping_consistent_across_requests():
 
 
 def test_offload_cache_rebuild_resizes_and_preserves_sources():
-    from freetoken.moe.offload_cache import OffloadMoeCache
+    from sparklab.moe.offload_cache import OffloadMoeCache
 
     _init_tp()
     cache = OffloadMoeCache(num_layers=1, num_experts=4, cache_size=6, device=torch.device("cpu"))
@@ -929,7 +929,7 @@ def test_offload_cache_rebuild_resizes_and_preserves_sources():
 
 
 def test_offload_cache_rebuild_disables_prefill_overlap_when_too_small():
-    from freetoken.moe.offload_cache import OffloadMoeCache
+    from sparklab.moe.offload_cache import OffloadMoeCache
 
     _init_tp()
     cache = OffloadMoeCache(
@@ -947,7 +947,7 @@ def test_offload_cache_rebuild_disables_prefill_overlap_when_too_small():
 
 
 def test_offload_cache_rebuild_keeps_overlap_at_boundary():
-    from freetoken.moe.offload_cache import OffloadMoeCache
+    from sparklab.moe.offload_cache import OffloadMoeCache
 
     _init_tp()
     cache = OffloadMoeCache(
@@ -963,7 +963,7 @@ def test_offload_cache_rebuild_keeps_overlap_at_boundary():
 def test_offload_cache_validate_rebuild_enforces_marlin_cap_and_floor():
     # The constructor caps nvfp4_marlin slots at 992; a runtime rebuild must enforce the
     # same upper cap (and the num_experts floor), else marlin decode kernels later break.
-    from freetoken.moe.offload_cache import MARLIN_MAX_CACHE_SIZE, OffloadMoeCache
+    from sparklab.moe.offload_cache import MARLIN_MAX_CACHE_SIZE, OffloadMoeCache
 
     _init_tp()
     marlin = OffloadMoeCache(

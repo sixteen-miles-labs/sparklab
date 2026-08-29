@@ -15,7 +15,7 @@ import torch
 if not torch.cuda.is_available():  # pragma: no cover
     pytest.skip("CUDA required", allow_module_level=True)
 
-from freetoken.kernel.triton.e4m3_compat import e4m3_native
+from sparklab.kernels.triton.e4m3_compat import e4m3_native
 
 DEV = "cuda"
 FP8 = torch.float8_e4m3fn
@@ -52,7 +52,7 @@ def _dequant(w8: torch.Tensor, scale: torch.Tensor) -> torch.Tensor:
 ])
 def test_w8a16_matches_dequant_reference(M: int, K: int, part_rows: list[int]):
     """Without an ``input_scale`` every M stays on the W8A16 kernels, activation exact."""
-    from freetoken.kernel.triton.fp8_pertensor_linear import fp8_pertensor_linear
+    from sparklab.kernels.triton.fp8_pertensor_linear import fp8_pertensor_linear
 
     w8, scale = _quant_parts(part_rows, K, seed=M)
     x = torch.randn(M, K, device=DEV, dtype=torch.bfloat16)
@@ -69,7 +69,7 @@ def test_w8a16_matches_dequant_reference(M: int, K: int, part_rows: list[int]):
     ([6144], True),                # standalone -> one scalar -> tensor-wise
 ])
 def test_w8a8_matches_w8a8_reference(M: int, part_rows: list[int], uniform: bool):
-    from freetoken.kernel.triton.fp8_pertensor_linear import fp8_pertensor_linear
+    from sparklab.kernels.triton.fp8_pertensor_linear import fp8_pertensor_linear
 
     K = 2048
     w8, scale = _quant_parts(part_rows, K, seed=M)
@@ -89,7 +89,7 @@ def test_batch_size_does_not_change_the_numeric_scheme():
     """A deployment that can run W8A8 must run it at every M, so that a reply reproduces at
     bs=1 regardless of how many other requests shared its forward. Feeding the same row alone
     and as part of a batch must therefore agree bit-for-bit."""
-    from freetoken.kernel.triton.fp8_pertensor_linear import fp8_pertensor_linear
+    from sparklab.kernels.triton.fp8_pertensor_linear import fp8_pertensor_linear
 
     K, part_rows = 2048, [1024, 256]
     w8, scale = _quant_parts(part_rows, K)
@@ -102,7 +102,7 @@ def test_batch_size_does_not_change_the_numeric_scheme():
 
 
 def test_layer_load_marks_uniform_scale_and_optional_input_scale():
-    from freetoken.kernel.triton.fp8_pertensor_linear import (
+    from sparklab.kernels.triton.fp8_pertensor_linear import (
         Fp8PerTensorColMerged,
         Fp8PerTensorLinear,
     )

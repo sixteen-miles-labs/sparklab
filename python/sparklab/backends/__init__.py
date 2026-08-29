@@ -1,4 +1,4 @@
-"""Runtime backend contracts and the built-in Spark Lab backend registry."""
+"""Runtime backend contracts and the built-in SparkLab backend registry."""
 
 from .base import (
     ArtifactValidation,

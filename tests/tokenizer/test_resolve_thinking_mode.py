@@ -1,7 +1,7 @@
 """Unit tests for the shared thinking-mode resolver (tokenizer/tokenize.py)."""
 from __future__ import annotations
 
-from freetoken.tokenizer.tokenize import resolve_thinking_mode
+from sparklab.tokenizer.tokenize import resolve_thinking_mode
 
 
 def test_default_is_chat():

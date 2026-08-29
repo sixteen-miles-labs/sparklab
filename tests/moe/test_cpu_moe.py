@@ -1,6 +1,6 @@
 """CPU MoE executor (``CpuMoeExecutor``) tests.
 
-Part 1 -- numerical alignment: the CPU SwiGLU MoE GEMV vs FreeToken's production
+Part 1 -- numerical alignment: the CPU SwiGLU MoE GEMV vs SparkLab's production
 GPU decode kernels (bf16/nvfp4/mxfp4/ds_fp4) on identical banks and routing across
 batch sizes (fp32-accumulate, so the only spread is reduction order -> tight tol).
 
@@ -21,7 +21,7 @@ pytestmark = pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUD
 
 
 def _make_cache(L, E, H, I, scale=0.1):
-    from freetoken.kernel.pinned import alloc_pinned_tensor
+    from sparklab.kernels.pinned import alloc_pinned_tensor
 
     gate_up = alloc_pinned_tensor(L * E, 2 * I, H, dtype=torch.bfloat16)
     down = alloc_pinned_tensor(L * E, H, I, dtype=torch.bfloat16)
@@ -39,8 +39,8 @@ def _make_cache(L, E, H, I, scale=0.1):
 
 @pytest.mark.parametrize("bs", [1, 2, 5, 16])
 def test_cpu_decode_matches_gpu_decode_kernel(bs):
-    from freetoken.moe.cpu_executor import CpuMoeExecutor
-    from freetoken.moe.fused import fused_experts_decode_impl
+    from sparklab.moe.cpu_executor import CpuMoeExecutor
+    from sparklab.moe.fused import fused_experts_decode_impl
 
     torch.manual_seed(bs)
     L, E, H, I, top_k = 4, 16, 1024, 512, 4
@@ -119,9 +119,9 @@ def test_cpu_decode_nvfp4_matches_dequant_then_gpu(bs):
     K-loop (fp32), the reference materializes bf16 weights first, so the only spread
     is weight bf16-rounding + reduction order -> tight relative tolerance.
     """
-    from freetoken.kernel.triton.nvfp4_dequant import dequant_nvfp4
-    from freetoken.moe.cpu_executor import CpuMoeExecutor
-    from freetoken.moe.fused import fused_experts_decode_impl
+    from sparklab.kernels.triton.nvfp4_dequant import dequant_nvfp4
+    from sparklab.moe.cpu_executor import CpuMoeExecutor
+    from sparklab.moe.fused import fused_experts_decode_impl
 
     torch.manual_seed(100 + bs)
     L, E, H, I, top_k = 3, 16, 1024, 512, 4
@@ -169,8 +169,8 @@ def test_cpu_decode_nvfp4_swigluoai_matches_dequant_reference(bs):
     """MiniMax-M3's swigluoai routed experts on the CPU executor (ActKind 3 through
     the generic NVFP4 GEMV epilogue, with the layer's alpha/limit scalars) vs. a
     pure-torch dequant reference."""
-    from freetoken.kernel.triton.nvfp4_dequant import dequant_nvfp4
-    from freetoken.moe.cpu_executor import CpuMoeExecutor
+    from sparklab.kernels.triton.nvfp4_dequant import dequant_nvfp4
+    from sparklab.moe.cpu_executor import CpuMoeExecutor
 
     torch.manual_seed(300 + bs)
     L, E, H, I, top_k = 2, 16, 1024, 512, 4
@@ -229,8 +229,8 @@ def test_stale_extension_rejected_for_swigluoai(monkeypatch):
     error and silently computes the wrong activation in the generic epilogue.
     The executor probes the extension's `max_generic_act_id` marker -- absent on
     stale builds -- and must fail loudly with the rebuild instruction."""
-    from freetoken.kernel import _cpu_moe
-    from freetoken.moe.cpu_executor import CpuMoeExecutor, compiled_extension_supports
+    from sparklab.kernels import _cpu_moe
+    from sparklab.moe.cpu_executor import CpuMoeExecutor, compiled_extension_supports
 
     # raising=False: on a GENUINELY stale extension the attribute is already
     # absent, and this test must still run (it is the test for that case).
@@ -298,8 +298,8 @@ def _make_mxfp4_cache(L, E, H, I, seed=0):
 def test_cpu_decode_mxfp4_matches_gpu_splitk(bs):
     """CPU mxfp4 N-accumulator GEMV vs. gpt-oss production split-K decode, on
     byte-identical transposed banks (same dequant, clamped swiglu, bias, router wt)."""
-    from freetoken.moe.cpu_executor import CpuMoeExecutor
-    from freetoken.moe.fused_mxfp4 import run_mxfp4_splitk_decode_experts as _run_mxfp4_splitk_decode_experts
+    from sparklab.moe.cpu_executor import CpuMoeExecutor
+    from sparklab.moe.fused_mxfp4 import run_mxfp4_splitk_decode_experts as _run_mxfp4_splitk_decode_experts
 
     torch.manual_seed(200 + bs)
     L, E, H, I, top_k = 2, 8, 256, 256, 2
@@ -372,8 +372,8 @@ def test_cpu_decode_dsfp4_matches_gpu(bs):
     """CPU ds_fp4 W4A8 GEMV vs. DeepSeek-V4 production ``routed_experts_fp4`` on
     byte-identical banks: same e2m1/e8m0 dequant, FP8-e4m3 activation round-trips
     (block 128), silu-swiglu with clamp, router weight on the down output."""
-    from freetoken.moe.cpu_executor import CpuMoeExecutor
-    from freetoken.moe.fused_ds_fp4 import routed_experts_fp4
+    from sparklab.moe.cpu_executor import CpuMoeExecutor
+    from sparklab.moe.fused_ds_fp4 import routed_experts_fp4
 
     torch.manual_seed(300 + bs)
     L, E, H, I, top_k = 2, 8, 256, 256, 4
@@ -440,7 +440,7 @@ def _reference(cache, layer, hidden, ids, w, act="silu", apply_in=False):
 
 
 def test_cpu_moe_decode_cuda_graph_replay():
-    from freetoken.moe.cpu_executor import CpuMoeExecutor
+    from sparklab.moe.cpu_executor import CpuMoeExecutor
 
     torch.manual_seed(0)
     L, E, H, I, top_k = 3, 8, 512, 256, 2
@@ -512,8 +512,8 @@ def test_cpu_moe_decode_cuda_graph_replay():
 def test_cpu_moe_decode_cuda_graph_replay_mxfp4():
     """gpt-oss mxfp4 path under capture/replay: the host nodes must recompute the
     clamped-swiglu+bias GEMV from the freshly written pinned routing on each replay."""
-    from freetoken.moe.cpu_executor import CpuMoeExecutor
-    from freetoken.moe.fused_mxfp4 import run_mxfp4_splitk_decode_experts as _run_mxfp4_splitk_decode_experts
+    from sparklab.moe.cpu_executor import CpuMoeExecutor
+    from sparklab.moe.fused_mxfp4 import run_mxfp4_splitk_decode_experts as _run_mxfp4_splitk_decode_experts
 
     torch.manual_seed(7)
     L, E, H, I, top_k = 2, 8, 256, 256, 2
@@ -570,8 +570,8 @@ def test_cpu_moe_decode_cuda_graph_replay_dsfp4():
     """DeepSeek-V4 ds_fp4 path under capture/replay: the 4-phase pipeline (input
     FP8 round-trip -> gate_up -> intermediate FP8 round-trip -> down) must recompute
     from the freshly written pinned routing on each replay."""
-    from freetoken.moe.cpu_executor import CpuMoeExecutor
-    from freetoken.moe.fused_ds_fp4 import routed_experts_fp4
+    from sparklab.moe.cpu_executor import CpuMoeExecutor
+    from sparklab.moe.fused_ds_fp4 import routed_experts_fp4
 
     torch.manual_seed(11)
     L, E, H, I, top_k = 2, 8, 256, 256, 4
@@ -646,7 +646,7 @@ def test_cpu_moe_executor_is_collectable():
     import time
     import weakref
 
-    from freetoken.moe.cpu_executor import CpuMoeExecutor
+    from sparklab.moe.cpu_executor import CpuMoeExecutor
 
     cache = _make_cache(2, 4, 64, 32)
     ex = CpuMoeExecutor(

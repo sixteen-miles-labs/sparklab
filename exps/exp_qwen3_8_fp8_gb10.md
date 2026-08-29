@@ -36,7 +36,7 @@ HTTP API. The runtime used QSA attention, NVMe-backed MoE, 3 GiB of host expert 
 CUDA graph.
 
 ```bash
-FREETOKEN_DISK_READ_WORKERS=16 PYTHONPATH=python:. \
+SPARKLAB_DISK_READ_WORKERS=16 PYTHONPATH=python:. \
   .venv/bin/python benchmarks/bench_decode_moe.py \
   --model /path/to/Qwen3.8-Flash-Next-FP8-970c569a \
   --recipe qwen3.8-flash-next \
@@ -60,7 +60,7 @@ FREETOKEN_DISK_READ_WORKERS=16 PYTHONPATH=python:. \
 | Output hash | `11b2b1eb274f` |
 
 The API returned 63 completion tokens and produced 62 timed decode steps. The request read
-516 pre-existing swap pages back into memory and swapped no pages out. Spark Lab therefore
+516 pre-existing swap pages back into memory and swapped no pages out. SparkLab therefore
 records the run as measured evidence but does not grant admission on this non-zero-swap host.
 
 ## Fixes required to complete the run

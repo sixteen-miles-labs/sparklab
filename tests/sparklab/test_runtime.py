@@ -6,11 +6,11 @@ from dataclasses import replace
 import pytest
 import torch
 
-from freetoken.checkpoint.ftw import FTWWriter
+from sparklab.checkpoint.ftw import FTWWriter
 from sparklab.catalog import RuntimeArtifact, get_recipe
 from sparklab.paths import manifest_path, prepared_path, source_path
 from sparklab.platform import GB10Snapshot
-from sparklab.runtime import RuntimePlanError, plan_invocation
+from sparklab.deployment import RuntimePlanError, plan_invocation
 
 GIB = 1 << 30
 
@@ -91,7 +91,7 @@ def test_runtime_rejects_prebuilt_artifact_with_wrong_fingerprint(tmp_path):
         get_recipe("qwen3.8-flash-next"),
         runtime_memory={"total_bytes": 64 * GIB},
         runtime_artifact=RuntimeArtifact(
-            repo_id="freetoken/qwen-ftw",
+            repo_id="sparklab/qwen-ftw",
             revision="e" * 40,
             bytes=4096,
             fingerprint="expected",
@@ -109,7 +109,7 @@ def test_runtime_rejects_prebuilt_artifact_with_wrong_fingerprint(tmp_path):
             "source": None,
             "runtime": {
                 "path": str(checkpoint),
-                "repository": "freetoken/qwen-ftw",
+                "repository": "sparklab/qwen-ftw",
                 "revision": "e" * 40,
             },
         },

@@ -2,8 +2,8 @@
 #
 # SparkLab installer (Linux, NVIDIA CUDA) — user-facing, wheel-based.
 #
-# Installs the `freetoken` engine distribution (the primary `sparklab` CLI and compatible
-# `ft` alias) and its prebuilt kernel-cache wheel into a managed venv.
+# Installs the `sparklab` distribution and its prebuilt kernel-cache wheel into a
+# managed virtual environment.
 # Dependencies come from PyPI via uv, except torch and sglang-kernel whose cu130
 # wheels live on dedicated indexes (see CU_INDEX_ARGS below).
 #
@@ -11,26 +11,19 @@
 #   curl -fsSL https://<host>/install.sh | bash
 #
 # Configurable via environment:
-#   SPARKLAB_WHEEL                runtime wheel — local path OR URL. Falls back to
-#                                 FREETOKEN_WHEEL for compatibility.
-#   FREETOKEN_WHEEL               legacy runtime-wheel variable. Defaults to the
+#   SPARKLAB_WHEEL                runtime wheel — local path OR URL. Defaults to the
 #                                 pinned release asset ($DEFAULT_WHEEL_URL); if that is
 #                                 empty and install.sh runs from a source checkout, the
 #                                 wheels are built from source via
 #                                 scripts/build-release-wheels.sh.
 #   SPARKLAB_KERNEL_CACHE_WHEEL   prebuilt kernel-cache wheel — local path OR URL.
-#                                 Falls back to FREETOKEN_KERNEL_CACHE_WHEEL.
-#   FREETOKEN_KERNEL_CACHE_WHEEL  legacy kernel-cache variable.
 #                                 Defaults to $DEFAULT_KERNEL_CACHE_WHEEL_URL; if
-#                                 unset and FREETOKEN_WHEEL is local, the script
-#                                 auto-detects a sibling freetoken_kernel_cache-*.whl.
-#   SPARKLAB_INSTALL_ROOT         install root (default: ~/.freetoken during migration).
-#                                 Falls back to FREETOKEN_HOME.
-#   SPARKLAB_PY_VERSION           python for the venv (default: 3.12). Falls back to
-#                                 FREETOKEN_PY_VERSION.
-#   SPARKLAB_BIN_DIR              where to link `sparklab` and `ft` (default: ~/.local/bin).
-#                                 Falls back to FREETOKEN_BIN_DIR.
-#   SPARKLAB_ENV_DIR              environment.d directory. Falls back to FREETOKEN_ENV_DIR.
+#                                 unset and SPARKLAB_WHEEL is local, the script
+#                                 auto-detects a sibling sparklab_kernel_cache-*.whl.
+#   SPARKLAB_INSTALL_ROOT         install root (default: ~/.sparklab).
+#   SPARKLAB_PY_VERSION           python for the venv (default: 3.12).
+#   SPARKLAB_BIN_DIR              where to link `sparklab` (default: ~/.local/bin).
+#   SPARKLAB_ENV_DIR              environment.d directory.
 #
 # NOTE: common TVM FFI kernels come from the kernel-cache wheel. A working CUDA
 # toolkit (nvcc) is still needed when falling back to JIT for an uncovered kernel
@@ -40,17 +33,16 @@ set -euo pipefail
 DEFAULT_WHEEL_URL=""   # filled in once GitHub Releases are live
 DEFAULT_KERNEL_CACHE_WHEEL_URL=""   # filled in once GitHub Releases are live
 
-FT_HOME="${SPARKLAB_INSTALL_ROOT:-${FREETOKEN_HOME:-$HOME/.freetoken}}"
-VENV="$FT_HOME/venv"
-PY_VERSION="${SPARKLAB_PY_VERSION:-${FREETOKEN_PY_VERSION:-3.12}}"
-BIN_DIR="${SPARKLAB_BIN_DIR:-${FREETOKEN_BIN_DIR:-$HOME/.local/bin}}"
-ENV_DIR="${SPARKLAB_ENV_DIR:-${FREETOKEN_ENV_DIR:-$HOME/.config/environment.d}}"
-WHEEL="${SPARKLAB_WHEEL:-${FREETOKEN_WHEEL:-$DEFAULT_WHEEL_URL}}"
-KERNEL_CACHE_WHEEL="${SPARKLAB_KERNEL_CACHE_WHEEL:-${FREETOKEN_KERNEL_CACHE_WHEEL:-$DEFAULT_KERNEL_CACHE_WHEEL_URL}}"
+INSTALL_ROOT="${SPARKLAB_INSTALL_ROOT:-$HOME/.sparklab}"
+VENV="$INSTALL_ROOT/venv"
+PY_VERSION="${SPARKLAB_PY_VERSION:-3.12}"
+BIN_DIR="${SPARKLAB_BIN_DIR:-$HOME/.local/bin}"
+ENV_DIR="${SPARKLAB_ENV_DIR:-$HOME/.config/environment.d}"
+WHEEL="${SPARKLAB_WHEEL:-$DEFAULT_WHEEL_URL}"
+KERNEL_CACHE_WHEEL="${SPARKLAB_KERNEL_CACHE_WHEEL:-$DEFAULT_KERNEL_CACHE_WHEEL_URL}"
 
-# --yes / -y (or SPARKLAB_ASSUME_YES=1, with FREETOKEN_ASSUME_YES as a fallback): run
-# non-interactively. The legacy Desktop installer passes --yes and remains compatible.
-ASSUME_YES="${SPARKLAB_ASSUME_YES:-${FREETOKEN_ASSUME_YES:-0}}"
+# --yes / -y (or SPARKLAB_ASSUME_YES=1): run non-interactively.
+ASSUME_YES="${SPARKLAB_ASSUME_YES:-0}"
 for _arg in "$@"; do
   case "$_arg" in
     -y|--yes) ASSUME_YES=1 ;;
@@ -80,14 +72,14 @@ infer_kernel_cache_wheel() {
   wheel_dir="$(cd "$(dirname "$WHEEL")" && pwd -P)"
   found=""
   count=0
-  for candidate in "$wheel_dir"/freetoken_kernel_cache-*.whl "$wheel_dir"/freetoken-kernel-cache-*.whl; do
+  for candidate in "$wheel_dir"/sparklab_kernel_cache-*.whl "$wheel_dir"/sparklab-kernel-cache-*.whl; do
     [ -f "$candidate" ] || continue
     found="$candidate"
     count=$((count + 1))
   done
 
   if [ "$count" -gt 1 ]; then
-    die "multiple freetoken kernel-cache wheels found next to $WHEEL — set FREETOKEN_KERNEL_CACHE_WHEEL explicitly."
+    die "multiple sparklab kernel-cache wheels found next to $WHEEL — set SPARKLAB_KERNEL_CACHE_WHEEL explicitly."
   fi
   if [ "$count" -eq 1 ]; then
     KERNEL_CACHE_WHEEL="$found"
@@ -107,15 +99,15 @@ build_from_repo_if_needed() {
   # Unstamped by default: this path serves tarball checkouts (no .git) and dev trees
   # (often dirty), where the release stamp's clean-git requirement would turn a working
   # install into a die -- and a wheel installed from a local path has no URL-cache
-  # staleness to defend against. FREETOKEN_BUILD_NO_STAMP=0 forces a stamp anyway.
-  FREETOKEN_BUILD_OUT_DIR="$out_dir" FREETOKEN_BUILD_NO_STAMP="${FREETOKEN_BUILD_NO_STAMP:-1}" bash "$builder"
+  # staleness to defend against. SPARKLAB_BUILD_NO_STAMP=0 forces a stamp anyway.
+  SPARKLAB_BUILD_OUT_DIR="$out_dir" SPARKLAB_BUILD_NO_STAMP="${SPARKLAB_BUILD_NO_STAMP:-1}" bash "$builder"
 
-  rt="$(ls -t "$out_dir"/freetoken-*.whl 2>/dev/null | head -1)" || true
-  [ -n "$rt" ] || die "build finished but no freetoken-*.whl found in $out_dir"
+  rt="$(ls -t "$out_dir"/sparklab-*.whl 2>/dev/null | head -1)" || true
+  [ -n "$rt" ] || die "build finished but no sparklab-*.whl found in $out_dir"
   WHEEL="$rt"
   say "built runtime wheel: $WHEEL"
   if [ -z "$KERNEL_CACHE_WHEEL" ]; then
-    kc="$(ls -t "$out_dir"/freetoken_kernel_cache-*.whl 2>/dev/null | head -1)" || true
+    kc="$(ls -t "$out_dir"/sparklab_kernel_cache-*.whl 2>/dev/null | head -1)" || true
     if [ -n "$kc" ]; then
       KERNEL_CACHE_WHEEL="$kc"
       say "built kernel-cache wheel: $KERNEL_CACHE_WHEEL"
@@ -123,14 +115,14 @@ build_from_repo_if_needed() {
   fi
 }
 
-# The FreeToken Desktop engine bundle ships the wheels in ./dist next to this script.
+# The SparkLab Desktop engine bundle ships the wheels in ./dist next to this script.
 find_bundled_wheel() {
   [ -z "$WHEEL" ] || return 0
   local script_dir dist rt
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd -P)"
   dist="$script_dir/dist"
   [ -d "$dist" ] || return 0
-  rt="$(ls -t "$dist"/freetoken-*.whl 2>/dev/null | grep -Ev 'freetoken[_-]kernel[_-]cache-' | head -1)" || true
+  rt="$(ls -t "$dist"/sparklab-*.whl 2>/dev/null | grep -Ev 'sparklab[_-]kernel[_-]cache-' | head -1)" || true
   [ -n "$rt" ] && { WHEEL="$rt"; say "found bundled runtime wheel: $WHEEL"; }
 }
 
@@ -163,9 +155,9 @@ say "uv $("$UV" --version | awk '{print $2}')"
 find_bundled_wheel
 build_from_repo_if_needed
 
-[ -n "$WHEEL" ] || die "no runtime wheel to install — set FREETOKEN_WHEEL to a local path or URL, or run install.sh from a source checkout to build one."
+[ -n "$WHEEL" ] || die "no runtime wheel to install — set SPARKLAB_WHEEL to a local path or URL, or run install.sh from a source checkout to build one."
 infer_kernel_cache_wheel
-[ -n "$KERNEL_CACHE_WHEEL" ] || die "no kernel-cache wheel to install — set FREETOKEN_KERNEL_CACHE_WHEEL to a local path or URL."
+[ -n "$KERNEL_CACHE_WHEEL" ] || die "no kernel-cache wheel to install — set SPARKLAB_KERNEL_CACHE_WHEEL to a local path or URL."
 
 # --- 2. NVIDIA driver + CUDA toolkit -----------------------------------------
 # CUDA major the kernel-cache wheel was built for, from its +cuNNN tag
@@ -202,7 +194,7 @@ fi
 
 # --- 3. Install the wheel into a managed venv ------------------------------
 say "creating venv at $VENV (python $PY_VERSION) ..."
-mkdir -p "$FT_HOME"
+mkdir -p "$INSTALL_ROOT"
 # Always a fresh venv (no reuse): --clear replaces any existing one non-interactively, so a
 # re-install can't inherit a stale/mismatched torch (e.g. an old cu128 venv after a cu130 bump).
 "$UV" venv "$VENV" --python "$PY_VERSION" --clear
@@ -237,25 +229,21 @@ say "installing $WHEEL + accel (flashinfer prebuilt + sglang-kernel) + $KERNEL_C
 # (the venv is fresh each time, the cache is not). Force revalidation of just our two
 # packages; every other dependency keeps hitting the cache.
 "$UV" pip install --python "$VENV" \
-  --refresh-package freetoken --refresh-package freetoken-kernel-cache \
+  --refresh-package sparklab --refresh-package sparklab-kernel-cache \
   "${CU_INDEX_ARGS[@]}" "${INSTALL_WHEELS[@]}"
 
-FT_BIN="$VENV/bin/ft"
 SPARKLAB_BIN="$VENV/bin/sparklab"
-[ -x "$FT_BIN" ] || die "install finished but $FT_BIN is missing."
 [ -x "$SPARKLAB_BIN" ] || die "install finished but $SPARKLAB_BIN is missing."
 
-# --- 4. Wire up the SparkLab CLI and legacy engine alias --------------------
+# --- 4. Wire up the SparkLab CLI --------------------------------------------
 mkdir -p "$BIN_DIR"
 ln -sf "$SPARKLAB_BIN" "$BIN_DIR/sparklab"
-ln -sf "$FT_BIN" "$BIN_DIR/ft"
 say "symlinked $BIN_DIR/sparklab -> $SPARKLAB_BIN"
-say "symlinked $BIN_DIR/ft -> $FT_BIN"
 
 mkdir -p "$ENV_DIR"
-printf 'SPARKLAB_BIN=%s\nFREETOKEN_FT_BIN=%s\n' "$SPARKLAB_BIN" "$FT_BIN" \
+printf 'SPARKLAB_BIN=%s\n' "$SPARKLAB_BIN" \
   > "$ENV_DIR/50-sparklab.conf"
-say "wrote $ENV_DIR/50-sparklab.conf (SparkLab + legacy engine paths)"
+say "wrote $ENV_DIR/50-sparklab.conf"
 
 # --- 5. Self-check ---------------------------------------------------------
 if "$SPARKLAB_BIN" --help >/dev/null 2>&1; then
@@ -269,14 +257,11 @@ cat <<EOF
 ${C_GREEN}SparkLab installed.${C_RESET}
 
   sparklab binary  $SPARKLAB_BIN
-  ft binary        $FT_BIN
   on PATH as       $BIN_DIR/sparklab
-  legacy alias     $BIN_DIR/ft
-  environment      SPARKLAB_BIN and FREETOKEN_FT_BIN (re-login to apply)
+  environment      SPARKLAB_BIN (re-login to apply)
 
 Run in this shell without re-login:
   export SPARKLAB_BIN="$SPARKLAB_BIN"
-  export FREETOKEN_FT_BIN="$FT_BIN"
   sparklab serve --model <path> --port 1919
 
 EOF

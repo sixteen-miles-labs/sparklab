@@ -47,8 +47,8 @@ def _reference_paged_attention(
 
 
 def test_triton_backend_passes_attention_sinks_to_paged_kernel(monkeypatch):
-    from freetoken.attention import AttentionSpec
-    from freetoken.attention.triton import TritonAttentionBackend, TritonMetadata
+    from sparklab.attention import AttentionSpec
+    from sparklab.attention.triton import TritonAttentionBackend, TritonMetadata
 
     class FakeKVCache:
         def __init__(self):
@@ -69,7 +69,7 @@ def test_triton_backend_passes_attention_sinks_to_paged_kernel(monkeypatch):
 
     kv_cache = FakeKVCache()
     monkeypatch.setattr(
-        "freetoken.attention.triton.get_global_ctx",
+        "sparklab.attention.triton.get_global_ctx",
         lambda: SimpleNamespace(kv_cache=kv_cache),
     )
 
@@ -79,7 +79,7 @@ def test_triton_backend_passes_attention_sinks_to_paged_kernel(monkeypatch):
         captured["sinks"] = kwargs["sinks"]
         return torch.zeros_like(kwargs["q"])
 
-    monkeypatch.setattr("freetoken.kernel.triton.attention.paged_attention", fake_paged_attention)
+    monkeypatch.setattr("sparklab.kernels.triton.attention.paged_attention", fake_paged_attention)
 
     backend = TritonAttentionBackend(SimpleNamespace())
     batch = SimpleNamespace(
@@ -110,7 +110,7 @@ def test_triton_backend_passes_attention_sinks_to_paged_kernel(monkeypatch):
 @pytest.mark.parametrize("head_dim", [256, 512])
 @pytest.mark.parametrize("sliding_window", [None, 3])
 def test_paged_triton_attention_matches_reference(head_dim: int, sliding_window: int | None):
-    from freetoken.kernel.triton.attention import paged_attention
+    from sparklab.kernels.triton.attention import paged_attention
 
     torch.manual_seed(0)
     device = torch.device("cuda")
@@ -154,7 +154,7 @@ def test_paged_triton_attention_matches_reference(head_dim: int, sliding_window:
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="Triton attention needs CUDA")
 def test_paged_triton_attention_with_sinks_matches_reference():
-    from freetoken.kernel.triton.attention import paged_attention
+    from sparklab.kernels.triton.attention import paged_attention
 
     torch.manual_seed(10)
     device = torch.device("cuda")
@@ -201,7 +201,7 @@ def test_paged_triton_attention_with_sinks_matches_reference():
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="Triton attention needs CUDA")
 def test_paged_triton_attention_skips_all_masked_sliding_blocks():
-    from freetoken.kernel.triton.attention import paged_attention
+    from sparklab.kernels.triton.attention import paged_attention
 
     torch.manual_seed(0)
     device = torch.device("cuda")
@@ -257,7 +257,7 @@ def test_decode_triton_attention_matches_reference(
     num_kv_heads: int,
     sliding_window: int | None,
 ):
-    from freetoken.kernel.triton.attention import decode_paged_attention
+    from sparklab.kernels.triton.attention import decode_paged_attention
 
     torch.manual_seed(1)
     device = torch.device("cuda")
@@ -320,7 +320,7 @@ def test_decode_triton_attention_non_pow2_group(num_q_heads: int, num_kv_heads: 
     """GQA groups that are not a power of two (e.g. Qwen3.6-27B's 24/4 == 6). The grouped
     decode tiles the head axis to a power of two (tl.arange constraint) and masks the extra
     lanes; the result must still match the reference."""
-    from freetoken.kernel.triton.attention import decode_paged_attention
+    from sparklab.kernels.triton.attention import decode_paged_attention
 
     torch.manual_seed(3)
     device = torch.device("cuda")
@@ -356,7 +356,7 @@ def test_decode_triton_attention_non_pow2_group(num_q_heads: int, num_kv_heads: 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="Triton attention needs CUDA")
 def test_decode_triton_attention_with_sinks_matches_reference():
-    from freetoken.kernel.triton.attention import decode_paged_attention
+    from sparklab.kernels.triton.attention import decode_paged_attention
 
     torch.manual_seed(11)
     device = torch.device("cuda")
@@ -439,7 +439,7 @@ def test_extend_triton_attention_matches_reference(
     cached_lens: list[int],
     extend_lens: list[int],
 ):
-    from freetoken.kernel.triton.attention import extend_paged_attention
+    from sparklab.kernels.triton.attention import extend_paged_attention
 
     torch.manual_seed(2)
     device = torch.device("cuda")
@@ -514,7 +514,7 @@ def test_extend_triton_attention_matches_reference(
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="Triton attention needs CUDA")
 @pytest.mark.parametrize("use_split_inputs", [False, True])
 def test_extend_triton_attention_with_sinks_matches_reference(use_split_inputs: bool):
-    from freetoken.kernel.triton.attention import extend_paged_attention
+    from sparklab.kernels.triton.attention import extend_paged_attention
 
     torch.manual_seed(12)
     device = torch.device("cuda")
@@ -608,7 +608,7 @@ def test_extend_triton_attention_with_sinks_matches_reference(use_split_inputs: 
 def test_select_extend_tile_is_shared_memory_aware(head_dim, smem_optin, expected):
     import triton
 
-    from freetoken.kernel.triton.attention import _select_extend_tile
+    from sparklab.kernels.triton.attention import _select_extend_tile
 
     block_d = triton.next_power_of_2(head_dim)
     assert _select_extend_tile(head_dim, block_d, smem_optin) == expected
@@ -616,8 +616,8 @@ def test_select_extend_tile_is_shared_memory_aware(head_dim, smem_optin, expecte
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="Triton attention needs CUDA")
 def test_triton_backend_stores_kv_and_matches_reference(monkeypatch):
-    from freetoken.attention import AttentionSpec
-    from freetoken.attention.triton import TritonAttentionBackend
+    from sparklab.attention import AttentionSpec
+    from sparklab.attention.triton import TritonAttentionBackend
 
     class FakeKVCache:
         def __init__(self, device: torch.device, head_dim: int):
@@ -641,7 +641,7 @@ def test_triton_backend_stores_kv_and_matches_reference(monkeypatch):
     page_table = torch.tensor([[0, 1], [2, 3]], dtype=torch.int32, device=device)
     kv_cache = FakeKVCache(device, head_dim)
     ctx = SimpleNamespace(kv_cache=kv_cache, page_table=page_table)
-    monkeypatch.setattr("freetoken.attention.triton.get_global_ctx", lambda: ctx)
+    monkeypatch.setattr("sparklab.attention.triton.get_global_ctx", lambda: ctx)
 
     backend = TritonAttentionBackend(SimpleNamespace())
     batch = SimpleNamespace(
@@ -686,7 +686,7 @@ def test_triton_backend_stores_kv_and_matches_reference(monkeypatch):
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="Triton attention needs CUDA")
 def test_triton_backend_replay_metadata_uses_capture_buffers(monkeypatch):
-    from freetoken.attention.triton import TritonAttentionBackend, TritonMetadata
+    from sparklab.attention.triton import TritonAttentionBackend, TritonMetadata
 
     class FakeKVCache:
         def __init__(self, device: torch.device):
@@ -695,7 +695,7 @@ def test_triton_backend_replay_metadata_uses_capture_buffers(monkeypatch):
     device = torch.device("cuda")
     page_table = torch.arange(16, dtype=torch.int32, device=device).view(2, 8)
     ctx = SimpleNamespace(kv_cache=FakeKVCache(device), page_table=page_table)
-    monkeypatch.setattr("freetoken.attention.triton.get_global_ctx", lambda: ctx)
+    monkeypatch.setattr("sparklab.attention.triton.get_global_ctx", lambda: ctx)
 
     backend = TritonAttentionBackend(SimpleNamespace())
     backend.init_capture_graph(max_seq_len=8, bs_list=[2])
@@ -745,7 +745,7 @@ def test_triton_backend_replay_metadata_uses_capture_buffers(monkeypatch):
 
 
 def test_triton_metadata_keeps_full_indices_and_optional_swa_indices(monkeypatch):
-    from freetoken.attention.triton import TritonAttentionBackend, TritonMetadata
+    from sparklab.attention.triton import TritonAttentionBackend, TritonMetadata
 
     page_table = torch.tensor(
         [
@@ -763,7 +763,7 @@ def test_triton_metadata_keeps_full_indices_and_optional_swa_indices(monkeypatch
         ),
         page_table=page_table,
     )
-    monkeypatch.setattr("freetoken.attention.triton.get_global_ctx", lambda: ctx)
+    monkeypatch.setattr("sparklab.attention.triton.get_global_ctx", lambda: ctx)
 
     backend = TritonAttentionBackend(SimpleNamespace())
     batch = SimpleNamespace(

@@ -1,27 +1,23 @@
 # Release and package policy
 
 Public releases are produced by **SixteenMiles Labs** from this repository. Oakmind AI is
-the parent organization and legal steward; SparkLab is the product; FreeToken remains the
-engine package and research identity.
+the parent organization and legal steward. SparkLab incorporates work derived from the
+FreeToken research project; that ancestry is preserved in `NOTICE` and project citations.
 
 ## Current package boundary
 
-- PyPI distribution: `freetoken`
-- Primary product command: `sparklab`
-- Compatibility command and Python imports: `ft`, `freetoken.*`
-- Companion binary package: `freetoken-kernel-cache`
+- PyPI distribution and Python namespace: `sparklab`
+- Command: `sparklab`
+- Native runtime: `sparklab.*`
+- Companion binary package: `sparklab-kernel-cache`
 - GitHub release repository: `sixteen-miles-labs/sparklab`
 - Future container namespace: `ghcr.io/sixteen-miles-labs/sparklab`
-
-The `sparklab` PyPI name should be reserved only by publishing an intentional package with
-reviewed metadata. Do not upload a placeholder from a workstation. Introducing that
-distribution requires an explicit dependency, upgrade, rollback, and deprecation plan.
 
 ## Tagged release procedure
 
 1. Start from a clean, reviewed commit on the protected default branch.
-2. Update and test the FreeToken engine version. During the staged package migration,
-   `vX.Y.Z` must equal `python/freetoken/version.py` exactly.
+2. Update and test the SparkLab version. `vX.Y.Z` must equal
+   `python/sparklab/version.py` exactly.
 3. Run focused tests, the supported product suite, package builds, and `twine check`.
 4. Review licenses, `NOTICE`, model-recipe revisions, evidence links, and release notes.
 5. Create and push the signed tag. The protected release workflow builds the wheels.
@@ -47,6 +43,6 @@ Repository owners must configure these outside the source tree:
 - create a SixteenMiles Labs Hugging Face organization before moving model repositories;
 - preserve immutable model revisions and redirects during any repository transfer.
 
-The canonical rolling `beta` release now lives in `sixteen-miles-labs/sparklab`. The
-publisher retains a `FREETOKEN_WEB_REPO` override only for coordinated compatibility
-migrations; formal SparkLab releases must not target an external upstream repository.
+The canonical rolling `beta` release lives in `sixteen-miles-labs/sparklab`. The publisher
+uses `SPARKLAB_WEB_REPO` only for controlled release automation; formal releases must not
+target an external upstream repository.

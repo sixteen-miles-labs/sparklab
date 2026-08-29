@@ -1,12 +1,12 @@
-"""Version pairing between the runtime and the freetoken-kernel-cache wheel.
+"""Version pairing between the runtime and the sparklab-kernel-cache wheel.
 
-The comparator lives in freetoken.kernel.utils; this pins the matrix for the stamped
+The comparator lives in sparklab.kernels.utils; this pins the matrix for the stamped
 version scheme (runtime `0.1.1+g<sha>`, cache `0.1.1+cu130.g<sha>`) introduced by
 scripts/build-release-wheels.sh."""
 
 import pytest
 
-from freetoken.kernel.utils import _kernel_cache_version_ok
+from sparklab.kernels.utils import _kernel_cache_version_ok
 
 
 @pytest.mark.parametrize(

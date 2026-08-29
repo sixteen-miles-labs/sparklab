@@ -1,4 +1,4 @@
-# Spark Lab CLI reference
+# SparkLab CLI reference
 
 ```
 sparklab <command> [args]
@@ -22,7 +22,7 @@ sparklab <command> [args]
 
 `sparklab --version` prints the installed version (torch-free; nightly wheels carry a
 `+g<sha>` build stamp, tagged releases a bare version). Every command supports
-`--help`. The legacy `ft` forms remain supported and call the same engine.
+`--help`.
 
 ## sparklab doctor
 
@@ -64,9 +64,9 @@ exit means at least one admission check failed or still lacks measured data.
 sparklab pull <recipe> [--root PATH] [--prepare] [--from-source] [--dry-run] [--json]
 ```
 
-Downloads an immutable Hugging Face revision into the Spark Lab state root.
+Downloads an immutable Hugging Face revision into the SparkLab state root.
 Downloads are resumable. With `--prepare`, a recipe-pinned prebuilt FTW artifact
-is preferred when available; otherwise Spark Lab downloads and converts the
+is preferred when available; otherwise SparkLab downloads and converts the
 source checkpoint. `--from-source` forces local conversion, and `--dry-run`
 performs planning only.
 

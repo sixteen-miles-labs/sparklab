@@ -10,7 +10,7 @@ def test_registered_model_specs_resolve_required_package_exports():
     second copy of the table -- a typo'd class name or a loader that was renamed out from
     under an entry fails here, at import, instead of at model construction.
     """
-    from freetoken.models.register import _MODEL_REGISTRY
+    from sparklab.models.register import _MODEL_REGISTRY
 
     for arch, spec in _MODEL_REGISTRY.items():
         module = importlib.import_module(spec.module)

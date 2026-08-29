@@ -6,7 +6,7 @@ Three layers of guarantee:
    non-NaN codes; adversarial rounding inputs covering every grid midpoint, the
    subnormal range and the 2^-6 boundary).
 2. Every affected wrapper produces bit-identical output under
-   ``FREETOKEN_FORCE_E4M3_EMU=1`` (run in a subprocess with a fresh
+   ``SPARKLAB_FORCE_E4M3_EMU=1`` (run in a subprocess with a fresh
    ``TRITON_CACHE_DIR``: the flag is read once at import and is deliberately NOT
    part of triton's cache key, so flipping it requires a fresh process + cache).
    Sole exception: the fp8-MMA -> bf16-MMA GEMMs may differ by fp32 reduction
@@ -50,7 +50,7 @@ class TestPrimitives:
     def test_decode_f32_bitexact(self):
         import triton
         import triton.language as tl
-        from freetoken.kernel.triton.e4m3_compat import e4m3_u8_to_f32
+        from sparklab.kernels.triton.e4m3_compat import e4m3_u8_to_f32
 
         @triton.jit
         def k(v_ptr, o_ptr, BLOCK: tl.constexpr):
@@ -69,7 +69,7 @@ class TestPrimitives:
     def test_decode_f16_x128_bitexact(self):
         import triton
         import triton.language as tl
-        from freetoken.kernel.triton.e4m3_compat import e4m3_u8_to_f16_x128
+        from sparklab.kernels.triton.e4m3_compat import e4m3_u8_to_f16_x128
 
         @triton.jit
         def k(v_ptr, o_ptr, BLOCK: tl.constexpr):
@@ -86,7 +86,7 @@ class TestPrimitives:
     def test_round_to_grid_bitexact(self):
         import triton
         import triton.language as tl
-        from freetoken.kernel.triton.e4m3_compat import round_e4m3
+        from sparklab.kernels.triton.e4m3_compat import round_e4m3
 
         @triton.jit
         def k(x_ptr, y_ptr, N, BLOCK: tl.constexpr):
@@ -117,23 +117,23 @@ class TestPrimitives:
 # Shared emit path: every affected wrapper, deterministic inputs.
 # ======================================================================================
 def _emit_all(path: str) -> None:
-    from freetoken.kernel.triton.e4m3_compat import e4m3_native
-    from freetoken.kernel.triton.dsv4.fp8_linear import (
+    from sparklab.kernels.triton.e4m3_compat import e4m3_native
+    from sparklab.kernels.triton.dsv4.fp8_linear import (
         act_quant_fp8, act_quant_fp8_inplace, act_quant_fp8_roundtrip,
         block_fp8_linear as dsv4_block_fp8_linear, fp4_act_quant_inplace,
     )
-    from freetoken.kernel.triton.fp8_pertensor_linear import fp8_pertensor_linear
-    from freetoken.kernel.triton.fp8_block_linear import (
+    from sparklab.kernels.triton.fp8_pertensor_linear import fp8_pertensor_linear
+    from sparklab.kernels.triton.fp8_block_linear import (
         block_fp8_linear, per_token_group_quant_fp8,
     )
-    from freetoken.kernel.triton.fp8_blockscale_moe import (
+    from sparklab.kernels.triton.fp8_blockscale_moe import (
         fused_experts_decode_fp8_blockscale, fused_experts_fp8_blockscale,
     )
-    from freetoken.kernel.triton.nvfp4_linear import (
+    from sparklab.kernels.triton.nvfp4_linear import (
         nvfp4_dense_linear, nvfp4_dense_linear_t, nvfp4_transpose_resident,
     )
-    from freetoken.kernel.triton.nvfp4_dequant import dequant_nvfp4
-    from freetoken.moe.fused_nvfp4 import (
+    from sparklab.kernels.triton.nvfp4_dequant import dequant_nvfp4
+    from sparklab.moe.fused_nvfp4 import (
         fused_experts_decode_nvfp4_marlin, fused_experts_decode_nvfp4_serial,
         fused_experts_nvfp4,
     )
@@ -232,10 +232,10 @@ def _emit_all(path: str) -> None:
 
 
 def _child_env(tmp_path, **extra) -> dict:
-    import freetoken
+    import sparklab
 
     env = os.environ.copy()
-    pkg_root = os.path.dirname(os.path.dirname(freetoken.__file__))
+    pkg_root = os.path.dirname(os.path.dirname(sparklab.__file__))
     env["PYTHONPATH"] = pkg_root + os.pathsep + env.get("PYTHONPATH", "")
     env["TRITON_CACHE_DIR"] = str(tmp_path / "triton-cache")
     env.update(extra)
@@ -254,7 +254,7 @@ def test_forced_emu_matches_native(tmp_path):
     _emit_all(native_pt)
     r = subprocess.run(
         [sys.executable, __file__, "emit", emu_pt],
-        env=_child_env(tmp_path, FREETOKEN_FORCE_E4M3_EMU="1"),
+        env=_child_env(tmp_path, SPARKLAB_FORCE_E4M3_EMU="1"),
         capture_output=True, text=True, timeout=1200,
     )
     assert r.returncode == 0, f"EMU emit failed:\n{r.stdout}\n{r.stderr}"
@@ -277,7 +277,7 @@ def test_compile_gate_foreign_arch(arch, tmp_path):
         [sys.executable, __file__, "gate", str(arch)],
         # pin the flag off so a developer's exported FORCE_EMU cannot dead-code
         # the native branch out of the sm_89/120 gates
-        env=_child_env(tmp_path, FREETOKEN_FORCE_E4M3_EMU=""),
+        env=_child_env(tmp_path, SPARKLAB_FORCE_E4M3_EMU=""),
         capture_output=True, text=True, timeout=1200,
     )
     assert r.returncode == 0, f"sm_{arch} compile gate failed:\n{r.stdout[-2000:]}\n{r.stderr[-4000:]}"
@@ -298,7 +298,7 @@ def _gate_main(arch: int) -> None:
     # launches them -- unlike triton there is no warmup hook, so force the triton
     # fallbacks instead. sgl_kernel ships multi-arch fatbins and loads by the real
     # device, so it needs no such treatment.
-    import freetoken.kernel.backend as backend
+    import sparklab.kernels.backend as backend
 
     backend.is_flashinfer_installed = lambda: False
 

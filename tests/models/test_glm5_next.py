@@ -5,11 +5,11 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from freetoken.attention.base import AttnType
-from freetoken.models.glm5_next.config import parse_config
-from freetoken.models.glm5_next.hyper import Glm5NextHyperConnection
-from freetoken.models.glm5_next.kpool import pool_index_states, select_kpool_tokens
-from freetoken.models.glm5_next.weight import (
+from sparklab.attention.base import AttnType
+from sparklab.models.glm5_next.config import parse_config
+from sparklab.models.glm5_next.hyper import Glm5NextHyperConnection
+from sparklab.models.glm5_next.kpool import pool_index_states, select_kpool_tokens
+from sparklab.models.glm5_next.weight import (
     _CT_NVFP4_SOURCE_SPEC,
     _is_kda_main_weight,
     _quant_fp8_per_row,
@@ -85,7 +85,7 @@ def _config(layers: int = 8):
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 def test_shared_expert_disk_overlap_launches_before_routed_staging():
-    from freetoken.models.glm5_next.moe import Glm5NextSparseMoe
+    from sparklab.models.glm5_next.moe import Glm5NextSparseMoe
 
     order = []
     cache = SimpleNamespace(
@@ -146,9 +146,9 @@ def test_parse_config_builds_glm53_hybrid_geometry():
 
 
 def test_parse_config_builds_opt_in_kda_fp8_projections():
-    from freetoken.kernel.triton.fp8_pertensor_linear import Fp8PerTensorLinear
-    from freetoken.layers import LinearReplicated
-    from freetoken.models.glm5_next.kda import Glm5NextDeltaAttention
+    from sparklab.kernels.triton.fp8_pertensor_linear import Fp8PerTensorLinear
+    from sparklab.layers import LinearReplicated
+    from sparklab.models.glm5_next.kda import Glm5NextDeltaAttention
 
     hf = _config()
     hf.text_config.freetoken_kda_quant = "fp8_pertensor"
@@ -165,7 +165,7 @@ def test_parse_config_builds_opt_in_kda_fp8_projections():
 
 
 def test_parse_config_accepts_scoped_conversion_kda_override(monkeypatch):
-    monkeypatch.setenv("_FREETOKEN_CONVERT_GLM5_KDA_QUANT", "fp8_pertensor")
+    monkeypatch.setenv("_SPARKLAB_CONVERT_GLM5_KDA_QUANT", "fp8_pertensor")
 
     cfg = parse_config(_config())
 
@@ -265,7 +265,7 @@ def test_glm53_compressed_tensors_experts_preserve_packed_rows(tmp_path, monkeyp
     )
     captured = {}
     monkeypatch.setattr(
-        "freetoken.models.glm5_next.weight.get_tp_info",
+        "sparklab.models.glm5_next.weight.get_tp_info",
         lambda: SimpleNamespace(is_primary=lambda: False),
     )
 
@@ -361,15 +361,15 @@ def test_glm53_checkpoint_name_mapping_and_registry():
     assert map_weight_name("model.language_model.layers.3.self_attn.q_a_proj.weight") == (
         "model.layers.3.self_attn.q_a_proj.weight"
     )
-    from freetoken.models.register import get_model_spec
+    from sparklab.models.register import get_model_spec
 
     for arch in ("Glm5NextForConditionalGeneration", "Glm5NextForCausalLM"):
-        assert get_model_spec(arch).module == "freetoken.models.glm5_next"
+        assert get_model_spec(arch).module == "sparklab.models.glm5_next"
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 def test_glm53_per_head_kda_kernel_matches_reference_and_continuation():
-    from freetoken.kernel.fla import fused_sigmoid_gating_delta_rule_update
+    from sparklab.kernels.fla import fused_sigmoid_gating_delta_rule_update
 
     torch.manual_seed(17)
     batch, steps, heads, dim = 1, 5, 3, 8

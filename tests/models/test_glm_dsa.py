@@ -18,7 +18,7 @@ THETA = 8_000_000.0
 def test_shared_expert_disk_overlap_launches_before_routed_staging():
     from types import SimpleNamespace
 
-    from freetoken.models.glm_moe_dsa.moe import GlmMoeDsaSparseBlock
+    from sparklab.models.glm_moe_dsa.moe import GlmMoeDsaSparseBlock
 
     order = []
     cache = SimpleNamespace(
@@ -91,7 +91,7 @@ def _hf_indexer(seq: int, topk: int):
 
 @pytest.mark.parametrize("seq,topk", [(300, 64), (128, 256)])
 def test_indexer_matches_hf_reference(seq, topk):
-    from freetoken.layers.rotary import get_rope
+    from sparklab.layers.rotary import get_rope
 
     idx_ref, x, q_resid, pos, ref_topk = _hf_indexer(seq, topk)
 
@@ -170,7 +170,7 @@ def test_indexer_matches_hf_reference(seq, topk):
 
 def test_sparse_kernel_equals_dense_when_all_selected():
     """kv_len <= topk: sparse kernel over all live rows == dense softmax reference."""
-    from freetoken.kernel.triton.glm_dsa_sparse import glm_dsa_sparse_attn
+    from sparklab.kernels.triton.glm_dsa_sparse import glm_dsa_sparse_attn
 
     torch.manual_seed(0)
     h, dv, dr, n = 40, 512, 64, 977
@@ -192,7 +192,7 @@ def test_sparse_kernel_equals_dense_when_all_selected():
 
 def test_sparse_kernel_supports_nope_only_attention():
     """GLM-5.3 has qk_rope_head_dim=0; the optional rope dot must compile away."""
-    from freetoken.kernel.triton.glm_dsa_sparse import glm_dsa_sparse_attn
+    from sparklab.kernels.triton.glm_dsa_sparse import glm_dsa_sparse_attn
 
     torch.manual_seed(5)
     h, d, n = 16, 64, 97
@@ -213,8 +213,8 @@ def test_identity_selection_equals_topk_selection_at_short_kv():
     stride-0 broadcast, causal counts). At kv <= index_topk the DSA select picks
     every live row, so the two paths must agree -- the invariant the all-Triton
     backend's dense path leans on."""
-    from freetoken.attention.dsa_indexer import DSAIndexerMixin
-    from freetoken.kernel.triton.glm_dsa_sparse import glm_dsa_sparse_attn
+    from sparklab.attention.dsa_indexer import DSAIndexerMixin
+    from sparklab.kernels.triton.glm_dsa_sparse import glm_dsa_sparse_attn
 
     torch.manual_seed(1)
     h, dv, dr, kv, topk = 8, 64, 16, 250, 512  # kv < topk
@@ -249,7 +249,7 @@ def test_identity_selection_equals_topk_selection_at_short_kv():
 def test_decode_logits_edges():
     """Fused gather+score kernel edges: tile-boundary live lengths, garbage rows
     past live, -inf tail, live == 1."""
-    from freetoken.kernel.triton.glm_dsa_sparse import glm_dsa_decode_logits
+    from sparklab.kernels.triton.glm_dsa_sparse import glm_dsa_decode_logits
 
     torch.manual_seed(2)
     H, D, W = 16, 128, 512
@@ -273,7 +273,7 @@ def test_splitk_matches_single_program():
     """Both kernel variants over the same inputs (the auto heuristic only ever
     exercises one on a given GPU); log-sum-exp merge is not bit-identical, so
     tolerance is bf16-rounding scale."""
-    from freetoken.kernel.triton.glm_dsa_sparse import glm_dsa_sparse_attn
+    from sparklab.kernels.triton.glm_dsa_sparse import glm_dsa_sparse_attn
 
     torch.manual_seed(3)
     h, dv, dr, K = 40, 512, 64, 2048
@@ -291,10 +291,10 @@ def _make_backend(dsa: bool, latent=80, dv=64, idx_dim=32, idx_heads=16, topk=64
     """Minimal ctx + pool + DSAAttnBackend (no engine)."""
     from types import SimpleNamespace
 
-    import freetoken.core as core
-    from freetoken.attention.dsa import DSAAttnBackend
-    from freetoken.core import Context, set_global_ctx
-    from freetoken.kvcache.dsa_pool import DSAKVCache, MLAKVCache
+    import sparklab.core as core
+    from sparklab.attention.dsa import DSAAttnBackend
+    from sparklab.core import Context, set_global_ctx
+    from sparklab.runtime.kvcache.dsa_pool import DSAKVCache, MLAKVCache
 
     core._GLOBAL_CTX = None  # test-only: the helper builds a fresh ctx per scenario
     ctx = Context(page_size=1)

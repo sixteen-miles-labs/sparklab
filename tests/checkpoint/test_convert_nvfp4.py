@@ -7,18 +7,18 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from freetoken.checkpoint.convert import (
+from sparklab.checkpoint.convert import (
     _quantize_nvfp4_bank,
     _source_fingerprint,
     _write_config_override,
 )
-from freetoken.kernel.triton.nvfp4_dequant import dequant_nvfp4
+from sparklab.kernels.triton.nvfp4_dequant import dequant_nvfp4
 
 
 def test_conversion_kda_override_is_scoped_and_written_to_nested_config(
     tmp_path, monkeypatch
 ):
-    module = importlib.import_module("freetoken.checkpoint.convert")
+    module = importlib.import_module("sparklab.checkpoint.convert")
     monkeypatch.setenv(module._GLM_KDA_QUANT_ENV, "previous")
     seen = []
 
@@ -37,10 +37,10 @@ def test_conversion_kda_override_is_scoped_and_written_to_nested_config(
 
     config = tmp_path / "config.json"
     config.write_text(json.dumps({"text_config": {}}))
-    _write_config_override(str(tmp_path), "freetoken_kda_quant", "fp8_pertensor")
+    _write_config_override(str(tmp_path), "sparklab_kda_quant", "fp8_pertensor")
     value = json.loads(config.read_text())
-    assert value["freetoken_kda_quant"] == "fp8_pertensor"
-    assert value["text_config"]["freetoken_kda_quant"] == "fp8_pertensor"
+    assert value["sparklab_kda_quant"] == "fp8_pertensor"
+    assert value["text_config"]["sparklab_kda_quant"] == "fp8_pertensor"
 
 
 def test_source_fingerprint_distinguishes_glm_kda_artifact_quantization(

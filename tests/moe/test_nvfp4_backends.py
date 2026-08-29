@@ -91,8 +91,15 @@ def _swigluoai_ref(h: torch.Tensor, alpha: float = 1.702, limit: float = 7.0) ->
     return gate * torch.sigmoid(gate * alpha) * (up + 1.0)
 
 
+def _situ_ref(h: torch.Tensor, beta: float = 4.0, linear_beta: float = 25.0) -> torch.Tensor:
+    """Kimi K3's SiTU over UNINTERLEAVED [gate; up] halves."""
+    gate = beta * torch.tanh(h[:I] / beta) * torch.sigmoid(h[:I])
+    up = linear_beta * torch.tanh(h[I:] / linear_beta)
+    return gate * up
+
+
 def _ref_moe(sources, layer_id, hidden, topk_weights, topk_ids, activation="silu") -> torch.Tensor:
-    """Dequant + dense per-token reference for the gated MoE (silu or swigluoai)."""
+    """Dequant + dense per-token reference for the supported gated MoE activations."""
     out = torch.zeros(hidden.shape, dtype=torch.float32, device=hidden.device)
     x = hidden.float()
     for t in range(hidden.size(0)):
@@ -111,6 +118,8 @@ def _ref_moe(sources, layer_id, hidden, topk_weights, topk_ids, activation="silu
             h = gu @ x[t]
             if activation == "swigluoai":
                 act = _swigluoai_ref(h)
+            elif activation == "situ":
+                act = _situ_ref(h)
             else:
                 act = torch.nn.functional.silu(h[:I]) * h[I:]
             out[t] += float(topk_weights[t, j]) * (dn @ act)
@@ -118,8 +127,8 @@ def _ref_moe(sources, layer_id, hidden, topk_weights, topk_ids, activation="silu
 
 
 def _marlin_cache(device, *, cache_size=S, prefill_overlap=False):
-    from freetoken.moe.nvfp4_backends import marlin_repack_sources_inplace
-    from freetoken.moe.offload_cache import OffloadMoeCache
+    from sparklab.moe.nvfp4_backends import marlin_repack_sources_inplace
+    from sparklab.moe.offload_cache import OffloadMoeCache
 
     sources = _make_native_sources(device)
     ref_sources = {k: [t.clone() for t in v] for k, v in sources.items()}  # repack is in place
@@ -143,7 +152,7 @@ def _marlin_cache(device, *, cache_size=S, prefill_overlap=False):
 @cuda
 @marlin
 def test_marlin_prefill_matches_dequant_reference():
-    from freetoken.moe.nvfp4_backends import marlin_fused_experts
+    from sparklab.moe.nvfp4_backends import marlin_fused_experts
 
     device = torch.device("cuda")
     cache, ref_sources = _marlin_cache(device)
@@ -172,7 +181,7 @@ def test_marlin_prefill_matches_dequant_reference():
 def test_marlin_decode_matches_dequant_reference_after_prefill_stomp():
     """Decode through the slot cache, including the request-B-after-request-A pattern
     that B1 guarded against: a layer-1 full-layer prefill between two layer-0 decodes."""
-    from freetoken.moe.nvfp4_backends import marlin_fused_experts
+    from sparklab.moe.nvfp4_backends import marlin_fused_experts
 
     device = torch.device("cuda")
     cache, ref_sources = _marlin_cache(device)
@@ -211,7 +220,7 @@ def test_marlin_overlap_prefill_matches_dequant_reference():
     (cache_size == 2E, so every slot is buffer-backed): if the prefetch failed to
     invalidate them, the post-prefill decode would "hit" stale mappings and read other
     experts' bytes; we assert it misses both experts instead."""
-    from freetoken.moe.nvfp4_backends import marlin_fused_experts
+    from sparklab.moe.nvfp4_backends import marlin_fused_experts
 
     device = torch.device("cuda")
     cache, ref_sources = _marlin_cache(device, cache_size=2 * E, prefill_overlap=True)
@@ -262,8 +271,8 @@ def test_marlin_overlap_prefill_matches_dequant_reference():
 def test_triton_overlap_prefill_matches_dequant_reference():
     """The 6-bank native layout through the same generic double buffer, consumed by
     the Triton inline-dequant grouped GEMM with unmapped routing ids (n = E)."""
-    from freetoken.moe.fused_nvfp4 import fused_experts_nvfp4
-    from freetoken.moe.offload_cache import OffloadMoeCache
+    from sparklab.moe.fused_nvfp4 import fused_experts_nvfp4
+    from sparklab.moe.offload_cache import OffloadMoeCache
 
     device = torch.device("cuda")
     sources = _make_native_sources(device, seed=5)
@@ -301,7 +310,7 @@ def test_triton_overlap_prefill_matches_dequant_reference():
 def test_triton_sparse_prefill_maps_large_cache_slots():
     """Logical expert sorting remains bounded by E when resident rows have large,
     non-contiguous cache-slot ids (the GB10 auto-cache geometry regression)."""
-    from freetoken.moe.fused_nvfp4 import fused_experts_nvfp4
+    from sparklab.moe.fused_nvfp4 import fused_experts_nvfp4
 
     device = torch.device("cuda")
     sources = _make_native_sources(device, seed=17)
@@ -340,7 +349,7 @@ def test_triton_swigluoai_matches_dequant_reference():
     """MiniMax-M3's swigluoai routed experts through the Triton prefill grouped GEMM
     and the marlin-style decode GEMV: same banks, the clamped (up+1) swiglu instead
     of silu, alpha/limit threaded through the fused entry points."""
-    from freetoken.moe.fused_nvfp4 import (
+    from sparklab.moe.fused_nvfp4 import (
         fused_experts_decode_nvfp4_marlin,
         fused_experts_nvfp4,
     )
@@ -376,10 +385,48 @@ def test_triton_swigluoai_matches_dequant_reference():
     _assert_close(out, ref)
 
 
+@cuda
+def test_triton_situ_matches_dequant_reference():
+    """Kimi K3's SiTU routed experts through both Triton NVFP4 entry points."""
+    from sparklab.moe.fused_nvfp4 import (
+        fused_experts_decode_nvfp4_marlin,
+        fused_experts_nvfp4,
+    )
+
+    device = torch.device("cuda")
+    sources = _make_native_sources(device, seed=19)
+    torch.manual_seed(20)
+    hidden = torch.randn(8, H, dtype=torch.bfloat16, device=device) / 4
+    topk_ids = torch.randint(0, E, (8, TOPK), dtype=torch.int32, device=device)
+    topk_weights = torch.rand(8, TOPK, dtype=torch.float32, device=device)
+    layer_id = 0
+    banks = [
+        sources[name][layer_id].to(device)
+        for name in (
+            "gate_up_packed", "gate_up_scale", "gate_up_global",
+            "down_packed", "down_scale", "down_global",
+        )
+    ]
+    ref = _ref_moe(sources, layer_id, hidden, topk_weights, topk_ids, activation="situ")
+    out = fused_experts_nvfp4(
+        hidden, *banks, topk_weights, topk_ids, E, "situ", False, 4.0, 25.0
+    )
+    _assert_close(out, ref)
+
+    dec_hidden = hidden[:1]
+    dec_ids = topk_ids[:1]
+    dec_weights = topk_weights[:1]
+    ref = _ref_moe(sources, layer_id, dec_hidden, dec_weights, dec_ids, activation="situ")
+    out = fused_experts_decode_nvfp4_marlin(
+        dec_hidden, *banks, dec_weights, dec_ids, "situ", False, 4.0, 25.0
+    )
+    _assert_close(out, ref)
+
+
 def _triton_cache(device, *, cache_size=S, prefill_overlap=False):
     """Native 6-bank NVFP4 cache (no repack), consumed directly by the Triton kernels.
     The banks are not transformed, so ``sources`` doubles as the dequant reference."""
-    from freetoken.moe.offload_cache import OffloadMoeCache
+    from sparklab.moe.offload_cache import OffloadMoeCache
 
     sources = _make_native_sources(device, seed=7)
     cache = OffloadMoeCache(
@@ -400,7 +447,7 @@ def test_triton_decode_marlin_matches_dequant_reference_after_prefill_stomp():
     """The production marlin-style int32 decode GEMV through the slot cache, including the
     request-B-after-request-A pattern (a layer-1 full-layer prefill between two layer-0
     decodes) that must force a miss + reload rather than serve stale slot bytes."""
-    from freetoken.moe.fused_nvfp4 import fused_experts_decode_nvfp4_marlin
+    from sparklab.moe.fused_nvfp4 import fused_experts_decode_nvfp4_marlin
 
     device = torch.device("cuda")
     cache, ref_sources = _triton_cache(device)
@@ -430,7 +477,7 @@ def test_triton_decode_marlin_matches_dequant_reference_after_prefill_stomp():
 def test_triton_decode_marlin_matches_baseline_kernel():
     """The production marlin-style decode GEMV must match the original LUT-gather decode
     within tolerance (it only reorders the dequant math: int32 wide load + deferred reduce)."""
-    from freetoken.moe.fused_nvfp4 import (
+    from sparklab.moe.fused_nvfp4 import (
         fused_experts_decode_nvfp4_marlin,
         fused_experts_decode_nvfp4_serial,
     )
@@ -452,7 +499,7 @@ def test_triton_decode_marlin_matches_baseline_kernel():
 def test_nvfp4_backend_selection():
     """--nvfp4-backend selection + the flashinfer/marlin device gates -- runs without a GPU
     via the CPU branch (forced backends need a usable device, so they error loudly there)."""
-    from freetoken.moe.nvfp4_backends import select_nvfp4_backend
+    from sparklab.moe.nvfp4_backends import select_nvfp4_backend
 
     cpu = torch.device("cpu")
     assert select_nvfp4_backend(cpu, None, "triton") == "triton"
@@ -469,12 +516,12 @@ def test_nvfp4_backend_selection():
 def test_b12x_decode_matches_dequant_reference():
     """sm_120 + CUDA>=13 only: the flashinfer b12x W4A16 fused MoE over the slot cache
     vs the dequant reference (skipped on hardware/toolkits where b12x cannot run)."""
-    from freetoken.moe.nvfp4_backends import (
+    from sparklab.moe.nvfp4_backends import (
         _b12x_unusable_reason,
         b12x_fused_experts,
         b12x_repack_sources_inplace,
     )
-    from freetoken.moe.offload_cache import OffloadMoeCache
+    from sparklab.moe.offload_cache import OffloadMoeCache
 
     device = torch.device("cuda")
     reason = _b12x_unusable_reason(torch.cuda.get_device_capability(device))
@@ -517,12 +564,12 @@ def test_b12x_sparse_prefill_slot_ids_match_dequant_reference():
     deduplicates a chunk's expert ids, rewrites every route to a slot, and the same
     b12x kernel must agree with the native NVFP4 dequant reference.
     """
-    from freetoken.moe.nvfp4_backends import (
+    from sparklab.moe.nvfp4_backends import (
         _b12x_unusable_reason,
         b12x_fused_experts,
         b12x_repack_sources_inplace,
     )
-    from freetoken.moe.offload_cache import OffloadMoeCache
+    from sparklab.moe.offload_cache import OffloadMoeCache
 
     device = torch.device("cuda")
     reason = _b12x_unusable_reason(torch.cuda.get_device_capability(device))
@@ -564,7 +611,7 @@ def test_dummy_nvfp4_sources_match_loader_contract():
     """--use-dummy-weight banks must match the real loader's shapes/dtypes/pinning so the
     engine repack/offload path is exercised unchanged. The marlin repack + offload gather
     tail (which needs vllm) lives in test_dummy_nvfp4_sources_marlin_repack."""
-    from freetoken.models.weight import dummy_nvfp4_expert_sources
+    from sparklab.models.weight import dummy_nvfp4_expert_sources
 
     cfg = types.SimpleNamespace(
         num_layers=L, num_experts=E, hidden_size=H, moe_intermediate_size=I
@@ -587,14 +634,34 @@ def test_dummy_nvfp4_sources_match_loader_contract():
 
 
 @cuda
+def test_dummy_nvfp4_sources_use_latent_expert_width():
+    """Kimi projects 7168-wide residuals into 3584-wide routed experts."""
+    from sparklab.models.weight import dummy_nvfp4_expert_sources
+
+    latent = H // 2
+    cfg = types.SimpleNamespace(
+        num_layers=1,
+        num_experts=E,
+        hidden_size=H,
+        expert_hidden_size=latent,
+        moe_intermediate_size=I,
+    )
+    sources = dummy_nvfp4_expert_sources(cfg)
+    assert sources["gate_up_packed"][0].shape == (E, 2 * I, latent // 2)
+    assert sources["gate_up_scale"][0].shape == (E, 2 * I, latent // 16)
+    assert sources["down_packed"][0].shape == (E, latent, I // 2)
+    assert sources["down_scale"][0].shape == (E, latent, I // 16)
+
+
+@cuda
 @marlin
 def test_dummy_nvfp4_sources_marlin_repack():
     """The --use-dummy-weight banks drop into the same marlin repack + offload path as the
     real loader's (in-place repack). The gather kernel reads the banks zero-copy from the
     GPU, which requires the allocator's memory to be device-mapped, not merely page-locked."""
-    from freetoken.models.weight import dummy_nvfp4_expert_sources
-    from freetoken.moe.nvfp4_backends import marlin_repack_sources_inplace
-    from freetoken.moe.offload_cache import OffloadMoeCache
+    from sparklab.models.weight import dummy_nvfp4_expert_sources
+    from sparklab.moe.nvfp4_backends import marlin_repack_sources_inplace
+    from sparklab.moe.offload_cache import OffloadMoeCache
 
     cfg = types.SimpleNamespace(
         num_layers=L, num_experts=E, hidden_size=H, moe_intermediate_size=I
@@ -623,7 +690,7 @@ def test_dummy_nvfp4_sources_marlin_repack():
 def test_b12x_pack_is_byte_compatible_with_native_banks():
     """The b12x kernel needs sm_120, but its pack is pure torch: verify the prepared
     blocks drop into the native banks byte-for-byte (the in-place repack contract)."""
-    from freetoken.moe.nvfp4_backends import b12x_repack_sources_inplace
+    from sparklab.moe.nvfp4_backends import b12x_repack_sources_inplace
 
     device = torch.device("cuda")
     sources = _make_native_sources(device, seed=3)

@@ -5,7 +5,7 @@ Last updated: 2026-08-28
 ## Result
 
 The complete pinned `RedHatAI/GLM-5.3-Flash-NVFP4` checkpoint was converted into
-Spark Lab's FTW NVFP4 layout and served through the OpenAI-compatible streaming API on
+SparkLab's FTW NVFP4 layout and served through the OpenAI-compatible streaming API on
 one NVIDIA GB10. After correcting GLM-5.3 KDA and reallocating unified memory toward
 GPU-resident experts, the measured request decoded at **4.46 tok/s** with **5.760 s warm
 TTFT**.
@@ -31,7 +31,7 @@ result; the performance thresholds were not met. Compact evidence:
 
 The source index publishes a stale logical total: 190,197,820,540 bytes versus
 190,204,505,212 bytes computed from its tensor headers. Every name, declared shard,
-tensor range, and physical shard boundary validates; Spark Lab records the 6,684,672-byte
+tensor range, and physical shard boundary validates; SparkLab records the 6,684,672-byte
 metadata discrepancy without treating the complete snapshot as corrupt.
 
 ## Method
@@ -44,7 +44,7 @@ sizing, sparse prefill through 512 tokens, and no CUDA graph. This shifts memory
 ineffective host LRU and unused second staging layer into GPU expert residency.
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 FREETOKEN_DISK_READ_WORKERS=16 PYTHONPATH=python:. \
+CUDA_VISIBLE_DEVICES=0 SPARKLAB_DISK_READ_WORKERS=16 PYTHONPATH=python:. \
   .venv/bin/python benchmarks/bench_decode_moe.py \
   --model /path/to/glm-5.3-flash/prepared/0.3.1 \
   --recipe glm-5.3-flash \

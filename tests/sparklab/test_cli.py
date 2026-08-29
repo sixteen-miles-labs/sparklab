@@ -10,19 +10,18 @@ def test_help_and_version_are_spark_lab_branded(capsys):
     help_text = capsys.readouterr().out
     assert "usage: sparklab" in help_text
     assert "NVIDIA GB10" in help_text
-    assert "legacy `ft`" in help_text
     assert "FreeToken" not in help_text
 
     assert cli.main(["--version"]) == 0
     version = capsys.readouterr().out
-    assert "Spark Lab" in version
+    assert "SparkLab" in version
     assert "FreeToken" not in version
 
 
 def test_models_json_exposes_tier_and_admission_status(capsys):
     assert cli.main(["models", "--tier", "research", "--json"]) == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["product"] == "Spark Lab" and payload["platform"] == "gb10"
+    assert payload["product"] == "SparkLab" and payload["platform"] == "gb10"
     assert [recipe["slug"] for recipe in payload["recipes"]] == ["glm-5.2", "kimi-k3"]
     assert all(recipe["status"] == "experimental" for recipe in payload["recipes"])
     assert payload["recipes"][0]["parameters"] == "753B total / 40B active"
@@ -69,7 +68,7 @@ def test_models_research_table_includes_measured_glm52_fallback(capsys):
     assert "Kimi K3" in output
 
 
-def test_legacy_engine_command_is_delegated_unchanged(monkeypatch):
+def test_native_engine_command_is_delegated_unchanged(monkeypatch):
     seen = []
     monkeypatch.setitem(cli.COMMANDS, "serve", lambda args: seen.append(args) or 7)
     assert cli.main(["serve", "--model", "/checkpoint", "--port", "1919"]) == 7

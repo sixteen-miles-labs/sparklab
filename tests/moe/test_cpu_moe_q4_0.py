@@ -39,7 +39,7 @@ def _pack_q4_0(nibbles: torch.Tensor, scale: torch.Tensor) -> torch.Tensor:
 
 def _dequant_bank(packed: torch.Tensor, K: int, dev) -> torch.Tensor:
     """[S, OUT, K//32*18] packed Q4_0 -> [S, OUT, K] bf16 (storage order == elem order)."""
-    from freetoken.models.gguf.dequant import GGML_Q4_0, dequantize
+    from sparklab.models.gguf.dequant import GGML_Q4_0, dequantize
 
     S, OUT, _ = packed.shape
     flat = dequantize(packed.reshape(-1), GGML_Q4_0, torch.bfloat16)
@@ -48,7 +48,7 @@ def _dequant_bank(packed: torch.Tensor, K: int, dev) -> torch.Tensor:
 
 def _make_q4_0_cache(L, E, H, I, seed=0):
     """Random but valid native Q4_0 banks for the cpu backend (pinned host tensors)."""
-    from freetoken.kernel.pinned import alloc_pinned_tensor
+    from sparklab.kernels.pinned import alloc_pinned_tensor
 
     torch.manual_seed(seed)
     S = L * E
@@ -74,8 +74,8 @@ def _make_q4_0_cache(L, E, H, I, seed=0):
 @pytest.mark.parametrize("bs", [1, 3, 8])
 def test_cpu_decode_q4_0_matches_dequant_then_gpu(bs):
     """CPU inline-dequant Q4_0 GEMV vs. canonical dequant_q4_0 + bf16 GPU decode."""
-    from freetoken.moe.cpu_executor import CpuMoeExecutor
-    from freetoken.moe.fused import fused_experts_decode_impl
+    from sparklab.moe.cpu_executor import CpuMoeExecutor
+    from sparklab.moe.fused import fused_experts_decode_impl
 
     torch.manual_seed(400 + bs)
     L, E, H, I, top_k = 3, 16, 2816, 704, 8   # gemma-4-26B-A4B geometry (H,I % 32 == 0)
@@ -115,8 +115,8 @@ def test_cpu_decode_q4_0_matches_dequant_then_gpu(bs):
 def test_cpu_decode_q4_0_matches_ggml_mmvq():
     """Sanity: the CPU W4A16 GEMV lands close to the GPU ggml MMVQ (W4A8) kernel the
     offload path uses -- a looser tol since MMVQ quantizes activations to int8."""
-    from freetoken.moe.cpu_executor import CpuMoeExecutor
-    from freetoken.moe.fused_q4_0 import fused_experts_gguf_q4_0
+    from sparklab.moe.cpu_executor import CpuMoeExecutor
+    from sparklab.moe.fused_q4_0 import fused_experts_gguf_q4_0
 
     torch.manual_seed(77)
     L, E, H, I, top_k = 2, 16, 2816, 704, 8
@@ -150,8 +150,8 @@ def test_cpu_decode_q4_0_matches_ggml_mmvq():
 def test_cpu_moe_decode_q4_0_cuda_graph_replay():
     """Q4_0 CPU path under capture/replay: the host nodes must recompute the GEMV from
     the freshly written pinned routing on each replay (dep flows through pinned buffers)."""
-    from freetoken.moe.cpu_executor import CpuMoeExecutor
-    from freetoken.moe.fused import fused_experts_decode_impl
+    from sparklab.moe.cpu_executor import CpuMoeExecutor
+    from sparklab.moe.fused import fused_experts_decode_impl
 
     torch.manual_seed(9)
     L, E, H, I, top_k = 2, 8, 2816, 704, 8

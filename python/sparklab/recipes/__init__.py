@@ -1,1 +1,1 @@
-"""Packaged Spark Lab GB10 model recipes."""
+"""Packaged SparkLab GB10 model recipes."""

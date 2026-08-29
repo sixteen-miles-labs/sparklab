@@ -89,7 +89,7 @@ def test_artifact_plan_prefers_prebuilt_runtime_without_source_space(
         prepared_bytes=9 * GIB,
         minimum_free_bytes=24 * GIB,
         runtime_artifact=RuntimeArtifact(
-            repo_id="freetoken/qwen-ftw",
+            repo_id="sparklab/qwen-ftw",
             revision="a" * 40,
             bytes=9 * GIB,
             fingerprint="ftw-fingerprint",

@@ -8,14 +8,14 @@ from __future__ import annotations
 import pytest
 import torch
 
-from freetoken.moe.offload_cache import _BANK_SCHEMAS, OffloadMoeCache
+from sparklab.moe.offload_cache import _BANK_SCHEMAS, OffloadMoeCache
 
 CUDA = pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 
 # mxfp4_triton 6-bank schema with mixed 16B-aligned per-row sizes (bytes), >=256 so the
 # legacy per-bank kernel's vectorized template is valid. Sizes not covered by a model in
 # kernel/aot_models.py must be listed in its TEST_FEATURE_SIZES so the per-bank kernels
-# stay prebuilt under FREETOKEN_DISABLE_JIT=1.
+# stay prebuilt under SPARKLAB_DISABLE_JIT=1.
 FEATS = [8192, 512, 256, 4096, 512, 256]
 
 

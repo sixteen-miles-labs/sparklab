@@ -1,6 +1,6 @@
 # Frontier Models on One GB10: DSV4 Flash to GLM-5.2 to Kimi K3
 
-Last updated: 2026-08-23
+Last updated: 2026-08-28
 
 ## Summary
 
@@ -12,7 +12,7 @@ gates:
 
 1. reproduce `deepseek-ai/DeepSeek-V4-Flash-0731` on GB10;
 2. run `nvidia/GLM-5.2-NVFP4` using the validated disk/cache stack;
-3. attempt the full official `moonshotai/Kimi-K3` checkpoint.
+3. attempt the full `nvidia/Kimi-K3-NVFP4` checkpoint at its pinned revision.
 
 DSV4 Flash is the control experiment. It verifies SM121 kernels, FTW conversion,
 explicit NVMe storage, unified-memory accounting, cache behavior, and benchmark
@@ -29,16 +29,258 @@ claim of performance parity with hosted Kimi K3:
 > GB10 runtime can scale to GLM-5.2 and ultimately generate reference-validated
 > output from a 2.8T-parameter, approximately 1.5 TB Kimi K3 checkpoint.
 
-All performance numbers below are pre-measurement hypotheses:
+The following target table is the original pre-measurement hypothesis. Values in
+the current execution record are measured only where their evidence is explicitly
+identified; kernel and layer-probe timings are not full-model throughput:
 
 | Program stage | Initial target | Stretch target |
 |---|---:|---:|
 | DSV4 Flash reproduction | 2-4 tok/s | 4-6 tok/s |
 | GLM-5.2 official NVFP4 | 0.45-0.75 tok/s | 1.0 tok/s |
-| Kimi K3 official MXFP4 | 0.2-0.5 tok/s | 1.0 tok/s |
+| Kimi K3 NVIDIA NVFP4 | 0.2-0.5 tok/s | 1.0 tok/s |
 | Kimi K3 mixed cold tier | 0.5-1.0 tok/s | 2.0 tok/s |
 
 Official-weight and modified low-bit results must always be reported separately.
+
+## Current execution record: NVIDIA Kimi K3 NVFP4
+
+This section is the authoritative record for the active full-checkpoint run. The
+older Moonshot MXFP4 design material below remains useful background, but it does
+not describe the artifact currently being tested.
+
+### Artifact and inventory
+
+| Field | Value |
+|---|---|
+| Repository | `nvidia/Kimi-K3-NVFP4` |
+| Immutable revision | `f8c5234a0a880bcc6cbf779a315e7ee2f405b812` |
+| Hugging Face files | 116 total, including 96 safetensors shards |
+| Indexed tensors | 992,508 |
+| Indexed logical tensor bytes | 1,609,777,087,808 |
+| Validated safetensors physical bytes | 1,609,918,090,976 |
+| Initial remote byte estimate | 1,610,038,482,254 |
+| Whole repository bytes | 1,610,039,528,867 |
+| ModelOpt producer | 0.45.0 |
+| Quantized layer groups | 2,790 `FP8_PB_WO`; 552 `NVFP4` |
+
+The resumable pull ran from `2026-08-28T17:33:38.979225+00:00` through
+`2026-08-29T02:02:49.767688+00:00`, completing in 30,550.8 seconds (8.49 hours)
+at an effective 52.70 MB/s. All 96 shards and 1,609,918,090,976 manifest-validated
+physical bytes are present, with no partial files. The strict metadata/header audit
+passed with complete 2,946/2,946 model-state mapping, 992,508 indexed tensors,
+741,888 indexed expert entries, no cross-shard resident scales, and no errors.
+The final acquisition records are
+`/home/lidaiqing/results/kimi-k3-gb10/acquisition-final.json` and
+`/home/lidaiqing/results/kimi-k3-gb10/source-audit-final.json`.
+
+Acquisition recorded zero new OOM kills and one isolated swap-out page (4 KiB)
+over the full 8.49-hour window; the counter did not continue increasing. This is
+preserved in the final telemetry rather than rounded away. Conversion and runtime
+promotion, when resumed, must establish fresh baselines and independently satisfy
+their zero-delta safety gates.
+
+The NVIDIA checkpoint differs materially from the original Moonshot artifact. It
+uses ModelOpt mixed quantization: routed experts are NVFP4, aligned resident
+attention/KDA projections are 128x128 block FP8, and the remaining tensors retain
+their checkpoint precision. The FTW conversion preserves that representation; it
+does not requantize the model into a second format.
+
+The native bank mapping also matches NVIDIA's
+[ModelOpt NVFP4 reference implementation](https://github.com/NVIDIA/Model-Optimizer/blob/main/modelopt/torch/quantization/qtensor/nvfp4_tensor.py):
+the low nibble stores the even E2M1 value, the high nibble stores the odd value,
+and dequantization multiplies the E4M3 block scale directly by
+`weight_scale_2`. Unlike compressed-tensors' quant-side
+`weight_global_scale`, ModelOpt's `weight_scale_2` is already a dequantization
+scale and must not be inverted.
+
+Pre-conversion index audits passed:
+
+- the text model constructed on the meta device expects 2,946 resident state keys;
+  the mapped source index contains exactly 2,946, with no missing or unexpected keys;
+- all 741,888 required expert `weight`, `weight_scale`, and `weight_scale_2`
+  entries map exactly once, with no gaps or duplicates;
+- completed-shard header probes confirm the packed weight and scale shapes used by
+  the native NVFP4 banks;
+- a real payload probe of shard 11, expert 0 (`w1`, `w2`, and `w3`) found finite
+  E4M3 block scales in `[64, 256]`, a shared ModelOpt dequant scale of
+  `0.0001220703125` (`2^-13`), and a resulting conservative absolute weight bound
+  of `0.1875`; this magnitude also rules out accidentally inverting
+  `weight_scale_2`;
+- a real 128x128 block from layer 0 `self_attn.f_b_proj` passed the GB10 resident
+  FP8 kernel probe with the checkpoint's FP32 scale: batch-one W8A16 decode was
+  bit-exact to dense dequantization, while the W8A8 prefill path reached cosine
+  `0.99964875` and relative L2 error `0.02653` for eight rows;
+- the actual unaligned layer-0 `b_proj` (`96x7168`) and the absorbed layer-3
+  `kv_b_proj` (`24576x512`) both normalized their singleton-rich ModelOpt scale
+  grids to the expected 2-D block layouts and dequantized to finite BF16; sampled
+  entries were bit-exact to literal FP8 x block-scale multiplication;
+- a payload sanity sweep across the first 16 completed shards found no invalid
+  values in 120 resident FP8 scale tensors or in the 45 block-scale and 45 global
+  scale tensors for expert 0 across the represented MoE layers;
+- a guarded production-loader probe of global layer 1 materialized all 896 experts
+  and all 8,064 required packed/scale/global source entries into the exact
+  16,664,625,152-byte (15.520 GiB) native bank. This probe caught and fixed a
+  pre-conversion geometry bug: model-agnostic NVFP4 allocation had used the
+  7,168-wide residual stream instead of Kimi's 3,584-wide latent expert stream;
+- after that fix, 16 real experts spanning IDs 0 through 895 matched literal E2M1
+  dequantization through the GB10 SiTU kernels. One-token decode reached cosine
+  `0.99999523` and relative L2 error `0.003063`; eight-token prefill reached cosine
+  `0.99999499` and relative L2 error `0.003152`. The sample-bank SHA-256 is
+  `e18785bf7a882451dd1a22adfa0ebb54ecf4e6603ef854829dbf1f67279ab7f2`;
+- the same genuine layer then passed a production streaming-FTW round trip. Its six
+  banks produced exactly 16,664,625,152 logical bytes across an 8 GiB shard and a
+  7.52 GiB shard; all 5,376 `(layer, expert, bank)` row descriptors indexed cleanly.
+  O_DIRECT reads of the same 16 spread expert IDs reproduced the source SHA-256
+  exactly, including FP8 storage bytes, and the temporary FTW returned disk usage to
+  baseline after validation;
+- the pre-probe targeted implementation suite passed 211 tests with 5
+  hardware/environment skips. After the latent-width fix, the focused Kimi,
+  offload, conversion, catalog, and promotion-gate subset passes 79 tests with 4
+  optional-backend skips, including GB10 numerical coverage for SiTU through both
+  NVFP4 prefill and decode paths.
+
+The reproducible metadata-only auditor is
+`benchmarks/audit_kimi_k3_checkpoint.py`. During acquisition it writes
+`/home/lidaiqing/results/kimi-k3-gb10/source-audit-partial.json` with
+`--allow-partial`; the final evidence audit reruns it without that flag after all
+96 indexed shards are present. The real-layer payload probe is
+`benchmarks/probe_kimi_k3_expert_layer.py`; its payload and supervisor records are
+`/home/lidaiqing/results/kimi-k3-gb10/expert-layer1.json` and
+`expert-layer1-supervision.json`.
+The conversion-seam round trip is `benchmarks/probe_kimi_k3_ftw_layer.py`; its
+payload and supervisor records are `ftw-layer1.json` and
+`ftw-layer1-supervision.json` in the same results directory.
+
+### Exact routed-pool geometry
+
+One prepared NVFP4 expert row is 18,598,912 bytes (17.7373 MiB), including packed
+gate/up/down weights, block scales, and expanded per-output-row global scales.
+
+| Allocation or traffic | Exact size |
+|---|---:|
+| Full 92 x 896 routed pool | 1,427.853 GiB |
+| One 896-expert layer | 15.520 GiB |
+| Minimum 896-slot device cache | 15.520 GiB |
+| 16 routed experts across 92 layers, before cache hits | 25.497 GiB/token |
+| All non-expert source tensors, before dropping vision/calibration metadata | 72.861 GiB |
+
+The FTW per-row global expansion adds approximately 1.492 GiB to the routed pool.
+The full-layer staging path is deliberately avoided for the first request: an
+896-slot cache is the runtime minimum and short prompts use route-first sparse
+prefill.
+
+### OOM and storage controls
+
+The host had approximately 3.7 GiB of pre-existing swap occupancy before this run.
+That absolute value is not attributed to Kimi; every stage records swap growth and
+swap-I/O deltas. Reported runtime evidence requires zero new swap-out and zero OOM
+kills. The workflow records Linux `oom_kill`, `pswpin`, `pswpout`, minimum
+`MemAvailable`, and process-group peak RSS.
+
+After the requested model cleanup, a byte-level preflight at 36 of 96
+completed source shards observed 2,786,563,706,880 free bytes and credited the
+resumable partial-download cache, which becomes source data
+rather than permanent duplication. SparkLab's source-conversion plan requires
+2,732,573,696,864 additional bytes, including the remaining pinned source, the
+declared 1,610,038,482,254-byte FTW artifact, and a 128 GiB policy reserve. It
+therefore projects 191,428,963,488 bytes (178.3 GiB) free after the durable source
+and prepared artifacts, 38.3 GiB above the 140 GiB conversion stop floor.
+
+The plan reports `artifacts.ready=true` and zero storage shortfall. It is a capacity
+projection, not proof of the eventual prepared size; the live disk guard remains
+authoritative. Runtime admission remains correctly closed because no full Kimi
+runtime-memory budget has been measured and the machine has pre-existing swap
+occupancy. The record is
+`/home/lidaiqing/results/kimi-k3-gb10/plan-partial.json`; artifact capacity is not
+being misreported as runtime certification.
+
+Conversion is guarded by:
+
+- `MemAvailable >= 12 GiB`;
+- free filesystem space `>= 140 GiB`;
+- a validated pinned-source manifest before conversion starts;
+- a passing strict audit of all 96 shards, including the complete mapped model
+  state, 741,888 expert entries, resident FP8/FP32 scale geometry, and scale
+  co-location, before conversion starts;
+- an FTW structural validation before serving starts.
+
+`benchmarks/validate_conversion_promotion.py` is the fail-closed handoff between
+conversion and serving. In addition to successful exit and intact memory/disk
+telemetry, it requires zero `oom_kill`, zero `pswpout`, and zero swap-occupancy
+growth; missing counters fail the gate. Its record is
+`/home/lidaiqing/results/kimi-k3-gb10/conversion-gate.json`. The supervisor/gate
+schema was exercised end to end with a short child process before queuing the full
+conversion.
+
+The successful real-layer probe reached a 34,177,593,344-byte process-group peak
+RSS and 104,119,128,064-byte minimum `MemAvailable`, with zero OOM-kill and
+swap-out deltas. Its kernel timings include first-use compilation and are numerical
+probe timings, not end-to-end decode throughput. The preceding attempt successfully
+loaded and released the layer but failed while hashing FP8 evidence through NumPy;
+that non-runtime failure is preserved in `expert-layer1-attempt1-supervision.json`.
+
+The FTW round trip reached a 34,584,514,560-byte process-group peak RSS and
+103,983,493,120-byte minimum `MemAvailable`, again with zero OOM-kill and swap-out
+deltas. Its 22.31-second load/write interval and 0.27-second sampled-row read are
+conversion-integrity observations, not full-checkpoint conversion or decode rates.
+
+The conversion command is:
+
+```bash
+CUDA_HOME=/usr/local/cuda PATH=/usr/local/cuda/bin:$PATH \
+SPARKLAB_CONVERT_PROGRESS=1 PYTHONPATH=python \
+.venv/bin/python benchmarks/supervise_process.py \
+  --output /home/lidaiqing/results/kimi-k3-gb10/conversion.json \
+  --log /home/lidaiqing/results/kimi-k3-gb10/conversion.log \
+  --disk-path /home/lidaiqing --min-memory-gib 12 --min-disk-gib 140 \
+  -- .venv/bin/sparklab checkpoint \
+  --model /home/lidaiqing/.sparklab/models/kimi-k3/source/f8c5234a0a88 \
+  --out /home/lidaiqing/.sparklab/models/kimi-k3/prepared/0.2.0 \
+  --dtype bfloat16 --moe-backend offload --nvfp4-backend triton \
+  --shard-gib 8 --device cuda:0
+```
+
+### Staged runtime ladder
+
+The first complete-checkpoint probe uses the minimum expert cache and a fail-closed
+12 GiB memory floor:
+
+```bash
+PYTHONPATH=python .venv/bin/python benchmarks/bench_decode_moe.py \
+  --model /home/lidaiqing/.sparklab/models/kimi-k3/prepared/0.2.0 \
+  --recipe kimi-k3 --backend offload --storage disk --nvfp4-backend triton \
+  --host-cache-gb 0 --cache 896 --cache-policy lru --mem-ratio 0.85 \
+  --num-tokens 2048 --disable-prefill-overlap \
+  --prefill-sparse-max-tokens 256 --decode 1 --no-graph \
+  --collect-moe-stats --greedy --include-output --min-memory-gib 12 \
+  --json /home/lidaiqing/results/kimi-k3-gb10/probe-1.jsonl
+```
+
+Promotion is strictly one token, then 16, 64, and finally 256 tokens. A stage is
+promoted only after the prior result shows a complete API response, no memory-guard
+trigger, zero OOM-kill delta, zero swap-out delta, zero swap growth, and plausible
+greedy output. Throughput and correctness remain **not measured** until those
+full-checkpoint probes finish; analytical ceilings elsewhere in this report are not
+benchmark results.
+
+`benchmarks/validate_decode_promotion.py` enforces that contract against each raw
+JSONL row before the next server launch. It also requires an identified FTW
+checkpoint, complete token/event accounting, a nonempty output hash and payload,
+and both lifecycle-wide and measured-request safety telemetry. Gate records are
+saved as `/home/lidaiqing/results/kimi-k3-gb10/gate-{1,16,64,256}.json`; a missing
+counter is a failure rather than an assumed zero.
+
+`benchmarks/finalize_kimi_k3_result.py` performs the publication handoff. It
+independently rereads the acquisition, strict source audit, conversion telemetry,
+conversion gate, four raw decode rows, and four decode gates; it also requires one
+consistent FTW fingerprint/byte size and prefix-consistent greedy output across the
+ladder. Only then does it write the schema-conforming compact result
+`benchmarks/gb10/results/GB10-KIMI-001.json`.
+
+Each raw rung also records the dataset's expected AIME answer, an extracted boxed or
+explicit final answer when present, and the exact match result. Unfinished reasoning
+therefore remains valid serving/safety evidence but is not mislabeled as task
+correctness in the compact benchmark.
 
 ## Program order and promotion gates
 
@@ -393,13 +635,16 @@ The Arm CPU path is a risk: current FreeToken MXFP4 CPU optimization primarily
 targets x86 AVX2/AVX-512. Begin GPU-only on GB10 and benchmark any Arm kernel
 before enabling hybrid scheduling.
 
-## Stage C implementation roadmap
+## Historical Stage C implementation roadmap
 
-### Implementation status (2026-08-26)
+### Archived implementation status (2026-08-26; superseded)
 
-Architecture work began in parallel with the GLM-5.2 checkpoint experiment; no
-full K3 download, conversion, or GPU run has started. The current text-only code
-includes:
+This section preserves the pre-acquisition design baseline for the original
+Moonshot checkpoint. It is not the status of the current NVIDIA ModelOpt
+experiment described at the start of this report. At that historical snapshot,
+architecture work had begun in parallel with the GLM-5.2 checkpoint experiment,
+but no full K3 download, conversion, or GPU run had started. The text-only code at
+that point included:
 
 - both K3 architecture registrations and strict parsing of the released 1-based
   69-KDA/24-MLA layer partition;
@@ -424,7 +669,7 @@ confirmed that all 2,367 non-expert text tensors map exactly onto the FreeToken
 text model state. Header checks also confirm the expert matrices use the expected
 MXFP4 shapes: gate/up `[3072, 1792]` and down `[3584, 1536]`, plus group-32 scales.
 
-This is an architecture milestone, not a K3 inference claim. Open items before
+This was an architecture milestone, not a K3 inference claim. Open items before
 K3-C1/C2 can pass are a full-checkpoint streaming-conversion rehearsal, GPU parity
 for KDA/MLA/MXFP4, a chunk-efficient KDA prefill/snapshot path, tokenizer/parser
 validation against official transcripts, and the deferred vision tower. Direct loading
@@ -670,38 +915,47 @@ cold-start, warm-repeated, and warm-distinct numbers.
    bounded-memory feasibility result and treat mixed quantization as a separate
    usability track.
 
-## Headline result template
+## Headline result matrix
 
-The final report should show the complete promotion ladder rather than selecting
-only the best Kimi run:
+The final report shows the complete promotion ladder rather than selecting only
+the best Kimi run:
 
-| Model/configuration | Weight fidelity | Peak memory | TTFT | Decode | Physical GB/token | Cache hit | Power |
+| Model/configuration | Weight fidelity | Peak memory | TTFT | Decode | Physical GiB/token | Cache hit | Power |
 |---|---|---:|---:|---:|---:|---:|---:|
-| DSV4 D0 synchronous control | Official FP4 | TBD | TBD | TBD | TBD | TBD | TBD |
-| DSV4 selected GB10 run | Official FP4 | TBD | TBD | TBD | TBD | TBD | TBD |
-| GLM G1 synchronous control | Official NVFP4 | TBD | TBD | TBD | TBD | TBD | TBD |
-| GLM selected GB10 run | Official NVFP4 | TBD | TBD | TBD | TBD | TBD | TBD |
-| Kimi K0 synchronous baseline | Official MXFP4 | TBD | TBD | TBD | TBD | 0% | TBD |
-| Kimi best official-weight run | Official MXFP4 | TBD | TBD | TBD | TBD | TBD | TBD |
-| Kimi best mixed cold-tier run | Mixed, specify | TBD | TBD | TBD | TBD | TBD | TBD |
-| Hosted K3 API observation | Official service | N/A | TBD | 30-60 tok/s range | N/A | N/A | N/A |
+| DSV4 no-overlap control | Official DS-FP4 | 87.34 GiB device | 16.219 s | 4.764 tok/s | 2.864 GiB | 78.6% | Not recorded |
+| DSV4 selected GB10 run | Official DS-FP4 | 76.19 GiB device | 0.604 s | 10.282 tok/s | 0 GiB | 100% | 37.95 W avg |
+| GLM G1 synchronous control | Official NVFP4 | 30.44 GiB device | 45.760 s | 0.619 tok/s | 17.909 GiB | 0% | 15.00 W avg |
+| GLM selected GB10 run | Official NVFP4 | 33.70 GiB device | 2.569 s | 0.802 tok/s | 8.769 GiB | 26.5% | 16.57 W avg |
+| Kimi 1-token admission probe | NVIDIA ModelOpt NVFP4 experts + FP8 resident | Pending gated run | Pending | N/A | Pending | Pending | Pending |
+| Kimi 16-token promoted probe | NVIDIA ModelOpt NVFP4 experts + FP8 resident | Pending gated run | Pending | Pending | Pending | Pending | Pending |
+| Kimi 64-token correctness probe | NVIDIA ModelOpt NVFP4 experts + FP8 resident | Pending gated run | Pending | Pending | Pending | Pending | Pending |
+| Kimi 256-token sustained probe | NVIDIA ModelOpt NVFP4 experts + FP8 resident | Pending gated run | Pending | Pending | Pending | Pending | Pending |
+| Kimi best mixed cold-tier run | Separate experiment | Not run | Not run | Not run | Not run | Not run | Not run |
+| Hosted K3 API observation | Official service | N/A | Not measured | Not measured | N/A | N/A | Not measured |
 
-## Immediate next actions
+Peak memory in this matrix is the server's reported device allocation. Physical
+GiB/token divides measured-request physical I/O by returned completion tokens; it
+is not an SSD bandwidth figure. The pending Kimi cells are populated only from
+their promoted raw rows, never from layer probes or analytical projections.
 
-1. Acquire GB10 access and record its exact SSD, firmware, driver, and memory state.
-2. Copy or download DSV4 Flash, convert it to FTW on GB10, and run the D0 one-token
-   smoke test with swap disabled.
-3. Reproduce the D1-D4 ladder and the 64/256-token controls from
-   [exp_dsv4.md](exp_dsv4.md).
-4. Implement any SM121 or unified-memory fixes in the shared runtime, never as a
-   DSV4-only workaround.
-5. Acquire GLM-5.2-NVFP4, inventory resident versus routed bytes, and run G0 only
-   after the Stage A report is complete.
-6. Complete G1-G7, including short-prefill, shared-expert overlap, layer-aware GPU
-   eviction, and one-pool GB10 memory accounting.
-7. Freeze and document the validated storage/cache interfaces at the Stage B gate.
-8. While GLM runs, keep K3 work CPU/static only: finish XTML parsing, the resident
-   memory inventory, and bounded conversion tests without competing for GB10 GPU or
-   NVMe bandwidth.
-9. After the GLM Stage B gate, run K3-C0 hardware checks, add its `ft bench bw`
-   geometry, then perform the first full K3 FTW conversion and GPU parity ladder.
+## Deferred actions for the Kimi run
+
+The pinned source acquisition and strict complete-source audit are finished. Per
+the refactor pause, no usable FTW conversion, runtime probe, or benchmark result
+was produced. A pre-queued conversion watcher raced the final source audit and ran
+for 16.5 seconds before it was caught and stopped. Its two incomplete FTW shards
+(16,621,034,424 bytes) were moved out of the active prepared path to
+`/home/lidaiqing/.sparklab/models/kimi-k3/prepared-interrupted-20260829T020606Z`;
+the canonical prepared path and `conversion.json` are absent. The interruption is
+recorded in
+`/home/lidaiqing/results/kimi-k3-gb10/conversion-interrupted-20260829T020606Z.json`.
+
+1. After the refactor, run the supervised FTW conversion; stop on the disk or
+   memory floor, any OOM or
+   swap-out delta, conversion failure, or structural FTW validation error.
+2. Promote the complete checkpoint through 1, 16, 64, and 256 greedy tokens only
+   after each raw row passes safety, provenance, output, and accounting checks.
+3. Run the fail-closed result finalizer, populate the pending Kimi matrix cells from
+   the promoted rows, and add `GB10-KIMI-001` to the GB10 benchmark index.
+4. Update recipe evidence and limitations only to the level proven by the full run,
+   then rerun focused tests, JSON/schema checks, and the completion audit.

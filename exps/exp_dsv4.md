@@ -78,7 +78,7 @@ Two retention paths were corrected:
 Command:
 
 ```bash
-FREETOKEN_CONVERT_PROGRESS=1 .venv/bin/ft checkpoint \
+SPARKLAB_CONVERT_PROGRESS=1 .venv/bin/sparklab checkpoint \
   --model /mnt/ssd/freetoken/models/DeepSeek-V4-Flash-0731 \
   --out /mnt/ssd/freetoken/ftw/DeepSeek-V4-Flash-0731 \
   --dtype bfloat16 \
@@ -345,7 +345,7 @@ both ID sets into one deduplicated disk request before CPU submission. This give
 the disk source one larger coalescing/read-pool batch and prevents `copy_missing`
 from restaging the GPU subset.
 
-The optional `FREETOKEN_DISK_CACHE_POLICY=layer_lru` policy protects a fair cache
+The optional `SPARKLAB_DISK_CACHE_POLICY=layer_lru` policy protects a fair cache
 floor for each of the 43 MoE layers. Capacity that a layer is not using remains
 borrowable, and eviction first targets the oldest entry from a layer above its
 floor. This avoids both the cross-layer churn of a single unconstrained LRU and the
@@ -393,8 +393,8 @@ Selected long-CoT command:
 ```bash
 CUDA_HOME=$PWD/.venv/lib/python3.12/site-packages/nvidia/cu13 \
 PATH="$CUDA_HOME/bin:$PATH" \
-FREETOKEN_DISK_READ_WORKERS=16 \
-FREETOKEN_DISK_CACHE_POLICY=layer_lru \
+SPARKLAB_DISK_READ_WORKERS=16 \
+SPARKLAB_DISK_CACHE_POLICY=layer_lru \
 .venv/bin/python benchmarks/bench_decode_moe.py \
   --model /mnt/ssd/freetoken/ftw/DeepSeek-V4-Flash-0731 \
   --backend hybrid --storage disk --host-cache-gb 40 \
@@ -444,8 +444,8 @@ Exact command:
 ```bash
 CUDA_HOME=$PWD/.venv/lib/python3.12/site-packages/nvidia/cu13 \
 PATH="$CUDA_HOME/bin:$PATH" \
-FREETOKEN_DISK_READ_WORKERS=16 \
-FREETOKEN_DISK_CACHE_POLICY=layer_lru \
+SPARKLAB_DISK_READ_WORKERS=16 \
+SPARKLAB_DISK_CACHE_POLICY=layer_lru \
 .venv/bin/python benchmarks/bench_aime_suite.py \
   --model /mnt/ssd/freetoken/ftw/DeepSeek-V4-Flash-0731 \
   --aime /home/lidaiqing/.cache/huggingface/hub/datasets--math-ai--aime25/snapshots/563bb8404243c5f09de6ec262f2db674fe5bce9b/test.jsonl \

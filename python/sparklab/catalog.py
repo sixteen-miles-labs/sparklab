@@ -1,4 +1,4 @@
-"""Versioned, backend-qualified Spark Lab model-recipe catalog."""
+"""Versioned, backend-qualified SparkLab model-recipe catalog."""
 
 from __future__ import annotations
 
@@ -369,7 +369,7 @@ def load_catalog() -> tuple[ModelRecipe, ...]:
             )
     slugs = [recipe.slug for recipe in recipes]
     if len(slugs) != len(set(slugs)):
-        raise ValueError("duplicate Spark Lab model recipe slug")
+        raise ValueError("duplicate SparkLab model recipe slug")
     order = {tier: index for index, tier in enumerate(TIERS)}
     return tuple(
         sorted(recipes, key=lambda item: (order[item.intended_tier], item.slug))

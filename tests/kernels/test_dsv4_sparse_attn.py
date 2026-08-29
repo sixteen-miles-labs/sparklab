@@ -12,7 +12,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from freetoken.kernel.triton.dsv4.sparse_attn import sparse_attn_paged, split_count
+from sparklab.kernels.triton.dsv4.sparse_attn import sparse_attn_paged, split_count
 
 pytestmark = pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 

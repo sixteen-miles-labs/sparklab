@@ -12,8 +12,8 @@ from __future__ import annotations
 import pytest
 import torch
 
-from freetoken.attention.base import AttnType
-from freetoken.models.minimax_m3.config import parse_config
+from sparklab.attention.base import AttnType
+from sparklab.models.minimax_m3.config import parse_config
 
 
 class _Cfg:
@@ -113,8 +113,8 @@ def test_parse_config_native_shape_matches_raw(monkeypatch):
     """The native shape silently produced rope base 10000, use_sparse=False and
     hidden_act='silu' before the dual-shape shim -- all three load-bearing reads
     must resolve identically to the raw-dict shape."""
-    monkeypatch.delenv("FREETOKEN_M3_MAX_LAYERS", raising=False)
-    monkeypatch.delenv("FREETOKEN_M3_SPARSE", raising=False)
+    monkeypatch.delenv("SPARKLAB_M3_MAX_LAYERS", raising=False)
+    monkeypatch.delenv("SPARKLAB_M3_SPARSE", raising=False)
     raw = parse_config(_hf_config())
     native = parse_config(_hf_config_native())
 
@@ -132,8 +132,8 @@ def test_parse_config_native_shape_matches_raw(monkeypatch):
 
 
 def test_parse_config_full_model(monkeypatch):
-    monkeypatch.delenv("FREETOKEN_M3_MAX_LAYERS", raising=False)
-    monkeypatch.delenv("FREETOKEN_M3_SPARSE", raising=False)
+    monkeypatch.delenv("SPARKLAB_M3_MAX_LAYERS", raising=False)
+    monkeypatch.delenv("SPARKLAB_M3_SPARSE", raising=False)
     cfg = parse_config(_hf_config())
 
     assert cfg.num_layers == 60
@@ -169,9 +169,9 @@ def test_parse_config_full_model(monkeypatch):
 
 def test_pool_family_and_kv_cost():
     cfg = parse_config(_hf_config())
-    from freetoken.kvcache import resolve_pool_class
-    from freetoken.kvcache.base import spec_kv_bytes_per_token
-    from freetoken.kvcache.bsa_pool import BSAKVCache
+    from sparklab.runtime.kvcache import resolve_pool_class
+    from sparklab.runtime.kvcache.base import spec_kv_bytes_per_token
+    from sparklab.runtime.kvcache.bsa_pool import BSAKVCache
 
     assert resolve_pool_class(cfg) is BSAKVCache
 
@@ -189,7 +189,7 @@ def test_pool_family_and_kv_cost():
 
 
 def test_layer_cap_env(monkeypatch):
-    monkeypatch.setenv("FREETOKEN_M3_MAX_LAYERS", "5")
+    monkeypatch.setenv("SPARKLAB_M3_MAX_LAYERS", "5")
     cfg = parse_config(_hf_config())
     assert cfg.num_layers == 5
     assert cfg.first_k_dense_replace == 3 and cfg.num_moe_layers == 2
@@ -199,37 +199,37 @@ def test_layer_cap_env(monkeypatch):
 
 
 def test_sparse_ablation_env(monkeypatch):
-    monkeypatch.setenv("FREETOKEN_M3_SPARSE", "0")
+    monkeypatch.setenv("SPARKLAB_M3_SPARSE", "0")
     cfg = parse_config(_hf_config())
     (spec,) = cfg.kv_cache_group_specs()
     assert spec.attn_type == AttnType.FULL
     assert spec.index_head_dim == 0 and spec.num_index_layers == 0
     assert not cfg.m3_args.use_sparse
 
-    from freetoken.kvcache import resolve_pool_class
-    from freetoken.kvcache.mha_pool import MHAKVCache
+    from sparklab.runtime.kvcache import resolve_pool_class
+    from sparklab.runtime.kvcache.mha_pool import MHAKVCache
 
     assert resolve_pool_class(cfg) is MHAKVCache
 
 
 def test_mxfp8_ablation_env(monkeypatch):
-    monkeypatch.setenv("FREETOKEN_M3_ATTN_MXFP8", "0")
-    monkeypatch.setenv("FREETOKEN_M3_MLP_MXFP8", "0")
+    monkeypatch.setenv("SPARKLAB_M3_ATTN_MXFP8", "0")
+    monkeypatch.setenv("SPARKLAB_M3_MLP_MXFP8", "0")
     cfg = parse_config(_hf_config())
     assert cfg.attn_quant == "none" and cfg.dense_quant == "none"
 
 
 def test_registry_resolves_both_architectures():
-    from freetoken.models.register import get_model_spec
+    from sparklab.models.register import get_model_spec
 
     for arch in ("MiniMaxM3SparseForConditionalGeneration", "MiniMaxM3SparseForCausalLM"):
         spec = get_model_spec(arch)
-        assert spec.module == "freetoken.models.minimax_m3"
+        assert spec.module == "sparklab.models.minimax_m3"
 
 
 def test_auto_backend_resolution():
-    from freetoken.attention import attention_backend_info
-    from freetoken.engine.engine import _required_attn_types, _resolve_auto_attention_backend
+    from sparklab.attention import attention_backend_info
+    from sparklab.runtime.engine.engine import _required_attn_types, _resolve_auto_attention_backend
 
     cfg = parse_config(_hf_config())
     required = _required_attn_types(cfg)
@@ -239,7 +239,7 @@ def test_auto_backend_resolution():
 
 
 def test_nvfp4_backend_restricted_to_triton_for_swigluoai():
-    from freetoken.moe.nvfp4_backends import select_nvfp4_backend
+    from sparklab.moe.nvfp4_backends import select_nvfp4_backend
 
     dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     assert select_nvfp4_backend(dev, 3072, "auto", activation="swigluoai") == "triton"
@@ -248,7 +248,7 @@ def test_nvfp4_backend_restricted_to_triton_for_swigluoai():
 
 
 def test_expert_source_spec_layer_to_bank():
-    from freetoken.models.minimax_m3.weight import _EXPERT_KEY_RE, _NVFP4_SOURCE_SPEC
+    from sparklab.models.minimax_m3.weight import _EXPERT_KEY_RE, _NVFP4_SOURCE_SPEC
 
     cfg = parse_config(_hf_config())
     m = _EXPERT_KEY_RE.match(

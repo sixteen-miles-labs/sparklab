@@ -3,7 +3,7 @@ import torch
 
 def test_yarn_rope_scales_cos_sin_by_attention_factor():
     import math
-    from freetoken.layers.rotary import get_rope
+    from sparklab.layers.rotary import get_rope
 
     get_rope.cache_clear()
     head_dim = rotary_dim = 64
@@ -66,7 +66,7 @@ def test_yarn_rope_scales_cos_sin_by_attention_factor():
 
 
 def test_proportional_rope_zero_pads_non_rotated_pairs_and_is_cached():
-    from freetoken.layers.rotary import get_rope
+    from sparklab.layers.rotary import get_rope
 
     get_rope.cache_clear()
     rope_scaling = (("rope_type", "proportional"),)
@@ -101,7 +101,7 @@ def test_yarn_correction_range_matches_hf_where_the_clamp_and_gap_bind():
     longest-wavelength dims; flooring the gap at 1 flattens the ramp for a sub-1 gap."""
     from transformers.modeling_rope_utils import ROPE_INIT_FUNCTIONS
 
-    from freetoken.layers.rotary import get_rope
+    from sparklab.layers.rotary import get_rope
 
     class _Shim:  # duck-typed config for HF's real _compute_yarn_parameters
         def __init__(self, head_dim, max_position, rope_parameters):
@@ -140,7 +140,7 @@ def test_yarn_mscale_all_dim_zero_falls_back_like_hf():
     # == 1.0 and scaled attention by mscale alone (~7% off for DeepSeek-lineage configs).
     import math
 
-    from freetoken.layers.rotary import get_rope
+    from sparklab.layers.rotary import get_rope
 
     get_rope.cache_clear()
     factor = 16.0

@@ -10,7 +10,7 @@
   },
   "engine": {
     "name": "FreeToken",
-    "product_identity": "Spark Lab",
+    "product_identity": "SparkLab",
     "git_revision": "096af67d3cfb8bfaf239563a130c2e88db17084f"
   },
   "platform": {
@@ -98,7 +98,7 @@
     }
   ],
   "limitations": [
-    "The measured 12.51 decode tok/s is Frontier-class and does not satisfy Spark Lab's 20 tok/s Fast gate.",
+    "The measured 12.51 decode tok/s is Frontier-class and does not satisfy SparkLab's 20 tok/s Fast gate.",
     "The fixed five-problem AIME sample scored 3/5; two runs exhausted the 2048-token reasoning budget before emitting a final answer.",
     "Certification covers text inference only; the checkpoint's multimodal path is outside this evidence.",
     "Unrelated host processes had swap pages resident before testing. Swap use declined during endurance and model-attributed swap growth was zero, but certified launches still require a zero-swap platform preflight."

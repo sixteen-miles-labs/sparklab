@@ -10,12 +10,12 @@ import os
 import pytest
 import torch
 
-GGUF_GLOB = os.environ.get("FREETOKEN_GEMMA4_GGUF_GLOB", "")
+GGUF_GLOB = os.environ.get("SPARKLAB_GEMMA4_GGUF_GLOB", "")
 
 
 def _shim(path):
-    from freetoken.models.gguf.config import GgufConfigShim
-    from freetoken.models.gguf.reader import load_gguf_metadata
+    from sparklab.models.gguf.config import GgufConfigShim
+    from sparklab.models.gguf.reader import load_gguf_metadata
 
     md = load_gguf_metadata(path)
     return GgufConfigShim(architectures=["Gemma4GGUFForCausalLM"], model_path=path,
@@ -23,9 +23,9 @@ def _shim(path):
                           tie_word_embeddings=True), md
 
 
-@pytest.mark.skipif(not glob.glob(GGUF_GLOB), reason="FREETOKEN_GEMMA4_GGUF_GLOB not set to a local gemma4 GGUF")
+@pytest.mark.skipif(not glob.glob(GGUF_GLOB), reason="SPARKLAB_GEMMA4_GGUF_GLOB not set to a local gemma4 GGUF")
 def test_full_rotary_dim_recovered_from_rope_freqs():
-    from freetoken.models.gemma4.gguf import _full_rotary_dim
+    from sparklab.models.gemma4.gguf import _full_rotary_dim
 
     shim, md = _shim(glob.glob(GGUF_GLOB)[0])
     head_dim = int(md["gemma4.attention.key_length"])
@@ -36,8 +36,8 @@ def test_full_rotary_dim_recovered_from_rope_freqs():
 
 def test_proportional_rope_matches_llama_cpp_rope_freqs_division():
     """ggml applies theta/rope_freqs[j] (ops.cpp), with 1e30 zeroing the unrotated tail.
-    FreeToken's "proportional" branch must produce the same table."""
-    from freetoken.layers.rotary import get_rope
+    SparkLab's "proportional" branch must produce the same table."""
+    from sparklab.layers.rotary import get_rope
 
     head_dim, n_rot, base, max_position = 512, 128, 1_000_000.0, 512
     rope = get_rope(head_dim=head_dim, rotary_dim=n_rot, max_position=max_position,

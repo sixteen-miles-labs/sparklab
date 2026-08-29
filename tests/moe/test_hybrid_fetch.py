@@ -1,7 +1,7 @@
 """Hybrid decode's bandwidth-matched fetch split.
 
 Covers the two halves of --moe-hybrid-max-fetch auto: the profile reader that turns
-`ft bench bw` kernel bandwidths into a fetch fraction, and the ensure kernel's
+`sparklab bench bw` kernel bandwidths into a fetch fraction, and the ensure kernel's
 per-step integer split (GPU kernel vs CPU reference mirror, and the balance rule).
 """
 
@@ -10,8 +10,8 @@ import json
 import pytest
 import torch
 
-from freetoken.moe.bench_profile import load_hybrid_fetch_fraction
-from freetoken.moe.offload_cache import OffloadMoeCache
+from sparklab.moe.bench_profile import load_hybrid_fetch_fraction
+from sparklab.moe.offload_cache import OffloadMoeCache
 
 Q = 1 << 16
 

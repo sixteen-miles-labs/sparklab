@@ -1,4 +1,4 @@
-"""Spark Lab's GB10 product CLI."""
+"""SparkLab's GB10 product CLI."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ def _print_help(file: TextIO) -> None:
     print(
         """usage: sparklab <command> [args]
 
-Spark Lab runs frontier open-weight models on one NVIDIA GB10.
+SparkLab runs frontier open-weight models on one NVIDIA GB10.
 
 Product commands:
   doctor      Check GB10, CUDA 13, unified memory, storage, and dependencies
@@ -29,11 +29,10 @@ Advanced runtime commands:
   shell       Chat with a running server
   ctl         Query and manage a running server
   daemon      Run or control the persistent engine supervisor
-  launch      Configure and launch an agent against Spark Lab
+  launch      Configure and launch an agent against SparkLab
   checkpoint  Convert a Hugging Face checkpoint to FTW
   bench       Run a hardware benchmark (currently: bench bw)
 
-The legacy `ft` command remains supported during the staged migration.
 Use `sparklab <command> --help` for command-specific options.""",
         file=file,
     )
@@ -65,7 +64,7 @@ def _quantization_text(recipe) -> str:
 def _run_doctor(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
         prog="sparklab doctor",
-        description="Inspect this machine against Spark Lab's NVIDIA GB10 profile.",
+        description="Inspect this machine against SparkLab's NVIDIA GB10 profile.",
     )
     parser.add_argument(
         "--storage-path",
@@ -86,7 +85,7 @@ def _run_doctor(argv: list[str]) -> int:
     if args.json:
         print(json.dumps(report, indent=2, sort_keys=True))
     else:
-        print(f"Spark Lab doctor: {report['status']}")
+        print(f"SparkLab doctor: {report['status']}")
         print(f"  GPU:       {report['runtime']['gpu'] or 'not detected'}")
         capability = report["runtime"]["compute_capability"]
         capability_text = ".".join(str(value) for value in capability) if capability else "unknown"
@@ -141,7 +140,7 @@ def _run_models(argv: list[str]) -> int:
             json.dumps(
                 {
                     "schema_version": "2.0",
-                    "product": "Spark Lab",
+                    "product": "SparkLab",
                     "platform": "gb10",
                     "recipes": [recipe.to_dict() for recipe in recipes],
                 },
@@ -151,7 +150,7 @@ def _run_models(argv: list[str]) -> int:
         )
         return 0
 
-    print("Spark Lab model portfolio — NVIDIA GB10")
+    print("SparkLab model portfolio — NVIDIA GB10")
     if not recipes:
         print("No recipes match the selected filters.")
         return 0
@@ -189,7 +188,7 @@ def _recipe(slug: str):
     try:
         return get_recipe(slug)
     except KeyError as exc:
-        raise argparse.ArgumentTypeError(f"unknown Spark Lab recipe: {slug}") from exc
+        raise argparse.ArgumentTypeError(f"unknown SparkLab recipe: {slug}") from exc
 
 
 def _run_plan(argv: list[str]) -> int:
@@ -198,7 +197,7 @@ def _run_plan(argv: list[str]) -> int:
         description="Plan disk artifacts and unified-memory admission without loading a model.",
     )
     parser.add_argument("recipe", type=_recipe)
-    parser.add_argument("--root", help="Spark Lab state root (default: ~/.sparklab)")
+    parser.add_argument("--root", help="SparkLab state root (default: ~/.sparklab)")
     parser.add_argument("--prepare", action="store_true", help="Include FTW preparation space")
     parser.add_argument(
         "--from-source",
@@ -229,7 +228,7 @@ def _run_plan(argv: list[str]) -> int:
     if args.json:
         print(json.dumps(payload, indent=2, sort_keys=True))
     else:
-        print(f"Spark Lab plan: {args.recipe.slug}")
+        print(f"SparkLab plan: {args.recipe.slug}")
         print(f"  Acquisition: {artifacts.acquisition}")
         required = artifacts.required_bytes
         print(f"  Storage: {_gib(required)} required; {_gib(artifacts.free_bytes)} free")
@@ -250,7 +249,7 @@ def _run_pull(argv: list[str]) -> int:
         description="Acquire a recipe's exact Hugging Face revision with resumable downloads.",
     )
     parser.add_argument("recipe", type=_recipe)
-    parser.add_argument("--root", help="Spark Lab state root (default: ~/.sparklab)")
+    parser.add_argument("--root", help="SparkLab state root (default: ~/.sparklab)")
     parser.add_argument(
         "--prepare",
         action="store_true",
@@ -289,12 +288,12 @@ def _run_pull(argv: list[str]) -> int:
             hosted = args.recipe.runtime_artifact
             assert hosted is not None
             print(
-                f"Spark Lab {action} {hosted.repo_id}@{hosted.revision[:12]} "
+                f"SparkLab {action} {hosted.repo_id}@{hosted.revision[:12]} "
                 f"at {plan['prepared_path']}"
             )
         else:
             print(
-                f"Spark Lab {action} {args.recipe.model}@{args.recipe.revision[:12]} "
+                f"SparkLab {action} {args.recipe.model}@{args.recipe.revision[:12]} "
                 f"at {plan['source_path']}"
             )
         if args.prepare:
@@ -308,7 +307,7 @@ def _run_recipe(argv: list[str]) -> int:
         description="Start a recipe only after its checkpoint and GB10 memory plan pass.",
     )
     parser.add_argument("recipe", type=_recipe)
-    parser.add_argument("--root", help="Spark Lab state root (default: ~/.sparklab)")
+    parser.add_argument("--root", help="SparkLab state root (default: ~/.sparklab)")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--json", action="store_true")
     args, extra = parser.parse_known_args(argv)
@@ -316,7 +315,7 @@ def _run_recipe(argv: list[str]) -> int:
         extra = extra[1:]
 
     from sparklab.platform import collect_gb10_snapshot
-    from sparklab.runtime import RuntimePlanError, plan_invocation
+    from sparklab.deployment import RuntimePlanError, plan_invocation
 
     try:
         invocation = plan_invocation(
@@ -391,11 +390,11 @@ def _run_gate(argv: list[str]) -> int:
     return 0 if next(gate for gate in gates if gate.tier == requested).passed else 1
 
 
-def _run_native_compat(command: str, argv: list[str]) -> int:
+def _run_native_command(command: str, argv: list[str]) -> int:
     from sparklab.backends import BackendError, get_backend
 
     try:
-        return get_backend("native").run_compat_command(
+        return get_backend("native").run_command(
             command, argv, prog=f"sparklab {command}"
         )
     except BackendError as exc:
@@ -404,31 +403,31 @@ def _run_native_compat(command: str, argv: list[str]) -> int:
 
 
 def _run_serve(argv: list[str]) -> int:
-    return _run_native_compat("serve", argv)
+    return _run_native_command("serve", argv)
 
 
 def _run_shell(argv: list[str]) -> int:
-    return _run_native_compat("shell", argv)
+    return _run_native_command("shell", argv)
 
 
 def _run_ctl(argv: list[str]) -> int:
-    return _run_native_compat("ctl", argv)
+    return _run_native_command("ctl", argv)
 
 
 def _run_daemon(argv: list[str]) -> int:
-    return _run_native_compat("daemon", argv)
+    return _run_native_command("daemon", argv)
 
 
 def _run_status(argv: list[str]) -> int:
-    return _run_native_compat("status", argv)
+    return _run_native_command("status", argv)
 
 
 def _run_launch(argv: list[str]) -> int:
-    return _run_native_compat("launch", argv)
+    return _run_native_command("launch", argv)
 
 
 def _run_checkpoint(argv: list[str]) -> int:
-    return _run_native_compat("checkpoint", argv)
+    return _run_native_command("checkpoint", argv)
 
 
 def _run_bench(argv: list[str]) -> int:
@@ -439,7 +438,7 @@ def _run_bench(argv: list[str]) -> int:
     if argv[0] != "bw":
         print(f"unknown sparklab bench subcommand: {argv[0]}", file=sys.stderr)
         return 2
-    return _run_native_compat("bench-bw", argv[1:])
+    return _run_native_command("bench-bw", argv[1:])
 
 
 COMMANDS = {
@@ -471,7 +470,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args[0] in {"-V", "--version"}:
         from sparklab import __version__
 
-        print(f"Spark Lab {__version__}")
+        print(f"SparkLab {__version__}")
         return 0
     command = COMMANDS.get(args[0])
     if command is None:

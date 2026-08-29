@@ -18,8 +18,8 @@ H, I, E, TOPK = 1024, 512, 16, 4
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 def test_dsfp4_gpu_prequant_bit_parity():
-    from freetoken.kernel.pinned import alloc_pinned_tensor
-    from freetoken.moe.cpu_executor import CpuMoeExecutor
+    from sparklab.kernels.pinned import alloc_pinned_tensor
+    from sparklab.moe.cpu_executor import CpuMoeExecutor
 
     torch.manual_seed(0)
     banks = {
