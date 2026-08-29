@@ -336,7 +336,14 @@ class Scheduler(SchedulerIOMixin):
                 next_token = int(next_token.item())
                 # EOS / stop-string -> "stop", output budget exhausted -> "length";
                 # EOS and stop strings win over length.
-                hit_length = not req.can_decode
+                # The next overlapped forward may already have advanced ``req``.  Use the
+                # state captured by the batch being drained or the penultimate token is
+                # incorrectly declared terminal and the actual last token is discarded.
+                hit_length = not (
+                    batch.can_decode_after_forward[i]
+                    if batch.can_decode_after_forward
+                    else req.can_decode
+                )
                 hit_eos = (
                     not req.sampling_params.ignore_eos and next_token in self.eos_token_ids
                 )

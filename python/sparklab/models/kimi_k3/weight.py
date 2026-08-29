@@ -22,7 +22,7 @@ from sparklab.models.nvfp4_banks import (
 )
 from sparklab.utils import cached_load_hf_config
 
-from .config import parse_config
+from .config import parse_config, resident_mlp_quant
 
 
 _MERGE_RULES = {
@@ -44,6 +44,49 @@ _NVFP4_SOURCE_SPEC = Nvfp4ExpertSourceSpec(
     layer_to_bank=lambda layer, config: layer - config.first_k_dense_replace,
     desc="Kimi K3 ModelOpt NVFP4 experts",
 )
+_RESIDENT_MLP_RE = re.compile(
+    r"^model\.layers\.\d+\."
+    r"(?:mlp|block_sparse_moe\.shared_experts)\."
+    r"(?:gate_up_proj|down_proj)\.weight$"
+)
+_FP8_MAX = 448.0
+
+
+def _quant_fp8_per_row(weight: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    """Quantize one resident K3 matrix for W8A16 serving.
+
+    The scale is per output row, matching :class:`Fp8PerTensorLinear` exactly. The
+    conversion runs while the checkpoint reader owns only this tensor, so it does not
+    accumulate a second BF16 model-sized copy in host memory.
+    """
+    wf = weight.float()
+    scale = (wf.abs().amax(dim=1) / _FP8_MAX).clamp(min=1e-12)
+    quantized = (wf / scale[:, None]).clamp(-_FP8_MAX, _FP8_MAX).to(torch.float8_e4m3fn)
+    return quantized, scale.to(torch.float32)
+
+
+def _transform_resident_mlp_weights(weights, quantization: str):
+    if quantization != "fp8_pertensor":
+        yield from weights
+        return
+    for name, weight in weights:
+        selected = _RESIDENT_MLP_RE.match(name) or name in {
+            "model.embed_tokens.weight",
+            "lm_head.weight",
+        }
+        if selected and weight.dtype != torch.float8_e4m3fn:
+            quantized, scale = _quant_fp8_per_row(weight)
+            yield name, quantized
+            yield name.removesuffix(".weight") + ".weight_scale", scale
+        else:
+            # A newly converted FTW already contains FP8 weights and their following
+            # weight_scale entries. Passing those through makes this hook idempotent.
+            yield name, weight
+
+
+def transform_ftw_weights(weights, config):
+    """Adapt legacy BF16-resident K3 FTW tensors to the selected runtime config."""
+    yield from _transform_resident_mlp_weights(weights, config.dense_quant)
 
 
 def map_weight_name(raw_name: str) -> str | None:
@@ -82,6 +125,7 @@ def _iter_modelopt_weights(
     *,
     include_moe_experts: bool,
     include_non_moe: bool,
+    config=None,
 ) -> Iterator[tuple[str, torch.Tensor]]:
     if include_moe_experts:
         raise ValueError(
@@ -119,7 +163,9 @@ def _iter_modelopt_weights(
                     yield name, value
             drop_page_cache(file)
 
-    yield from iter_merged_tensors(mapped(), _MERGE_RULES, model_name="kimi_k3_modelopt")
+    merged = iter_merged_tensors(mapped(), _MERGE_RULES, model_name="kimi_k3_modelopt")
+    quantization = config.dense_quant if config is not None else resident_mlp_quant()
+    yield from _transform_resident_mlp_weights(merged, quantization)
 
 
 def iter_weights(
@@ -136,6 +182,7 @@ def iter_weights(
             device,
             include_moe_experts=include_moe_experts,
             include_non_moe=include_non_moe,
+            config=config,
         )
         return
     if include_moe_experts:
@@ -158,7 +205,8 @@ def iter_weights(
                             value = value.float()
                         yield name, value
 
-    yield from iter_merged_tensors(mapped(), _MERGE_RULES, model_name="kimi_k3")
+    merged = iter_merged_tensors(mapped(), _MERGE_RULES, model_name="kimi_k3")
+    yield from _transform_resident_mlp_weights(merged, config.dense_quant)
 
 
 def load_nvfp4_expert_sources(model_path: str, config, *, layer_sink=None):

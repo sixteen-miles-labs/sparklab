@@ -93,7 +93,9 @@ def _launch_req(pool, cm, tm, prompt, *, cls=Req, track_seqlen=None):
     return req
 
 
-def _as_last_data(batch):
+def _as_last_data(batch, *, can_decode_after_forward=None):
+    if can_decode_after_forward is not None:
+        batch.can_decode_after_forward = tuple(can_decode_after_forward)
     return (
         SimpleNamespace(batch=batch),
         (None, torch.tensor([42], dtype=torch.int32),
@@ -221,4 +223,45 @@ def test_post_terminal_overlap_step_is_dropped():
     Scheduler._process_last_data(stub, _as_last_data(Batch(reqs=[req], phase="decode")))
     assert [m for m in sent if isinstance(m, DetokenizeMsg)] == terminal  # no 2nd msg
     assert req.output_len == output_len_before                           # no append
+    cm.check_integrity()
+
+
+def test_overlap_length_uses_the_drained_batch_snapshot():
+    """A final forward can launch before the penultimate token drains.  The final
+    forward mutates the shared Req to ``can_decode=False``; that must not make the
+    penultimate token terminal or drop the real final token (N requested -> N-1)."""
+    from sparklab.message import DetokenizeMsg
+
+    pool, cm, tm, dm, _pm, sent, stub = _setup()
+    req = _launch_req(pool, cm, tm, torch.arange(1, 13, dtype=torch.int32))
+    # Account for the first sampled token and a second completed token.  Launching the
+    # penultimate forward leaves budget; launching the overlapping final forward does not.
+    req.append_host(torch.tensor([10], dtype=torch.int32))
+    cm.allocate_paged([req])
+    req.complete_one()
+    req.append_host(torch.tensor([11], dtype=torch.int32))
+    cm.allocate_paged([req])
+    req.complete_one()
+    assert req.can_decode
+    penultimate = _as_last_data(
+        Batch(reqs=[req], phase="decode"), can_decode_after_forward=[True]
+    )
+    cm.allocate_paged([req])
+    req.complete_one()  # overlapping final forward mutates the same Req before the drain
+    assert not req.can_decode
+    final = _as_last_data(
+        Batch(reqs=[req], phase="decode"), can_decode_after_forward=[False]
+    )
+    dm.filter_reqs([req])
+
+    Scheduler._process_last_data(stub, penultimate)
+    messages = [m for m in sent if isinstance(m, DetokenizeMsg)]
+    assert len(messages) == 1 and not messages[0].finished
+    assert req.table_idx != -1
+
+    Scheduler._process_last_data(stub, final)
+    messages = [m for m in sent if isinstance(m, DetokenizeMsg)]
+    assert len(messages) == 2 and messages[-1].finished
+    assert messages[-1].finish_reason == "length"
+    assert req.table_idx == -1
     cm.check_integrity()
