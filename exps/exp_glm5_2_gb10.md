@@ -57,8 +57,8 @@ It is not a substitute for the separate 4K-input/512-output
 | FlashInfer / SGLang kernel | 0.6.15.post1 / 0.4.5 |
 | Model | `nvidia/GLM-5.2-NVFP4` |
 | Pinned model revision | `aec724e8c7b8ee9db3b48c01c320f63f9cdaf8aa` |
-| Source checkpoint | `/home/lidaiqing/models/GLM-5.2-NVFP4` |
-| FTW checkpoint | `/home/lidaiqing/ftw/GLM-5.2-NVFP4-b12x` |
+| Source checkpoint | `$HOME/models/GLM-5.2-NVFP4` |
+| FTW checkpoint | `$HOME/ftw/GLM-5.2-NVFP4-b12x` |
 
 The pinned repository advertises 57 files totaling 464,874,323,992 bytes. Its
 weight index contains 47 safetensors shards, 232,385 tensor keys, and
@@ -96,7 +96,7 @@ smaller GLM-4.7 proxy.
 | Recommended backend | `offload` |
 
 The profile is saved at
-`/home/lidaiqing/results/glm5.2-gb10/benchbw-nvfp4.json`.
+`$HOME/results/glm5.2-gb10/benchbw-nvfp4.json`.
 
 The SM12x cache-copy microbenchmark measured a 20.25 MiB b12x expert row. At
 batch size 1, two misses copied at 100.4--100.8 GB/s and eight misses copied at
@@ -114,8 +114,8 @@ CUDA_HOME=/usr/local/cuda \
 PATH=/usr/local/cuda/bin:$PATH \
 SPARKLAB_CONVERT_PROGRESS=1 \
 .venv/bin/sparklab checkpoint \
-  --model /home/lidaiqing/models/GLM-5.2-NVFP4 \
-  --out /home/lidaiqing/ftw/GLM-5.2-NVFP4-b12x \
+  --model $HOME/models/GLM-5.2-NVFP4 \
+  --out $HOME/ftw/GLM-5.2-NVFP4-b12x \
   --dtype bfloat16 \
   --moe-backend offload \
   --nvfp4-backend flashinfer \
@@ -149,11 +149,11 @@ zero-swap result.
 
 Validation artifacts:
 
-- `/home/lidaiqing/results/glm5.2-gb10/source-validation.json`
-- `/home/lidaiqing/results/glm5.2-gb10/native-validation.json`
-- `/home/lidaiqing/results/glm5.2-gb10/b12x-validation.json`
-- `/home/lidaiqing/results/glm5.2-gb10/conversion-native.log`
-- `/home/lidaiqing/results/glm5.2-gb10/conversion-b12x.log`
+- `$HOME/results/glm5.2-gb10/source-validation.json`
+- `$HOME/results/glm5.2-gb10/native-validation.json`
+- `$HOME/results/glm5.2-gb10/b12x-validation.json`
+- `$HOME/results/glm5.2-gb10/conversion-native.log`
+- `$HOME/results/glm5.2-gb10/conversion-b12x.log`
 
 ## Serving benchmark
 
@@ -219,14 +219,14 @@ CUDA_HOME=/usr/local/cuda \
 LD_LIBRARY_PATH=/usr/local/cuda/lib64 \
 SPARKLAB_DISK_READ_WORKERS=20 \
 .venv/bin/python benchmarks/bench_decode_moe.py \
-  --model /home/lidaiqing/ftw/GLM-5.2-NVFP4-b12x \
+  --model $HOME/ftw/GLM-5.2-NVFP4-b12x \
   --backend offload --storage disk --nvfp4-backend flashinfer \
   --host-cache-gb 0 --cache 675 --cache-policy layer_lru \
   --decode 256 --num-tokens 2048 --mem-ratio 0.90 \
   --disable-prefill-overlap --prefill-sparse-max-tokens 256 \
   --shared-expert-overlap --collect-moe-stats \
   --greedy --no-graph --include-output --server-timeout 1200 \
-  --json /home/lidaiqing/results/glm5.2-gb10/selected-b12x-cache675-decode256.jsonl
+  --json $HOME/results/glm5.2-gb10/selected-b12x-cache675-decode256.jsonl
 ```
 
 ### Cold and distinct-prompt evidence
@@ -265,10 +265,10 @@ The compact catalog evidence is checked in as
 It records the measured performance and failed admission separately.
 
 Primary serving results are in
-`/home/lidaiqing/results/glm5.2-gb10/selected-b12x-cache675-decode64.jsonl`,
-`/home/lidaiqing/results/glm5.2-gb10/selected-b12x-cache675-decode256.jsonl`,
+`$HOME/results/glm5.2-gb10/selected-b12x-cache675-decode64.jsonl`,
+`$HOME/results/glm5.2-gb10/selected-b12x-cache675-decode256.jsonl`,
 and
-`/home/lidaiqing/results/glm5.2-gb10/heldout-aime0-2-b12x-cache675-decode64.jsonl`.
+`$HOME/results/glm5.2-gb10/heldout-aime0-2-b12x-cache675-decode64.jsonl`.
 G1--G6 used clean revision `83b0758547ee396d6e7ccdbd9706d644a5ad0612`;
 G7 and the primary selected/stability runs used clean pushed revision
 `b5db743d4d5103c452835fc25af9e178a8c1c523`. The cache-600 stability retry ran

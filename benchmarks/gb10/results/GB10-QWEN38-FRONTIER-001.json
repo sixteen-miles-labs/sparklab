@@ -72,26 +72,26 @@
   "sources": [
     {
       "kind": "performance",
-      "path": "/home/lidaiqing/results/qwen3.8-gb10/frontier-speed-72e4ef7.jsonl",
+      "path": "$HOME/results/qwen3.8-gb10/frontier-speed-72e4ef7.jsonl",
       "git_revision": "72e4ef7c3f1765aa9f9295b95428e7b7b9801400",
       "git_tracked_dirty": false
     },
     {
       "kind": "capabilities",
-      "path": "/home/lidaiqing/results/qwen3.8-gb10/capabilities-1a6bbac.json",
+      "path": "$HOME/results/qwen3.8-gb10/capabilities-1a6bbac.json",
       "git_revision": "1a6bbaca178ddf6091e79edc4b7d41c5a42073b6",
       "git_tracked_dirty": false
     },
     {
       "kind": "context_recall",
-      "path": "/home/lidaiqing/results/qwen3.8-gb10/context-65536-d40270d.json",
+      "path": "$HOME/results/qwen3.8-gb10/context-65536-d40270d.json",
       "git_revision": "d40270da70547ccd70f0e20f6051691985e5cb68",
       "git_tracked_dirty": false,
       "physical_disk_bytes": 550827560960
     },
     {
       "kind": "correctness_and_endurance",
-      "path": "/home/lidaiqing/results/qwen3.8-gb10/aime-endurance-5-096af67.jsonl",
+      "path": "$HOME/results/qwen3.8-gb10/aime-endurance-5-096af67.jsonl",
       "git_revision": "096af67d3cfb8bfaf239563a130c2e88db17084f",
       "git_tracked_dirty": false,
       "physical_disk_bytes": 65520963584

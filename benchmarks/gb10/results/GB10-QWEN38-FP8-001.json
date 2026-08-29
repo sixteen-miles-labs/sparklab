@@ -109,7 +109,7 @@
   },
   "source": {
     "summary": "exps/exp_qwen3_8_fp8_gb10.md",
-    "raw_artifact": "/home/lidaiqing/results/qwen3.8-gb10/official-fp8-decode64-092d8e2.jsonl"
+    "raw_artifact": "$HOME/results/qwen3.8-gb10/official-fp8-decode64-092d8e2.jsonl"
   },
   "limitations": [
     "This result establishes complete-checkpoint performance only; it is not a Frontier certification.",

@@ -120,7 +120,7 @@
   },
   "source": {
     "summary": "exps/exp_glm5_3_nvfp4_gb10.md",
-    "raw_artifact": "/home/lidaiqing/results/glm5.3-gb10/glm53_nvfp4_optimized_decode256.jsonl"
+    "raw_artifact": "$HOME/results/glm5.3-gb10/glm53_nvfp4_optimized_decode256.jsonl"
   },
   "limitations": [
     "This result establishes complete-checkpoint loading and serving, not Frontier certification.",

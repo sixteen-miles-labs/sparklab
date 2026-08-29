@@ -95,7 +95,7 @@
   },
   "source": {
     "summary": "exps/exp_qwen3_6_gb10.md",
-    "raw_artifact": "/home/lidaiqing/results/qwen3.6-gb10/qwen36-nvfp4-cache-full-decode64-isolated.jsonl"
+    "raw_artifact": "$HOME/results/qwen3.6-gb10/qwen36-nvfp4-cache-full-decode64-isolated.jsonl"
   },
   "limitations": [
     "This result establishes Fast-class latency only; it is not a complete Fast certification.",

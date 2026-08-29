@@ -35,6 +35,41 @@ FreeToken research project; that ancestry is preserved in `NOTICE` and project c
 Never build or upload a formal release from a maintainer workstation. Trusted-publisher
 bindings must be scoped to this repository, workflow, and GitHub environment.
 
+## Public visibility cutover
+
+Changing repository visibility is a release operation, not an ordinary settings edit. Before
+the cutover:
+
+1. Stop the self-hosted GB10 runner and confirm that it has no active or queued job.
+2. Scan the current tree and reachable history for credentials, machine-specific paths,
+   generated artifacts, model weights, and author metadata that should remain private.
+3. Review all existing issues, pull requests, Actions logs, and workflow artifacts. Decide
+   explicitly whether to retain or delete private-era workflow history before it becomes
+   public.
+4. Record the current default-branch protection, release-tag ruleset, Actions permissions,
+   environments, and trusted-publisher bindings.
+
+After making the repository public:
+
+1. Re-enable and verify the `v*` release-tag ruleset immediately; GitHub can disable push
+   rulesets during a private-to-public visibility change. Verify the `main` protection and
+   its required `signoff` and `CPU tests` checks as well.
+2. Enable secret scanning, push protection, Dependabot alerts and security updates, CodeQL,
+   and private vulnerability reporting.
+3. Keep the default workflow token read-only, disallow workflows from approving pull
+   requests, allow only the actions used by this repository, and require full commit-SHA
+   action pins.
+4. Confirm that fork pull requests run only on GitHub-hosted runners. Keep the persistent
+   GB10 runner offline by default; start it only after verifying a trusted protected-tag or
+   maintainer-dispatched build, and stop it after the job completes.
+5. Re-check the GitHub community profile, package links, trusted publishing, and artifact
+   attestations from the public repository.
+
+GitHub documents the visibility-change effects in
+[Setting repository visibility](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/setting-repository-visibility)
+and the runner threat model in
+[Secure use reference](https://docs.github.com/en/actions/reference/security/secure-use).
+
 ## One-time external setup
 
 Repository owners must configure these outside the source tree:

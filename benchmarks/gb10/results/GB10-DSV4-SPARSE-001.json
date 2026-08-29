@@ -119,7 +119,7 @@
   },
   "source": {
     "summary": "exps/exp_dsv4_gb10.md",
-    "raw_artifact": "/home/lidaiqing/results/dsv4-gb10/optimized-sparse-prefill512-auto-confirm-decode64.jsonl"
+    "raw_artifact": "$HOME/results/dsv4-gb10/optimized-sparse-prefill512-auto-confirm-decode64.jsonl"
   },
   "limitations": [
     "This result establishes complete-checkpoint short-prompt performance only; it is not a Frontier certification.",

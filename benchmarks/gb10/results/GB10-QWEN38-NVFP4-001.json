@@ -119,7 +119,7 @@
   },
   "source": {
     "summary": "exps/exp_qwen3_8_nvfp4_gb10.md",
-    "raw_artifact": "/home/lidaiqing/results/qwen3.8-gb10/inferact-nvfp4-decode64-d979d99.jsonl"
+    "raw_artifact": "$HOME/results/qwen3.8-gb10/inferact-nvfp4-decode64-d979d99.jsonl"
   },
   "limitations": [
     "This result establishes complete-checkpoint performance only; it is not a Frontier certification.",
