@@ -43,6 +43,7 @@ def _ready_snapshot() -> GB10Snapshot:
 def test_runtime_routes_resident_recipe_through_selected_backend(tmp_path):
     recipe = replace(
         get_recipe("qwen3.6-35b-a3b"),
+        runtime_artifact=None,
         runtime_memory={"total_bytes": 64 * GIB},
     )
     checkpoint = prepared_path(recipe, str(tmp_path))

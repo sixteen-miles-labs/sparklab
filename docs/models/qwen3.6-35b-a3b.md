@@ -1,8 +1,7 @@
 # Run Qwen3.6-35B-A3B
 
-Qwen3.6-35B-A3B is SparkLab's Fast-tier NVFP4 recipe. It uses NVIDIA's pinned NVFP4
-checkpoint, repacks it locally as FTW, and runs resident on one NVIDIA DGX Spark. The
-recipe is Experimental.
+Qwen3.6-35B-A3B is SparkLab's Fast-tier NVFP4 recipe. It uses a pinned, prebuilt FTW
+artifact and runs resident on one NVIDIA DGX Spark. The recipe is Experimental.
 
 ## Install SparkLab
 
@@ -29,11 +28,11 @@ sparklab plan qwen3.6-35b-a3b --root /path/to/models --prepare
 sparklab pull qwen3.6-35b-a3b --root /path/to/models --prepare
 ```
 
-`pull --prepare` downloads the pinned
-[`nvidia/Qwen3.6-35B-A3B-NVFP4`](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4)
-checkpoint and repacks it locally into SparkLab's FTW runtime format. The conversion
-preserves the source NVFP4 quantization; it does not requantize the model. Keep enough
-free storage for both the 23.5 GB source and the approximately 20.9 GB prepared artifact.
+`pull --prepare` downloads the immutable FTW revision from
+[`oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW`](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW)
+and validates its fingerprint before it can run. The artifact preserves the source NVFP4
+quantization; it does not requantize the model. Use `--from-source` only when you want to
+reproduce the FTW repack locally from NVIDIA's pinned source checkpoint.
 
 ## Run
 

@@ -31,7 +31,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | Model | Parameter | Quantization | Recipe | Status | tok/s | TTFT(s) |
 |---|---|---|---|---|---:|---:|
 | **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |  |
-| [Qwen3.6-35B-A3B](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | 35B total / 3B active | NVFP4 · FTW | `qwen3.6-35b-a3b` | Experimental; primary target | 67.46 | 0.320 |
+| [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW | `qwen3.6-35b-a3b` | Experimental; primary target | 67.46 | 0.320 |
 | **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |  |
 | [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW | `qwen3.8-flash-next` | Experimental | 12.58 | 0.786 |
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | `deepseek-v4` | Preview | 10.28 | 0.604 |
@@ -40,9 +40,10 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | 753B total / 40B active | NVFP4 | `glm-5.2` | Experimental fallback | 0.80 | 2.570 |
 | [Kimi K3](https://huggingface.co/nvidia/Kimi-K3-NVFP4) | 2.8T total / 16 of 896 experts | NVFP4 · FTW upload pending | `kimi-k3` | Experimental | — | — |
 
-Model links point to the selected source or published FTW checkpoints. Qwen3.6 currently
-uses the pinned NVIDIA source and performs its precision-preserving FTW repack locally.
-The Kimi K3 NVFP4 FTW link remains marked pending until its Hugging Face upload exists.
+Model links point to the selected source or published FTW checkpoints. Qwen3.6 uses a
+pinned prebuilt FTW artifact; its source-conversion path remains available for
+reproducibility. The Kimi K3 NVFP4 FTW link remains marked pending until its Hugging Face
+upload exists.
 
 Parameter values use publisher-reported architecture counts. Qwen3.8's auxiliary total is
 the 51B n-gram embedding plus its 4B MTP module. NVIDIA reports Kimi K3 activation as 16 of

@@ -80,7 +80,7 @@ a SparkLab support claim.
       <th colspan="7" align="left">Fast — routine chat, editing, and short agent loops</th>
     </tr>
     <tr>
-      <td><a href="https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4">Qwen3.6-35B-A3B</a></td>
+      <td><a href="https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW">Qwen3.6-35B-A3B</a></td>
       <td>35B total / 3B active</td>
       <td>NVFP4 · FTW</td>
       <td>Experimental</td>

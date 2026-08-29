@@ -92,7 +92,10 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert qwen36.performance.decode_tokens_per_second == pytest.approx(67.46036500779391)
     assert qwen36.performance.warm_ttft_seconds == pytest.approx(0.31954073812812567)
     assert qwen36.evidence == ("GB10-QWEN36-FAST-001",)
-    assert qwen36.runtime_artifact is None
+    assert qwen36.runtime_artifact is not None
+    assert qwen36.runtime_artifact.repo_id == "oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW"
+    assert qwen36.runtime_artifact.revision == "fecab7acfd0590d2b268d8fb9ea1c88431471111"
+    assert qwen36.runtime_artifact.fingerprint == "bda7268c3e0afd7b"
     primary = select_recipes(load_catalog(), portfolio_role="primary")
     assert {(item.intended_tier, item.slug) for item in primary} == {
         ("fast", "qwen3.6-35b-a3b"),
