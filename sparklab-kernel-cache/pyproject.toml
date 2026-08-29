@@ -18,6 +18,7 @@ backend-path = ["."]
 name = "sparklab-kernel-cache"
 dynamic = ["version"]
 description = "Prebuilt TVM FFI kernel cache for SparkLab"
+readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 authors = [{ name = "SixteenMiles Labs" }]
