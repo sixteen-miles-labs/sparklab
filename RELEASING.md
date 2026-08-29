@@ -20,24 +20,30 @@ FreeToken research project; that ancestry is preserved in `NOTICE` and project c
    `python/sparklab/version.py` exactly.
 3. Run focused tests, the supported product suite, package builds, and `twine check`.
 4. Review licenses, `NOTICE`, model-recipe revisions, evidence links, and release notes.
-5. Create and push the signed tag. The protected release workflow builds the wheels.
-6. Approve the `pypi` environment only after inspecting the immutable build artifacts.
-7. Verify the generated `SHA256SUMS` and, for public releases, the GitHub
+5. Complete the TestPyPI rehearsal and clean-GB10 smoke test before tagging. A release
+   tag is the point of no return once the repository plan cannot require environment
+   reviewers.
+6. Create and push the signed tag. Only designated release managers can create `v*`
+   tags; the protected release workflow builds and publishes the wheels with short-lived
+   OIDC credentials.
+7. Verify the generated `SHA256SUMS`, PyPI attestations, and, for public releases, the GitHub
    build-provenance attestation.
 8. Edit the draft GitHub release notes, document limitations and migrations, then publish.
 9. Install from the published artifacts on a clean supported GB10 system and run the
    documented smoke test.
 
-Never build or upload a formal release from a maintainer workstation. PyPI credentials or
-trusted-publisher bindings must be scoped to this repository and protected environment.
+Never build or upload a formal release from a maintainer workstation. Trusted-publisher
+bindings must be scoped to this repository, workflow, and GitHub environment.
 
 ## One-time external setup
 
 Repository owners must configure these outside the source tree:
 
 - protect the default branch and release tags;
-- restrict the `pypi` and `testpypi` environments to release managers;
-- configure a project-scoped PyPI token or, preferably, PyPI trusted publishing;
+- restrict the `pypi` environment to `v*` tags and `testpypi` to `main`; add required
+  reviewers when the repository visibility and plan support them;
+- configure PyPI and TestPyPI trusted publishers for `release.yml` and their matching
+  GitHub environments;
 - enable GitHub private vulnerability reporting;
 - reserve the SixteenMiles Labs package, container, and Hugging Face namespaces;
 - create a SixteenMiles Labs Hugging Face organization before moving model repositories;

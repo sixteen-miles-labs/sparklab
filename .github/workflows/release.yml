@@ -1,6 +1,6 @@
 # Tagged-release wheels: build the cp310-cp313 runtime matrix + the kernel-cache
 # wheel on the self-hosted node, then publish
-#   - runtime wheels (manylinux, bare version)      -> PyPI, via twine + an API token
+#   - runtime wheels (manylinux, bare version)      -> PyPI, via OIDC trusted publishing
 #   - kernel-cache wheel (<version>+cu130) + runtime -> a DRAFT GitHub release on this repo
 #
 # INERT until a v* tag is pushed. The tag must point at a commit whose version.py
@@ -15,18 +15,16 @@
 #     is what PyPI accepts.
 #
 # Security shape mirrors nightly-wheels.yml: fork code never reaches the
-# self-hosted node (no pull_request trigger + repo guard), and credentials only
-# exist on hosted runners. The upload tokens are ENVIRONMENT secrets on `pypi` /
-# `testpypi`, so the environments' reviewers gate every use. GitHub release publication
-# uses the job-scoped repository token; public builds additionally use OIDC for provenance.
+# self-hosted node (no pull_request trigger + repo guard), and package publishing
+# happens on hosted runners with short-lived OIDC credentials. GitHub release
+# publication uses the job-scoped repository token; public builds additionally use
+# OIDC for provenance.
 #
 # One-time owner setup:
-#   - GitHub environments `pypi` and `testpypi`, `pypi` WITH required reviewers:
-#     once this workflow is on main, any v* tag reaches publish-pypi, and that
-#     reviewer gate is the only thing in front of it.
-#   - Environment secret `PYPI_TOKEN` on `pypi` and `TEST_PYPI_TOKEN` on
-#     `testpypi`. Scope each token to the single project `sparklab`, never
-#     account-wide, and store them per-environment rather than repo-wide.
+#   - GitHub environments `pypi` and `testpypi`, restricted to `v*` tags and
+#     `main`, respectively. Add required reviewers when the repository plan supports it.
+#   - PyPI and TestPyPI trusted publishers for owner `sixteen-miles-labs`, repository
+#     `sparklab`, workflow `release.yml`, and environments `pypi` / `testpypi`.
 
 name: Release wheels
 
@@ -68,7 +66,7 @@ jobs:
         run: |
           docker run --rm -v "${{ github.workspace }}:/workspace" alpine:3 \
             sh -c 'rm -rf /workspace/..?* /workspace/.[!.]* /workspace/*' || true
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           # Full history + tags: release mode verifies HEAD == tag == version.py
           # via `git describe --exact-match`.
@@ -96,7 +94,7 @@ jobs:
           kc="$(ls dist/sparklab_kernel_cache-*.whl 2>/dev/null | wc -l)"
           [ "$rt" -eq 4 ] || { echo "expected 4 manylinux runtime wheels, got $rt" >&2; exit 1; }
           [ "$kc" -eq 1 ] || { echo "expected 1 kernel-cache wheel, got $kc" >&2; exit 1; }
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: release-wheels
           path: dist/*.whl
@@ -111,9 +109,13 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && inputs.testpypi_rehearsal
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    environment: testpypi
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/sparklab
+    permissions:
+      id-token: write
     steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
         with:
           name: release-wheels
           path: dist
@@ -127,15 +129,13 @@ jobs:
             echo "local-versioned wheel in the PyPI upload set:" >&2; ls pypi-dist/ >&2; exit 1
           fi
           pipx run twine check --strict pypi-dist/*
-      # --skip-existing keeps a partial rerun safe: (Test)PyPI never accepts the
-      # same filename twice, so without it a rerun after a mid-upload failure
-      # fails on the wheels that already landed.
       - name: Upload to TestPyPI
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_TOKEN }}
-          TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/
-        run: pipx run twine upload --verbose --skip-existing pypi-dist/*
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: pypi-dist/
+          skip-existing: true
+          verbose: true
 
   publish-pypi:
     needs: build
@@ -143,9 +143,13 @@ jobs:
     if: github.event_name == 'push' && github.ref_type == 'tag'
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    environment: pypi
+    environment:
+      name: pypi
+      url: https://pypi.org/p/sparklab
+    permissions:
+      id-token: write
     steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
         with:
           name: release-wheels
           path: dist
@@ -157,13 +161,11 @@ jobs:
             echo "local-versioned wheel in the PyPI upload set:" >&2; ls pypi-dist/ >&2; exit 1
           fi
           pipx run twine check --strict pypi-dist/*
-      # See the note on --skip-existing in publish-testpypi. It matters more here:
-      # a PyPI filename burned by a half-finished upload can never be reused.
       - name: Upload to PyPI
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-        run: pipx run twine upload --verbose --skip-existing pypi-dist/*
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          packages-dir: pypi-dist/
+          verbose: true
 
   # Upload-only draft release on THIS repo carrying every wheel, most importantly
   # the kernel-cache one PyPI cannot host. Deliberately not scripts/publish-wheels.sh:
@@ -180,7 +182,7 @@ jobs:
       attestations: write
       artifact-metadata: write
     steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
         with:
           name: release-wheels
           path: dist
