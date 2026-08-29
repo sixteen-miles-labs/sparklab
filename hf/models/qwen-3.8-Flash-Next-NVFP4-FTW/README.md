@@ -3,6 +3,8 @@
 This helper publishes the prepared SparkLab FTW artifact to
 [`oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW`](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW).
 
+SparkLab source: <https://github.com/sixteen-miles-labs/sparklab>
+
 The default source is SparkLab's prepared artifact:
 
 ```text

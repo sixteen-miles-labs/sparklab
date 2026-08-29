@@ -1,3 +1,9 @@
+<p align="center">
+  <img src="docs/assets/sparklab-hero.png" alt="SparkLab running frontier models on NVIDIA DGX Spark" width="100%">
+</p>
+
+<p align="center"><strong>Built for NVIDIA DGX Spark (GB10)</strong></p>
+
 <h1 align="center">SparkLab</h1>
 
 <p align="center">
@@ -10,15 +16,18 @@
   <a href="LICENSE">
     <img src="https://img.shields.io/badge/License-Apache%202.0-D22128" alt="Apache License 2.0">
   </a>
-  <a href="https://x.com/16MilesLabs">
-    <img src="https://img.shields.io/badge/X-@16MilesLabs-000000?logo=x&logoColor=white" alt="SixteenMiles Labs on X">
+</p>
+
+<p align="center">
+  <a href="https://x.com/oakmindai">
+    <img src="https://img.shields.io/badge/X-@oakmindai-000000?logo=x&logoColor=white" alt="Oakmind AI on X">
   </a>
   <a href="https://huggingface.co/oakmindai">
     <img src="https://img.shields.io/badge/Hugging%20Face-oakmindai-FFD21E" alt="Oakmind AI on Hugging Face">
   </a>
 </p>
 
-<h3 align="center">Run frontier open-weight models privately on one NVIDIA DGX Spark.</h3>
+<h3 align="center">Run frontier open-weight models privately on NVIDIA DGX Spark.</h3>
 
 <p align="center">
   SparkLab is developed by <strong><a href="https://github.com/sixteen-miles-labs">SixteenMiles Labs</a></strong>,
@@ -141,15 +150,6 @@ a SparkLab support claim.
     </tr>
   </tbody>
 </table>
-
-Displayed values are fixed, batch-one probes—not certification or capacity promises:
-
-- [Qwen3.6 evidence](benchmarks/gb10/results/GB10-QWEN36-FAST-001.json)
-- [Qwen3.8 evidence](benchmarks/gb10/results/GB10-QWEN38-NVFP4-001.json)
-- [DeepSeek V4 evidence](benchmarks/gb10/results/GB10-DSV4-SPARSE-001.json)
-- [GLM-5.3 evidence](benchmarks/gb10/results/GB10-GLM53-KDA-FP8-002.json)
-- [GLM-5.2 experiment](exps/exp_glm5_2_gb10.md)
-- [Kimi K3 evidence](benchmarks/gb10/results/GB10-KIMI-001.json)
 
 Status meanings:
 

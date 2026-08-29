@@ -3,6 +3,8 @@
 Upload a local model directory to
 `oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW`:
 
+SparkLab source: <https://github.com/sixteen-miles-labs/sparklab>
+
 ```bash
 huggingface-cli login
 python hf/models/qwen-3.6-35B-A3B-NVFP4-FTW/push_weights.py \
