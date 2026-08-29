@@ -63,6 +63,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--shared-expert-overlap", action="store_true")
     p.add_argument("--no-graph", action="store_true")
     p.add_argument("--server-timeout", type=float, default=1800)
+    p.add_argument(
+        "--request-timeout",
+        type=float,
+        default=1800,
+        help="minimum HTTP timeout in seconds for streamed reasoning generation",
+    )
     p.set_defaults(collect_moe_stats=True, normal_eos=True, decode=512)
     return p.parse_args()
 
