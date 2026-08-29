@@ -3,7 +3,12 @@ from __future__ import annotations
 import torch
 
 from sparklab.kernels.triton.fp8_block_linear import Fp8BlockLinear
+from sparklab.kernels.triton.fp8_pertensor_linear import (
+    Fp8PerTensorColMerged,
+    Fp8PerTensorLinear,
+)
 from sparklab.layers import BaseOP, LinearColParallelMerged, LinearReplicated, LinearRowParallel
+from sparklab.runtime.distributed import get_tp_info
 
 
 class KimiFp8BlockLinear(Fp8BlockLinear):
@@ -67,11 +72,34 @@ def apply_attention_residual(
 
 
 class KimiSituMLP(BaseOP):
-    def __init__(self, hidden_size: int, intermediate_size: int, beta: float, linear_beta: float):
-        self.gate_up_proj = LinearColParallelMerged(
-            hidden_size, [intermediate_size, intermediate_size], has_bias=False
-        )
-        self.down_proj = LinearRowParallel(intermediate_size, hidden_size, has_bias=False)
+    def __init__(
+        self,
+        hidden_size: int,
+        intermediate_size: int,
+        beta: float,
+        linear_beta: float,
+        *,
+        quantization: str = "none",
+    ):
+        if quantization == "fp8_pertensor":
+            if get_tp_info().size != 1:
+                raise NotImplementedError(
+                    "Kimi K3 per-row FP8 resident MLPs currently require TP=1; "
+                    "set SPARKLAB_KIMI_MLP_FP8=0 for tensor parallel serving"
+                )
+            self.gate_up_proj = Fp8PerTensorColMerged(
+                hidden_size, [intermediate_size, intermediate_size], has_bias=False
+            )
+            self.down_proj = Fp8PerTensorLinear(
+                intermediate_size, hidden_size, has_bias=False
+            )
+        elif quantization == "none":
+            self.gate_up_proj = LinearColParallelMerged(
+                hidden_size, [intermediate_size, intermediate_size], has_bias=False
+            )
+            self.down_proj = LinearRowParallel(intermediate_size, hidden_size, has_bias=False)
+        else:
+            raise ValueError(f"unsupported Kimi SiTU MLP quantization: {quantization!r}")
         self.beta = beta
         self.linear_beta = linear_beta
 

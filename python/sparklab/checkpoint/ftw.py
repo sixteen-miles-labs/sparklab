@@ -24,7 +24,7 @@ FTW fixes both:
 
 Layout on disk::
 
-    <dir>/sparklab_weight.json        # index: tensors[] + shards[] + meta
+    <dir>/freetoken_weight.json       # index: tensors[] + shards[] + meta
     <dir>/freetoken-00000.ftw        # the byte region, sliced <= shard_limit
     <dir>/freetoken-00001.ftw
     <dir>/config.json, tokenizer*, ...# copied so the dir is a self-contained checkpoint

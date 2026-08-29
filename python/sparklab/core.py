@@ -146,6 +146,10 @@ class Batch:
     # _prepare_batch succeeds. Continuation chunks leave this empty, so accounting is
     # exactly-once.
     prompt_admissions: List[Tuple[int, int, int]] = field(default_factory=list, init=False)
+    # Snapshot immediately after THIS batch's forward advances each request.  A later
+    # overlapped forward mutates the same Req objects before this batch is drained, so
+    # termination accounting must not consult their then-current ``can_decode`` state.
+    can_decode_after_forward: Tuple[bool, ...] = field(default_factory=tuple, init=False)
 
     @property
     def is_prefill(self) -> bool:

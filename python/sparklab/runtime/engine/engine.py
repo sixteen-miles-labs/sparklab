@@ -424,11 +424,19 @@ class Engine:
             dummy_req=self.dummy_req,
             moe_offload_cache=self.moe_offload_cache,
         )
-        if config.attention_backend.split(",")[0] in {"triton", "dsa"}:
+        if (
+            config.attention_backend.split(",")[0] in {"triton", "dsa"}
+            and os.getenv("SPARKLAB_DISABLE_STARTUP_PREFILL_WARMUP", "0") != "1"
+        ):
             # DSA owns a Triton attention kernel and GLM's surrounding KDA/MoE path is
             # Triton too. Warm it before advertising readiness just like the plain
             # Triton backend; otherwise the first user request pays compilation.
             self._warmup_prefill()
+        elif config.attention_backend.split(",")[0] in {"triton", "dsa"}:
+            logger.warning_rank0(
+                "Startup prefill warmup is disabled by "
+                "SPARKLAB_DISABLE_STARTUP_PREFILL_WARMUP=1; the first request pays JIT cost"
+            )
 
     def _init_communication(self, config: EngineConfig) -> torch.distributed.ProcessGroup:
         if config.tp_info.size == 1 or config.use_pynccl:
@@ -933,6 +941,7 @@ class Engine:
 
         for req in batch.reqs:
             req.complete_one()
+        batch.can_decode_after_forward = tuple(req.can_decode for req in batch.reqs)
 
         batch_logits = logits[: batch.size]
         next_tokens_gpu = self.sampler.sample(batch_logits, args).to(torch.int32)

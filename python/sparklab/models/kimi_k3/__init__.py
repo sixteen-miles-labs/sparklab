@@ -5,6 +5,7 @@ from .weight import (
     load_nvfp4_expert_sources,
     load_nvfp4_expert_sources_parallel,
     setup_offload_expert_banks,
+    transform_ftw_weights,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "load_nvfp4_expert_sources_parallel",
     "parse_config",
     "setup_offload_expert_banks",
+    "transform_ftw_weights",
 ]

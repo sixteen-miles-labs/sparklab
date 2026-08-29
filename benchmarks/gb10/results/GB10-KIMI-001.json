@@ -1,0 +1,101 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-KIMI-001",
+  "status": "measured",
+  "platform": {
+    "device": "NVIDIA GB10",
+    "memory_gib": 128,
+    "machine": "aarch64",
+    "cuda": "13.0",
+    "driver": "NVIDIA GB10, 580.126.09",
+    "torch": "2.11.0+cu130",
+    "triton": "3.6.0"
+  },
+  "engine": {
+    "name": "SparkLab",
+    "product_identity": "SparkLab",
+    "revision": "38ec949190393422c8576543c8aba8a9f49e4bfe",
+    "git_tracked_dirty": true
+  },
+  "model": {
+    "repository": "nvidia/Kimi-K3-NVFP4",
+    "revision": "f8c5234a0a880bcc6cbf779a315e7ee2f405b812",
+    "checkpoint_format": "ftw-modelopt-nvfp4-fp8",
+    "fingerprint": "534cbc4565d4279d",
+    "checkpoint_bytes": 1610936311808,
+    "source_checkpoint_bytes": 1610038482254,
+    "quantization": "ModelOpt NVFP4 routed experts, native block-FP8 projections, and load-time per-row FP8 dense/shared/embedding/head weights"
+  },
+  "workload": {
+    "name": "AIME-25 problem 0 fixed decode probe",
+    "batch_size": 1,
+    "sampling": "greedy",
+    "prompt_tokens": 129,
+    "requested_output_tokens": 256,
+    "completion_tokens": 256,
+    "measured_intervals": 255,
+    "promotion_ladder_tokens": [
+      1,
+      16,
+      64,
+      256
+    ]
+  },
+  "metrics": {
+    "decode_tokens_per_second": 0.16130749709147157,
+    "decode_milliseconds_per_token": 6199.339882094487,
+    "first_request_ttft_seconds": 390.6117941541597,
+    "warm_ttft_seconds": 395.4053193805739,
+    "latency_p50_milliseconds": 6260.018483735621,
+    "latency_p99_milliseconds": 6747.140467166901,
+    "device_allocation_gib": 74.859375,
+    "minimum_mem_available_gib": 17.677547454833984,
+    "power_watts_average": 15.553662486938348,
+    "power_watts_peak": 23.47,
+    "gpu_temperature_celsius_peak": 60.0,
+    "expert_cache_miss_rate_percent": 80.22538363171356,
+    "expert_disk_read_operations": 2301396,
+    "physical_io_gib": 6645.0728759765625,
+    "swap_growth_bytes": 0
+  },
+  "validation": {
+    "complete_checkpoint_loaded": true,
+    "strict_source_audit_passed": true,
+    "conversion_gate_passed": true,
+    "decode_promotion_gates_passed": [
+      1,
+      16,
+      64,
+      256
+    ],
+    "api_stream_completed": true,
+    "output_hash_algorithm": "sha1-prefix",
+    "output_hash": "1bdcc748e19f",
+    "output_prefix_consistent_across_ladder": false,
+    "expected_answer": "70",
+    "extracted_answer": null,
+    "output_correctness_evaluated": false,
+    "output_correctness": false,
+    "memory_bounded": true,
+    "oom_count": 0,
+    "runtime_swap_out_pages": 0,
+    "runtime_swap_growth_bytes": 0,
+    "acquisition_global_swap_out_pages": 1,
+    "caveats": [
+      "Acquisition observed one unscoped global swap-out page during its 8.5-hour window; conversion and every decode service independently recorded zero scoped swap growth and swap-out.",
+      "The 256-token greedy run diverged from the 16/64-token text after a shared prefix; throughput and runtime safety are measured, but exact cross-rung output determinism is not established."
+    ]
+  },
+  "source": {
+    "summary": "exps/exp_kimik3_gb10.md",
+    "raw_artifact": "$HOME/results/kimi-k3-gb10/probe-256.jsonl",
+    "acquisition_artifact": "$HOME/results/kimi-k3-gb10/acquisition-final.json",
+    "conversion_artifact": "$HOME/results/kimi-k3-gb10/conversion.json",
+    "promotion_gates": [
+      "$HOME/results/kimi-k3-gb10/gate-1.json",
+      "$HOME/results/kimi-k3-gb10/gate-16.json",
+      "$HOME/results/kimi-k3-gb10/gate-64.json",
+      "$HOME/results/kimi-k3-gb10/gate-256.json"
+    ]
+  }
+}
