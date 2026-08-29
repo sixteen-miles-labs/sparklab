@@ -47,3 +47,26 @@ def test_missing_safety_telemetry_blocks_runtime():
     record["memory"] = {}
     record["disk"] = {}
     assert len(validate(record)) == 6
+
+
+def test_no_swap_cgroup_attributes_global_pageouts_correctly():
+    record = _record()
+    record["vmstat"]["delta"]["pswpout"] = 195
+    record["swap"]["growth_bytes"] = 188416
+    record["cgroup"] = {
+        "end": {"swap_max": "0", "swap_current_bytes": 0},
+        "delta": {"oom_kill": 0, "swap_current_bytes": 0},
+    }
+    assert validate(record) == []
+
+
+def test_no_swap_cgroup_rejects_local_oom_or_swap():
+    record = _record()
+    record["cgroup"] = {
+        "end": {"swap_max": "0", "swap_current_bytes": 1},
+        "delta": {"oom_kill": 1, "swap_current_bytes": 1},
+    }
+    errors = validate(record)
+    assert any("cgroup.delta.oom_kill" in error for error in errors)
+    assert any("cgroup.delta.swap_current_bytes" in error for error in errors)
+    assert any("cgroup.end.swap_current_bytes" in error for error in errors)

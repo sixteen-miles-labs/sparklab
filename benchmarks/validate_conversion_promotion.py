@@ -19,15 +19,35 @@ def validate(record: dict[str, Any]) -> list[str]:
         errors.append(f"termination_reason={record.get('termination_reason')!r}")
 
     delta = (record.get("vmstat") or {}).get("delta") or {}
-    for key in ("oom_kill", "pswpout"):
-        if key not in delta:
-            errors.append(f"vmstat.delta.{key} is missing")
-        elif delta[key] != 0:
-            errors.append(f"vmstat.delta.{key}={delta[key]!r}, expected 0")
+    if "oom_kill" not in delta:
+        errors.append("vmstat.delta.oom_kill is missing")
+    elif delta["oom_kill"] != 0:
+        errors.append(f"vmstat.delta.oom_kill={delta['oom_kill']!r}, expected 0")
+
+    cgroup = record.get("cgroup") or {}
+    cgroup_end = cgroup.get("end") or {}
+    cgroup_delta = cgroup.get("delta") or {}
+    isolated = cgroup_end.get("swap_max") == "0"
+    if isolated:
+        for key in ("oom_kill", "swap_current_bytes"):
+            if key not in cgroup_delta:
+                errors.append(f"cgroup.delta.{key} is missing")
+            elif cgroup_delta[key] != 0:
+                errors.append(f"cgroup.delta.{key}={cgroup_delta[key]!r}, expected 0")
+        if cgroup_end.get("swap_current_bytes") != 0:
+            errors.append(
+                "cgroup.end.swap_current_bytes="
+                f"{cgroup_end.get('swap_current_bytes')!r}, expected 0"
+            )
+    else:
+        if "pswpout" not in delta:
+            errors.append("vmstat.delta.pswpout is missing")
+        elif delta["pswpout"] != 0:
+            errors.append(f"vmstat.delta.pswpout={delta['pswpout']!r}, expected 0")
     swap = record.get("swap") or {}
     if "growth_bytes" not in swap:
         errors.append("swap.growth_bytes is missing")
-    elif swap["growth_bytes"] != 0:
+    elif not isolated and swap["growth_bytes"] != 0:
         errors.append(f"swap.growth_bytes={swap['growth_bytes']!r}, expected 0")
 
     memory = record.get("memory") or {}
