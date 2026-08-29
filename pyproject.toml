@@ -82,7 +82,7 @@ dev = ["pytest>=6.0"]
 # `sparklab[accel]` for the full native fast path.
 fi = ["flashinfer-python[cu13]>=0.6,<0.7"]
 # renamed from sgl-kernel at 0.4; still imports as `sgl_kernel`, so never co-install both
-sgl = ["sglang-kernel==0.4.5"]
+sgl = ["sglang-kernel==0.4.6.post1"]
 accel = ["sparklab[fi,sgl]"]
 # NOTE: the Marlin W4A16 NVFP4 expert-GEMM path (sm_80-99) borrows vLLM's AOT wheel
 # (vllm>=0.14,<0.15), which pins transformers>=4.56,<5 and so is INCOMPATIBLE with the
