@@ -1,0 +1,60 @@
+name: Bug report
+description: Report a reproducible SparkLab problem
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve SparkLab. For security vulnerabilities, use the private reporting link in SECURITY.md instead of this form.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and pull requests for this problem.
+          required: true
+        - label: This report does not contain credentials, private prompts, model weights, or undisclosed security details.
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: SparkLab version or commit
+      placeholder: 0.1.0b1 or a commit SHA
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Include operating system, Python version, GPU, driver, and CUDA version where relevant.
+      placeholder: DGX OS, Python 3.11, NVIDIA GB10, driver r580, CUDA 13
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Explain what happened and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest commands or code that reproduce the problem.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Remove credentials, private prompts, local usernames, and unrelated model output before pasting logs.
+      render: text
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add any other information that may help diagnose the problem.
