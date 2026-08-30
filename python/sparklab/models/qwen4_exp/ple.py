@@ -115,6 +115,15 @@ class _CachedRowStore:
 
     def _lookup(self, ids: torch.Tensor) -> torch.Tensor:
         flat = ids.detach().to(device="cpu", dtype=torch.long).flatten()
+        if flat.numel() <= 32:
+            # Decode is normally one request x 16 n-gram heads. Avoid torch.unique
+            # and index_select for that tiny case: the row cache already accepts
+            # repeated keys and preserving their order gives the final table directly.
+            rows = self._lookup_rows(flat.tolist())
+            payload = bytearray().join(rows)
+            table = torch.frombuffer(payload, dtype=self.storage_dtype).clone()
+            table = table.view(*ids.shape, self.dim)
+            return table if table.dtype == torch.bfloat16 else table.to(torch.bfloat16)
         unique, inverse = torch.unique(flat, sorted=False, return_inverse=True)
         rows = self._lookup_rows(unique.tolist())
         if len(rows) != unique.numel():
@@ -257,6 +266,11 @@ class DiskNGramEmbedding(BaseOP):
         self._head_vocab_sizes = torch.tensor(sizes, dtype=torch.long, device="cpu")
         self._head_offsets = torch.tensor(offsets, dtype=torch.long, device="cpu")
         self._multipliers = _multipliers(vocab_size, args.ngram_size, layer_index, args.seed)
+        # Scalar mirrors used by the one-token decode hash. Python integer arithmetic
+        # avoids launching roughly twenty tiny CPU tensor operations for a 1x16 result.
+        self._head_vocab_sizes_py = self._head_vocab_sizes.tolist()
+        self._head_offsets_py = self._head_offsets.tolist()
+        self._multipliers_py = self._multipliers.tolist()
         self.padded_rows = math.ceil(total / args.ngram_vocab_divisor) * args.ngram_vocab_divisor
         self._store = None
 
@@ -289,6 +303,59 @@ class DiskNGramEmbedding(BaseOP):
         valid = (positions - previous_eos - 1 >= shift) & (source >= 0)
         return torch.where(valid, shifted, ids.new_full((), self.args.eos_token_id))
 
+    def _shift_span(
+        self, ids: torch.Tensor, start: int, end: int, shift: int
+    ) -> torch.Tensor:
+        """Return one shifted output span without scanning the preceding context.
+
+        A shift is valid exactly when its source exists and none of the ``shift``
+        intervening tokens is EOS. Qwen3.8 uses shifts 0..2, so decode now touches at
+        most the current token and its two predecessors instead of rebuilding arange,
+        where and cummax tensors over the complete request on every generated token.
+        """
+        if shift == 0:
+            return ids[start:end]
+        positions = torch.arange(start, end, dtype=torch.long)
+        source = positions - shift
+        valid = source >= 0
+        shifted = ids[source.clamp_min(0)]
+        for offset in range(shift):
+            check = (source + offset).clamp_min(0)
+            valid &= ids[check] != self.args.eos_token_id
+        return torch.where(valid, shifted, ids.new_full((), self.args.eos_token_id))
+
+    def _ids_for_one(self, ids: torch.Tensor, position: int) -> torch.Tensor:
+        """Scalar-equivalent n-gram hash for the common one-token decode span."""
+        shifted = []
+        for shift in range(self.args.ngram_size):
+            source = position - shift
+            valid = source >= 0
+            if valid:
+                valid = all(
+                    int(ids[index]) != self.args.eos_token_id
+                    for index in range(source, position)
+                )
+            shifted.append(int(ids[source]) if valid else self.args.eos_token_id)
+
+        output = []
+        for ngram in range(2, self.args.ngram_size + 1):
+            h0 = (ngram - 2) * self.args.heads_per_ngram
+            h1 = h0 + self.args.heads_per_ngram
+            mixed = (shifted[0] * self._multipliers_py[0]) & _MASK64
+            for token_index in range(1, ngram):
+                mixed ^= (
+                    shifted[token_index] * self._multipliers_py[token_index]
+                ) & _MASK64
+            # Match signed int64 overflow before torch.remainder.
+            if mixed >= 1 << 63:
+                mixed -= 1 << 64
+            output.extend(
+                mixed % self._head_vocab_sizes_py[head]
+                + self._head_offsets_py[head]
+                for head in range(h0, h1)
+            )
+        return torch.tensor([output], dtype=torch.long)
+
     def ids_for_request(
         self, ids: torch.Tensor, start: int, end: int,
         current_ids: torch.Tensor | None = None,
@@ -298,21 +365,28 @@ class DiskNGramEmbedding(BaseOP):
         # already present in Batch.input_ids on the GPU, so reconstruct that one
         # in-flight tail explicitly. Prefill and non-overlap decode take the cheap
         # host-only branch.
-        ids = ids[:end].long()
+        # Keep the history in its compact request dtype. Converting the whole prefix
+        # to int64 here would reintroduce an O(context) copy before the span-only hash.
+        ids = ids[:end]
         if ids.numel() < end:
             if ids.numel() != start or current_ids is None:
                 raise RuntimeError(
                     "Qwen4 PLE token history is incomplete: "
                     f"host={ids.numel()}, start={start}, end={end}"
                 )
-            current = current_ids.detach().to(device="cpu", dtype=torch.long)
+            current = current_ids.detach().to(device="cpu", dtype=ids.dtype)
             if current.numel() != end - start:
                 raise RuntimeError(
                     "Qwen4 PLE current-token span mismatch: "
                     f"got={current.numel()}, expected={end - start}"
                 )
             ids = torch.cat((ids, current))
-        shifted = [self._shift(ids, n) for n in range(self.args.ngram_size)]
+        if end - start == 1:
+            return self._ids_for_one(ids, start)
+        shifted = [
+            self._shift_span(ids, start, end, n).long()
+            for n in range(self.args.ngram_size)
+        ]
         blocks = []
         for ngram in range(2, self.args.ngram_size + 1):
             h0 = (ngram - 2) * self.args.heads_per_ngram
@@ -323,7 +397,7 @@ class DiskNGramEmbedding(BaseOP):
             sizes = self._head_vocab_sizes[h0:h1]
             offsets = self._head_offsets[h0:h1]
             blocks.append(torch.remainder(mixed[:, None], sizes) + offsets)
-        return torch.cat(blocks, -1)[start:end]
+        return torch.cat(blocks, -1)
 
     def forward(self, batch) -> torch.Tensor:
         if self._store is None:
@@ -372,6 +446,16 @@ class Qwen4PLE(BaseOP):
             f"qwen4_ple_{self.layer_id}_conv", (self.width, self.state_len), x.dtype
         )
         reqs = batch.padded_reqs if hasattr(batch, "padded_reqs") else batch.reqs
+        if batch.is_decode:
+            from sparklab.kernels.triton.qwen4 import ple_conv_decode
+
+            return ple_conv_decode(
+                x,
+                states,
+                self.conv1d.weight,
+                batch.fla_metadata.cache_indices,
+                self.dilation,
+            )
         outputs, offset = [], 0
         for req in reqs:
             length = req.extend_len

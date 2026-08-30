@@ -54,10 +54,13 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
         "qwen3.6-35b-a3b",
     }
     qwen = get_recipe("qwen3.8-flash-next")
-    assert qwen.recipe_version == "0.5.0"
+    assert qwen.recipe_version == "0.6.0"
     assert qwen.intended_tier == "frontier"
     assert qwen.status == "experimental"
-    assert qwen.evidence == ("GB10-QWEN38-NVFP4-001",)
+    assert qwen.evidence == (
+        "GB10-QWEN38-NVFP4-OPT-001",
+        "GB10-QWEN38-NVFP4-001",
+    )
     assert qwen.backend == "native"
     assert qwen.deployment.source_format == "safetensors-nvfp4"
     assert qwen.deployment.runtime_format == "ftw-nvfp4"
@@ -65,9 +68,14 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert qwen.deployment.quantization == "nvfp4"
     assert "convert_expert_quantization" not in qwen.deployment.backend_options
     assert qwen.deployment.backend_options["nvfp4_backend"] == "triton"
-    assert qwen.performance.decode_tokens_per_second == pytest.approx(12.583951131340129)
-    assert qwen.performance.warm_ttft_seconds == pytest.approx(0.7857413627207279)
-    assert qwen.deployment.backend_options["moe_host_cache_gb"] == 3
+    assert qwen.performance.decode_tokens_per_second == pytest.approx(16.061408803195647)
+    assert qwen.performance.warm_ttft_seconds == pytest.approx(0.4342626500874758)
+    assert qwen.deployment.backend_options["moe_host_cache_gb"] == 0
+    assert qwen.deployment.backend_options["moe_preload_all"] is True
+    assert qwen.deployment.backend_options["num_tokens"] == 131_072
+    assert "moe_prefill_sparse_max_tokens" not in qwen.deployment.backend_options
+    assert "moe_prefill_hit_d2d" not in qwen.deployment.backend_options
+    assert qwen.runtime_memory == {"total_bytes": 107374182400}
     assert qwen.runtime_artifact is not None
     assert qwen.runtime_artifact.repo_id == "oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW"
     assert qwen.runtime_artifact.revision == "cbbcf69f52b9815b8a987fe839003fae12aa8050"
@@ -329,27 +337,32 @@ def test_historical_qwen_fp8_evidence_does_not_transfer_to_nvfp4_recipe():
     assert any("recipe_version mismatch" in reason for reason in evaluation.reasons)
 
 
-def test_current_qwen_nvfp4_evidence_passes_performance_only():
+def test_current_qwen_nvfp4_evidence_passes_all_non_endurance_frontier_gates():
     from sparklab.certification import evaluate_tier
 
     recipe = get_recipe("qwen3.8-flash-next")
     root = Path(__file__).resolve().parents[2]
     result = json.loads(
-        (root / "benchmarks/gb10/results/GB10-QWEN38-NVFP4-001.json").read_text()
+        (root / "benchmarks/gb10/results/GB10-QWEN38-NVFP4-OPT-001.json").read_text()
     )
     assert result["result_id"] == recipe.evidence[0]
     assert result["admission"]["performance_gate_passed"] is True
     assert result["metrics"]["decode_tokens_per_second"] == pytest.approx(
-        12.583951131340129
+        16.061408803195647
     )
     assert result["metrics"]["warm_ttft_seconds"] == pytest.approx(
-        0.7857413627207279
+        0.4342626500874758
     )
+    assert result["validation"]["context_tokens"] == 65_536
+    assert result["validation"]["context_gate_run"] is True
+    assert result["validation"]["capability_gate_run"] is True
+    assert result["validation"]["quality_gate_run"] is True
     evaluation = evaluate_tier(recipe, result, "frontier")
     assert not evaluation.passed
     assert not any("recipe " in reason and "mismatch" in reason for reason in evaluation.reasons)
     assert not any("decode_tokens_per_second" in reason for reason in evaluation.reasons)
     assert not any("warm_ttft_seconds" in reason for reason in evaluation.reasons)
+    assert not any("context_tokens" in reason for reason in evaluation.reasons)
     assert any("duration_minutes" in reason for reason in evaluation.reasons)
 
 

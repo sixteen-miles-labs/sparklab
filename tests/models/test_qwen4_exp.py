@@ -4,6 +4,7 @@ import json
 import struct
 from types import SimpleNamespace
 
+import pytest
 import torch
 from safetensors.torch import save_file
 
@@ -79,6 +80,58 @@ def test_config_declares_qsa_separately_from_minimax_bsa():
     specs = cfg.kv_cache_group_specs()
     assert len(specs) == 1 and specs[0].layer_ids == (3, 7)
     assert cfg.linear_state_snapshots is False
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
+def test_qwen_shared_expert_overlap_launches_before_routed_staging():
+    from sparklab.models.qwen3_5_moe.moe import Qwen3_5MoE
+
+    order = []
+    cache = SimpleNamespace(
+        shared_expert_overlap=True,
+        disk_source=object(),
+        shared_expert_stream=None,
+        shared_expert_overlap_calls=0,
+    )
+
+    class Gate:
+        @staticmethod
+        def forward(hidden):
+            return torch.zeros(
+                hidden.size(0), 8, device=hidden.device, dtype=hidden.dtype
+            )
+
+    class Experts:
+        offload_cache = cache
+
+        @staticmethod
+        def forward(*, hidden_states, router_logits):
+            order.append("routed")
+            output = torch.ones_like(hidden_states)
+            hidden_states.zero_()
+            return output
+
+    class Shared:
+        @staticmethod
+        def forward(hidden):
+            order.append("shared")
+            return hidden * 2
+
+    block = object.__new__(Qwen3_5MoE)
+    block.gate = Gate()
+    block.experts = Experts()
+    block.shared_expert = Shared()
+    block.shared_expert_gate = Gate()
+    hidden = torch.randn(3, 8, dtype=torch.bfloat16, device="cuda")
+    original = hidden.clone()
+
+    out = block.forward(hidden)
+    torch.cuda.synchronize()
+
+    expected = torch.ones_like(original) + original
+    torch.testing.assert_close(out, expected)
+    assert order == ["shared", "routed"]
+    assert cache.shared_expert_overlap_calls == 1
 
 
 def test_config_accepts_conversion_owned_nvfp4_experts():
@@ -192,6 +245,136 @@ def test_grouped_norm_has_single_bfloat16_rounding():
     normalized = grouped * torch.rsqrt(grouped.square().mean(-1, keepdim=True) + 1e-6)
     expected = (normalized.flatten(-2) * (1 + op.weight.float())).to(torch.bfloat16)
     torch.testing.assert_close(op.forward(x), expected, rtol=0, atol=0)
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
+def test_grouped_norm_cuda_kernel_is_reference_exact():
+    torch.manual_seed(31)
+    op = GroupedPlusOneRMSNorm(10240, 2560, 1e-6)
+    op.weight = torch.randn(10240, dtype=torch.bfloat16, device="cuda")
+    x = torch.randn(2, 10240, dtype=torch.bfloat16, device="cuda")
+    grouped = x.float().view(2, 4, 2560)
+    normalized = grouped * torch.rsqrt(
+        grouped.square().mean(-1, keepdim=True) + 1e-6
+    )
+    expected = (normalized.flatten(-2) * (1 + op.weight.float())).to(torch.bfloat16)
+    torch.testing.assert_close(op.forward(x), expected, rtol=0, atol=0)
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
+def test_hyper_connection_cuda_kernels_are_reference_exact():
+    from sparklab.kernels.triton.qwen4 import (
+        hyper_injection_weights,
+        hyper_mix,
+        hyper_residual_inject,
+        scaled_silu,
+    )
+
+    torch.manual_seed(35)
+    rows, groups, hidden, lowrank = 2, 4, 2560, 320
+    width = groups * hidden
+    normed = torch.randn(rows, width, dtype=torch.bfloat16, device="cuda")
+    logits = torch.randn_like(normed)
+    down = torch.randn(rows, lowrank, dtype=torch.bfloat16, device="cuda")
+    injection_logits = torch.randn(rows, groups, dtype=torch.bfloat16, device="cuda")
+    branch = torch.randn(rows, hidden, dtype=torch.bfloat16, device="cuda")
+    injection = torch.randn(rows, groups, dtype=torch.bfloat16, device="cuda")
+
+    expected_mix = (
+        torch.sigmoid(logits).view(rows, groups, hidden)
+        * normed.view(rows, groups, hidden)
+    ).mean(-2)
+    expected_residual = normed + (
+        branch.unsqueeze(-2) * injection.unsqueeze(-1)
+    ).flatten(-2)
+    torch.testing.assert_close(
+        scaled_silu(down, groups),
+        torch.nn.functional.silu(down / groups),
+        rtol=0,
+        atol=0,
+    )
+    torch.testing.assert_close(
+        hyper_mix(logits, normed, groups=groups, group_size=hidden),
+        expected_mix,
+        rtol=0,
+        atol=0,
+    )
+    torch.testing.assert_close(
+        hyper_injection_weights(injection_logits, groups),
+        2 * torch.sigmoid(injection_logits / groups),
+        rtol=0,
+        atol=0,
+    )
+    torch.testing.assert_close(
+        hyper_residual_inject(branch, normed, injection, groups=groups),
+        expected_residual,
+        rtol=0,
+        atol=0,
+    )
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
+def test_ple_decode_conv_fuses_state_update_reference_exactly():
+    from sparklab.kernels.triton.qwen4 import ple_conv_decode
+
+    torch.manual_seed(37)
+    batch, width, state_len, kernel, dilation = 2, 512, 9, 4, 3
+    x = torch.randn(batch, width, dtype=torch.bfloat16, device="cuda")
+    initial = torch.randn(4, width, state_len, dtype=torch.bfloat16, device="cuda")
+    weight = torch.randn(width, 1, kernel, dtype=torch.bfloat16, device="cuda")
+    indices = torch.tensor([1, 3], dtype=torch.int32, device="cuda")
+    expected_state = initial.clone()
+    expected = []
+    for batch_index, slot in enumerate(indices.tolist()):
+        current = x[batch_index:batch_index + 1].T.contiguous()
+        history = torch.cat((expected_state[slot], current), -1)
+        conv = torch.nn.functional.conv1d(
+            history.unsqueeze(0), weight, groups=width, dilation=dilation
+        ).squeeze(0).T
+        expected_state[slot].copy_(history[:, -state_len:])
+        expected.append(torch.nn.functional.silu(conv))
+    expected = torch.cat(expected, 0)
+
+    state = initial.clone()
+    got = ple_conv_decode(x, state, weight, indices, dilation)
+    torch.testing.assert_close(got, expected, rtol=0, atol=0)
+    torch.testing.assert_close(state, expected_state, rtol=0, atol=0)
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
+def test_qsa_fused_index_scores_preserve_topk_selection():
+    from sparklab.kernels.triton.qwen4 import qsa_index_scores
+
+    torch.manual_seed(41)
+    query = torch.randn(4, 128, dtype=torch.bfloat16, device="cuda")
+    keys = torch.randn(777, 128, dtype=torch.bfloat16, device="cuda")
+    expected = torch.relu(query.float() @ keys.float().T).sum(0) / (128**0.5)
+    got = qsa_index_scores(query, keys)
+
+    torch.testing.assert_close(got, expected, rtol=3e-3, atol=3e-3)
+    torch.testing.assert_close(
+        torch.topk(got, 512, sorted=False).indices.sort().values,
+        torch.topk(expected, 512, sorted=False).indices.sort().values,
+    )
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
+def test_qsa_fused_row_expansion_matches_chronological_reference():
+    from sparklab.kernels.triton.qwen4 import qsa_expand_selected_rows
+
+    torch.manual_seed(43)
+    blocks = torch.randperm(777, device="cuda")[:512]
+    physical = torch.randperm(4096, device="cuda", dtype=torch.int64).to(torch.int32)
+    visible = 777 * 4 + 3
+    offsets = torch.arange(4, device="cuda")
+    logical = torch.sort(
+        torch.cat(((blocks[:, None] * 4 + offsets).flatten(), torch.arange(3108, 3111, device="cuda")))
+    ).values
+    expected = physical.index_select(0, logical)
+
+    got = qsa_expand_selected_rows(blocks, physical, ratio=4, visible=visible)
+
+    torch.testing.assert_close(got, expected)
 
 
 def test_external_ngram_artifact_streams_exact_rows(tmp_path):
@@ -401,6 +584,40 @@ def test_ple_reconstructs_overlap_decode_token_from_current_batch():
     torch.testing.assert_close(got, expected)
 
 
+def test_ple_span_hash_matches_full_history_reference_across_eos_boundaries():
+    args = SimpleNamespace(
+        ngram_size=3,
+        heads_per_ngram=2,
+        ple_embed_dim=16,
+        ngram_vocab_size_base=101,
+        ngram_vocab_divisor=8,
+        seed=1234,
+        eos_token_id=99,
+    )
+    embedding = DiskNGramEmbedding(args, vocab_size=128, layer_index=0)
+    ids = torch.tensor([5, 6, 99, 7, 8, 9, 10, 99, 11, 12], dtype=torch.int32)
+    for start, end in ((0, 10), (1, 4), (3, 9), (9, 10)):
+        shifted_full = [
+            embedding._shift(ids, n).long() for n in range(args.ngram_size)
+        ]
+        blocks = []
+        for ngram in range(2, args.ngram_size + 1):
+            h0 = (ngram - 2) * args.heads_per_ngram
+            h1 = h0 + args.heads_per_ngram
+            mixed = shifted_full[0] * embedding._multipliers[0]
+            for position in range(1, ngram):
+                mixed = torch.bitwise_xor(
+                    mixed, shifted_full[position] * embedding._multipliers[position]
+                )
+            sizes = embedding._head_vocab_sizes[h0:h1]
+            offsets = embedding._head_offsets[h0:h1]
+            blocks.append(torch.remainder(mixed[:, None], sizes) + offsets)
+        expected = torch.cat(blocks, -1)[start:end]
+        torch.testing.assert_close(
+            embedding.ids_for_request(ids, start, end), expected
+        )
+
+
 def test_qsa_selects_complete_blocks_and_always_keeps_tail():
     backend = QSAAttnBackend.__new__(QSAAttnBackend)
     backend.args = SimpleNamespace(
@@ -408,20 +625,13 @@ def test_qsa_selects_complete_blocks_and_always_keeps_tail():
     )
     backend.config = SimpleNamespace(rms_norm_eps=1e-6)
 
-    class IdentityRotary:
-        @staticmethod
-        def forward(_positions, query, key):
-            return query, key
-
     raw = torch.arange(14 * 4, dtype=torch.float32).view(14, 4) / 10
     index_q = torch.tensor([[1.0, -0.5, 0.25, 0.1], [-0.2, 0.4, 0.8, -0.1]])
     physical = torch.arange(14, dtype=torch.int32) * 3 + 7
-    got = backend._selected_rows(
-        index_q, raw, physical, 14, torch.zeros(4), IdentityRotary()
-    )
 
     pooled = raw[:12].view(3, 4, 4).mean(1)
     pooled = pooled * torch.rsqrt(pooled.square().mean(-1, keepdim=True) + 1e-6)
+    got = backend._selected_rows(index_q, pooled, physical, 14)
     score = torch.relu(index_q @ pooled.T).sum(0) / 2
     blocks = torch.topk(score, 2, sorted=False).indices
     logical = torch.cat((
@@ -437,10 +647,118 @@ def test_qsa_dense_budget_fast_path_does_not_need_index_keys():
     backend = QSAAttnBackend.__new__(QSAAttnBackend)
     backend.args = SimpleNamespace(index_compress_ratio=4, index_block_topk=512)
     physical = torch.arange(2051, dtype=torch.int32) * 2 + 1
-    got = backend._selected_rows(
-        torch.empty(4, 128), None, physical, 2051, torch.empty(128), None
-    )
+    got = backend._selected_rows(torch.empty(4, 128), None, physical, 2051)
     torch.testing.assert_close(got, physical)
+
+
+def test_qsa_materializes_each_completed_index_group_once(monkeypatch):
+    physical = torch.tensor([9, 3, 12, 1, 8, 5, 14, 2], dtype=torch.int32)
+    monkeypatch.setattr(
+        "sparklab.attention.qsa.get_global_ctx",
+        lambda: SimpleNamespace(page_table=physical.view(1, -1)),
+    )
+    backend = QSAAttnBackend.__new__(QSAAttnBackend)
+    backend.args = SimpleNamespace(index_compress_ratio=4)
+    backend.config = SimpleNamespace(rms_norm_eps=1e-6)
+    backend.device = torch.device("cpu")
+    raw = torch.arange(15 * 4, dtype=torch.float32).view(15, 4) / 10
+
+    class FakeKVCache:
+        @staticmethod
+        def index_k_cache(_slot):
+            return raw
+
+    class IdentityRotary:
+        @staticmethod
+        def forward(positions, query, key):
+            assert positions.tolist() == [0, 4]
+            return query, key
+
+    backend.kvcache = FakeKVCache()
+    expected = raw.index_select(0, physical.long()).view(2, 4, 4).mean(1)
+    expected = expected * torch.rsqrt(
+        expected.square().mean(-1, keepdim=True) + 1e-6
+    )
+    untouched = raw.clone()
+    backend._pool_completed_keys(
+        0,
+        [SimpleNamespace(cached_len=2, extend_len=6, device_len=8, table_idx=0)],
+        torch.zeros(4),
+        IdentityRotary(),
+    )
+    torch.testing.assert_close(raw[physical[[3, 7]].long()], expected)
+    mask = torch.ones(raw.size(0), dtype=torch.bool)
+    mask[physical[[3, 7]].long()] = False
+    torch.testing.assert_close(raw[mask], untouched[mask])
+
+
+def test_qsa_dense_metadata_is_built_once_and_supports_missing_index_query(monkeypatch):
+    page_table = torch.tensor([[5, 6, 7, 8], [11, 12, 13, 14]], dtype=torch.int32)
+    monkeypatch.setattr(
+        "sparklab.attention.qsa.get_global_ctx",
+        lambda: SimpleNamespace(page_table=page_table),
+    )
+    backend = QSAAttnBackend.__new__(QSAAttnBackend)
+    backend.args = SimpleNamespace(index_compress_ratio=4, index_block_topk=512)
+    backend.device = torch.device("cpu")
+    backend._idx_slot = {3: 0}
+    backend.config = SimpleNamespace(num_kv_heads=1, head_dim=2)
+    backend.sm_scale = 0.5
+
+    class FakeKVCache:
+        def __init__(self):
+            self.k = torch.zeros(16, 1, 2)
+            self.v = torch.zeros_like(self.k)
+
+        def store_kv(self, *args):
+            pass
+
+        def store_index_k(self, *args):
+            pass
+
+        def k_cache(self, _layer_id):
+            return self.k
+
+        def v_cache(self, _layer_id):
+            return self.v
+
+    backend.kvcache = FakeKVCache()
+    reqs = [
+        SimpleNamespace(extend_len=2, cached_len=1, device_len=3, table_idx=0),
+        SimpleNamespace(extend_len=1, cached_len=0, device_len=1, table_idx=1),
+    ]
+    batch = SimpleNamespace(reqs=reqs, out_loc=torch.tensor([6, 7, 11]))
+    backend.prepare_metadata(batch)
+    md = batch.attn_metadata
+    assert not backend.needs_index_query(batch)
+    assert md.q_to_req.tolist() == [0, 1, 2]
+    assert md.dense_indptr.tolist() == [0, 2, 5, 6]
+    assert md.dense_indices.tolist() == [5, 6, 5, 6, 7, 11]
+    assert md.dense_q_positions.tolist() == [1, 2, 0]
+
+    captured = {}
+
+    def fake_paged_attention(**kwargs):
+        captured.update(kwargs)
+        return torch.full((3, 1, 2), 9.0)
+
+    monkeypatch.setattr(
+        "sparklab.kernels.triton.attention.paged_attention", fake_paged_attention
+    )
+    result = backend.qsa_forward(
+        q=torch.zeros(3, 1, 2),
+        k=torch.zeros(3, 2),
+        v=torch.zeros(3, 2),
+        index_q=None,
+        raw_index_k=torch.zeros(3, 2),
+        k_norm_weight=torch.zeros(2),
+        rotary=None,
+        layer_id=3,
+        batch=batch,
+    )
+    assert result.unique().item() == 9
+    assert captured["indices"].data_ptr() == md.dense_indices.data_ptr()
+    assert captured["q_to_req"].tolist() == [0, 1, 2]
 
 
 def test_registry_has_qwen_wrapper_and_text_architectures():

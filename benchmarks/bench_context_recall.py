@@ -49,6 +49,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--cpu-threads", type=int, default=0)
     p.add_argument("--mem-ratio", type=float, default=0.9)
     p.add_argument("--disable-prefill-overlap", action="store_true")
+    p.add_argument("--preload-all", action="store_true")
     p.add_argument("--prefill-hit-d2d", action="store_true")
     p.add_argument("--prefill-sparse-max-tokens", type=int, default=0)
     p.add_argument("--shared-expert-overlap", action="store_true")
@@ -239,6 +240,7 @@ def main() -> int:
         "configuration": {
             "max_seq_len": args.max_seq_len,
             "max_extend_tokens": args.max_extend_tokens,
+            "preload_all": args.preload_all,
             "prefill_hit_d2d": args.prefill_hit_d2d,
             "prefill_sparse_max_tokens": args.prefill_sparse_max_tokens,
             "template_token_offset": template_offset,

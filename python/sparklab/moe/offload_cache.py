@@ -201,6 +201,11 @@ class OffloadMoeCache:
         self.bank_sources: dict[str, list[torch.Tensor]] = {}
         self.bank_caches: dict[str, torch.Tensor] = {}
         self.disk_source = None
+        # True after preload_all_from_disk fills the complete L*E cache in the
+        # deterministic slot ``layer * E + expert``. The immutable mapping removes
+        # decode-time LRU and host synchronization from disk-backed models whose full
+        # quantized expert bank fits in unified GPU memory.
+        self.fully_resident = False
         self.shared_expert_stream: torch.cuda.Stream | None = None
         # Per-layer host residency (HostResidency values). The GPU movement paths
         # (fused gather, prefill DMA) require "pinned"; other residency classes
@@ -431,6 +436,10 @@ class OffloadMoeCache:
         ``ctx.moe_offload_cache`` stay valid.
         """
         assert self.bank_sources, "set_bank_sources must run before rebuild"
+        if self.fully_resident:
+            raise ValueError(
+                "a fully preloaded expert cache cannot be resized without reloading it"
+            )
         self.validate_rebuild(cache_size)
         # 1. Tear down prefill-overlap (its buffer views alias the old bank_caches).
         self.prefill_bank_buffers = []
@@ -523,6 +532,63 @@ class OffloadMoeCache:
             "set_cpu_executor requires decode_target in {'cpu','hybrid'}"
         )
         self.cpu_executor = executor
+
+    def preload_all_from_disk(self) -> None:
+        """Populate a complete cache using deterministic layer-major slots.
+
+        This is an explicit steady-state serving policy, not an implicit warmup: every
+        routed expert is read exactly once before the server becomes ready. Once complete,
+        model forwards never consult the disk source or mutate cache ownership.
+        """
+        if self.disk_source is None:
+            raise ValueError("full expert preload requires an FTW disk source")
+        if self.decode_target != "gpu":
+            raise ValueError("full expert preload supports GPU offload decode only")
+        total = self.num_layers * self.num_experts
+        if self.cache_size != total:
+            raise ValueError(
+                f"full expert preload requires cache_size={total}, got {self.cache_size}"
+            )
+        if self.prefill_overlap:
+            raise ValueError("full expert preload is incompatible with prefill overlap")
+        if self.fully_resident:
+            return
+
+        import time
+
+        started = time.perf_counter()
+        all_experts = list(range(self.num_experts))
+        logger.info_rank0(
+            f"Preloading all {total} routed experts into immutable GPU slots"
+        )
+        with torch.inference_mode():
+            for layer_id in range(self.num_layers):
+                self.disk_source.stage(layer_id, all_experts, admit=False, buffer_id=0)
+                lo = layer_id * self.num_experts
+                hi = lo + self.num_experts
+                for name in self.bank_schema:
+                    source = self.disk_source.staging_buffers[0][name].tensor
+                    self.bank_caches[name][lo:hi].copy_(source, non_blocking=True)
+                # The single pinned staging layer may be overwritten only after every
+                # bank copy for this layer has completed.
+                if self.device.type == "cuda":
+                    torch.cuda.current_stream(self.device).synchronize()
+                if (layer_id + 1) % 8 == 0 or layer_id + 1 == self.num_layers:
+                    logger.info_rank0(
+                        f"Expert preload: {layer_id + 1}/{self.num_layers} layers"
+                    )
+
+            flat = torch.arange(total, dtype=torch.int32, device=self.device)
+            self.slot_for_id.copy_(flat.view(self.num_layers, self.num_experts))
+            self.id_of_slot.copy_(flat)
+            self.usage.fill_(1)
+            self.layer_counts.fill_(self.num_experts)
+            self.step.fill_(1)
+        self.fully_resident = True
+        logger.info_rank0(
+            f"Expert preload complete in {time.perf_counter() - started:.2f} s; "
+            "decode-time disk staging and LRU are disabled"
+        )
 
     def is_cpu_layer(self, layer_id: int) -> bool:
         """Whether ``layer_id`` decodes on the CPU executor (vs the GPU offload path)."""
@@ -883,6 +949,13 @@ class OffloadMoeCache:
             )
 
     def reset(self) -> None:
+        if self.fully_resident:
+            # Weight ownership is immutable. Warmup/graph teardown may reset dynamic
+            # state, but must not discard the deterministic slot map.
+            self.usage.fill_(1)
+            self.step.fill_(1)
+            self.expert_recency.fill_(-1)
+            return
         from sparklab.moe.offload_kernels import reset_cache
 
         reset_cache(self)

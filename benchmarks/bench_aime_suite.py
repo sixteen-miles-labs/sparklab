@@ -82,8 +82,17 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--hybrid-fetch", type=int, default=3)
     p.add_argument("--cpu-threads", type=int, default=8)
     p.add_argument("--mem-ratio", type=float, default=0.9)
-    p.add_argument("--num-tokens", type=int, default=2048)
+    p.add_argument(
+        "--num-tokens",
+        type=int,
+        default=0,
+        help=(
+            "explicit KV capacity; 0 reserves --decode plus 512 prompt tokens "
+            "so the requested output budget is not silently reduced"
+        ),
+    )
     p.add_argument("--disable-prefill-overlap", action="store_true")
+    p.add_argument("--preload-all", action="store_true")
     p.add_argument("--prefill-hit-d2d", action="store_true")
     p.add_argument("--prefill-sparse-max-tokens", type=int, default=0)
     p.add_argument("--shared-expert-overlap", action="store_true")
@@ -105,7 +114,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--json", dest="json_out", required=True)
     p.add_argument("--include-output", action="store_true")
     p.set_defaults(collect_moe_stats=True, normal_eos=True)
-    return p.parse_args()
+    args = p.parse_args()
+    if args.num_tokens <= 0:
+        args.num_tokens = args.decode + 512
+    return args
 
 
 def load_rows(path: str | None) -> list[dict]:
@@ -244,6 +256,13 @@ def measure_request(args, origin: str, model_id: str, index: int, row: dict, sam
         )
         before_disk, after_disk = before_moe.get("disk") or {}, after_moe.get("disk") or {}
         if after_disk:
+            if args.preload_all and not before_disk:
+                # The frontend publishes MoE stats only after the first finished
+                # request. In immutable-preload mode the first published disk snapshot
+                # therefore contains startup preload counters, not request I/O. Treat
+                # that snapshot as the baseline; later requests already have a real
+                # before/after pair.
+                before_disk = after_disk
             measured["moe"]["disk"] = counter_delta(
                 before_disk,
                 after_disk,
@@ -346,16 +365,21 @@ def summarize(
         "config": {
             "storage": args.storage,
             "attention_backend": args.attention_backend,
+            "qsa_fused_selection": os.getenv(
+                "SPARKLAB_DISABLE_QSA_FUSED_SELECTION", "0"
+            ).lower() not in {"1", "true", "yes"},
             "page_size": args.page_size,
             "cache_type": args.cache_type,
             "max_seq_len": args.max_seq_len or (8192 + args.decode),
+            "num_tokens": args.num_tokens,
             "host_cache_gb": args.host_cache_gb,
             "nvfp4_backend": args.nvfp4_backend,
             "hybrid_fetch": args.hybrid_fetch,
             "cpu_threads": args.cpu_threads,
             "disk_read_workers": int(os.getenv("SPARKLAB_DISK_READ_WORKERS", "16")),
             "cache_policy": args.cache_policy,
-            "prefill_overlap": not args.disable_prefill_overlap,
+            "prefill_overlap": not args.disable_prefill_overlap and not args.preload_all,
+            "preload_all": args.preload_all,
             "prefill_hit_d2d": args.prefill_hit_d2d,
             "prefill_sparse_max_tokens": args.prefill_sparse_max_tokens,
             "shared_expert_overlap": args.shared_expert_overlap,

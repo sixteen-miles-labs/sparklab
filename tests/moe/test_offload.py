@@ -34,6 +34,79 @@ def _make_layer_and_cache():
     return layer, cache
 
 
+def test_full_disk_preload_builds_immutable_layer_major_cache(monkeypatch):
+    from types import SimpleNamespace
+
+    from sparklab.layers.moe import OffloadMoELayer
+    from sparklab.moe.offload_cache import OffloadMoeCache
+
+    _init_tp()
+    layers, experts = 2, 4
+    staging = {
+        "gate_up": SimpleNamespace(tensor=torch.empty(experts, 4, 2)),
+        "down": SimpleNamespace(tensor=torch.empty(experts, 2, 2)),
+    }
+
+    class FakeDiskSource:
+        staging_buffers = [staging]
+
+        def stage(self, layer_id, expert_ids, *, admit, buffer_id):
+            assert expert_ids == list(range(experts))
+            assert not admit and buffer_id == 0
+            for bank in staging.values():
+                for expert_id in expert_ids:
+                    bank.tensor[expert_id].fill_(10 * layer_id + expert_id)
+
+    cache = OffloadMoeCache(
+        num_layers=layers,
+        num_experts=experts,
+        cache_size=layers * experts,
+        device=torch.device("cpu"),
+    )
+    cache.set_bank_sources({
+        name: [bank.tensor for _ in range(layers)]
+        for name, bank in staging.items()
+    })
+    cache.disk_source = FakeDiskSource()
+    cache.preload_all_from_disk()
+
+    assert cache.fully_resident
+    assert cache.slot_for_id.tolist() == [list(range(4)), list(range(4, 8))]
+    assert cache.id_of_slot.tolist() == list(range(8))
+    assert cache.layer_counts.tolist() == [4, 4]
+    for slot, expected in enumerate([0, 1, 2, 3, 10, 11, 12, 13]):
+        assert cache.bank_caches["gate_up"][slot].unique().item() == expected
+        assert cache.bank_caches["down"][slot].unique().item() == expected
+
+    # Engine warmup and graph setup reset dynamic cache state. The immutable map
+    # and loaded weights must survive those resets.
+    cache.reset()
+    assert cache.slot_for_id.tolist() == [list(range(4)), list(range(4, 8))]
+
+    layer = OffloadMoELayer(
+        layer_id=1,
+        num_experts=experts,
+        top_k=2,
+        hidden_size=2,
+        intermediate_size=2,
+    )
+    layer.offload_cache = cache
+    captured = {}
+
+    def fake_expert_gemm(cache_arg, hidden, weights, ids, **kwargs):
+        captured["ids"] = ids.clone()
+        captured["kwargs"] = kwargs
+        return hidden
+
+    monkeypatch.setattr(layer, "_expert_gemm", fake_expert_gemm)
+    hidden = torch.ones(1, 2)
+    ids = torch.tensor([[1, 3]], dtype=torch.int32)
+    weights = torch.tensor([[0.6, 0.4]])
+    assert layer._decode_routed(hidden, weights, ids) is hidden
+    assert captured["ids"].tolist() == [[5, 7]]
+    assert captured["kwargs"]["is_prefill"] is False
+
+
 def _exercise_layer_lru(cache):
     plans = []
     for layer_id, experts in (

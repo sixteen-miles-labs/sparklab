@@ -260,13 +260,20 @@ class OffloadMoELayer(MoELayer):
         hidden_states: torch.Tensor,
         router_logits: torch.Tensor | None = None,
     ):
-        topk_weights, topk_ids = fused_topk(
+        cache = self.offload_cache
+        ids_are_slots = bool(cache is not None and cache.fully_resident)
+        route_kwargs = dict(
             hidden_states=hidden_states,
             gating_output=router_logits,
             topk=self.top_k,
             renormalize=self.renormalize,
         )
-        return self._decode_routed(hidden_states, topk_weights, topk_ids)
+        if ids_are_slots:
+            route_kwargs["id_base"] = self.layer_id * cache.num_experts
+        topk_weights, topk_ids = fused_topk(**route_kwargs)
+        return self._decode_routed(
+            hidden_states, topk_weights, topk_ids, ids_are_slots=ids_are_slots
+        )
 
     def prefill_forward(
         self,
@@ -294,6 +301,8 @@ class OffloadMoELayer(MoELayer):
         hidden_states: torch.Tensor,
         topk_weights: torch.Tensor,
         topk_ids: torch.Tensor,
+        *,
+        ids_are_slots: bool = False,
     ) -> torch.Tensor:
         """On-demand load: ``ensure_experts`` rewrites ``topk_ids`` into cache slot
         ids in place (loading missing experts), then the GEMM reads the full slot
@@ -313,6 +322,21 @@ class OffloadMoELayer(MoELayer):
             return executor.decode(self.layer_id, hidden_states, topk_weights, topk_ids)
         if cache.decode_target == "hybrid":
             return self._decode_hybrid(cache, hidden_states, topk_weights, topk_ids)
+        if cache.fully_resident:
+            # Qwen's fused router emits the layer-major slot id directly. External
+            # routers still arrive with logical ids and need this one mapping add.
+            if not ids_are_slots:
+                topk_ids.add_(self.layer_id * cache.num_experts)
+            return self._expert_gemm(
+                cache,
+                hidden_states,
+                topk_weights,
+                topk_ids,
+                views=cache.bank_views(),
+                n=None,
+                alphas=cache.alphas_for_slots(self.layer_id),
+                is_prefill=False,
+            )
         cache.ensure_experts(self.layer_id, topk_ids)
         cache.copy_missing()
         return self._expert_gemm(
@@ -391,6 +415,26 @@ class OffloadMoELayer(MoELayer):
         pass through unmapped."""
         cache = self.offload_cache
         assert cache is not None
+        if cache.fully_resident:
+            # Native quantized grouped kernels sort in the logical E-wide expert
+            # domain, then translate each group through this layer's static map.
+            # Other formats consume physical slot ids directly.
+            prefill_slot_map = None
+            if cache.quant_format in ("nvfp4", "fp8_block"):
+                prefill_slot_map = cache.slot_for_id[self.layer_id]
+            else:
+                topk_ids.add_(self.layer_id * cache.num_experts)
+            return self._expert_gemm(
+                cache,
+                hidden_states,
+                topk_weights,
+                topk_ids,
+                views=cache.bank_views(),
+                n=None,
+                alphas=cache.alphas_for_slots(self.layer_id),
+                is_prefill=True,
+                prefill_slot_map=prefill_slot_map,
+            )
         if (
             cache.prefill_sparse_max_tokens > 0
             and hidden_states.size(0) <= cache.prefill_sparse_max_tokens

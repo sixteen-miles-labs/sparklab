@@ -43,6 +43,35 @@ def _require_offload_cache_size(cache_size: int, num_experts: int) -> None:
         )
 
 
+def _advise_model_cache_dontneed(model_path: str) -> tuple[int, int]:
+    """Release reconstructed model-file page cache before UMA cache planning.
+
+    A freshly downloaded 180 GB FTW artifact can leave most of GB10's physical
+    memory charged to clean Linux page cache. CUDA reports those pages as unavailable,
+    even though they are safely discardable, which would make full-expert preload size
+    itself from an artificially small baseline. ``POSIX_FADV_DONTNEED`` changes no file
+    contents and lets the kernel reclaim only clean cached pages.
+    """
+    if not hasattr(os, "posix_fadvise") or not hasattr(os, "POSIX_FADV_DONTNEED"):
+        return 0, 0
+    advised_files = advised_bytes = 0
+    for directory, _, names in os.walk(model_path):
+        for name in names:
+            path = os.path.join(directory, name)
+            try:
+                fd = os.open(path, os.O_RDONLY | getattr(os, "O_CLOEXEC", 0))
+                try:
+                    size = os.fstat(fd).st_size
+                    os.posix_fadvise(fd, 0, 0, os.POSIX_FADV_DONTNEED)
+                finally:
+                    os.close(fd)
+            except OSError:
+                continue
+            advised_files += 1
+            advised_bytes += size
+    return advised_files, advised_bytes
+
+
 def _flashinfer_available() -> bool:
     from sparklab.kernels.backend import is_flashinfer_installed
 
@@ -300,6 +329,14 @@ class Engine:
 
         self.device = torch.device(f"cuda:{config.tp_info.rank}")
         torch.cuda.set_device(self.device)
+        if config.moe_preload_all and bool(
+            getattr(torch.cuda.get_device_properties(self.device), "is_integrated", False)
+        ):
+            files, size = _advise_model_cache_dontneed(config.model_path)
+            logger.info_rank0(
+                "full expert preload advised Linux to release clean model page cache: "
+                f"{files} files, {mem_GB(size)}"
+            )
         torch.manual_seed(42)
         self.stream = torch.cuda.Stream()
         torch.cuda.set_stream(self.stream)
@@ -575,7 +612,14 @@ class Engine:
                     config.model_path,
                     num_layers=config.model_config.num_moe_layers,
                     num_experts=config.model_config.num_experts,
-                    host_cache_bytes=int(config.moe_host_cache_gb * 2**30),
+                    # A complete immutable GPU cache never reuses host rows after
+                    # startup, so allocating a pageable host LRU only reduces GB10
+                    # headroom. The one pinned staging layer remains available to
+                    # stream the preload.
+                    host_cache_bytes=(
+                        0 if config.moe_preload_all
+                        else int(config.moe_host_cache_gb * 2**30)
+                    ),
                     prefill_overlap=config.moe_prefill_overlap,
                     cache_policy=config.moe_cache_policy,
                 )
@@ -635,6 +679,8 @@ class Engine:
             cache.set_bank_sources(banks.sources, layer_residency=banks.layer_residency)
             cache.set_alphas(banks.gate_up_alpha, banks.down_alpha)
             cache.disk_source = disk_source
+            if config.moe_preload_all:
+                cache.preload_all_from_disk()
         else:
             cache = cache_factory(config, self.device)
             cache.decode_target = decode_target
@@ -1147,6 +1193,7 @@ _DENSE_MOE_SETTINGS = {
     "moe_cache_size": 0,
     "moe_cache_rate": None,
     "moe_cache_auto": False,
+    "moe_preload_all": False,
     "moe_cache_policy": "lru",
     "moe_cpu_layers": None,
     "moe_cpu_threads": 0,
@@ -1175,6 +1222,29 @@ def _adjust_config(config: EngineConfig):
     prefill_overlap = getattr(config, "moe_prefill_overlap", True)
     if getattr(config, "moe_prefill_sparse_max_tokens", 0) < 0:
         raise ValueError("moe_prefill_sparse_max_tokens must be >= 0")
+    preload_all = getattr(config, "moe_preload_all", False)
+    if preload_all:
+        if getattr(config, "moe_storage", "ram") != "disk":
+            raise ValueError("--moe-preload-all requires --moe-storage disk")
+        if getattr(config, "moe_backend", "auto") == "auto":
+            # Full preload is a GPU-resident policy. Do not let an unrelated
+            # bandwidth profile redirect auto to the hybrid CPU executor later.
+            override("moe_backend", "offload")
+        elif config.moe_backend != "offload":
+            raise ValueError("--moe-preload-all requires the GPU offload backend")
+        if (
+            config.moe_cache_size <= 0
+            and config.moe_cache_rate is None
+            and not config.moe_cache_auto
+        ):
+            override("moe_cache_auto", True)
+        if prefill_overlap:
+            logger.info_rank0(
+                "--moe-preload-all disables prefill overlap because the full cache "
+                "uses immutable expert slots"
+            )
+            override("moe_prefill_overlap", False)
+            prefill_overlap = False
     if is_moe and cache_policy == "layer_lru" and prefill_overlap:
         raise ValueError(
             "--moe-cache-policy layer_lru protects persistent GPU slots and cannot "

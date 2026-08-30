@@ -41,6 +41,7 @@ def fused_topk(
     topk: int,
     renormalize: bool,
     num_token_non_padded: torch.Tensor | None = None,
+    id_base: int = 0,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     assert hidden_states.shape[0] == gating_output.shape[0], "Number of tokens mismatch"
 
@@ -52,6 +53,24 @@ def fused_topk(
     # k to 16 and slicing is not valid because the fused result is not contractually
     # sorted by score.
     non_power_of_two = topk <= 0 or (topk & (topk - 1)) != 0
+    # Qwen3.8 uses renormalized top-10 routing. The upstream triton_kernels router
+    # only compiles for power-of-two k, but SparkLab's local fused router supports
+    # arbitrary k and avoids the eager softmax/topk/divide/cast sequence on every
+    # MoE layer. Padded-token masking is kept on the established generic paths.
+    if (
+        non_power_of_two
+        and renormalize
+        and num_token_non_padded is None
+        and gating_output.is_cuda
+        and os.getenv("SPARKLAB_FORCE_TORCH_TOPK") != "1"
+    ):
+        try:
+            from sparklab.kernels import fused_softmax_topk
+        except ImportError:
+            # Triton is not available on every supported development platform.
+            pass
+        else:
+            return fused_softmax_topk(gating_output, topk, id_base=id_base)
     if not is_triton_kernels_installed() or non_power_of_two:
         global _warned_torch_topk
         if not _warned_torch_topk:
@@ -64,7 +83,12 @@ def fused_topk(
                 f"({'top-k is not a power of two' if non_power_of_two else 'triton_kernels is not installed'}) "
                 "(numerically equivalent, slower)."
             )
-        return _torch_fused_topk(gating_output, topk, renormalize, num_token_non_padded)
+        weights, ids = _torch_fused_topk(
+            gating_output, topk, renormalize, num_token_non_padded
+        )
+        if id_base:
+            ids.add_(id_base)
+        return weights, ids
 
     from triton_kernels.topk import topk as triton_kernels_topk
 
@@ -83,6 +107,8 @@ def fused_topk(
     else:
         topk_weights, topk_ids = sparse_topk[:2]
     topk_ids = topk_ids.to(torch.int32)
+    if id_base:
+        topk_ids.add_(id_base)
     if num_token_non_padded is not None:
         indices = torch.arange(0, topk_ids.shape[0], device=topk_ids.device)
         topk_ids[indices >= num_token_non_padded, :] = -1

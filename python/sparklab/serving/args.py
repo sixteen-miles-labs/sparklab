@@ -615,6 +615,17 @@ def parse_args(
     )
 
     parser.add_argument(
+        "--moe-preload-all",
+        action="store_true",
+        default=ServerArgs.moe_preload_all,
+        help=(
+            "Disk FTW mode: load every routed expert into a full-size GPU cache at "
+            "startup, then use a fixed slot mapping with no decode-time disk staging. "
+            "Requires cache_size == num_moe_layers * num_experts."
+        ),
+    )
+
+    parser.add_argument(
         "--enable-special-token-ckpt",
         action="store_true",
         dest="special_token_ckpt",
