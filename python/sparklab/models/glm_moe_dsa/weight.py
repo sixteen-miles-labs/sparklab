@@ -1,4 +1,4 @@
-"""Weight loading for GLM-5.2 (``glm_moe_dsa``).
+"""Weight loading for GLM-5.x DSA models (``glm_moe_dsa``).
 
 Resident (non routed-expert) weights are bf16 in the checkpoint. What this loader
 yields follows the quant modes RESOLVED IN ``parse_config`` (``ModelConfig.attn_quant``
@@ -87,7 +87,7 @@ def iter_weights(
     include_non_moe: bool,
 ) -> Iterator[tuple[str, torch.Tensor]]:
     assert not include_moe_experts, (
-        "GLM-5.2 stores routed experts as NVFP4 and only supports the offload backend; "
+        "GLM MoE DSA checkpoints store routed experts as NVFP4 and only support the offload backend; "
         "experts are loaded into the offload cache via load_nvfp4_expert_sources()."
     )
     assert include_non_moe
@@ -105,14 +105,14 @@ def iter_weights(
         from sparklab.utils import init_logger
 
         init_logger(__name__).info(
-            f"GLM-5.2 resident quant: attn={config.attn_quant} dense={config.dense_quant} "
+            f"GLM MoE DSA resident quant: attn={config.attn_quant} dense={config.dense_quant} "
             f"lm_head={config.lm_head_quant} (SPARKLAB_GLM_ATTN_FP8/SPARKLAB_GLM_MLP_FP8; "
             "an FTW conversion records these choices implicitly -- serve with the same flags)"
         )
     try:
         for layer in tqdm(
             range(config.num_layers),
-            desc="Loading GLM-5.2 dense weights",
+            desc="Loading GLM MoE DSA dense weights",
             disable=not primary,
         ):
             a = f"model.layers.{layer}.self_attn"

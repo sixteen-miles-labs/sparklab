@@ -140,6 +140,15 @@ a SparkLab support claim.
       <td><a href="docs/models/glm-5.2.md">Instructions</a></td>
     </tr>
     <tr>
+      <td><a href="https://huggingface.co/Inferact/GLM-5.3-NVFP4">GLM-5.3</a></td>
+      <td>753B total / 40B active</td>
+      <td>NVFP4</td>
+      <td>Experimental</td>
+      <td align="right">0.81</td>
+      <td align="right">2.530</td>
+      <td><a href="docs/models/glm-5.3.md">Instructions</a></td>
+    </tr>
+    <tr>
       <td><a href="https://huggingface.co/oakmindai/Kimi-K3-NVFP4-FTW">Kimi K3</a></td>
       <td>2.8T total / 16 of 896 experts</td>
       <td>ModelOpt NVFP4/FP8 · FTW</td>

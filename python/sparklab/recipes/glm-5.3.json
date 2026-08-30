@@ -1,0 +1,32 @@
+{
+  "schema_version": "2.0",
+  "recipe_version": "0.1.0",
+  "slug": "glm-5.3",
+  "name": "GLM-5.3",
+  "model": "Inferact/GLM-5.3-NVFP4",
+  "parameters": "753B total / 40B active",
+  "revision": "ce67b36f3669192b5bb233819f0fda6c8a9837f8",
+  "source_bytes": 464867183339,
+  "prepared_bytes": 428713099264,
+  "minimum_free_bytes": 1031019236075,
+  "intended_tier": "research",
+  "status": "experimental",
+  "implementation": "available",
+  "portfolio_role": "fallback",
+  "deployment": {"backend": "native", "backend_api": "1.0", "source_format": "safetensors", "runtime_format": "ftw-nvfp4", "quantization": "nvfp4", "execution_policy": "nvme-moe", "backend_options": {}},
+  "profile": "research",
+  "description": "Measured GLM-5.2-compatible Research fallback for complete-model NVMe inference.",
+  "performance": {
+    "decode_tokens_per_second": 0.8126153861203544,
+    "warm_ttft_seconds": 2.530337787233293,
+    "evidence": "GB10-GLM53-RESEARCH-001",
+    "note": "Selected 256-token b12x trial; no OOM or swap-out growth, but the length-capped output did not establish correctness."
+  },
+  "evidence": ["GB10-GLM53-RESEARCH-001"],
+  "limitations": [
+    "The 256-token output hit the length cap before stating the expected final answer, so output correctness is not established.",
+    "The measured request had zero swap-out growth but began with pre-existing swap use and read 7,882 swap-in pages.",
+    "The prepared artifact preserves routed experts as NVFP4 but converts large resident BF16 projections to per-row W8A16 FP8.",
+    "No context, endurance, API, reasoning-parser, tool-parser, coding-agent, or quality certification is claimed."
+  ]
+}

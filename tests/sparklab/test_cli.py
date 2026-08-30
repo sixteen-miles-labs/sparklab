@@ -22,7 +22,11 @@ def test_models_json_exposes_tier_and_admission_status(capsys):
     assert cli.main(["models", "--tier", "research", "--json"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["product"] == "SparkLab" and payload["platform"] == "gb10"
-    assert [recipe["slug"] for recipe in payload["recipes"]] == ["glm-5.2", "kimi-k3"]
+    assert [recipe["slug"] for recipe in payload["recipes"]] == [
+        "glm-5.2",
+        "glm-5.3",
+        "kimi-k3",
+    ]
     assert all(recipe["status"] == "experimental" for recipe in payload["recipes"])
     assert payload["recipes"][0]["parameters"] == "753B total / 40B active"
 
@@ -66,6 +70,9 @@ def test_models_research_table_includes_measured_glm52_fallback(capsys):
     glm52_row = next(line for line in output.splitlines() if line.startswith("GLM-5.2"))
     assert "NVFP4" in glm52_row and "EXPERIMENTAL" in glm52_row
     assert glm52_row.split()[-2:] == ["0.80", "2.570"]
+    glm53_row = next(line for line in output.splitlines() if line.startswith("GLM-5.3"))
+    assert "NVFP4" in glm53_row and "EXPERIMENTAL" in glm53_row
+    assert glm53_row.split()[-2:] == ["0.81", "2.530"]
     assert "Kimi K3" in output
 
 

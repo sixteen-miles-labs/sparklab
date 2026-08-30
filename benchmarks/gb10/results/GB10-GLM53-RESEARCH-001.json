@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-GLM53-RESEARCH-001",
+  "status": "measured",
+  "recipe": {
+    "slug": "glm-5.3",
+    "recipe_version": "0.1.0",
+    "revision": "ce67b36f3669192b5bb233819f0fda6c8a9837f8"
+  },
+  "engine": {
+    "git_revision": "039bc348f30608b08103d877c6d2a225617db136"
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "os": "Ubuntu NVIDIA kernel 6.17.0-1014-nvidia",
+    "cuda": "13.0"
+  },
+  "checkpoint": {
+    "full_model": true,
+    "format": "ftw-nvfp4-b12x",
+    "fingerprint": "a0e799b03bceb4bf",
+    "bytes": 428713099264,
+    "source_bytes": 464867183339
+  },
+  "metrics": {
+    "decode_tokens_per_second": 0.8126153861203544,
+    "decode_milliseconds_per_token": 1230.594469511918,
+    "warm_ttft_seconds": 2.530337787233293,
+    "latency_p50_milliseconds": 1233.3040283992887,
+    "latency_p99_milliseconds": 1447.3086688667536,
+    "expert_cache_miss_rate_percent": 75.49281045751634,
+    "physical_io_gib": 2294.9736328125,
+    "minimum_mem_available_gib": 71.84626007080078,
+    "swap_growth_bytes": 0
+  },
+  "stability": {
+    "requested_completion_tokens": 256,
+    "returned_completion_tokens": 256,
+    "timed_decode_steps": 255,
+    "swap_in_pages": 7882,
+    "swap_out_pages": 0,
+    "swap_growth_bytes": 0,
+    "oom_count": 0
+  },
+  "validation": {
+    "output_correctness": false,
+    "output_correctness_evaluated": false,
+    "output_hash_algorithm": "sha1-prefix",
+    "output_hash": "bdbf1a17f134",
+    "output_hash_probe_tokens": 256,
+    "matched_native_control": false,
+    "memory_bounded": true,
+    "nvme_behavior": "bounded",
+    "reasoning_parser": false,
+    "tool_parser": false,
+    "coding_agent_task": false
+  },
+  "admission": {
+    "tier": "research",
+    "passed": false,
+    "reasons": [
+      "The 256-token output hit the length cap before stating the expected answer, so output correctness is not established.",
+      "The host had pre-existing swap use and read 7,882 swap-in pages during the measured request, although it wrote no pages out.",
+      "Reasoning parser, tool parser, and coding-agent gates were not run."
+    ]
+  },
+  "source_report": "exps/exp_glm5_3_full_gb10.md",
+  "limitations": [
+    "This is a 54-input-token AIME tuning and stability probe, not the separate GB10-INTERACTIVE-001 benchmark.",
+    "The prepared artifact preserves routed experts as NVFP4 but converts large resident BF16 projections to per-row W8A16 FP8.",
+    "No context, endurance, API, reasoning-parser, tool-parser, coding-agent, or quality certification is claimed."
+  ]
+}
