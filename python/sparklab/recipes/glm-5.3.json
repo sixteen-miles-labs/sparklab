@@ -9,6 +9,12 @@
   "source_bytes": 464867183339,
   "prepared_bytes": 428713099264,
   "minimum_free_bytes": 1031019236075,
+  "runtime_artifact": {
+    "repo_id": "oakmindai/GLM-5.3-NVFP4-FTW",
+    "revision": "024b437e3f31f9cf9b8a936dffaf1302fbda1d30",
+    "bytes": 428713099264,
+    "fingerprint": "a0e799b03bceb4bf"
+  },
   "intended_tier": "research",
   "status": "experimental",
   "implementation": "available",

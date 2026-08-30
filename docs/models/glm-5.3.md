@@ -22,9 +22,10 @@ sparklab --version
 
 ## Prepare
 
-Use fast local NVMe storage. The recipe downloads the immutable source revision
-and prepares FTW locally. Budget about 1.03 TB of free space; the measured b12x
-artifact is 428,713,099,264 bytes.
+Use fast local NVMe storage. By default, the recipe downloads the pinned, validated
+FTW artifact directly, so no local conversion is required. The FTW payload is
+428,713,099,264 bytes (about 399.3 GiB). Source conversion remains available for
+reproducibility; budget about 1.03 TB when keeping both source and prepared artifacts.
 
 ```bash
 sparklab doctor --storage-path /path/to/models
