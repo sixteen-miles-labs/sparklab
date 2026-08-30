@@ -5,9 +5,10 @@ NVMe-backed inference. The pinned Inferact checkpoint declares the same
 `glm_moe_dsa` architecture and runtime dimensions as GLM-5.2, so SparkLab uses
 the existing GLM-5.2 execution path.
 
-This is an architecture-compatibility recipe, not a performance result. GLM-5.2
-benchmark evidence does not transfer to the GLM-5.3 checkpoint, and GLM-5.3 has
-not yet completed a full GB10 load or generation probe.
+The complete checkpoint has been measured on one NVIDIA GB10 at 0.813 decode
+tok/s and 2.530 seconds warm TTFT. The selected output reached its 256-token cap
+before stating the expected final answer, so this remains a bounded performance
+result rather than a correctness or certification claim.
 
 ## Install SparkLab
 
@@ -22,8 +23,8 @@ sparklab --version
 ## Prepare
 
 Use fast local NVMe storage. The recipe downloads the immutable source revision
-and prepares FTW locally. Budget about 1.03 TB of free space; the prepared size
-is currently estimated from the same-shape GLM-5.2 conversion.
+and prepares FTW locally. Budget about 1.03 TB of free space; the measured b12x
+artifact is 428,713,099,264 bytes.
 
 ```bash
 sparklab doctor --storage-path /path/to/models
@@ -46,6 +47,6 @@ curl http://127.0.0.1:1919/health
 curl http://127.0.0.1:1919/v1/models
 ```
 
-Treat the first run as validation and capture a versioned benchmark result before
-making performance or reliability claims. See the [quick start](../quickstart.md)
-for more detail.
+Expect Research-tier throughput. See the
+[GLM-5.3 experiment](../../exps/exp_glm5_3_full_gb10.md) and the
+[quick start](../quickstart.md) for more detail.

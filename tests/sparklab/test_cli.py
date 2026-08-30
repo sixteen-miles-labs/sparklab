@@ -72,7 +72,7 @@ def test_models_research_table_includes_measured_glm52_fallback(capsys):
     assert glm52_row.split()[-2:] == ["0.80", "2.570"]
     glm53_row = next(line for line in output.splitlines() if line.startswith("GLM-5.3"))
     assert "NVFP4" in glm53_row and "EXPERIMENTAL" in glm53_row
-    assert glm53_row.split()[-2:] == ["—", "—"]
+    assert glm53_row.split()[-2:] == ["0.81", "2.530"]
     assert "Kimi K3" in output
 
 

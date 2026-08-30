@@ -38,7 +38,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 + KDA FP8 · FTW | `glm-5.3-flash` | Experimental | 4.98 | 5.379 |
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
 | [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | 753B total / 40B active | NVFP4 | `glm-5.2` | Experimental fallback | 0.80 | 2.570 |
-| [GLM-5.3](https://huggingface.co/Inferact/GLM-5.3-NVFP4) | 753B total / 40B active | NVFP4 | `glm-5.3` | Experimental fallback | — | — |
+| [GLM-5.3](https://huggingface.co/Inferact/GLM-5.3-NVFP4) | 753B total / 40B active | NVFP4 | `glm-5.3` | Experimental fallback | 0.81 | 2.530 |
 | [Kimi K3](https://huggingface.co/oakmindai/Kimi-K3-NVFP4-FTW) | 2.8T total / 16 of 896 experts | ModelOpt NVFP4/FP8 · FTW | `kimi-k3` | Experimental | 0.16 | 395.405 |
 
 Model links point to the selected source or published FTW checkpoints. Qwen3.6 and Kimi K3
@@ -85,9 +85,12 @@ rungs, so correctness and cross-rung determinism are not established. See the
 [full experiment](../exps/exp_kimik3_gb10.md).
 
 GLM-5.3 uses the GLM-5.2 runtime recipe because the pinned checkpoint declares the same
-`glm_moe_dsa` architecture and execution dimensions. It remains unmeasured: the GLM-5.2
-performance result does not transfer to a different checkpoint, and no complete-checkpoint
-GB10 result is attached yet. See the [run instructions](models/glm-5.3.md).
+`glm_moe_dsa` architecture and execution dimensions. Its own complete-checkpoint probe
+measured 0.813 tok/s and 2.530 s warm TTFT with no OOM or swap-out growth. The 256-token
+output hit its length cap before stating the expected answer, so correctness is not
+established and the recipe remains Experimental. See the
+[versioned evidence](../benchmarks/gb10/results/GB10-GLM53-RESEARCH-001.json) and
+[full experiment](../exps/exp_glm5_3_full_gb10.md).
 
 GLM-5.2 is listed in Research because its selected GB10 experiment sustained 0.802 tok/s,
 below the 5 tok/s Frontier threshold. The displayed 2.57 s TTFT and throughput are measured,

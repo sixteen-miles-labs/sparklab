@@ -144,8 +144,8 @@ a SparkLab support claim.
       <td>753B total / 40B active</td>
       <td>NVFP4</td>
       <td>Experimental</td>
-      <td align="right">—</td>
-      <td align="right">—</td>
+      <td align="right">0.81</td>
+      <td align="right">2.530</td>
       <td><a href="docs/models/glm-5.3.md">Instructions</a></td>
     </tr>
     <tr>

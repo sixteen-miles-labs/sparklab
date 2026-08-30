@@ -165,8 +165,11 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     assert glm53.source_bytes == 464867183339
     assert glm53.deployment.quantization == "nvfp4"
     assert glm53.deployment.runtime_format == "ftw-nvfp4"
-    assert glm53.performance is None
-    assert glm53.evidence == ()
+    assert glm53.performance.decode_tokens_per_second == pytest.approx(
+        0.8126153861203544
+    )
+    assert glm53.performance.warm_ttft_seconds == pytest.approx(2.530337787233293)
+    assert glm53.evidence == ("GB10-GLM53-RESEARCH-001",)
     assert deepseek.source_bytes == 166878536440
     assert deepseek.prepared_bytes == 157460918272
     assert qwen.execution_policy == glm.execution_policy == "nvme-moe"
@@ -265,6 +268,35 @@ def test_glm52_recipe_points_to_measured_failed_research_evidence():
     evaluation = evaluate_tier(recipe, result, "research")
     assert not evaluation.passed
     assert any("reasoning_parser" in reason for reason in evaluation.reasons)
+
+
+def test_glm53_full_recipe_points_to_measured_failed_research_evidence():
+    from sparklab.certification import evaluate_tier
+
+    recipe = get_recipe("glm-5.3")
+    assert recipe.performance.evidence == "GB10-GLM53-RESEARCH-001"
+    assert recipe.performance.evidence in recipe.evidence
+    root = Path(__file__).resolve().parents[2]
+    result = json.loads(
+        (root / "benchmarks/gb10/results/GB10-GLM53-RESEARCH-001.json").read_text()
+    )
+    assert result["result_id"] == recipe.performance.evidence
+    assert result["status"] == "measured"
+    assert result["recipe"]["recipe_version"] == recipe.recipe_version
+    assert result["recipe"]["revision"] == recipe.revision
+    assert result["checkpoint"]["fingerprint"] == "a0e799b03bceb4bf"
+    assert result["checkpoint"]["bytes"] == recipe.prepared_bytes
+    assert result["metrics"]["decode_tokens_per_second"] == pytest.approx(
+        recipe.performance.decode_tokens_per_second
+    )
+    assert result["metrics"]["warm_ttft_seconds"] == pytest.approx(
+        recipe.performance.warm_ttft_seconds
+    )
+    assert result["stability"]["oom_count"] == 0
+    assert result["stability"]["swap_out_pages"] == 0
+    assert result["validation"]["output_correctness_evaluated"] is False
+    evaluation = evaluate_tier(recipe, result, "research")
+    assert not evaluation.passed
 
 
 def test_historical_qwen_nvfp4_evidence_does_not_transfer_to_new_checkpoint():

@@ -15,11 +15,18 @@
   "portfolio_role": "fallback",
   "deployment": {"backend": "native", "backend_api": "1.0", "source_format": "safetensors", "runtime_format": "ftw-nvfp4", "quantization": "nvfp4", "execution_policy": "nvme-moe", "backend_options": {}},
   "profile": "research",
-  "description": "Unmeasured GLM-5.2-compatible Research fallback for complete-model NVMe inference.",
-  "evidence": [],
+  "description": "Measured GLM-5.2-compatible Research fallback for complete-model NVMe inference.",
+  "performance": {
+    "decode_tokens_per_second": 0.8126153861203544,
+    "warm_ttft_seconds": 2.530337787233293,
+    "evidence": "GB10-GLM53-RESEARCH-001",
+    "note": "Selected 256-token b12x trial; no OOM or swap-out growth, but the length-capped output did not establish correctness."
+  },
+  "evidence": ["GB10-GLM53-RESEARCH-001"],
   "limitations": [
-    "The pinned checkpoint matches GLM-5.2's glm_moe_dsa architecture and runtime geometry, but complete-checkpoint loading and generation have not yet been validated on GB10.",
-    "The prepared size is a planning estimate inherited from the same-shape GLM-5.2 recipe; verify the plan before conversion.",
-    "GLM-5.2 performance evidence does not transfer to this checkpoint; no GLM-5.3 latency, throughput, correctness, context, endurance, API, parser, or coding-agent result is claimed."
+    "The 256-token output hit the length cap before stating the expected final answer, so output correctness is not established.",
+    "The measured request had zero swap-out growth but began with pre-existing swap use and read 7,882 swap-in pages.",
+    "The prepared artifact preserves routed experts as NVFP4 but converts large resident BF16 projections to per-row W8A16 FP8.",
+    "No context, endurance, API, reasoning-parser, tool-parser, coding-agent, or quality certification is claimed."
   ]
 }
