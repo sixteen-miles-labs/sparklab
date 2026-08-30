@@ -211,13 +211,13 @@ def test_deepseek_recipe_points_to_checked_in_optimized_evidence():
     assert result["validation"]["output_hash"] == "fbf178b2bde5"
 
 
-def test_glm53_recipe_points_to_checked_in_kda_fp8_evidence():
+def test_glm53_recipe_points_to_checked_in_fused_mhc_evidence():
     recipe = get_recipe("glm-5.3-flash")
-    assert recipe.performance.evidence == "GB10-GLM53-KDA-FP8-002"
+    assert recipe.performance.evidence == "GB10-GLM53-MHC-003"
     assert recipe.performance.evidence in recipe.evidence
     root = Path(__file__).resolve().parents[2]
     result = json.loads(
-        (root / "benchmarks/gb10/results/GB10-GLM53-KDA-FP8-002.json").read_text()
+        (root / "benchmarks/gb10/results/GB10-GLM53-MHC-003.json").read_text()
     )
     assert result["result_id"] == recipe.performance.evidence
     assert result["status"] == "measured"
@@ -230,7 +230,9 @@ def test_glm53_recipe_points_to_checked_in_kda_fp8_evidence():
     assert result["metrics"]["warm_ttft_seconds"] == pytest.approx(
         recipe.performance.warm_ttft_seconds
     )
-    assert result["comparison"]["decode_throughput_improvement_percent"] > 18
+    assert result["comparison"]["decode_throughput_improvement_percent"] > 25
+    assert result["admission"]["performance_gate_passed"] is True
+    assert result["validation"]["output_hash_reproduced_runs"] == 2
 
 
 def test_kimi_recipe_points_to_checked_in_bounded_capacity_evidence():

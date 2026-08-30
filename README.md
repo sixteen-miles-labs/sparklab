@@ -123,8 +123,8 @@ a SparkLab support claim.
       <td>320B total / 18B active</td>
       <td>NVFP4 + KDA FP8 · FTW</td>
       <td>Experimental</td>
-      <td align="right">4.98</td>
-      <td align="right">5.379</td>
+      <td align="right">6.27</td>
+      <td align="right">5.681</td>
       <td><a href="docs/models/glm-5.3-flash.md">Instructions</a></td>
     </tr>
     <tr>
