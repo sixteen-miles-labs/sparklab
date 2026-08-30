@@ -28,9 +28,33 @@ class QSAMetadata(BaseAttnMetadata):
     dense_indptr: torch.Tensor | None = None
     dense_indices: torch.Tensor | None = None
     dense_q_positions: torch.Tensor | None = None
+    capture_decode: bool = False
 
     def get_last_indices(self, bs: int) -> torch.Tensor:
         return self.last_indices[:bs]
+
+
+@dataclass
+class QSACaptureData:
+    """Fixed-address inputs for the batch-one dense-QSA decode graph."""
+
+    dense_indptr: torch.Tensor
+    dense_indices: torch.Tensor
+    dense_q_positions: torch.Tensor
+    q_to_req: torch.Tensor
+    last_indices: torch.Tensor
+
+    @classmethod
+    def create(cls, dense_limit: int, device: torch.device) -> QSACaptureData:
+        return cls(
+            dense_indptr=torch.zeros(2, dtype=torch.int32, device=device),
+            # Unused suffix rows must still be valid because the captured pooling
+            # update speculatively gathers a four-row group on incomplete steps.
+            dense_indices=torch.zeros(dense_limit, dtype=torch.int32, device=device),
+            dense_q_positions=torch.zeros(1, dtype=torch.int64, device=device),
+            q_to_req=torch.zeros(1, dtype=torch.int32, device=device),
+            last_indices=torch.zeros(1, dtype=torch.int32, device=device),
+        )
 
 
 def _plus_one_rms(x: torch.Tensor, weight: torch.Tensor, eps: float) -> torch.Tensor:
@@ -56,6 +80,20 @@ class QSAAttnBackend(BaseAttnBackend):
         self._fused_selection = os.getenv(
             "SPARKLAB_DISABLE_QSA_FUSED_SELECTION", "0"
         ).lower() not in {"1", "true", "yes"}
+        self.capture: QSACaptureData | None = None
+        self.capture_bs: List[int] = []
+        self.max_graph_bs = 0
+
+    def supports_cuda_graph(self, batch: Batch) -> bool:
+        """Capture the common batch-one dense-QSA domain; sparse QSA stays eager."""
+        if not batch.is_decode or batch.size != 1:
+            return False
+        ratio = self.args.index_compress_ratio
+        return all(
+            (req.cached_len + req.extend_len) // ratio
+            <= self.args.index_block_topk
+            for req in batch.reqs
+        )
 
     def prepare_metadata(self, batch: Batch) -> None:
         reqs = batch.padded_reqs if hasattr(batch, "padded_reqs") else batch.reqs
@@ -221,6 +259,51 @@ class QSAAttnBackend(BaseAttnBackend):
             _, pooled = rotary.forward(starts, pooled.clone(), pooled)
             cache[rows[:, -1]] = pooled
 
+    def _pool_completed_keys_capture(
+        self,
+        slot: int,
+        raw_index_k: torch.Tensor,
+        out_loc: torch.Tensor,
+        metadata: QSAMetadata,
+        k_norm_weight: torch.Tensor,
+        rotary,
+    ) -> None:
+        """Graph-safe batch-one form of the once-per-four-token pool update.
+
+        A graph cannot branch on the live position. It therefore computes the
+        candidate pool every step and selects it only when the current group is
+        complete; incomplete steps retain the raw key written at ``out_loc``.
+        """
+        assert metadata.dense_indices is not None
+        assert metadata.dense_q_positions is not None
+        ratio = self.args.index_compress_ratio
+        offsets = getattr(self, "_pool_offsets", None)
+        if offsets is None or offsets.device != self.device:
+            offsets = torch.arange(ratio, dtype=torch.long, device=self.device)
+            self._pool_offsets = offsets
+
+        positions = metadata.dense_q_positions
+        starts = positions.div(ratio, rounding_mode="floor") * ratio
+        logical = starts[:, None] + offsets[None, :]
+        # The final dense-QSA positions can begin an incomplete group whose next
+        # row lies just beyond the captured dense buffer. That candidate is
+        # discarded by ``complete`` below, but index_select still requires a
+        # valid speculative address.
+        logical = logical.clamp_max(metadata.dense_indices.numel() - 1)
+        rows = metadata.dense_indices.index_select(0, logical.flatten()).to(torch.long)
+        cache = self.kvcache.index_k_cache(slot)
+        pooled = cache.index_select(0, rows).view(1, ratio, -1).float().mean(1)
+        pooled = _plus_one_rms(
+            pooled.to(cache.dtype), k_norm_weight, self.config.rms_norm_eps
+        )
+        _, pooled = rotary.forward(starts, pooled.clone(), pooled)
+        complete = (positions + 1).remainder(ratio).eq(0).view(-1, 1)
+        cache.index_copy_(
+            0,
+            out_loc.to(torch.long),
+            torch.where(complete, pooled, raw_index_k),
+        )
+
     def qsa_forward(
         self, q, k, v, index_q, raw_index_k, k_norm_weight, rotary,
         layer_id: int, batch: Batch,
@@ -234,7 +317,12 @@ class QSAAttnBackend(BaseAttnBackend):
 
         ctx = get_global_ctx()
         reqs = batch.padded_reqs if hasattr(batch, "padded_reqs") else batch.reqs
-        self._pool_completed_keys(slot, reqs, k_norm_weight, rotary)
+        if md.capture_decode:
+            self._pool_completed_keys_capture(
+                slot, raw_index_k, batch.out_loc, md, k_norm_weight, rotary
+            )
+        else:
+            self._pool_completed_keys(slot, reqs, k_norm_weight, rotary)
 
         from sparklab.kernels.triton.attention import paged_attention
 
@@ -295,16 +383,59 @@ class QSAAttnBackend(BaseAttnBackend):
         )
 
     def init_capture_graph(self, max_seq_len: int, bs_list: List[int]) -> None:
-        if bs_list:
-            raise RuntimeError(
-                "Qwen4 QSA decode is currently eager; serve with --cuda-graph-max-bs 0"
-            )
+        assert self.capture is None, "Capture already initialized."
+        if any(bs != 1 for bs in bs_list):
+            raise ValueError("Qwen4 QSA CUDA graphs currently support only batch size 1")
+        ratio = self.args.index_compress_ratio
+        dense_limit = min(
+            max_seq_len,
+            self.args.index_block_topk * ratio + ratio - 1,
+        )
+        self.capture = QSACaptureData.create(dense_limit, self.device)
+        self.capture_bs = sorted(bs_list)
+        self.max_graph_bs = max(bs_list)
 
     def prepare_for_capture(self, batch: Batch) -> None:
-        raise RuntimeError("Qwen4 QSA CUDA graph capture is not implemented")
+        self.prepare_metadata(batch)
+        self._point_to_capture(batch)
 
     def prepare_for_replay(self, batch: Batch) -> None:
-        raise RuntimeError("Qwen4 QSA CUDA graph replay is not implemented")
+        self._point_to_capture(batch)
+
+    def _point_to_capture(self, batch: Batch) -> None:
+        """Stage dense-QSA addressing into persistent graph input buffers."""
+        assert self.capture is not None and batch.padded_size == 1
+        metadata = batch.attn_metadata
+        if not isinstance(metadata, QSAMetadata):
+            raise TypeError(f"QSA metadata expected, got {type(metadata).__name__}")
+        if (
+            metadata.dense_indptr is None
+            or metadata.dense_indices is None
+            or metadata.dense_q_positions is None
+        ):
+            raise RuntimeError("Sparse QSA batches are not CUDA-graph eligible")
+
+        cap = self.capture
+        total = metadata.dense_indices.numel()
+        if total > cap.dense_indices.numel():
+            raise RuntimeError(
+                f"Dense QSA capture capacity {cap.dense_indices.numel()} < {total} rows"
+            )
+        cap.dense_indptr.copy_(metadata.dense_indptr)
+        cap.dense_indices[:total].copy_(metadata.dense_indices)
+        cap.dense_q_positions.copy_(metadata.dense_q_positions)
+        cap.last_indices.copy_(metadata.last_indices)
+        batch.attn_metadata = QSAMetadata(
+            qo_indptr=(0, 1),
+            last_indices=cap.last_indices,
+            q_to_req=cap.q_to_req,
+            dense_indptr=cap.dense_indptr,
+            # Keep the full fixed-size view: the graph must see the same tensor
+            # address and shape at capture and every replay. indptr bounds reads.
+            dense_indices=cap.dense_indices,
+            dense_q_positions=cap.dense_q_positions,
+            capture_decode=True,
+        )
 
 
-__all__ = ["QSAAttnBackend", "QSAMetadata"]
+__all__ = ["QSAAttnBackend", "QSACaptureData", "QSAMetadata"]

@@ -104,7 +104,7 @@ def test_native_backend_compiles_qwen_recipe_options_in_stable_order(tmp_path):
         "--nvfp4-backend",
         "triton",
         "--cuda-graph-max-bs",
-        "0",
+        "1",
         "--cache-type",
         "naive",
         "--page-size",

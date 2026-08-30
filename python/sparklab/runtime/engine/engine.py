@@ -606,8 +606,14 @@ class Engine:
                         "--moe-storage disk supports --moe-backend offload or hybrid, "
                         "but not full CPU decode"
                     )
-                if config.cuda_graph_max_bs not in (None, 0):
-                    raise ValueError("--moe-storage disk requires --cuda-graph-max-bs 0")
+                if (
+                    config.cuda_graph_max_bs not in (None, 0)
+                    and not config.moe_preload_all
+                ):
+                    raise ValueError(
+                        "--moe-storage disk requires --cuda-graph-max-bs 0 unless "
+                        "--moe-preload-all makes expert ownership immutable"
+                    )
                 banks, disk_source = open_ftw_disk_banks(
                     config.model_path,
                     num_layers=config.model_config.num_moe_layers,

@@ -60,7 +60,7 @@ def test_models_human_table_groups_tiers_and_shows_performance_metrics(capsys):
     assert "CERTIFIED" in qwen36_row
     assert qwen36_row.split()[-2:] == ["67.79", "0.329"]
     qwen38_row = next(line for line in output.splitlines() if line.startswith("Qwen3.8"))
-    assert qwen38_row.split()[-2:] == ["16.06", "0.434"]
+    assert qwen38_row.split()[-2:] == ["16.61", "0.403"]
     assert "No recipe is certified yet" not in output
 
 

@@ -436,9 +436,25 @@ class Qwen4PLE(BaseOP):
         self.conv1d = _DepthwiseDilatedConv(self.width, args.ple_conv_kernel_size)
         self.dilation = args.ngram_size
         self.state_len = (args.ple_conv_kernel_size - 1) * self.dilation
+        self._capture_embed: torch.Tensor | None = None
 
     def bind(self, model_path: str, *, dummy: bool = False) -> None:
         self.embedding.bind(model_path, dummy=dummy)
+
+    def prepare_cuda_graph_inputs(self, batch) -> None:
+        """Resolve disk-backed PLE rows before graph replay into a stable GPU buffer."""
+        embed = self.embedding.forward(batch)
+        weight = self.key_proj.weight
+        if self._capture_embed is None:
+            self._capture_embed = torch.empty(
+                (1, embed.shape[-1]), dtype=weight.dtype, device=weight.device
+            )
+        if embed.shape != self._capture_embed.shape:
+            raise RuntimeError(
+                "Qwen4 PLE CUDA graphs require batch-one decode rows, got "
+                f"{tuple(embed.shape)}"
+            )
+        self._capture_embed.copy_(embed)
 
     def _conv(self, x: torch.Tensor, batch) -> torch.Tensor:
         pool = get_global_ctx().linear_state_pool
@@ -473,7 +489,12 @@ class Qwen4PLE(BaseOP):
 
     def forward(self, hidden: torch.Tensor) -> torch.Tensor:
         batch = get_global_ctx().batch
-        embed = self.embedding.forward(batch).to(hidden.device, dtype=hidden.dtype)
+        if getattr(batch.attn_metadata, "capture_decode", False):
+            if self._capture_embed is None:
+                raise RuntimeError("Qwen4 PLE graph input was not staged before replay")
+            embed = self._capture_embed
+        else:
+            embed = self.embedding.forward(batch).to(hidden.device, dtype=hidden.dtype)
         key = self.norm_key.forward(self.key_proj.forward(embed)).view(
             -1, self.hc_count, self.hidden_size
         )

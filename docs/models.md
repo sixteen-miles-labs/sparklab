@@ -33,7 +33,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |  |
 | [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW | `qwen3.6-35b-a3b` | Certified | 67.79 | 0.329 |
 | **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |  |
-| [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW | `qwen3.8-flash-next` | Experimental | 16.06 | 0.434 |
+| [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW | `qwen3.8-flash-next` | Experimental | 16.61 | 0.403 |
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | `deepseek-v4` | Preview | 10.28 | 0.604 |
 | [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 + KDA FP8 · FTW | `glm-5.3-flash` | Experimental | 6.27 | 5.681 |
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
@@ -54,14 +54,15 @@ means no accepted complete-checkpoint GB10 performance evidence is attached.
 
 The primary lineup is Qwen3.6 NVFP4 for Fast; Qwen3.8 Flash Next, GLM-5.3 Flash,
 and DeepSeek V4 Flash for Frontier; and Kimi K3 for Research. The Beta Qwen3.8 recipe
-preserves Inferact's publisher-quantized ModelOpt NVFP4 precision. Recipe 0.6.0 preloads
+preserves Inferact's publisher-quantized ModelOpt NVFP4 precision. Recipe 0.7.0 preloads
 all routed experts into immutable unified-memory slots, caps KV capacity at 128K tokens,
-and measured 16.06 decode tok/s with 0.434 s warm TTFT, passing the Frontier performance
-thresholds. Exact 64K sparse-QSA recall, reasoning/tool parsing, the coding-agent probe,
-and a five-problem quality sample also passed; the clean-revision 60-minute endurance
-gate remains outstanding. Its historical FP8 and earlier
-NVFP4 results do not transfer across checkpoint and recipe-version boundaries. See the
-[optimization evidence](../benchmarks/gb10/results/GB10-QWEN38-NVFP4-OPT-001.json).
+and uses CUDA-graph replay for batch-one dense QSA before automatically falling back to
+eager sparse QSA. It measured 16.61 decode tok/s with 0.403 s warm TTFT, passing the
+Frontier performance thresholds. Exact 64K sparse-QSA recall, reasoning/tool parsing,
+the coding-agent probe, and a five-problem quality sample also passed; the clean-revision
+60-minute endurance gate remains outstanding. Its historical FP8 and earlier NVFP4
+results do not transfer across checkpoint and recipe-version boundaries. See the
+[optimization evidence](../benchmarks/gb10/results/GB10-QWEN38-NVFP4-OPT-002.json).
 Qwen3.6 recipe 0.3.0 passed the Fast gate on its pinned FTW artifact: 67.79 decode
 tok/s, 0.329 s warm TTFT, exact 32K recall, capability probes, and an uninterrupted
 60.28-minute zero-swap run. The fixed five-problem AIME sample hit the 2,048-token cap

@@ -73,6 +73,10 @@ class BaseAttnBackend(ABC):
     @abstractmethod
     def prepare_for_replay(self, batch: Batch) -> None: ...
 
+    def supports_cuda_graph(self, batch: Batch) -> bool:
+        """Whether this decode batch fits the backend's captured execution domain."""
+        return True
+
     def reset_capture(self) -> None:
         """Drop CUDA-graph capture scratch so ``init_capture_graph`` can re-run after a
         runtime cache rebuild. The default clears the common capture state (guarded by
@@ -119,6 +123,9 @@ class HybridBackend(BaseAttnBackend):
 
     def prepare_for_replay(self, batch: Batch) -> None:
         self.decode_backend.prepare_for_replay(batch)
+
+    def supports_cuda_graph(self, batch: Batch) -> bool:
+        return self.decode_backend.supports_cuda_graph(batch)
 
     def reset_capture(self) -> None:
         # Only the decode backend is ever captured (see init_capture_graph above).

@@ -54,10 +54,11 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
         "qwen3.6-35b-a3b",
     }
     qwen = get_recipe("qwen3.8-flash-next")
-    assert qwen.recipe_version == "0.6.0"
+    assert qwen.recipe_version == "0.7.0"
     assert qwen.intended_tier == "frontier"
     assert qwen.status == "experimental"
     assert qwen.evidence == (
+        "GB10-QWEN38-NVFP4-OPT-002",
         "GB10-QWEN38-NVFP4-OPT-001",
         "GB10-QWEN38-NVFP4-001",
     )
@@ -68,8 +69,8 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert qwen.deployment.quantization == "nvfp4"
     assert "convert_expert_quantization" not in qwen.deployment.backend_options
     assert qwen.deployment.backend_options["nvfp4_backend"] == "triton"
-    assert qwen.performance.decode_tokens_per_second == pytest.approx(16.061408803195647)
-    assert qwen.performance.warm_ttft_seconds == pytest.approx(0.4342626500874758)
+    assert qwen.performance.decode_tokens_per_second == pytest.approx(16.607355237469154)
+    assert qwen.performance.warm_ttft_seconds == pytest.approx(0.40297515969723463)
     assert qwen.deployment.backend_options["moe_host_cache_gb"] == 0
     assert qwen.deployment.backend_options["moe_preload_all"] is True
     assert qwen.deployment.backend_options["num_tokens"] == 131_072
@@ -345,15 +346,15 @@ def test_current_qwen_nvfp4_evidence_passes_all_non_endurance_frontier_gates():
     recipe = get_recipe("qwen3.8-flash-next")
     root = Path(__file__).resolve().parents[2]
     result = json.loads(
-        (root / "benchmarks/gb10/results/GB10-QWEN38-NVFP4-OPT-001.json").read_text()
+        (root / "benchmarks/gb10/results/GB10-QWEN38-NVFP4-OPT-002.json").read_text()
     )
     assert result["result_id"] == recipe.evidence[0]
     assert result["admission"]["performance_gate_passed"] is True
     assert result["metrics"]["decode_tokens_per_second"] == pytest.approx(
-        16.061408803195647
+        16.607355237469154
     )
     assert result["metrics"]["warm_ttft_seconds"] == pytest.approx(
-        0.4342626500874758
+        0.40297515969723463
     )
     assert result["validation"]["context_tokens"] == 65_536
     assert result["validation"]["context_gate_run"] is True

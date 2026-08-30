@@ -23,6 +23,10 @@ class BaseLLMModel(ABC, BaseOP):
     @abstractmethod
     def forward(self) -> torch.Tensor: ...
 
+    def prepare_cuda_graph_inputs(self, batch) -> None:
+        """Stage model-specific inputs that must remain outside graph capture/replay."""
+        return None
+
 
 class GatedMLP(BaseOP):
     def __init__(self, config: ModelConfig):

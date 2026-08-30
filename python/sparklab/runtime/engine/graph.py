@@ -112,6 +112,7 @@ class GraphRunner:
             free_memory=free_memory,
         )
         self.attn_backend = attn_backend
+        self.model = model
         self.max_graph_bs = max(cuda_graph_bs) if cuda_graph_bs else 0
         self.graph_bs_list = sorted(cuda_graph_bs)
         self.dummy_req = dummy_req
@@ -172,6 +173,7 @@ class GraphRunner:
                           else self.dummy_req.table_idx)
             self.buffer.table_idx[:bs].fill_(dummy_slot)
             with get_global_ctx().forward_batch(batch):
+                self.model.prepare_cuda_graph_inputs(batch)
                 self.buffer.logits[:bs] = model.forward()
                 # Keep the offload cache warmed for capture. Resetting here forces
                 # CUDA graph capture to replay cold-cache expert copies.
@@ -187,13 +189,18 @@ class GraphRunner:
         logger.info_rank0(f"Free GPU memory after capturing CUDA graphs: {mem_GB(free_memory)}")
 
     def can_use_cuda_graph(self, batch: Batch) -> bool:
-        return batch.is_decode and batch.size <= self.max_graph_bs
+        return (
+            batch.is_decode
+            and batch.size <= self.max_graph_bs
+            and self.attn_backend.supports_cuda_graph(batch)
+        )
 
     def replay(self, batch: Batch) -> torch.Tensor:
         assert self.can_use_cuda_graph(batch)
         self.buffer.copy_from(batch)
         g = self.graph_map[batch.padded_size]
         self.attn_backend.prepare_for_replay(batch)
+        self.model.prepare_cuda_graph_inputs(batch)
         g.replay()
         return self.buffer.logits[: batch.size]
 

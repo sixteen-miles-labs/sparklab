@@ -844,6 +844,9 @@ def test_graph_capture_reuses_warm_offload_cache_before_capture(monkeypatch):
             pass
 
     class FakeModel:
+        def prepare_cuda_graph_inputs(self, batch):
+            events.append("prepare_graph_inputs")
+
         def forward(self):
             events.append("forward")
             batch = get_global_ctx().batch
@@ -885,6 +888,7 @@ def test_graph_capture_reuses_warm_offload_cache_before_capture(monkeypatch):
 
     assert events == [
         "reset",
+        "prepare_graph_inputs",
         "forward",
         "graph_enter",
         "forward",
