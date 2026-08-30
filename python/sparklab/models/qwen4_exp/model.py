@@ -100,6 +100,11 @@ class Qwen4ExpForCausalLM(BaseLLMModel):
             if layer.ple is not None:
                 layer.ple.bind(model_path, dummy=dummy)
 
+    def prepare_cuda_graph_inputs(self, batch) -> None:
+        for layer in self.model.layers.op_list:
+            if layer.ple is not None:
+                layer.ple.prepare_cuda_graph_inputs(batch)
+
     def forward(self) -> torch.Tensor:
         hidden = self.model.forward(get_global_ctx().batch.input_ids)
         return self.lm_head.forward(hidden)

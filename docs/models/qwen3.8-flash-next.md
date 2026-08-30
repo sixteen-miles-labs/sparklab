@@ -47,6 +47,9 @@ Startup includes a one-time full-expert preload (about 35 seconds in the measure
 Steady-state decode then performs no routed-expert disk staging or LRU bookkeeping. On
 GB10, SparkLab first advises Linux to release clean download page cache so a freshly
 pulled artifact does not hide reclaimable unified memory from the cache planner.
+Batch-one QSA decode replays a CUDA graph while attention remains inside its exact dense
+budget (up to 2,051 visible tokens). SparkLab automatically returns to eager sparse QSA
+for longer contexts; no command-line switch is required.
 The recipe caps KV capacity at 131,072 tokens, enough for the validated 64K context gate
 while retaining substantially more operating-system headroom than the unconstrained
 auto-allocation.

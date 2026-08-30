@@ -1,0 +1,143 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWEN38-NVFP4-OPT-002",
+  "status": "measured",
+  "recipe": {
+    "slug": "qwen3.8-flash-next",
+    "recipe_version": "0.7.0",
+    "revision": "103a7608316173ca6edd49929544244de7ffda70"
+  },
+  "engine": {
+    "name": "FreeToken",
+    "product_identity": "SparkLab",
+    "git_revision": "12cfbbe66b84ef743cc819cd8e42484e6105445e",
+    "git_tracked_dirty": true
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "machine": "aarch64",
+    "os": "Linux 6.17.0-1014-nvidia",
+    "driver": "580.126.09",
+    "cuda": "13.0",
+    "torch": "2.11.0+cu130",
+    "triton": "3.6.0"
+  },
+  "checkpoint": {
+    "repository": "Inferact/Qwen3.8-Flash-Next-NVFP4",
+    "revision": "103a7608316173ca6edd49929544244de7ffda70",
+    "full_model": true,
+    "format": "ftw-nvfp4",
+    "quantization": "nvfp4",
+    "fingerprint": "47e11ddb878adf4c",
+    "bytes": 180433108992,
+    "ftw_bytes": 78032617472,
+    "external_ngram_bytes": 102400491520
+  },
+  "workload": {
+    "name": "AIME-25 problem 0 fixed decode probe",
+    "batch_size": 1,
+    "sampling": "greedy",
+    "prompt_tokens": 96,
+    "requested_completion_tokens": 64,
+    "returned_completion_tokens": 64,
+    "timed_decode_steps": 63,
+    "warmup_requests": 1,
+    "measured_requests": 1,
+    "client_path": "OpenAI-compatible streaming HTTP API"
+  },
+  "configuration": {
+    "moe_backend": "offload",
+    "expert_storage": "disk",
+    "expert_cache_slots": 24576,
+    "expert_preload": "immutable-full",
+    "expert_preload_seconds": 35.26,
+    "host_cache_gib": 0.0,
+    "disk_read_workers": 16,
+    "nvfp4_backend": "triton",
+    "attention_backend": "qsa",
+    "qsa_fused_selection": true,
+    "cuda_graph": true,
+    "cuda_graph_batch_size": 1,
+    "dense_qsa_visible_token_limit": 2051,
+    "sparse_qsa_fallback": "eager",
+    "kv_tokens": 131072,
+    "page_size": 16,
+    "cache_type": "naive"
+  },
+  "metrics": {
+    "decode_tokens_per_second": 16.607355237469154,
+    "decode_milliseconds_per_token": 60.21428371350917,
+    "warm_ttft_seconds": 0.40297515969723463,
+    "latency_p50_milliseconds": 59.59520395845175,
+    "latency_p99_milliseconds": 64.51890338212252,
+    "device_allocation_gib": 76.427734375,
+    "minimum_mem_available_gib": 23.436580657958984,
+    "power_watts_average": 40.85,
+    "power_watts_peak": 47.63,
+    "gpu_temperature_celsius_peak": 50.0,
+    "dense_ab_graph_tokens_per_second": 16.169252871711507,
+    "dense_ab_eager_tokens_per_second": 15.515170953714739,
+    "dense_ab_improvement_percent": 4.2157570802670685,
+    "expert_cache_miss_rate_percent": 0.0,
+    "expert_disk_read_operations": 0,
+    "swap_in_pages": 0,
+    "swap_out_pages": 0
+  },
+  "validation": {
+    "checkpoint_checksum_verified": true,
+    "complete_checkpoint_loaded": true,
+    "api_stream_completed": true,
+    "output_hash_algorithm": "sha1-prefix",
+    "output_hash": "c1c0854490c6",
+    "output_hash_matches_eager_fixed_probe": true,
+    "output_correctness": true,
+    "reasoning_parser": true,
+    "tool_parser": true,
+    "coding_agent_task": true,
+    "memory_bounded": true,
+    "nvme_behavior": "bounded",
+    "context_tokens": 65536,
+    "context_gate_run": true,
+    "dense_sparse_transition_context_tokens": 2048,
+    "dense_sparse_transition_recall": "SPARK-7319",
+    "dense_sparse_transition_gate_run": true,
+    "capability_gate_run": true,
+    "quality_gate_run": true,
+    "endurance_gate_run": false
+  },
+  "stability": {
+    "duration_minutes": 9.60445735817775,
+    "oom_count": 0,
+    "service_restarts": 0,
+    "swap_growth_bytes": 0,
+    "parser_failures": 0,
+    "uninterrupted": true
+  },
+  "admission": {
+    "tier": "frontier",
+    "performance_gate_passed": true,
+    "passed": false,
+    "reasons": [
+      "The graph-enabled fixed probe measured 16.607 tok/s and 0.403 s warm TTFT, passing the Frontier performance thresholds with the established exact output hash.",
+      "An exact 2,048-token probe crossed from captured dense QSA to eager sparse QSA and returned the planted key with zero expert disk reads, swap growth, or OOMs.",
+      "The 64K context, parser, coding-agent, and five-problem quality gates are inherited regression evidence from recipe 0.6.0; a clean-revision 60-minute endurance run remains outstanding."
+    ]
+  },
+  "source": {
+    "summary": "exps/exp_qwen3_8_nvfp4_gb10.md",
+    "raw_artifact": "$HOME/results/qwen3.8-gb10/qwen38-cudagraph-fixed-decode64-20260830.jsonl",
+    "dense_control_artifact": "$HOME/results/qwen3.8-gb10/qwen38-cudagraph-control-eager-decode512-20260830.jsonl",
+    "dense_graph_artifact": "$HOME/results/qwen3.8-gb10/qwen38-cudagraph-optimized-decode512-20260830.jsonl",
+    "transition_artifact": "$HOME/results/qwen3.8-gb10/qwen38-cudagraph-transition-context2048-fixed-20260830.json",
+    "prior_evidence": "GB10-QWEN38-NVFP4-OPT-001"
+  },
+  "limitations": [
+    "This is dirty-worktree optimization evidence, not a clean-revision certification result.",
+    "CUDA-graph replay is limited to batch-one exact dense QSA through 2,051 visible tokens; sparse QSA remains eager.",
+    "The 512-token graph and eager runs selected different but semantically equivalent wording at generated token 342; the fixed 64-token acceptance probe retained the established exact hash.",
+    "Broader 64K context, capability, and quality evidence comes from recipe 0.6.0 and was not rerun after the graph-only decode change.",
+    "The host had about 3.38 GiB of pre-existing swap resident, although measured requests grew neither swap nor routed-expert disk I/O.",
+    "Certification must be repeated from a clean revision after host swap usage returns to zero."
+  ]
+}
