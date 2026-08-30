@@ -414,6 +414,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=f"local jsonl instead of downloading {AIME_REPO}; default $SPARKLAB_AIME25_JSONL",
     )
     p.add_argument("--problem", type=int, default=0, help="0-based AIME problem index")
+    p.add_argument(
+        "--prompt-padding-repeats",
+        type=int,
+        default=0,
+        help=(
+            "prepend this many deterministic ' x' repeats to force long-context "
+            "decode; the measured prompt_tokens field is authoritative"
+        ),
+    )
     p.add_argument("--decode", type=int, default=256, help="decode tokens to measure (D)")
     p.add_argument(
         "--cache",
@@ -441,6 +450,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--disable-prefill-overlap", action="store_true",
         help="disable the two-layer prefill staging reservation (permits a one-layer cache)",
+    )
+    p.add_argument(
+        "--preload-all", action="store_true",
+        help="preload a complete disk-backed expert bank into immutable GPU slots",
     )
     p.add_argument(
         "--prefill-hit-d2d", action="store_true",
@@ -584,6 +597,8 @@ def serve_cmd(args: argparse.Namespace, backend: str, port: int) -> list[str]:
         cmd += ["--moe-cpu-threads", str(args.cpu_threads)]
     if args.disable_prefill_overlap:
         cmd.append("--disable-moe-prefill-overlap")
+    if getattr(args, "preload_all", False):
+        cmd.append("--moe-preload-all")
     if args.prefill_hit_d2d:
         cmd.append("--moe-prefill-hit-d2d")
     if args.prefill_sparse_max_tokens > 0:
@@ -737,6 +752,8 @@ def stream_generate(origin: str, model_id: str, problem: str, sampling: dict,
 
 def run_one(args: argparse.Namespace, backend: str) -> dict:
     problem, answer = load_problem(args.aime, args.problem)
+    if args.prompt_padding_repeats > 0:
+        problem = (" x" * args.prompt_padding_repeats) + "\n" + problem
     sampling, sampling_src = resolve_sampling(args.model, args.greedy)
     platform_evidence = gb10_evidence(args.model)
     recipe_evidence = None
@@ -843,6 +860,9 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
         "configuration": {
             "storage": args.storage,
             "attention_backend": args.attention_backend,
+            "qsa_fused_selection": os.getenv(
+                "SPARKLAB_DISABLE_QSA_FUSED_SELECTION", "0"
+            ).lower() not in {"1", "true", "yes"},
             "page_size": args.page_size,
             "cache_type": args.cache_type,
             "max_seq_len": args.max_seq_len or (8192 + args.decode),
@@ -856,13 +876,15 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
             "hybrid_fetch": args.hybrid_fetch,
             "disk_read_workers": int(os.getenv("SPARKLAB_DISK_READ_WORKERS", "16")),
             "cache_policy": args.cache_policy,
-            "prefill_overlap": not args.disable_prefill_overlap,
+            "prefill_overlap": not args.disable_prefill_overlap and not args.preload_all,
+            "preload_all": args.preload_all,
             "prefill_hit_d2d": args.prefill_hit_d2d,
             "prefill_sparse_max_tokens": args.prefill_sparse_max_tokens,
             "shared_expert_overlap": args.shared_expert_overlap,
             "startup_prefill_warmup": not args.disable_startup_prefill_warmup,
             "cuda_graph": not args.no_graph,
             "request_timeout_s": args.request_timeout,
+            "prompt_padding_repeats": args.prompt_padding_repeats,
         },
         "cache_geometry": cache_status.get("geometry", {}),
         "problem": args.problem,

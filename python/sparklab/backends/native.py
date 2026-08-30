@@ -37,7 +37,9 @@ _FLAG_OPTIONS: dict[str, str] = {
     "disable_startup_prefill_warmup": "--disable-startup-prefill-warmup",
     "kimi_mlp_fp8": "--kimi-mlp-fp8",
     "moe_cache_auto": "--moe-cache-auto",
+    "moe_preload_all": "--moe-preload-all",
     "moe_prefill_hit_d2d": "--moe-prefill-hit-d2d",
+    "moe_shared_expert_overlap": "--moe-shared-expert-overlap",
 }
 _FALSE_FLAG_OPTIONS: dict[str, str] = {
     "moe_prefill_overlap": "--disable-moe-prefill-overlap",
@@ -52,10 +54,12 @@ _OPTION_ORDER = (
     "moe_cache_policy",
     "moe_cache_rate",
     "moe_cache_auto",
+    "moe_preload_all",
     "nvfp4_backend",
     "moe_prefill_sparse_max_tokens",
     "moe_prefill_overlap",
     "moe_prefill_hit_d2d",
+    "moe_shared_expert_overlap",
     "cuda_graph_max_bs",
     "cache_type",
     "page_size",

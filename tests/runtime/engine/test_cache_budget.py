@@ -8,6 +8,20 @@ import torch
 from sparklab.runtime.engine.cache_budget import expert_bytes_per_slot, plan_cache_budget, resolve_moe_cache_auto
 
 
+def test_full_preload_page_cache_advice_walks_model_files(tmp_path):
+    from sparklab.runtime.engine.engine import _advise_model_cache_dontneed
+
+    (tmp_path / "weights.ftw").write_bytes(b"weight-bytes")
+    nested = tmp_path / "external"
+    nested.mkdir()
+    (nested / "ngram.bin").write_bytes(b"ngram")
+
+    files, size = _advise_model_cache_dontneed(str(tmp_path))
+
+    assert files == 2
+    assert size == len(b"weight-bytes") + len(b"ngram")
+
+
 def test_moe_priority_fills_experts_up_to_total():
     # budget large enough to cache every expert; KV gets the remainder.
     # per_expert=100, cache_per_page=10, total=8 experts (L*E), E=4.
@@ -227,6 +241,43 @@ def test_adjust_config_resolves_num_tokens_generic():
     cfg = Cfg()
     _adjust_config(cfg)
     assert cfg.num_page_override == 5000
+
+
+def test_full_preload_resolves_auto_to_gpu_offload_and_auto_sizes_cache():
+    from types import SimpleNamespace
+
+    from sparklab.runtime.distributed import DistributedInfo
+    from sparklab.runtime.engine.config import EngineConfig
+    from sparklab.runtime.engine.engine import _adjust_config
+
+    config = EngineConfig(
+        model_path="/tmp/sparklab-test-model",
+        tp_info=DistributedInfo(rank=0, size=1),
+        dtype=torch.float16,
+        attention_backend="triton",
+        moe_storage="disk",
+        moe_preload_all=True,
+    )
+    object.__setattr__(
+        config,
+        "model_config",
+        SimpleNamespace(
+            has_swa_attention=False,
+            has_linear_attention=False,
+            is_moe=True,
+            num_layers=2,
+            num_moe_layers=2,
+            num_experts=8,
+            expert_quant="none",
+            moe_backend="auto",
+        ),
+    )
+
+    _adjust_config(config)
+
+    assert config.moe_backend == "offload"
+    assert config.moe_cache_auto is True
+    assert config.moe_prefill_overlap is False
 
 
 def test_mha_kv_cost_simple_full_attention():

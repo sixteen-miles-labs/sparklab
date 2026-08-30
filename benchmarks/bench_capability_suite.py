@@ -64,6 +64,7 @@ def parse_args() -> argparse.Namespace:
         help="maximum reasoning tokens for each behavioral probe",
     )
     p.add_argument("--disable-prefill-overlap", action="store_true")
+    p.add_argument("--preload-all", action="store_true")
     p.add_argument("--prefill-hit-d2d", action="store_true")
     p.add_argument("--prefill-sparse-max-tokens", type=int, default=0)
     p.add_argument("--shared-expert-overlap", action="store_true")
@@ -250,6 +251,7 @@ def main() -> int:
             "backend": args.backend,
             "storage": args.storage,
             "attention_backend": args.attention_backend,
+            "preload_all": args.preload_all,
             "prefill_sparse_max_tokens": args.prefill_sparse_max_tokens,
             "prefill_hit_d2d": args.prefill_hit_d2d,
         },

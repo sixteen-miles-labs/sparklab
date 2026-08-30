@@ -87,9 +87,48 @@ class Qwen3_5MoE(BaseOP):
         # kernel may write into ``hidden_states`` in place, which would corrupt the
         # shared expert's input (HF also evaluates the shared expert first).
         router_logits = self.gate.forward(hidden_states)
-        shared = self.shared_expert.forward(hidden_states)
-        shared = shared * torch.sigmoid(self.shared_expert_gate.forward(hidden_states))
-        routed = self.experts.forward(hidden_states=hidden_states, router_logits=router_logits)
+        cache = getattr(self.experts, "offload_cache", None)
+        overlap = bool(
+            cache is not None
+            and cache.shared_expert_overlap
+            and cache.disk_source is not None
+            and hidden_states.is_cuda
+        )
+        if overlap:
+            current = torch.cuda.current_stream(hidden_states.device)
+            if cache.shared_expert_stream is None:
+                cache.shared_expert_stream = torch.cuda.Stream(device=hidden_states.device)
+            shared_stream = cache.shared_expert_stream
+            # The routed fused kernel may overwrite ``hidden_states`` in place. Copy
+            # it on the current stream before forking work so the shared branch has an
+            # immutable input; stream ordering completes this small copy before either
+            # consumer can race with it.
+            shared_input = hidden_states.clone()
+            shared_stream.wait_stream(current)
+            with torch.cuda.stream(shared_stream):
+                shared = self.shared_expert.forward(shared_input)
+                shared = shared * torch.sigmoid(
+                    self.shared_expert_gate.forward(shared_input)
+                )
+            # Routing is already available. Disk staging or immutable-cache expert
+            # compute can proceed on the main stream while the always-on shared expert
+            # consumes otherwise-idle SM capacity on the auxiliary stream.
+            routed = self.experts.forward(
+                hidden_states=hidden_states, router_logits=router_logits
+            )
+            current.wait_stream(shared_stream)
+            # The result was allocated on the auxiliary stream and is consumed by
+            # the current stream's add below. Tell the caching allocator about that
+            # cross-stream lifetime so its storage cannot be recycled after only the
+            # producer stream completes.
+            shared.record_stream(current)
+            cache.shared_expert_overlap_calls += 1
+        else:
+            shared = self.shared_expert.forward(hidden_states)
+            shared = shared * torch.sigmoid(self.shared_expert_gate.forward(hidden_states))
+            routed = self.experts.forward(
+                hidden_states=hidden_states, router_logits=router_logits
+            )
         return (routed + shared).view(num_tokens, hidden_dim)
 
 

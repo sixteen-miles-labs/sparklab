@@ -59,8 +59,13 @@ def test_fused_topk_accepts_triton_kernel_tuple_output():
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is required")
-def test_fused_topk_falls_back_for_qwen4_top10():
+def test_fused_topk_uses_local_kernel_for_qwen4_top10(monkeypatch):
     from sparklab.moe.fused import fused_topk
+
+    def fail_torch_fallback(*args, **kwargs):
+        raise AssertionError("Qwen4 top-10 routing must use the local fused kernel")
+
+    monkeypatch.setattr("sparklab.moe.fused._torch_fused_topk", fail_torch_fallback)
 
     torch.manual_seed(7)
     logits = torch.randn(3, 512, device="cuda", dtype=torch.bfloat16)
@@ -70,8 +75,21 @@ def test_fused_topk_falls_back_for_qwen4_top10():
     probs = torch.softmax(logits.float(), dim=-1)
     ref_weights, ref_ids = torch.topk(probs, 10, dim=-1)
     ref_weights /= ref_weights.sum(dim=-1, keepdim=True)
-    torch.testing.assert_close(ids, ref_ids.to(torch.int32))
-    torch.testing.assert_close(weights, ref_weights)
+    # PyTorch does not define the ordering of equal top-k values. BF16 router
+    # logits produce real ties, so compare each row by expert id rather than
+    # imposing PyTorch's incidental tie ordering on the fused kernel.
+    for token in range(logits.size(0)):
+        got = {int(ids[token, k]): float(weights[token, k]) for k in range(10)}
+        want = {int(ref_ids[token, k]): float(ref_weights[token, k]) for k in range(10)}
+        assert set(got) == set(want)
+        for expert_id in want:
+            assert got[expert_id] == pytest.approx(want[expert_id], abs=1e-6)
+
+    mapped_weights, mapped_ids = fused_topk(
+        hidden_states, logits, topk=10, renormalize=True, id_base=2048
+    )
+    torch.testing.assert_close(mapped_weights, weights)
+    torch.testing.assert_close(mapped_ids, ids + 2048)
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is required")

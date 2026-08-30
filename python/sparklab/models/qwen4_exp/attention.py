@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import torch
+import torch.nn.functional as F
 from sparklab.core import get_global_ctx
 from sparklab.runtime.distributed import get_tp_info
 from sparklab.layers import (
@@ -73,23 +74,31 @@ class Qwen4ExpAttention(BaseOP):
             ctx.batch.positions, q.view(-1, self.q_dim), k.view(-1, self.kv_dim)
         )
 
-        iq, raw_ik = self.index_qk_proj.forward(x).split(
-            [self.index_q_dim, self.index_dim], dim=-1
-        )
-        iq = iq.contiguous().view(-1, self.index_n_heads, self.index_dim)
-        raw_ik = raw_ik.contiguous()
-        self.index_q_norm.forward_inplace(iq)
-        # Only queries are normalized/rotated here. QSA first averages raw key
-        # groups, then normalizes and rotates the pooled key at the group start.
-        iq_flat, _ = self.index_rotary.forward(
-            ctx.batch.positions,
-            iq.view(-1, self.index_q_dim),
-            raw_ik.clone(),
-        )
+        if ctx.attn_backend.needs_index_query(ctx.batch):
+            iq, raw_ik = self.index_qk_proj.forward(x).split(
+                [self.index_q_dim, self.index_dim], dim=-1
+            )
+            iq = iq.contiguous().view(-1, self.index_n_heads, self.index_dim)
+            raw_ik = raw_ik.contiguous()
+            self.index_q_norm.forward_inplace(iq)
+            # Only queries are normalized/rotated here. QSA first averages raw key
+            # groups, then normalizes and rotates the pooled key at the group start.
+            iq_flat, _ = self.index_rotary.forward(
+                ctx.batch.positions,
+                iq.view(-1, self.index_q_dim),
+                raw_ik.clone(),
+            )
+            index_q = iq_flat.view(-1, self.index_n_heads, self.index_dim)
+        else:
+            # Dense-budget selection ignores index queries. Retain only the raw key
+            # projection so a request that later crosses the sparse threshold still
+            # has the complete index-key history available.
+            raw_ik = F.linear(x, self.index_qk_proj.weight[-self.index_dim:]).contiguous()
+            index_q = None
         out = ctx.attn_backend.qsa_forward(
             q_flat.view(-1, self.num_q, self.head_dim),
             k_flat, v,
-            iq_flat.view(-1, self.index_n_heads, self.index_dim),
+            index_q,
             raw_ik,
             self.index_k_norm.weight,
             self.index_rotary,

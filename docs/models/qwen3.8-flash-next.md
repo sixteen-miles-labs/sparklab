@@ -1,7 +1,9 @@
 # Run Qwen3.8-Flash-Next
 
-Qwen3.8-Flash-Next is a text-only Frontier-tier NVFP4 recipe with NVMe-backed MoE
-execution. It uses a pinned, prebuilt FTW artifact. The recipe is Experimental.
+Qwen3.8-Flash-Next is a text-only Frontier-tier NVFP4 recipe for one NVIDIA GB10. It
+uses a pinned, prebuilt FTW artifact and preloads every routed expert into immutable
+unified-memory slots. Local NVMe still holds the artifact and the external n-gram bank.
+The recipe is Experimental.
 
 ## Install SparkLab
 
@@ -40,6 +42,14 @@ conversion locally.
 ```bash
 sparklab run qwen3.8-flash-next --root /path/to/models
 ```
+
+Startup includes a one-time full-expert preload (about 35 seconds in the measured run).
+Steady-state decode then performs no routed-expert disk staging or LRU bookkeeping. On
+GB10, SparkLab first advises Linux to release clean download page cache so a freshly
+pulled artifact does not hide reclaimable unified memory from the cache planner.
+The recipe caps KV capacity at 131,072 tokens, enough for the validated 64K context gate
+while retaining substantially more operating-system headroom than the unconstrained
+auto-allocation.
 
 Wait for the API to listen on `127.0.0.1:1919`, then verify it:
 

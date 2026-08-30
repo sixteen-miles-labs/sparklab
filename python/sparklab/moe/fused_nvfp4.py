@@ -59,11 +59,13 @@ _DECODE_BLOCK_N = 64
 _DECODE_BLOCK_KB = 128
 _DECODE_WARPS = 4
 
-# Marlin-style decode config (int32 wide loads + deferred reduction). Offline sweep over
-# the qwen35/qwen3moe (I=512/768) decode shapes picked BLOCK_N=16, BLOCK_KW=16 (== 128
-# k-values/iter), 4 warps -- the wide load lifts the gate/up GEMM ~43%->~51% of peak BW.
+# Marlin-style decode config (int32 wide loads + deferred reduction). A GB10 sweep over
+# Qwen3.6 (H=2048/I=512/top-8), Qwen3.8 (2560/640/top-10), and Kimi K3
+# (7168/3072/top-8) selected BLOCK_N=16, BLOCK_KW=32 (256 k-values/iteration), 4 warps.
+# Compared with BLOCK_KW=16 this improves the complete routed-expert operation by
+# approximately 7.9%, 4.4%, and 6.2% respectively while preserving the reduction result.
 _DECODE_MARLIN_BLOCK_N = 16
-_DECODE_MARLIN_BLOCK_KW = 16
+_DECODE_MARLIN_BLOCK_KW = 32
 _DECODE_MARLIN_WARPS = 4
 
 

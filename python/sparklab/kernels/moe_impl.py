@@ -396,14 +396,17 @@ def fused_moe_decode_kernel_triton(
     )
 
 
-def gpt_oss_fused_routing(
+def fused_softmax_topk(
     logits: torch.Tensor,
     top_k: int,
+    id_base: int = 0,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
-    """Fused softmax-over-top-k router for GPT-OSS (norm_topk_prob=True).
+    """Fused softmax-over-top-k router for renormalized MoE routing.
 
     Returns (topk_weights[float32], topk_ids[int32]). Selecting top-k by logit and
     softmaxing over the selected k is equivalent to softmax-over-all + renormalize.
+    Unlike ``triton_kernels.topk``, this local implementation accepts non-power-of-two
+    values such as Qwen3.8's top-10 routing.
     """
     import triton
 
@@ -413,7 +416,11 @@ def gpt_oss_fused_routing(
     tokens, num_experts = logits.shape
     assert top_k <= num_experts
     assert num_experts <= 1024, "routing kernel BLOCK_E (next pow2 of E) must be <= 1024"
-    logits = logits.float().contiguous()
+    # The Triton kernel converts values to fp32 after loading. Keep the published
+    # router dtype here so decode does not launch a separate bf16->fp32 conversion
+    # and allocate a temporary [tokens, experts] tensor before every MoE layer.
+    if not logits.is_contiguous():
+        logits = logits.contiguous()
     topk_weights = torch.empty((tokens, top_k), dtype=torch.float32, device=logits.device)
     topk_ids = torch.empty((tokens, top_k), dtype=torch.int32, device=logits.device)
     if tokens == 0:
@@ -428,9 +435,18 @@ def gpt_oss_fused_routing(
         E=num_experts,  # type: ignore
         K=top_k,  # type: ignore
         BLOCK_E=block_e,  # type: ignore
+        ID_BASE=id_base,  # type: ignore
         num_warps=1,  # type: ignore
     )
     return topk_weights, topk_ids
+
+
+def gpt_oss_fused_routing(
+    logits: torch.Tensor,
+    top_k: int,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Backward-compatible GPT-OSS name for :func:`fused_softmax_topk`."""
+    return fused_softmax_topk(logits, top_k)
 
 
 _FP4_LUT_FLOATS = [

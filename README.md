@@ -105,8 +105,8 @@ a SparkLab support claim.
       <td>125B LM + 55B auxiliary / 6B active</td>
       <td>NVFP4 · FTW</td>
       <td>Experimental</td>
-      <td align="right">12.58</td>
-      <td align="right">0.786</td>
+      <td align="right">16.06</td>
+      <td align="right">0.434</td>
       <td><a href="docs/models/qwen3.8-flash-next.md">Instructions</a></td>
     </tr>
     <tr>

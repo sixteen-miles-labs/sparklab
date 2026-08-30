@@ -140,6 +140,7 @@ the model-portfolio context behind offloaded execution.
 |---|---|---|
 | `--moe-backend` | auto | `fused`/`offload`/`cpu`/`hybrid`; auto → offload, or hybrid with a `sparklab bench bw` profile |
 | `--moe-cache-size` / `--moe-cache-rate` / `--moe-cache-auto` | auto | GPU expert-cache size as slots / fraction of all experts / sized from free VRAM (mutually exclusive; auto is enabled by default for offload-family backends) |
+| `--moe-preload-all` | off | Disk FTW mode: preload every routed expert into a complete immutable GPU cache; forces GPU offload, disables prefill overlap, and fails if the full expert bank does not fit |
 | `--moe-cache-policy` | `lru` | `lru`, or borrowable `layer_lru` protection applied to both the GPU slot cache and disk host LRU |
 | `--kv-reserve-tokens` | 8192 | KV token floor reserved before `--moe-cache-auto` fills experts |
 | `--moe-cpu-threads` | physical cores | CPU worker threads for the cpu/hybrid executor |

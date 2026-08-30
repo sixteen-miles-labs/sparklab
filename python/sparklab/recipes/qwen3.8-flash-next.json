@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "recipe_version": "0.5.0",
+  "recipe_version": "0.6.0",
   "slug": "qwen3.8-flash-next",
   "name": "Qwen3.8 Flash Next",
   "model": "Inferact/Qwen3.8-Flash-Next-NVFP4",
@@ -30,36 +30,42 @@
       "attention_backend": "qsa",
       "moe_backend": "offload",
       "moe_storage": "disk",
-      "moe_host_cache_gb": 3,
+      "moe_host_cache_gb": 0,
       "moe_cache_auto": true,
+      "moe_preload_all": true,
       "nvfp4_backend": "triton",
-      "moe_prefill_sparse_max_tokens": 512,
-      "moe_prefill_hit_d2d": true,
       "cuda_graph_max_bs": 0,
       "cache_type": "naive",
       "page_size": 16,
-      "max_running_req": 1
+      "max_running_req": 1,
+      "num_tokens": 131072
     }
+  },
+  "runtime_memory": {
+    "total_bytes": 107374182400
   },
   "profile": "quality",
   "description": "Precision-preserving text-only recipe for Inferact's ModelOpt NVFP4 Qwen3.8 checkpoint on one NVIDIA GB10.",
   "performance": {
-    "decode_tokens_per_second": 12.583951131340129,
-    "warm_ttft_seconds": 0.7857413627207279,
-    "evidence": "GB10-QWEN38-NVFP4-001",
-    "note": "The complete pinned publisher-NVFP4 checkpoint passed a 64-token GB10 performance probe. Exact 64K context, capability, quality, and 60-minute endurance gates remain outstanding."
+    "decode_tokens_per_second": 16.061408803195647,
+    "warm_ttft_seconds": 0.4342626500874758,
+    "context_tokens": 65536,
+    "evidence": "GB10-QWEN38-NVFP4-OPT-001",
+    "note": "The complete pinned publisher-NVFP4 checkpoint passed a 64-token GB10 performance probe with immutable full-expert preload, exact 64K sparse-QSA recall, capability probes, and a fixed five-problem quality sample. The clean-revision 60-minute endurance gate remains outstanding."
   },
   "evidence": [
+    "GB10-QWEN38-NVFP4-OPT-001",
     "GB10-QWEN38-NVFP4-001"
   ],
   "limitations": [
     "Beta 0.1 FTW preparation preserves Inferact's native ModelOpt NVFP4 routed experts without conversion-time requantization; all served non-expert tensors retain their published precision.",
     "The published BF16 n-gram table is extracted into an approximately 102.4 GB random-read artifact during preparation.",
-    "The complete pinned checkpoint and 180,433,108,992-byte FTW artifact were validated; the measured 12.584 tok/s and 0.786 s warm TTFT pass the Frontier performance thresholds.",
+    "The complete pinned checkpoint and 180,433,108,992-byte FTW artifact were validated; immutable full-expert preload with a 128K KV cap and reference-exact Hyper-Connection fusion measured 16.061 tok/s and 0.434 s warm TTFT on GB10.",
+    "Full expert preload takes about 35 seconds at startup, eliminates steady-state routed-expert disk I/O and the pageable host LRU, and requires all 24,576 routed experts to fit in unified memory.",
     "GB10-QWEN38-FRONTIER-001 and GB10-QWEN38-FP8-001 describe superseded recipe/checkpoint tuples and do not transfer to this 0.5.0 release.",
     "QSA selection currently runs eagerly, so CUDA graph capture is disabled.",
     "The published checkpoint is multimodal; initial SparkLab certification is text-only.",
-    "Exact 64K recall, capability, quality, and endurance gates have not yet been run on the Inferact NVFP4 artifact.",
-    "The performance host had 2.71 GiB of unrelated swap resident before launch, although the measured request swapped no pages out."
+    "An exact 65,536-token sparse-QSA recall probe returned the planted key in 208.58 seconds with zero routed-expert disk reads and no swap growth; reasoning, tool, coding-agent, and five-problem quality gates passed, while the 60-minute endurance gate remains outstanding.",
+    "The performance host had 3.71 GiB of unrelated swap resident before launch, although the measured request swapped no pages out."
   ]
 }

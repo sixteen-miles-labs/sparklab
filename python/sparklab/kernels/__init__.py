@@ -3,6 +3,7 @@ from .fast_index_copy import fast_index_copy_jit, update_copy_flag_jit
 from .moe_impl import (
     fused_moe_decode_kernel_triton,
     fused_moe_kernel_triton,
+    fused_softmax_topk,
     gpt_oss_fused_routing,
     gpt_oss_swiglu_triton,
     get_fp4_lut,
@@ -28,6 +29,7 @@ __all__ = [
     "PyNCCLCommunicator",
     "fused_moe_kernel_triton",
     "fused_moe_decode_kernel_triton",
+    "fused_softmax_topk",
     "gpt_oss_fused_routing",
     "mxfp4_fused_moe_kernel_t_triton",
     "mxfp4_splitk_gemv_triton",

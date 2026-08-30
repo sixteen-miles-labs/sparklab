@@ -36,6 +36,10 @@ class EngineConfig:
     moe_cache_size: int = 0
     moe_cache_rate: float | None = None
     moe_cache_auto: bool = False
+    # Disk FTW mode: when the GPU slot cache can hold every (layer, expert) row,
+    # populate it once at startup and use a deterministic, immutable slot mapping.
+    # This trades startup I/O for synchronization-free steady-state decode.
+    moe_preload_all: bool = False
     kv_reserve_tokens: int = 8192  # KV floor for --moe-cache-auto; small by design (MoE-priority)
     moe_cache_policy: str = "lru"
     moe_prefill_overlap: bool = True

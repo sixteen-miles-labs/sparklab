@@ -294,6 +294,7 @@ def gpt_oss_routing_kernel(
     E: tl.constexpr,
     K: tl.constexpr,
     BLOCK_E: tl.constexpr,
+    ID_BASE: tl.constexpr,
 ):
     token_id = tl.program_id(0)
     offs_e = tl.arange(0, BLOCK_E)
@@ -328,5 +329,4 @@ def gpt_oss_routing_kernel(
 
     out_off = token_id * K + offs_e
     tl.store(topk_weights_ptr + out_off, weights, mask=top_mask)
-    tl.store(topk_ids_ptr + out_off, all_ids, mask=top_mask)
-
+    tl.store(topk_ids_ptr + out_off, all_ids + ID_BASE, mask=top_mask)

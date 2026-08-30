@@ -59,10 +59,10 @@ class Qwen4ExpDecoderLayer(BaseOP):
             self.linear_attn.forward(branch) if self._linear
             else self.self_attn.forward(branch)
         )
-        hidden = Qwen4GatedResidual.inject(branch, residual, inject)
+        hidden = self.attn_hyper_connection.inject(branch, residual, inject)
         branch, residual, inject = self.mlp_hyper_connection.forward(hidden)
         branch = self.mlp.forward(branch)
-        return Qwen4GatedResidual.inject(branch, residual, inject)
+        return self.mlp_hyper_connection.inject(branch, residual, inject)
 
 
 class Qwen4ExpModel(BaseOP):
