@@ -91,7 +91,11 @@ class Glm5NextForCausalLM(BaseLLMModel):
 
     def prepare_for_runtime(self) -> None:
         for layer in self.model.layers.op_list:
+            layer.attn_hc.prepare_for_runtime()
+            layer.ffn_hc.prepare_for_runtime()
             if isinstance(layer.self_attn, Glm5NextMLAAttention):
+                layer.self_attn.prepare_for_runtime()
+            elif isinstance(layer.self_attn, Glm5NextDeltaAttention):
                 layer.self_attn.prepare_for_runtime()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
