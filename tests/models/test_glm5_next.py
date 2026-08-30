@@ -350,6 +350,106 @@ def test_mhc_matches_explicit_mapping_and_sinkhorn_shape():
     torch.testing.assert_close(expanded, expected)
 
 
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
+def test_mhc_fused_cuda_path_matches_eager_reference():
+    torch.manual_seed(29)
+    hc = Glm5NextHyperConnection(128, 4, 1e-6, 20, 1e-5)
+    hc.fn = torch.randn_like(hc.fn, device="cuda", dtype=torch.bfloat16)
+    hc.base = torch.randn_like(hc.base, device="cuda", dtype=torch.float32)
+    hc.scale = torch.randn_like(hc.scale, device="cuda", dtype=torch.float32)
+    streams = torch.randn(3, 4, 128, device="cuda", dtype=torch.bfloat16)
+
+    flat = streams.flatten(start_dim=1).float()
+    flat = flat * torch.rsqrt(flat.square().mean(-1, keepdim=True) + hc.norm_eps)
+    pre_w, post_w, comb_w = torch.nn.functional.linear(flat, hc.fn.float()).split(
+        [4, 4, 16], dim=-1
+    )
+    pre_b, post_b, comb_b = hc.base.split([4, 4, 16])
+    pre_scale, post_scale, comb_scale = hc.scale.unbind()
+    expected_pre = torch.sigmoid(pre_w * pre_scale + pre_b) + hc.eps
+    expected_post = 2.0 * torch.sigmoid(post_w * post_scale + post_b)
+    expected_comb = torch.softmax(
+        comb_w.view(-1, 4, 4) * comb_scale + comb_b.view(4, 4), dim=-1
+    ) + hc.eps
+    expected_comb = expected_comb / (
+        expected_comb.sum(dim=-2, keepdim=True) + hc.eps
+    )
+    for _ in range(hc.sinkhorn_iters - 1):
+        expected_comb = expected_comb / (
+            expected_comb.sum(dim=-1, keepdim=True) + hc.eps
+        )
+        expected_comb = expected_comb / (
+            expected_comb.sum(dim=-2, keepdim=True) + hc.eps
+        )
+    expected_collapsed = (
+        expected_pre.unsqueeze(-1) * streams.float()
+    ).sum(dim=1).to(streams.dtype)
+
+    post, comb, collapsed = hc.forward(streams)
+    torch.testing.assert_close(post, expected_post, atol=2e-6, rtol=2e-6)
+    torch.testing.assert_close(comb, expected_comb, atol=2e-6, rtol=2e-6)
+    torch.testing.assert_close(collapsed, expected_collapsed, atol=2e-2, rtol=2e-2)
+
+    from sparklab.kernels.triton.dsv4.norm import rms_norm
+
+    fused_norm = rms_norm(
+        streams.flatten(start_dim=1), None, hc.norm_eps, out_dtype=torch.float32
+    )
+    torch.testing.assert_close(fused_norm, flat, atol=2e-6, rtol=2e-6)
+
+    from sparklab.kernels.triton.dsv4.hc import hc_pre_combine
+    from sparklab.kernels.triton.dsv4.sinkhorn import (
+        hc_sinkhorn_pre_combine,
+        hc_split_sinkhorn,
+    )
+
+    mixes = torch.nn.functional.linear(fused_norm, hc.fn.float())
+    split_pre, split_post, split_comb = hc_split_sinkhorn(
+        mixes, hc.scale, hc.base, hc.mult, hc.sinkhorn_iters, hc.eps
+    )
+    split_collapsed = hc_pre_combine(streams, split_pre, streams.dtype)
+    fused_post, fused_comb, fused_collapsed = hc_sinkhorn_pre_combine(
+        mixes, streams, hc.scale, hc.base, hc.mult, hc.sinkhorn_iters, hc.eps
+    )
+    assert torch.equal(fused_post, split_post)
+    assert torch.equal(fused_comb, split_comb)
+    assert torch.equal(fused_collapsed, split_collapsed)
+
+    output = torch.randn(3, 128, device="cuda", dtype=torch.bfloat16)
+    expanded = hc.expand(output, streams, post, comb)
+    expected_expanded = (
+        expected_post.to(streams.dtype).unsqueeze(-1) * output.unsqueeze(1)
+        + torch.matmul(expected_comb.to(streams.dtype).transpose(-1, -2), streams)
+    )
+    torch.testing.assert_close(expanded, expected_expanded, atol=3.2e-2, rtol=2e-2)
+
+
+def test_mhc_runtime_prepares_mapping_once_in_fp32():
+    hc = Glm5NextHyperConnection(8, 4, 1e-6, 20, 1e-5)
+    hc.fn = hc.fn.to(torch.bfloat16)
+    expected = hc.fn.float()
+    hc.prepare_for_runtime()
+    assert hc.fn.dtype == torch.float32
+    torch.testing.assert_close(hc.fn, expected)
+
+
+def test_kda_runtime_packs_convolution_weight_once():
+    from sparklab.models.glm5_next.kda import Glm5NextDeltaAttention
+
+    config = parse_config(_config())
+    kda = Glm5NextDeltaAttention(config, layer_id=0)
+    kda.q_conv1d.weight = torch.randn_like(kda.q_conv1d.weight)
+    kda.k_conv1d.weight = torch.randn_like(kda.k_conv1d.weight)
+    kda.v_conv1d.weight = torch.randn_like(kda.v_conv1d.weight)
+    expected = kda._conv_weight()
+
+    kda.prepare_for_runtime()
+    packed = kda._conv_weight()
+    assert packed is kda._packed_conv_weight
+    assert packed.is_contiguous()
+    torch.testing.assert_close(packed, expected)
+
+
 def test_glm53_checkpoint_name_mapping_and_registry():
     assert map_weight_name("model.visual.blocks.0.weight") is None
     assert map_weight_name("model.language_model.layers.3.hc_attn_fn") == (

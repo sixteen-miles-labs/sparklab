@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
+import os
+
 import torch
 import torch.nn.functional as F
 from sparklab.layers import BaseOP
+
+
+# Reproducible full-model A/B escape hatch.  The fused path is the production
+# default; this flag retains the checkpoint-faithful eager expression solely for
+# numerical debugging and benchmark attribution.
+_USE_EAGER = os.environ.get("SPARKLAB_DEBUG_GLM53_EAGER_MHC") == "1"
 
 
 def unweighted_rms_norm(x: torch.Tensor, eps: float) -> torch.Tensor:
@@ -26,6 +34,12 @@ class Glm5NextHyperConnection(BaseOP):
         self.base = torch.empty(mix, dtype=torch.float32)
         self.scale = torch.empty(3, dtype=torch.float32)
 
+    def prepare_for_runtime(self) -> None:
+        # The checkpoint stores this small mapping in BF16, while the reference
+        # evaluates it in FP32.  Convert it once after loading instead of allocating
+        # and converting 90 copies per generated token.
+        self.fn = self.fn.float()
+
     def forward(
         self, streams: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -35,11 +49,37 @@ class Glm5NextHyperConnection(BaseOP):
         shape is represented as ``[T,M,H]`` here; the mapping is otherwise exact.
         """
         mult = self.mult
-        flat = streams.flatten(start_dim=1).float()
-        flat = unweighted_rms_norm(flat, self.norm_eps)
-        pre_w, post_w, comb_w = F.linear(flat, self.fn.float()).split(
-            [mult, mult, mult * mult], dim=-1
-        )
+        flat = streams.flatten(start_dim=1)
+        if streams.is_cuda and not _USE_EAGER:
+            from sparklab.kernels.triton.dsv4.norm import rms_norm
+
+            # Fuse BF16->FP32 conversion, square reduction, reciprocal RMS,
+            # and normalization into one launch.  The output remains FP32, as
+            # required by the GLM reference before its low-rank mapping.
+            flat = rms_norm(flat, None, self.norm_eps, out_dtype=torch.float32)
+        else:
+            flat = unweighted_rms_norm(flat.float(), self.norm_eps)
+        mixes = F.linear(flat, self.fn.float())
+        if streams.is_cuda and not _USE_EAGER:
+            # Ninety mHC calls run per GLM-5.3 decode token.  Leaving the 20-step
+            # Sinkhorn projection and stream reductions as eager torch expressions
+            # expands each call into dozens of tiny launches.  The DSV4 kernels
+            # implement the same checkpoint rule in one Sinkhorn launch plus one
+            # stream-collapse launch, with the 4x4 matrix resident in registers.
+            from sparklab.kernels.triton.dsv4.sinkhorn import hc_sinkhorn_pre_combine
+
+            post, comb, collapsed = hc_sinkhorn_pre_combine(
+                mixes,
+                streams,
+                self.scale,
+                self.base,
+                mult,
+                self.sinkhorn_iters,
+                self.eps,
+            )
+            return post, comb, collapsed
+
+        pre_w, post_w, comb_w = mixes.split([mult, mult, mult * mult], dim=-1)
         pre_b, post_b, comb_b = self.base.float().split([mult, mult, mult * mult])
         pre_scale, post_scale, comb_scale = self.scale.float().unbind(0)
         pre = torch.sigmoid(pre_w * pre_scale + pre_b) + self.eps
@@ -60,6 +100,10 @@ class Glm5NextHyperConnection(BaseOP):
         post: torch.Tensor,
         comb: torch.Tensor,
     ) -> torch.Tensor:
+        if output.is_cuda and not _USE_EAGER:
+            from sparklab.kernels.triton.dsv4.hc import hc_post_combine
+
+            return hc_post_combine(output, residual, post, comb)
         dtype = residual.dtype
         placed = post.to(dtype).unsqueeze(-1) * output.unsqueeze(1)
         mixed = torch.matmul(comb.to(dtype).transpose(-1, -2), residual)

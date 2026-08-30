@@ -84,8 +84,28 @@ class Glm5NextDeltaAttention(BaseOP):
         self.o_proj = _main_projection(
             args.kda_quant, self.projection_size, self.hidden_size
         )
+        # Populated after checkpoint loading.  Keeping this private prevents the
+        # derived tensor from becoming part of the checkpoint state dict.
+        self._packed_conv_weight: torch.Tensor | None = None
+
+    def prepare_for_runtime(self) -> None:
+        # Q/K/V use one fused causal-convolution call, so its weight is invariant
+        # for the entire generation.  Packing it once removes one allocation and
+        # three device copies from every KDA layer on every generated token.
+        if self._packed_conv_weight is not None:
+            return
+        self._packed_conv_weight = torch.cat(
+            (
+                self.q_conv1d.weight.squeeze(1),
+                self.k_conv1d.weight.squeeze(1),
+                self.v_conv1d.weight.squeeze(1),
+            ),
+            dim=0,
+        ).contiguous()
 
     def _conv_weight(self) -> torch.Tensor:
+        if self._packed_conv_weight is not None:
+            return self._packed_conv_weight
         return torch.cat(
             (
                 self.q_conv1d.weight.squeeze(1),

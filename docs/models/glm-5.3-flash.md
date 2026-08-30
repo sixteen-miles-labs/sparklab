@@ -51,13 +51,16 @@ See the [quick start](../quickstart.md) for API and agent examples.
 
 ## Performance and TTFT
 
-The fixed batch-one DGX Spark probe measured 4.98 decode tok/s and 5.379 s warm TTFT.
-KDA FP8 reduced resident storage by about 4.25 GiB and improved decode throughput by
-18.5% against the same-machine BF16-resident control. TTFT improved by 4.0% because its
-main cost is different: prompt-selected expert rows that are absent from the GPU cache
-must still be read from local NVMe. A first cold-cache request measured 10.745 s TTFT;
-startup warmup removes compilation from that number but cannot pre-resident every routed
-expert row.
+The fixed batch-one DGX Spark probe measured 6.27 decode tok/s and 5.681 s warm TTFT.
+Fusing GLM-5.3 Flash's multi-stream hyper-connection path improved throughput by 25.6%
+and reduced per-token latency by 20.4% against an identical-geometry eager control. A
+second optimized run reproduced the greedy output hash with 6.28 tok/s. KDA FP8 remains
+part of the artifact and saves about 4.25 GiB of resident storage.
 
-See the [versioned GB10 evidence](../../benchmarks/gb10/results/GB10-GLM53-KDA-FP8-002.json)
+TTFT is effectively unchanged because its main cost is different: prompt-selected expert
+rows that are absent from the GPU cache must still be read from local NVMe. The measured
+cold-cache request took 10.687 s; startup warmup removes compilation from that number but
+cannot pre-resident every routed expert row.
+
+See the [versioned GB10 evidence](../../benchmarks/gb10/results/GB10-GLM53-MHC-003.json)
 for the complete configuration, comparison, and remaining validation gaps.

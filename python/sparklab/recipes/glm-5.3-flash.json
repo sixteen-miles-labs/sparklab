@@ -49,20 +49,21 @@
     "total_bytes": 113000000000
   },
   "performance": {
-    "decode_tokens_per_second": 4.983276815628373,
-    "warm_ttft_seconds": 5.378618810325861,
-    "evidence": "GB10-GLM53-KDA-FP8-002",
-    "note": "KDA FP8 improved decode throughput by 18.5% and warm TTFT by 4.0% against the same-machine BF16-resident control, but Frontier performance and certification gates remain outstanding."
+    "decode_tokens_per_second": 6.271408439957459,
+    "warm_ttft_seconds": 5.680896062403917,
+    "evidence": "GB10-GLM53-MHC-003",
+    "note": "Fused mHC improved decode throughput by 25.6% and reduced decode latency by 20.4% against an identical-geometry eager control. The Frontier performance thresholds pass, but the broader certification gates remain outstanding."
   },
   "evidence": [
     "GB10-GLM53-NVFP4-001",
-    "GB10-GLM53-KDA-FP8-002"
+    "GB10-GLM53-KDA-FP8-002",
+    "GB10-GLM53-MHC-003"
   ],
   "description": "Text-only GLM-5.3-Flash Frontier candidate using Red Hat AI's NVFP4 experts, SparkLab's FP8 KDA projection format, native NoPE MLA/KPool, mHC, and NVMe-MoE serving.",
   "limitations": [
     "The complete pinned checkpoint passed FTW index validation and end-to-end API serving; the artifact contains 1,634 entries across 23 shards.",
     "Routed experts retain Red Hat AI's NVFP4 values. SparkLab additionally stores the bandwidth-dominant KDA q/k/v/o projections in per-output-row FP8 W8A16; recurrent gates, DSA projections, shared experts, embeddings, and output head retain source precision.",
-    "The optimized probe measured 4.983 tok/s and 5.379 s warm TTFT, but it still misses Frontier performance thresholds and its fixed response ended at the token limit before a final answer.",
+    "The fused-mHC probe measured 6.271 tok/s and 5.681 s warm TTFT, passing the Frontier performance thresholds, but its fixed response ended at the token limit before a final answer.",
     "Prompt-selected expert rows must still be read from NVMe when absent from the GPU cache; these compulsory reads dominate TTFT.",
     "FlashInfer 0.6.15's SM12x route packer exceeds Triton's tensor-size limit at 288 experts, so this recipe uses SparkLab's native Triton NVFP4 backend.",
     "KPool sparse selection is currently eager and CUDA graph capture is disabled.",

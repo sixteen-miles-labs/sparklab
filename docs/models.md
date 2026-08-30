@@ -35,7 +35,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |  |
 | [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW | `qwen3.8-flash-next` | Experimental | 16.06 | 0.434 |
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | `deepseek-v4` | Preview | 10.28 | 0.604 |
-| [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 + KDA FP8 · FTW | `glm-5.3-flash` | Experimental | 4.98 | 5.379 |
+| [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 + KDA FP8 · FTW | `glm-5.3-flash` | Experimental | 6.27 | 5.681 |
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
 | [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | 753B total / 40B active | NVFP4 | `glm-5.2` | Experimental fallback | 0.80 | 2.570 |
 | [GLM-5.3](https://huggingface.co/Inferact/GLM-5.3-NVFP4) | 753B total / 40B active | NVFP4 | `glm-5.3` | Experimental fallback | 0.81 | 2.530 |
@@ -68,11 +68,13 @@ tok/s, 0.329 s warm TTFT, exact 32K recall, capability probes, and an uninterrup
 on every problem and scored 0/5, so the certification is an operational Fast-tier claim,
 not a quality-benchmark claim. See the
 [versioned evidence](../benchmarks/gb10/results/GB10-QWEN36-FAST-002.json).
-GLM-5.3's KDA-FP8 complete-checkpoint probe measured 4.98 tok/s and 5.379 s warm TTFT.
-Against the same-machine BF16-resident control, decode improved by 18.5% and warm TTFT
-by 4.0%. Prompt-selected NVMe expert reads still dominate TTFT, and the broader
-certification gates remain outstanding. See the
-[versioned evidence](../benchmarks/gb10/results/GB10-GLM53-KDA-FP8-002.json).
+GLM-5.3 Flash's fused-mHC complete-checkpoint probe measured 6.27 tok/s and 5.681 s
+warm TTFT. Against an identical-geometry eager-mHC control, decode throughput improved
+by 25.6% and per-token latency fell by 20.4%; a confirmation run reproduced the output
+hash within 0.2% throughput. It now passes the Frontier performance thresholds, but
+prompt-selected NVMe expert reads still dominate TTFT and the broader certification gates
+remain outstanding. See the
+[versioned evidence](../benchmarks/gb10/results/GB10-GLM53-MHC-003.json).
 DeepSeek V4's optimized route-first sparse prefill measured 10.28 tok/s and 0.604 s
 warm TTFT with an auto-sized 5,321-slot expert cache. The repeated fixed probe required
 no physical expert reads during the measured request and preserved the established greedy

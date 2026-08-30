@@ -34,12 +34,25 @@ def _rmsnorm_kernel(
     tl.store(out_ptr + row * stride_om + offs, y.to(compute_type), mask=mask)
 
 
-def rms_norm(x: torch.Tensor, weight: torch.Tensor | None, eps: float) -> torch.Tensor:
-    """``y = x * rsqrt(mean(x^2, -1) + eps) * weight`` (weight optional), fused."""
+def rms_norm(
+    x: torch.Tensor,
+    weight: torch.Tensor | None,
+    eps: float,
+    *,
+    out_dtype: torch.dtype | None = None,
+) -> torch.Tensor:
+    """``y = x * rsqrt(mean(x^2, -1) + eps) * weight`` (weight optional), fused.
+
+    By default the result keeps ``x.dtype``.  ``out_dtype`` is useful for mHC,
+    whose checkpoint-faithful rule loads BF16 residual streams but evaluates the
+    unweighted normalization and following low-rank mapping in FP32.
+    """
     D = x.shape[-1]
     x2d = x.reshape(-1, D)
     M = x2d.shape[0]
-    out_dtype = x.dtype if x.dtype in _TL else torch.bfloat16
+    out_dtype = out_dtype or (x.dtype if x.dtype in _TL else torch.bfloat16)
+    if out_dtype not in _TL:
+        raise ValueError(f"unsupported RMSNorm output dtype: {out_dtype}")
     out = torch.empty_like(x2d, dtype=out_dtype)
     BLOCK_D = triton.next_power_of_2(D)
     num_warps = 4 if BLOCK_D <= 1024 else (8 if BLOCK_D <= 4096 else 16)
