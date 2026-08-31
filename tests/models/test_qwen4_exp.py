@@ -79,7 +79,58 @@ def test_config_declares_qsa_separately_from_minimax_bsa():
     assert cfg.qwen4_exp_args.ple_layer_ids == (1,)
     specs = cfg.kv_cache_group_specs()
     assert len(specs) == 1 and specs[0].layer_ids == (3, 7)
-    assert cfg.linear_state_snapshots is False
+    assert cfg.linear_state_snapshots is True
+
+
+def test_mtp_config_injects_one_qsa_slot_and_disables_graphs():
+    from sparklab.runtime.engine.engine import _adjust_speculative_config
+
+    model_config = parse_config(_config())
+    config = SimpleNamespace(
+        model_config=model_config,
+        speculative_tokens=3,
+        max_running_req=8,
+        cache_type="naive",
+        cuda_graph_bs=[1, 2, 4],
+        cuda_graph_max_bs=4,
+    )
+
+    def override(name, value):
+        setattr(config, name, value)
+
+    _adjust_speculative_config(config, override)
+    # Reconciliation is idempotent if a caller validates the same config twice.
+    _adjust_speculative_config(config, override)
+
+    mtp_layer = model_config.num_layers
+    assert model_config.qwen4_exp_args.qsa_layer_ids.count(mtp_layer) == 1
+    qsa = model_config.kv_cache_group_specs()[0]
+    assert qsa.layer_ids[-1] == mtp_layer
+    assert qsa.num_index_layers == len(qsa.layer_ids)
+    assert model_config.speculative_tokens == 3
+    assert config.max_running_req == 1
+    assert config.cache_type == "radix"
+    assert config.cuda_graph_bs == [] and config.cuda_graph_max_bs == 0
+
+
+@pytest.mark.parametrize(
+    ("truth", "drafts", "expected"),
+    [
+        ([4, 5], [9], 0),
+        ([4, 5, 6], [4, 9], 1),
+        ([4, 5, 6, 7], [4, 5, 6], 3),
+    ],
+)
+def test_mtp_acceptance_stops_at_first_mismatch(truth, drafts, expected):
+    from sparklab.runtime.engine.engine import _longest_accepted_prefix
+
+    assert _longest_accepted_prefix(torch.tensor(truth), torch.tensor(drafts)) == expected
+
+
+def test_zero_temperature_is_greedy_despite_model_top_p_default():
+    from sparklab.core import SamplingParams
+
+    assert SamplingParams(temperature=0.0, top_p=0.95).is_greedy
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
@@ -424,6 +475,34 @@ def test_external_ngram_artifact_streams_exact_rows(tmp_path):
     assert reads == 3
 
 
+def test_external_artifacts_copy_optional_mtp_sidecar(tmp_path):
+    source, out = tmp_path / "source", tmp_path / "out"
+    source.mkdir()
+    out.mkdir()
+    name = "model.language_model.layers.1.ple.ple_embedding.ngram_embedding.shard_0.weight"
+    save_file({name: torch.ones(2, 4, dtype=torch.bfloat16)}, source / "model.safetensors")
+    (source / "model.safetensors.index.json").write_text(
+        json.dumps({"weight_map": {name: "model.safetensors"}}), encoding="utf-8"
+    )
+    sidecar = source / "nvfp4_experts_mtp.safetensors"
+    sidecar.write_bytes(b"synthetic-mtp")
+    args = SimpleNamespace(
+        split_ngram_parts=1, ple_embed_dim=64, ngram_size=3, heads_per_ngram=8
+    )
+
+    artifacts = copy_external_artifacts(
+        str(source), str(out), SimpleNamespace(qwen4_exp_args=args)
+    )
+
+    assert artifacts[1] == {
+        "kind": "qwen4_mtp",
+        "file": "nvfp4_experts_mtp.safetensors",
+        "nbytes": len(b"synthetic-mtp"),
+        "format": "safetensors-nvfp4",
+    }
+    assert (out / "nvfp4_experts_mtp.safetensors").read_bytes() == b"synthetic-mtp"
+
+
 def test_external_ngram_artifact_preserves_official_fp8_payload(tmp_path):
     source, out = tmp_path / "source", tmp_path / "out"
     source.mkdir()
@@ -636,6 +715,62 @@ def test_ple_stages_disk_row_into_stable_graph_input():
     torch.testing.assert_close(ple._capture_embed, replacement)
 
 
+def test_ple_stages_smaller_batch_into_stable_graph_input_prefix():
+    ple = Qwen4PLE.__new__(Qwen4PLE)
+    rows = torch.arange(24, dtype=torch.bfloat16).view(3, 8)
+    ple.embedding = SimpleNamespace(forward=lambda _batch: rows)
+    ple.key_proj = SimpleNamespace(weight=torch.empty(4, 8, dtype=torch.bfloat16))
+    ple._capture_embed = None
+
+    ple.prepare_cuda_graph_inputs(SimpleNamespace())
+    pointer = ple._capture_embed.data_ptr()
+    replacement = rows[:2] + 1
+    ple.embedding = SimpleNamespace(forward=lambda _batch: replacement)
+    ple.prepare_cuda_graph_inputs(SimpleNamespace())
+
+    assert ple._capture_embed.data_ptr() == pointer
+    torch.testing.assert_close(ple._capture_embed[:2], replacement)
+
+
+def test_ple_prefill_checkpoint_includes_convolution_history(monkeypatch):
+    """A hybrid prefix restore needs PLE state from the same boundary as GDN."""
+    width, state_len, length = 2, 2, 65
+    states = torch.zeros(3, width, state_len)
+    states[0] = torch.tensor([[100.0, 101.0], [200.0, 201.0]])
+    pool = SimpleNamespace(ensure_aux_state=lambda *_args, **_kwargs: states)
+    monkeypatch.setattr(
+        "sparklab.models.qwen4_exp.ple.get_global_ctx",
+        lambda: SimpleNamespace(linear_state_pool=pool),
+    )
+    ple = Qwen4PLE.__new__(Qwen4PLE)
+    ple.layer_id = 0
+    ple.width = width
+    ple.state_len = state_len
+    ple.dilation = 1
+    ple.conv1d = SimpleNamespace(weight=torch.ones(width, 1, 3))
+    req = SimpleNamespace(
+        extend_len=length,
+        linear_slot_idx=0,
+        table_idx=0,
+        mamba_ping_pong=(1, 2),
+    )
+    batch = SimpleNamespace(
+        padded_reqs=[req],
+        uses_prefill_kernels=True,
+        fla_metadata=SimpleNamespace(track_dst=torch.tensor([1])),
+    )
+    current = torch.arange(length * width, dtype=torch.float32).view(length, width)
+
+    ple._conv(current, batch)
+
+    history = torch.cat((
+        torch.tensor([[100.0, 101.0], [200.0, 201.0]]),
+        current.T,
+    ), -1)
+    torch.testing.assert_close(states[1], history[:, 64:66])
+    torch.testing.assert_close(states[0], history[:, -state_len:])
+
+
 def test_qsa_selects_complete_blocks_and_always_keeps_tail():
     backend = QSAAttnBackend.__new__(QSAAttnBackend)
     backend.args = SimpleNamespace(
@@ -779,7 +914,7 @@ def test_qsa_dense_metadata_is_built_once_and_supports_missing_index_query(monke
     assert captured["q_to_req"].tolist() == [0, 1, 2]
 
 
-def test_qsa_cuda_graph_domain_is_batch_one_and_dense():
+def test_qsa_cuda_graph_domain_supports_dense_batches():
     backend = QSAAttnBackend.__new__(QSAAttnBackend)
     backend.args = SimpleNamespace(index_compress_ratio=4, index_block_topk=512)
     dense = SimpleNamespace(cached_len=2050, extend_len=1)
@@ -791,7 +926,7 @@ def test_qsa_cuda_graph_domain_is_batch_one_and_dense():
     assert not backend.supports_cuda_graph(
         SimpleNamespace(is_decode=True, size=1, reqs=[sparse])
     )
-    assert not backend.supports_cuda_graph(
+    assert backend.supports_cuda_graph(
         SimpleNamespace(is_decode=True, size=2, reqs=[dense, dense])
     )
 
@@ -817,6 +952,30 @@ def test_qsa_capture_stages_dense_rows_into_fixed_buffers():
     assert md.dense_indices.tolist() == [9, 3, 12, 1, 0, 0, 0]
     assert md.dense_indptr.tolist() == [0, 4]
     assert md.dense_q_positions.tolist() == [3]
+
+
+def test_qsa_capture_stages_multiple_request_segments():
+    backend = QSAAttnBackend.__new__(QSAAttnBackend)
+    backend.capture = QSACaptureData.create(7, torch.device("cpu"), max_bs=2)
+    source = QSAMetadata(
+        qo_indptr=(0, 1, 2),
+        last_indices=torch.tensor([0, 1], dtype=torch.int32),
+        q_to_req=torch.tensor([0, 1], dtype=torch.int32),
+        dense_indptr=torch.tensor([0, 4, 7], dtype=torch.int32),
+        dense_indices=torch.tensor([9, 3, 12, 1, 8, 6, 2], dtype=torch.int32),
+        dense_q_positions=torch.tensor([3, 2], dtype=torch.int64),
+    )
+    batch = SimpleNamespace(padded_size=2, attn_metadata=source)
+
+    backend._point_to_capture(batch)
+
+    md = batch.attn_metadata
+    assert md.capture_decode
+    assert md.qo_indptr == (0, 1, 2)
+    assert md.q_to_req.tolist() == [0, 1]
+    assert md.dense_indptr.tolist() == [0, 4, 7]
+    assert md.dense_indices[:7].tolist() == [9, 3, 12, 1, 8, 6, 2]
+    assert md.dense_q_positions.tolist() == [3, 2]
 
 
 def test_qsa_capture_pool_update_matches_completed_group():
@@ -893,6 +1052,45 @@ def test_qsa_capture_pool_update_clamps_incomplete_dense_boundary():
     )
 
     torch.testing.assert_close(cache[3].view(1, -1), raw)
+
+
+def test_qsa_capture_pool_update_keeps_request_segments_isolated():
+    backend = QSAAttnBackend.__new__(QSAAttnBackend)
+    backend.args = SimpleNamespace(index_compress_ratio=4)
+    backend.config = SimpleNamespace(rms_norm_eps=1e-6)
+    backend.device = torch.device("cpu")
+    cache = torch.arange(48, dtype=torch.float32).view(12, 4)
+    backend.kvcache = SimpleNamespace(index_k_cache=lambda _slot: cache)
+    physical = torch.tensor([1, 2, 3, 4, 7, 8, 9], dtype=torch.int32)
+    md = QSAMetadata(
+        qo_indptr=(0, 1, 2),
+        last_indices=torch.tensor([0, 1], dtype=torch.int32),
+        q_to_req=torch.tensor([0, 1], dtype=torch.int32),
+        dense_indptr=torch.tensor([0, 4, 7], dtype=torch.int32),
+        dense_indices=physical,
+        dense_q_positions=torch.tensor([3, 2], dtype=torch.int64),
+        capture_decode=True,
+    )
+    raw = torch.tensor([
+        [91.0, 92.0, 93.0, 94.0],
+        [81.0, 82.0, 83.0, 84.0],
+    ])
+    expected = cache.index_select(0, physical[:4].long()).mean(0, keepdim=True)
+    expected = expected * torch.rsqrt(
+        expected.square().mean(-1, keepdim=True) + 1e-6
+    )
+
+    backend._pool_completed_keys_capture(
+        0,
+        raw_index_k=raw,
+        out_loc=torch.tensor([4, 9], dtype=torch.int32),
+        metadata=md,
+        k_norm_weight=torch.zeros(4),
+        rotary=SimpleNamespace(forward=lambda positions, query, key: (query, key)),
+    )
+
+    torch.testing.assert_close(cache[4].view(1, -1), expected)
+    torch.testing.assert_close(cache[9].view(1, -1), raw[1].view(1, -1))
 
 
 def test_registry_has_qwen_wrapper_and_text_architectures():

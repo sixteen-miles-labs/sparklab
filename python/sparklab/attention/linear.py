@@ -62,7 +62,7 @@ def build_fla_metadata(batch: "Batch", device: torch.device) -> FLAMetadata:
     def gdn_slot(r):
         return r.linear_slot_idx if r.linear_slot_idx is not None else r.table_idx
 
-    if batch.is_decode:
+    if not batch.uses_prefill_kernels:
         bs = len(reqs)
         cu_seqlens = torch.arange(bs + 1, dtype=torch.int32, device=device)
         # the scheduler stages linear_table_idx from gdn_slot (decode), reused as-is here
@@ -77,7 +77,11 @@ def build_fla_metadata(batch: "Batch", device: torch.device) -> FLAMetadata:
     fresh = [gdn_slot(r) for r in reqs if r.cached_len == 0]
     fresh_host = torch.tensor(fresh, dtype=torch.int64, **pin) if fresh else None
 
-    track_dst, track_h_row, track_conv_src = _build_track_metadata(reqs, cu_host, device, pin)
+    track_dst, track_h_row, track_conv_src = (
+        (None, None, None)
+        if batch.disable_state_tracking
+        else _build_track_metadata(reqs, cu_host, device, pin)
+    )
 
     return FLAMetadata(
         cu_seqlens=cu_host.to(device, non_blocking=True),

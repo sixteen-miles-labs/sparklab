@@ -36,7 +36,12 @@ class QSAMetadata(BaseAttnMetadata):
 
 @dataclass
 class QSACaptureData:
-    """Fixed-address inputs for the batch-one dense-QSA decode graph."""
+    """Fixed-address inputs for dense-QSA decode graphs.
+
+    Every graph shares the same backing tensors.  A graph captured for ``bs``
+    reads the corresponding prefix of the per-request arrays, while the packed
+    row buffer keeps its maximum shape and is bounded by ``dense_indptr``.
+    """
 
     dense_indptr: torch.Tensor
     dense_indices: torch.Tensor
@@ -45,15 +50,19 @@ class QSACaptureData:
     last_indices: torch.Tensor
 
     @classmethod
-    def create(cls, dense_limit: int, device: torch.device) -> QSACaptureData:
+    def create(
+        cls, dense_limit: int, device: torch.device, max_bs: int = 1,
+    ) -> QSACaptureData:
         return cls(
-            dense_indptr=torch.zeros(2, dtype=torch.int32, device=device),
+            dense_indptr=torch.zeros(max_bs + 1, dtype=torch.int32, device=device),
             # Unused suffix rows must still be valid because the captured pooling
             # update speculatively gathers a four-row group on incomplete steps.
-            dense_indices=torch.zeros(dense_limit, dtype=torch.int32, device=device),
-            dense_q_positions=torch.zeros(1, dtype=torch.int64, device=device),
-            q_to_req=torch.zeros(1, dtype=torch.int32, device=device),
-            last_indices=torch.zeros(1, dtype=torch.int32, device=device),
+            dense_indices=torch.zeros(
+                max_bs * dense_limit, dtype=torch.int32, device=device
+            ),
+            dense_q_positions=torch.zeros(max_bs, dtype=torch.int64, device=device),
+            q_to_req=torch.arange(max_bs, dtype=torch.int32, device=device),
+            last_indices=torch.arange(max_bs, dtype=torch.int32, device=device),
         )
 
 
@@ -85,8 +94,8 @@ class QSAAttnBackend(BaseAttnBackend):
         self.max_graph_bs = 0
 
     def supports_cuda_graph(self, batch: Batch) -> bool:
-        """Capture the common batch-one dense-QSA domain; sparse QSA stays eager."""
-        if not batch.is_decode or batch.size != 1:
+        """Capture dense-QSA decode batches; sparse QSA stays eager."""
+        if not batch.is_decode:
             return False
         ratio = self.args.index_compress_ratio
         return all(
@@ -284,15 +293,24 @@ class QSAAttnBackend(BaseAttnBackend):
 
         positions = metadata.dense_q_positions
         starts = positions.div(ratio, rounding_mode="floor") * ratio
+        # ``dense_indices`` packs one visible-history segment per request.  Add
+        # each segment's base before gathering its candidate four-token group.
+        segment_starts = metadata.dense_indptr[:-1].to(torch.long)
+        segment_ends = metadata.dense_indptr[1:].to(torch.long)
         logical = starts[:, None] + offsets[None, :]
         # The final dense-QSA positions can begin an incomplete group whose next
-        # row lies just beyond the captured dense buffer. That candidate is
-        # discarded by ``complete`` below, but index_select still requires a
-        # valid speculative address.
-        logical = logical.clamp_max(metadata.dense_indices.numel() - 1)
+        # row lies beyond its request's segment. That candidate is discarded by
+        # ``complete`` below, but index_select still requires a valid address and
+        # must not spill into the following request's segment.
+        logical = torch.minimum(
+            logical, (segment_ends - segment_starts - 1)[:, None]
+        )
+        logical = logical + segment_starts[:, None]
         rows = metadata.dense_indices.index_select(0, logical.flatten()).to(torch.long)
         cache = self.kvcache.index_k_cache(slot)
-        pooled = cache.index_select(0, rows).view(1, ratio, -1).float().mean(1)
+        pooled = cache.index_select(0, rows).view(
+            positions.numel(), ratio, -1
+        ).float().mean(1)
         pooled = _plus_one_rms(
             pooled.to(cache.dtype), k_norm_weight, self.config.rms_norm_eps
         )
@@ -384,14 +402,14 @@ class QSAAttnBackend(BaseAttnBackend):
 
     def init_capture_graph(self, max_seq_len: int, bs_list: List[int]) -> None:
         assert self.capture is None, "Capture already initialized."
-        if any(bs != 1 for bs in bs_list):
-            raise ValueError("Qwen4 QSA CUDA graphs currently support only batch size 1")
         ratio = self.args.index_compress_ratio
         dense_limit = min(
             max_seq_len,
             self.args.index_block_topk * ratio + ratio - 1,
         )
-        self.capture = QSACaptureData.create(dense_limit, self.device)
+        self.capture = QSACaptureData.create(
+            dense_limit, self.device, max_bs=max(bs_list)
+        )
         self.capture_bs = sorted(bs_list)
         self.max_graph_bs = max(bs_list)
 
@@ -404,7 +422,7 @@ class QSAAttnBackend(BaseAttnBackend):
 
     def _point_to_capture(self, batch: Batch) -> None:
         """Stage dense-QSA addressing into persistent graph input buffers."""
-        assert self.capture is not None and batch.padded_size == 1
+        assert self.capture is not None
         metadata = batch.attn_metadata
         if not isinstance(metadata, QSAMetadata):
             raise TypeError(f"QSA metadata expected, got {type(metadata).__name__}")
@@ -416,24 +434,25 @@ class QSAAttnBackend(BaseAttnBackend):
             raise RuntimeError("Sparse QSA batches are not CUDA-graph eligible")
 
         cap = self.capture
+        bs = batch.padded_size
         total = metadata.dense_indices.numel()
         if total > cap.dense_indices.numel():
             raise RuntimeError(
                 f"Dense QSA capture capacity {cap.dense_indices.numel()} < {total} rows"
             )
-        cap.dense_indptr.copy_(metadata.dense_indptr)
+        cap.dense_indptr[: bs + 1].copy_(metadata.dense_indptr)
         cap.dense_indices[:total].copy_(metadata.dense_indices)
-        cap.dense_q_positions.copy_(metadata.dense_q_positions)
-        cap.last_indices.copy_(metadata.last_indices)
+        cap.dense_q_positions[:bs].copy_(metadata.dense_q_positions)
+        cap.last_indices[:bs].copy_(metadata.last_indices)
         batch.attn_metadata = QSAMetadata(
-            qo_indptr=(0, 1),
-            last_indices=cap.last_indices,
-            q_to_req=cap.q_to_req,
-            dense_indptr=cap.dense_indptr,
+            qo_indptr=tuple(range(bs + 1)),
+            last_indices=cap.last_indices[:bs],
+            q_to_req=cap.q_to_req[:bs],
+            dense_indptr=cap.dense_indptr[: bs + 1],
             # Keep the full fixed-size view: the graph must see the same tensor
             # address and shape at capture and every replay. indptr bounds reads.
             dense_indices=cap.dense_indices,
-            dense_q_positions=cap.dense_q_positions,
+            dense_q_positions=cap.dense_q_positions[:bs],
             capture_decode=True,
         )
 

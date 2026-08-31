@@ -91,6 +91,15 @@ class DetokenizeManager:
         self.decode_map.pop(uid, None)
 
     def detokenize(self, msgs: List[DetokenizeMsg]) -> List[str]:
+        # Speculative verification can emit multiple ordered tokens for one
+        # request in a single scheduler reply. The batched bookkeeping below
+        # assumes one message per uid; process repeated uids sequentially so
+        # each incremental decode observes the preceding token's offsets.
+        if len({msg.uid for msg in msgs}) != len(msgs):
+            outputs: List[str] = []
+            for msg in msgs:
+                outputs.extend(self.detokenize([msg]))
+            return outputs
         read_ids: List[List[int]] = []
         surr_ids: List[List[int]] = []
         for msg in msgs:

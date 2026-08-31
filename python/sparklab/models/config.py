@@ -318,6 +318,10 @@ class ModelConfig:
     glm5_next_args: Any | None = None
     # Qwen4-Exp text-tower payload: QSA, Hyper-Connection and PLE geometry.
     qwen4_exp_args: Any | None = None
+    # Number of greedy Qwen4 MTP draft tokens proposed per target forward.
+    # Runtime configuration injects this after parsing; zero keeps every other
+    # model and the ordinary Qwen4 path byte-for-byte unchanged.
+    speculative_tokens: int = 0
     # Generic execution-path capability flags (set by a model's parse_config) so the engine and
     # factories stay model-agnostic instead of branching on dsv4_args:
     single_stream_only: bool = False  # model runs one sequence at a time -> force bs=1

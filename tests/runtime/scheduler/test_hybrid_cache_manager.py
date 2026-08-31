@@ -82,6 +82,34 @@ def test_hybrid_finish_donates_live_slot():
     assert mr2.cuda_handle.cached_len == 3 and mr2.mamba_value == live
 
 
+def test_hybrid_finish_skips_overadvanced_speculative_state():
+    pool = _pool()
+    page_table = torch.zeros(4, 64, dtype=torch.int32)
+    cm = CacheManager(64, 1, page_table, "hybrid_radix", linear_state_pool=pool)
+    mr = cm.match_req(_pend([7, 8, 9, 10]))
+    live, pp = pool.alloc(1)[0], tuple(pool.alloc(2))
+    req = Req(
+        input_ids=torch.tensor([7, 8, 9, 10], dtype=torch.int32),
+        table_idx=1,
+        cached_len=0,
+        output_len=1,
+        uid=1,
+        sampling_params=SamplingParams(),
+        cache_handle=mr.cuda_handle,
+    )
+    req.linear_slot_idx, req.mamba_ping_pong = live, pp
+    req.state_overadvanced = True
+    cm.lock(mr.cuda_handle)
+    cm.allocate_paged([req])
+    req.cached_len = 3
+
+    cm.cache_req(req, finished=True)
+
+    assert cm.match_req(_pend([7, 8, 9, 10])).cuda_handle.cached_len == 0
+    assert pool.num_free_slots == pool.num_slots - 1
+    cm.check_integrity()
+
+
 def test_free_req_slots_idempotent():
     """C2: a finish/abort double-free of the same request must NOT push its GDN slots twice."""
     pool = _pool()
@@ -124,6 +152,42 @@ def test_pool_sizing_covers_4mr_floor():
         c = SimpleNamespace(max_running_req=mr, cache_type="hybrid_radix",
                             linear_state_cache_ratio=0.1)
         assert _linear_pool_num_slots(c) >= 4 * mr + 1, (mr, _linear_pool_num_slots(c))
+
+
+def test_speculative_rejection_does_not_reallocate_reserved_pages():
+    page_table = torch.zeros(2, 64, dtype=torch.int32)
+    cm = CacheManager(8, 16, page_table, "radix")
+    pending = _pend(range(1, 18))
+    handle = cm.match_req(pending).cuda_handle
+    req = Req(
+        input_ids=pending.input_ids,
+        table_idx=0,
+        cached_len=0,
+        output_len=32,
+        uid=0,
+        sampling_params=SamplingParams(),
+        cache_handle=handle,
+    )
+    cm.lock(handle)
+    cm.allocate_paged([req])
+    assert req.allocated_len == 17
+
+    # Verification reserves through position 32 (three physical pages), then
+    # rejects back into the second page. The next allocation must retain the
+    # high-water mark rather than handing page 2 out a second time.
+    req.cached_len = 17
+    req.device_len = 33
+    cm.allocate_paged([req])
+    before = cm.free_slots.clone()
+    req.cached_len = 18
+    req.device_len = 19
+    cm.allocate_paged([req])
+    torch.testing.assert_close(cm.free_slots, before)
+    assert req.allocated_len == 33
+
+    req.append_host(torch.tensor([99], dtype=torch.int32))
+    cm.cache_req(req, finished=True)
+    cm.check_integrity()
 
 
 if __name__ == "__main__":

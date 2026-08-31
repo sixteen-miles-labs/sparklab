@@ -14,6 +14,48 @@ RECIPE_SCHEMA_VERSION = "2.0"
 
 
 @dataclass(frozen=True)
+class SupplementalArtifact:
+    """Pinned file that completes a hosted runtime artifact."""
+
+    repo_id: str
+    revision: str
+    filename: str
+    bytes: int
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "SupplementalArtifact":
+        artifact = cls(
+            repo_id=str(value["repo_id"]),
+            revision=str(value["revision"]),
+            filename=str(value["filename"]),
+            bytes=int(value["bytes"]),
+        )
+        artifact.validate()
+        return artifact
+
+    def validate(self) -> None:
+        from pathlib import PurePosixPath
+
+        path = PurePosixPath(self.filename)
+        if not self.repo_id:
+            raise ValueError("supplemental artifact repo_id is required")
+        if len(self.revision) != 40:
+            raise ValueError("supplemental artifact revision must be a full commit")
+        if not self.filename or path.is_absolute() or ".." in path.parts:
+            raise ValueError(f"unsafe supplemental artifact filename: {self.filename!r}")
+        if self.bytes <= 0:
+            raise ValueError("supplemental artifact bytes must be positive")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "repo_id": self.repo_id,
+            "revision": self.revision,
+            "filename": self.filename,
+            "bytes": self.bytes,
+        }
+
+
+@dataclass(frozen=True)
 class RuntimeArtifact:
     """Immutable, prebuilt execution artifact published in a model repository."""
 
@@ -21,6 +63,7 @@ class RuntimeArtifact:
     revision: str
     bytes: int
     fingerprint: str
+    supplemental_files: tuple[SupplementalArtifact, ...] = ()
 
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> "RuntimeArtifact":
@@ -29,6 +72,10 @@ class RuntimeArtifact:
             revision=str(value["revision"]),
             bytes=int(value["bytes"]),
             fingerprint=str(value["fingerprint"]),
+            supplemental_files=tuple(
+                SupplementalArtifact.from_dict(item)
+                for item in value.get("supplemental_files", ())
+            ),
         )
         artifact.validate()
         return artifact
@@ -44,6 +91,15 @@ class RuntimeArtifact:
             raise ValueError("runtime_artifact.bytes must be positive")
         if not self.fingerprint:
             raise ValueError("runtime_artifact.fingerprint is required")
+        for artifact in self.supplemental_files:
+            artifact.validate()
+        names = [artifact.filename for artifact in self.supplemental_files]
+        if len(names) != len(set(names)):
+            raise ValueError("runtime_artifact supplemental filenames must be unique")
+
+    @property
+    def total_bytes(self) -> int:
+        return self.bytes + sum(item.bytes for item in self.supplemental_files)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -51,6 +107,9 @@ class RuntimeArtifact:
             "revision": self.revision,
             "bytes": self.bytes,
             "fingerprint": self.fingerprint,
+            "supplemental_files": [
+                artifact.to_dict() for artifact in self.supplemental_files
+            ],
         }
 
 
@@ -406,6 +465,7 @@ __all__ = [
     "PerformanceSummary",
     "RECIPE_SCHEMA_VERSION",
     "RuntimeArtifact",
+    "SupplementalArtifact",
     "STATUSES",
     "TIERS",
     "get_recipe",

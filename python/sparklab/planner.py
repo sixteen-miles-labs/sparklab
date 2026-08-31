@@ -76,7 +76,7 @@ def plan_artifacts(
     prebuilt = recipe.runtime_artifact if include_prepared and use_prebuilt else None
     if prebuilt is not None:
         acquisition = "prebuilt-runtime"
-        required = max(0, prebuilt.bytes - _existing_bytes(prepared))
+        required = max(0, prebuilt.total_bytes - _existing_bytes(prepared))
         if recipe.minimum_free_bytes is not None:
             declared = (recipe.source_bytes or 0) + (recipe.prepared_bytes or 0)
             safety_margin = max(0, recipe.minimum_free_bytes - declared)
@@ -114,7 +114,7 @@ def plan_artifacts(
         prepared_path=str(prepared),
         source_bytes=recipe.source_bytes,
         prepared_bytes=(
-            prebuilt.bytes if prebuilt is not None else recipe.prepared_bytes
+            prebuilt.total_bytes if prebuilt is not None else recipe.prepared_bytes
         ),
         required_bytes=required,
         free_bytes=free,

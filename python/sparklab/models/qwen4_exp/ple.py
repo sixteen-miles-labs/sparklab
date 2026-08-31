@@ -369,7 +369,7 @@ class DiskNGramEmbedding(BaseOP):
         # to int64 here would reintroduce an O(context) copy before the span-only hash.
         ids = ids[:end]
         if ids.numel() < end:
-            if ids.numel() != start or current_ids is None:
+            if ids.numel() < start or current_ids is None:
                 raise RuntimeError(
                     "Qwen4 PLE token history is incomplete: "
                     f"host={ids.numel()}, start={start}, end={end}"
@@ -380,7 +380,11 @@ class DiskNGramEmbedding(BaseOP):
                     "Qwen4 PLE current-token span mismatch: "
                     f"got={current.numel()}, expected={end - start}"
                 )
-            ids = torch.cat((ids, current))
+            # Speculative verification may already have the first query token
+            # on the host while its draft suffix exists only in batch.input_ids.
+            # Rebuild the complete query span from the authoritative device
+            # buffer instead of duplicating that first token.
+            ids = torch.cat((ids[:start], current))
         if end - start == 1:
             return self._ids_for_one(ids, start)
         shifted = [
@@ -447,14 +451,17 @@ class Qwen4PLE(BaseOP):
         weight = self.key_proj.weight
         if self._capture_embed is None:
             self._capture_embed = torch.empty(
-                (1, embed.shape[-1]), dtype=weight.dtype, device=weight.device
+                embed.shape, dtype=weight.dtype, device=weight.device
             )
-        if embed.shape != self._capture_embed.shape:
+        if (
+            embed.shape[-1] != self._capture_embed.shape[-1]
+            or embed.shape[0] > self._capture_embed.shape[0]
+        ):
             raise RuntimeError(
-                "Qwen4 PLE CUDA graphs require batch-one decode rows, got "
-                f"{tuple(embed.shape)}"
+                "Qwen4 PLE CUDA graph input exceeds its stable buffer: "
+                f"got={tuple(embed.shape)}, capacity={tuple(self._capture_embed.shape)}"
             )
-        self._capture_embed.copy_(embed)
+        self._capture_embed[: embed.shape[0]].copy_(embed)
 
     def _conv(self, x: torch.Tensor, batch) -> torch.Tensor:
         pool = get_global_ctx().linear_state_pool
@@ -462,7 +469,7 @@ class Qwen4PLE(BaseOP):
             f"qwen4_ple_{self.layer_id}_conv", (self.width, self.state_len), x.dtype
         )
         reqs = batch.padded_reqs if hasattr(batch, "padded_reqs") else batch.reqs
-        if batch.is_decode:
+        if not batch.uses_prefill_kernels:
             from sparklab.kernels.triton.qwen4 import ple_conv_decode
 
             return ple_conv_decode(
@@ -473,6 +480,7 @@ class Qwen4PLE(BaseOP):
                 self.dilation,
             )
         outputs, offset = [], 0
+        track_index = 0
         for req in reqs:
             length = req.extend_len
             current = x[offset:offset + length].T.contiguous()
@@ -482,6 +490,23 @@ class Qwen4PLE(BaseOP):
                 history.unsqueeze(0), self.conv1d.weight,
                 groups=self.width, dilation=self.dilation,
             ).squeeze(0).T
+            # Hybrid-radix's mid-prefill checkpoint must include PLE's
+            # auxiliary convolution history as well as every GDN layer. The
+            # generic track metadata already identifies the same deepest
+            # 64-token boundary and destination slot used by GDN.
+            if batch.fla_metadata.track_dst is not None:
+                from sparklab.kernels.fla.chunk import CHUNK_SIZE
+
+                chunks = (length - 1) // CHUNK_SIZE
+                if req.mamba_ping_pong is not None and chunks >= 1:
+                    boundary = chunks * CHUNK_SIZE
+                    snapshot = history[:, boundary : boundary + self.state_len]
+                    states.index_copy_(
+                        0,
+                        batch.fla_metadata.track_dst[track_index : track_index + 1],
+                        snapshot.unsqueeze(0),
+                    )
+                    track_index += 1
             states[slot].copy_(history[:, -self.state_len:])
             outputs.append(F.silu(out))
             offset += length
@@ -492,7 +517,9 @@ class Qwen4PLE(BaseOP):
         if getattr(batch.attn_metadata, "capture_decode", False):
             if self._capture_embed is None:
                 raise RuntimeError("Qwen4 PLE graph input was not staged before replay")
-            embed = self._capture_embed
+            # Graphs are captured largest batch first and share this stable
+            # backing allocation.  Each graph reads only its static row prefix.
+            embed = self._capture_embed[: hidden.shape[0]]
         else:
             embed = self.embedding.forward(batch).to(hidden.device, dtype=hidden.dtype)
         key = self.norm_key.forward(self.key_proj.forward(embed)).view(

@@ -1,18 +1,26 @@
 {
   "schema_version": "2.0",
-  "recipe_version": "0.7.0",
+  "recipe_version": "0.8.0",
   "slug": "qwen3.8-flash-next",
   "name": "Qwen3.8 Flash Next",
   "model": "Inferact/Qwen3.8-Flash-Next-NVFP4",
   "parameters": "125B LM + 55B aux / 6B active",
   "revision": "103a7608316173ca6edd49929544244de7ffda70",
   "source_bytes": 182838060595,
-  "prepared_bytes": 180433108992,
+  "prepared_bytes": 182030550080,
   "runtime_artifact": {
     "repo_id": "oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW",
     "revision": "cbbcf69f52b9815b8a987fe839003fae12aa8050",
     "bytes": 180433108992,
-    "fingerprint": "47e11ddb878adf4c"
+    "fingerprint": "47e11ddb878adf4c",
+    "supplemental_files": [
+      {
+        "repo_id": "Inferact/Qwen3.8-Flash-Next-NVFP4",
+        "revision": "103a7608316173ca6edd49929544244de7ffda70",
+        "filename": "nvfp4_experts_mtp.safetensors",
+        "bytes": 1597441088
+      }
+    ]
   },
   "minimum_free_bytes": 503115074662,
   "intended_tier": "frontier",
@@ -34,10 +42,10 @@
       "moe_cache_auto": true,
       "moe_preload_all": true,
       "nvfp4_backend": "triton",
-      "cuda_graph_max_bs": 1,
-      "cache_type": "naive",
+      "cuda_graph_max_bs": 4,
+      "cache_type": "radix",
       "page_size": 16,
-      "max_running_req": 1,
+      "max_running_req": 4,
       "num_tokens": 131072
     }
   },
@@ -47,13 +55,15 @@
   "profile": "quality",
   "description": "Precision-preserving text-only recipe for Inferact's ModelOpt NVFP4 Qwen3.8 checkpoint on one NVIDIA GB10.",
   "performance": {
-    "decode_tokens_per_second": 16.607355237469154,
-    "warm_ttft_seconds": 0.40297515969723463,
+    "decode_tokens_per_second": 16.84,
+    "warm_ttft_seconds": 0.3057,
     "context_tokens": 65536,
-    "evidence": "GB10-QWEN38-NVFP4-OPT-002",
-    "note": "The complete pinned publisher-NVFP4 checkpoint passed a graph-enabled 64-token GB10 performance probe with the established exact output hash. Dense batch-one QSA replays a CUDA graph and automatically falls back to eager sparse QSA; an exact 2K boundary-transition recall probe passed. The clean-revision 60-minute endurance gate remains outstanding."
+    "evidence": "GB10-QWEN38-NVFP4-OPT-003",
+    "note": "The complete pinned publisher-NVFP4 checkpoint passed a graph-enabled 64-token GB10 performance probe with the established exact output hash. Hybrid prefix reuse lowered repeated-prompt TTFT by 24.3%; dense QSA graphs reached 61.79 aggregate tok/s at concurrency four and automatically fall back to eager sparse QSA. The clean-revision 60-minute endurance gate remains outstanding."
   },
   "evidence": [
+    "GB10-QWEN38-NVFP4-OPT-004",
+    "GB10-QWEN38-NVFP4-OPT-003",
     "GB10-QWEN38-NVFP4-OPT-002",
     "GB10-QWEN38-NVFP4-OPT-001",
     "GB10-QWEN38-NVFP4-001"
@@ -61,10 +71,11 @@
   "limitations": [
     "Beta 0.1 FTW preparation preserves Inferact's native ModelOpt NVFP4 routed experts without conversion-time requantization; all served non-expert tensors retain their published precision.",
     "The published BF16 n-gram table is extracted into an approximately 102.4 GB random-read artifact during preparation.",
-    "The complete pinned checkpoint and 180,433,108,992-byte FTW artifact were validated; immutable full-expert preload, a 128K KV cap, and batch-one dense-QSA CUDA-graph replay measured 16.607 tok/s and 0.403 s warm TTFT on GB10.",
+    "The complete pinned checkpoint and 180,433,108,992-byte FTW artifact were validated; immutable full-expert preload, a 128K KV cap, hybrid prefix reuse, and dense-QSA CUDA-graph replay through batch four measured 16.84 single-stream tok/s, 0.306 s repeated-prompt TTFT, and 61.79 aggregate tok/s at concurrency four on GB10.",
     "Full expert preload takes about 35 seconds at startup, eliminates steady-state routed-expert disk I/O and the pageable host LRU, and requires all 24,576 routed experts to fit in unified memory.",
     "GB10-QWEN38-FRONTIER-001 and GB10-QWEN38-FP8-001 describe superseded recipe/checkpoint tuples and do not transfer to this 0.5.0 release.",
-    "Batch-one QSA decode uses CUDA-graph replay while the complete-group count remains within the exact dense budget (up to 2,051 visible tokens); longer sparse-QSA decode automatically runs eagerly.",
+    "QSA decode uses CUDA-graph replay through batch four while every request's complete-group count remains within the exact dense budget (up to 2,051 visible tokens); longer sparse-QSA decode automatically runs eagerly.",
+    "Native MTP speculative decoding is opt-in and currently limited to batch-one greedy requests; it disables CUDA graphs and overlap scheduling while transactional verification is active. Two draft tokens measured best on GB10.",
     "The published checkpoint is multimodal; initial SparkLab certification is text-only.",
     "An exact 65,536-token sparse-QSA recall probe returned the planted key in 208.58 seconds with zero routed-expert disk reads and no swap growth; reasoning, tool, coding-agent, and five-problem quality gates passed, while the 60-minute endurance gate remains outstanding.",
     "The performance host had 3.71 GiB of unrelated swap resident before launch, although the measured request swapped no pages out."

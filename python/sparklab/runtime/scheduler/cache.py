@@ -257,8 +257,12 @@ class CacheManager:
         needed_pages = 0
         allocation_info: List[Tuple[int, int, int]] = []
         for req in reqs:
-            first_page = div_ceil(req.cached_len, self.page_size)
+            # Speculative verification can reserve rows beyond cached_len. A
+            # rejection leaves those pages valid for its correction token; do
+            # not allocate and overwrite the same logical page on the next step.
+            first_page = div_ceil(max(req.cached_len, req.allocated_len), self.page_size)
             last_page = div_ceil(req.device_len, self.page_size)
+            req.allocated_len = max(req.allocated_len, req.device_len)
             if last_page > first_page:
                 needed_pages += last_page - first_page
                 allocation_info.append((req.table_idx, first_page, last_page))
@@ -341,7 +345,8 @@ class CacheManager:
 
         pool = self.linear_state_pool
         old_handle = req.cache_handle
-        page_indices = self.page_table[req.table_idx, : req.cached_len]
+        owned_len = req.allocated_len if finished else req.cached_len
+        page_indices = self.page_table[req.table_idx, : owned_len]
 
         if req.mm_embeds is not None:
             self.unlock(old_handle)
@@ -381,7 +386,11 @@ class CacheManager:
             # remain as reuse points).
             insert_len = align_down(req.cached_len, self.page_size)
             keep_live = False
-            if insert_len == req.cached_len and insert_len > 0:
+            if (
+                insert_len == req.cached_len
+                and insert_len > 0
+                and not req.state_overadvanced
+            ):
                 prefix_len, mamba_exist = self.prefix_cache.insert(
                     req.input_ids[:insert_len], page_indices[:insert_len], req.linear_slot_idx)
                 self.unlock(old_handle)
@@ -515,7 +524,7 @@ class CacheManager:
         swa_paged, charges swa for) whole pages, so the padding [cached_len, page_ceil) belongs
         to the finishing request. ``start`` is page-aligned (a match/insert boundary), so the
         full-pool page bases derived via ``[::page_size]`` are identical to the unpadded slice."""
-        end = div_ceil(req.cached_len, self.page_size) * self.page_size
+        end = div_ceil(max(req.cached_len, req.allocated_len), self.page_size) * self.page_size
         return self.page_table[req.table_idx, start:end]
 
     def _free_req_slots(self, req: Req, keep_live: bool = False) -> None:

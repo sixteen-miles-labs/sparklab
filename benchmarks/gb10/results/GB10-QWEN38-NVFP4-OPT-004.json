@@ -1,0 +1,126 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWEN38-NVFP4-OPT-004",
+  "status": "measured",
+  "recipe": {
+    "slug": "qwen3.8-flash-next",
+    "recipe_version": "0.8.0",
+    "revision": "103a7608316173ca6edd49929544244de7ffda70"
+  },
+  "engine": {
+    "name": "FreeToken",
+    "product_identity": "SparkLab",
+    "git_revision": "26b68b1954c687b0fc083cb9f8942a746b06e3f8",
+    "git_tracked_dirty": true
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "machine": "aarch64",
+    "cuda": "13.0",
+    "torch": "2.11.0+cu130",
+    "triton": "3.6.0"
+  },
+  "checkpoint": {
+    "repository": "Inferact/Qwen3.8-Flash-Next-NVFP4",
+    "revision": "103a7608316173ca6edd49929544244de7ffda70",
+    "format": "ftw-nvfp4 + native MTP sidecar",
+    "quantization": "nvfp4",
+    "fingerprint": "47e11ddb878adf4c",
+    "ftw_bytes": 180433108992,
+    "mtp_sidecar_bytes": 1597441088
+  },
+  "workload": {
+    "single_stream": "greedy math reasoning, 86 prompt tokens, 64 completion tokens",
+    "client_path": "OpenAI-compatible streaming HTTP API",
+    "warmup_requests": 1,
+    "measured_trials": 3,
+    "prefix_reuse": "measured trials reused a validated 64-token hybrid-radix prefix"
+  },
+  "configuration": {
+    "moe_backend": "offload",
+    "expert_preload": "immutable-full",
+    "expert_cache_slots": 24576,
+    "attention_backend": "qsa",
+    "cache_type": "hybrid_radix",
+    "page_size": 16,
+    "kv_tokens": 131072,
+    "max_running_requests": 1,
+    "cuda_graphs": false,
+    "overlap_scheduling": false
+  },
+  "metrics": {
+    "eager_decode_tokens_per_second": 15.127319157329877,
+    "mtp1_decode_tokens_per_second": 18.206939933638584,
+    "mtp2_decode_tokens_per_second": 20.30646577455425,
+    "mtp3_decode_tokens_per_second": 17.096325763666062,
+    "mtp1_improvement_percent": 20.358,
+    "mtp2_improvement_percent": 34.237,
+    "mtp3_improvement_percent": 13.0162,
+    "eager_warm_ttft_seconds": 0.21987851499579847,
+    "mtp1_warm_ttft_seconds": 0.1997258530027466,
+    "mtp2_warm_ttft_seconds": 0.21166132600046694,
+    "mtp3_warm_ttft_seconds": 0.2270075470005395,
+    "mtp1_accepted_drafts": "28/31 (90.3%)",
+    "mtp2_accepted_drafts": "37/43 (86.0%)",
+    "mtp3_accepted_drafts": "36/54 (66.7%)"
+  },
+  "trials": {
+    "eager_tokens_per_second": [
+      14.735198704915769,
+      15.127319157329877,
+      15.182365769877672
+    ],
+    "mtp1_tokens_per_second": [
+      17.63557330316666,
+      18.223666193639477,
+      18.206939933638584
+    ],
+    "mtp2_tokens_per_second": [
+      19.089153901056218,
+      20.334739796249995,
+      20.30646577455425
+    ],
+    "mtp3_tokens_per_second": [
+      16.332216665815793,
+      17.19874457330366,
+      17.096325763666062
+    ]
+  },
+  "validation": {
+    "checkpoint_checksum_verified": true,
+    "complete_checkpoint_loaded": true,
+    "native_mtp_weights_loaded": true,
+    "transactional_rejection_rollback": true,
+    "speculative_page_reclamation": true,
+    "fresh_prompt_output_hash": "2ddae729bbcd59f2b2bfaec0a81770614d1df086c16e28f507655b2509f57f03",
+    "cached_prefix_output_hash": "2ddae729bbcd59f2b2bfaec0a81770614d1df086c16e28f507655b2509f57f03",
+    "all_widths_match_eager": true,
+    "api_stream_completed": true,
+    "oom_count": 0,
+    "service_restarts": 0
+  },
+  "admission": {
+    "tier": "frontier",
+    "performance_gate_passed": true,
+    "passed": false,
+    "reasons": [
+      "Two native MTP draft tokens improved controlled batch-one greedy decode throughput by 34.2% with exact eager-output parity.",
+      "The MTP path remains opt-in because it currently requires batch one, greedy sampling, eager target verification, and disabled overlap scheduling.",
+      "A clean-revision 60-minute endurance run remains outstanding."
+    ]
+  },
+  "source": {
+    "baseline_artifact": "/tmp/qwen38-baseline-final.json",
+    "mtp1_artifact": "/tmp/qwen38-mtp1-final.json",
+    "mtp2_artifact": "/tmp/qwen38-mtp2-fixed.json",
+    "mtp3_artifact": "/tmp/qwen38-mtp3-fixed.json",
+    "prior_evidence": "GB10-QWEN38-NVFP4-OPT-003"
+  },
+  "limitations": [
+    "This is dirty-worktree optimization evidence, not a clean-revision certification result.",
+    "The throughput sweep covers batch-one greedy generation only.",
+    "MTP verification currently disables CUDA graphs and overlap scheduling.",
+    "The 64K context, parser, coding-agent, broad quality, and endurance gates were not rerun for this optimization evidence."
+  ]
+}

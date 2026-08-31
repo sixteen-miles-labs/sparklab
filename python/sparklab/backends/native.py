@@ -32,6 +32,7 @@ _VALUE_OPTIONS: dict[str, tuple[str, type | tuple[type, ...]]] = {
     "page_size": ("--page-size", int),
     "max_running_req": ("--max-running-requests", int),
     "num_tokens": ("--num-tokens", int),
+    "speculative_tokens": ("--speculative-tokens", int),
 }
 _FLAG_OPTIONS: dict[str, str] = {
     "disable_startup_prefill_warmup": "--disable-startup-prefill-warmup",
@@ -65,6 +66,7 @@ _OPTION_ORDER = (
     "page_size",
     "max_running_req",
     "num_tokens",
+    "speculative_tokens",
     "kimi_mlp_fp8",
     "disable_startup_prefill_warmup",
 )
