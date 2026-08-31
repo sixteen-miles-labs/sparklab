@@ -447,14 +447,17 @@ class Qwen4PLE(BaseOP):
         weight = self.key_proj.weight
         if self._capture_embed is None:
             self._capture_embed = torch.empty(
-                (1, embed.shape[-1]), dtype=weight.dtype, device=weight.device
+                embed.shape, dtype=weight.dtype, device=weight.device
             )
-        if embed.shape != self._capture_embed.shape:
+        if (
+            embed.shape[-1] != self._capture_embed.shape[-1]
+            or embed.shape[0] > self._capture_embed.shape[0]
+        ):
             raise RuntimeError(
-                "Qwen4 PLE CUDA graphs require batch-one decode rows, got "
-                f"{tuple(embed.shape)}"
+                "Qwen4 PLE CUDA graph input exceeds its stable buffer: "
+                f"got={tuple(embed.shape)}, capacity={tuple(self._capture_embed.shape)}"
             )
-        self._capture_embed.copy_(embed)
+        self._capture_embed[: embed.shape[0]].copy_(embed)
 
     def _conv(self, x: torch.Tensor, batch) -> torch.Tensor:
         pool = get_global_ctx().linear_state_pool
@@ -492,7 +495,9 @@ class Qwen4PLE(BaseOP):
         if getattr(batch.attn_metadata, "capture_decode", False):
             if self._capture_embed is None:
                 raise RuntimeError("Qwen4 PLE graph input was not staged before replay")
-            embed = self._capture_embed
+            # Graphs are captured largest batch first and share this stable
+            # backing allocation.  Each graph reads only its static row prefix.
+            embed = self._capture_embed[: hidden.shape[0]]
         else:
             embed = self.embedding.forward(batch).to(hidden.device, dtype=hidden.dtype)
         key = self.norm_key.forward(self.key_proj.forward(embed)).view(

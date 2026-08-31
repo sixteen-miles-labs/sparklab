@@ -47,12 +47,30 @@ Startup includes a one-time full-expert preload (about 35 seconds in the measure
 Steady-state decode then performs no routed-expert disk staging or LRU bookkeeping. On
 GB10, SparkLab first advises Linux to release clean download page cache so a freshly
 pulled artifact does not hide reclaimable unified memory from the cache planner.
-Batch-one QSA decode replays a CUDA graph while attention remains inside its exact dense
-budget (up to 2,051 visible tokens). SparkLab automatically returns to eager sparse QSA
-for longer contexts; no command-line switch is required.
+QSA decode replays CUDA graphs at batch sizes 1, 2, and 4 while every request remains
+inside the exact dense budget (up to 2,051 visible tokens). SparkLab pads a three-request
+batch to the batch-four graph and automatically returns to eager sparse QSA for longer
+contexts; no command-line switch is required. The recipe admits up to four concurrent
+requests. On the measured GB10, aggregate decode throughput was 16.94, 36.78, and 61.79
+tok/s at concurrency 1, 2, and 4 respectively.
+
+The default hybrid radix cache also snapshots the complete recurrent state: GDN state,
+PLE convolution history, paged QSA K/V, and pooled index keys. In a controlled repeated
+96-token prompt, it reused 64 tokens and lowered warm TTFT from 404 ms to 306 ms without
+changing the greedy output hash. Prefix reuse is most useful for repeated system prompts,
+few-shot examples, and agent/tool schemas; it does not increase single-stream decode speed.
 The recipe caps KV capacity at 131,072 tokens, enough for the validated 64K context gate
 while retaining substantially more operating-system headroom than the unconstrained
 auto-allocation.
+
+## Speculative decoding
+
+The upstream model publishes one MTP layer, and vLLM's multi-GPU recipe uses three MTP
+speculative tokens. SparkLab does not enable those weights yet. Correct support requires
+the scheduler to verify multiple target tokens in one pass and commit or roll back KV,
+GDN, PLE, and QSA state at the accepted-token boundary. Loading the MTP weights without
+that transactional state path would not be correct, so there is currently no MTP flag in
+this recipe.
 
 Wait for the API to listen on `127.0.0.1:1919`, then verify it:
 

@@ -1,18 +1,26 @@
 # Qwen3.8-Flash-Next publisher NVFP4 on NVIDIA GB10
 
-Last updated: 2026-08-30
+Last updated: 2026-08-31
 
 ## Result
 
 The complete pinned `Inferact/Qwen3.8-Flash-Next-NVFP4` checkpoint was prepared into
-SparkLab's FTW layout and ran through the OpenAI-compatible streaming API at **16.61
-decode tok/s** with **0.403 s warm TTFT** on one NVIDIA GB10. Recipe 0.7.0 preloads all
+SparkLab's FTW layout and ran through the OpenAI-compatible streaming API at **16.84
+single-stream decode tok/s** with **0.306 s repeated-prompt TTFT** on one NVIDIA GB10.
+At concurrency four it reached **61.79 aggregate tok/s**. Recipe 0.8.0 preloads all
 24,576 routed experts into deterministic immutable slots, removing steady-state expert
-disk staging, the pageable host LRU, and decode-time cache ownership updates. Batch-one
-dense QSA now uses CUDA-graph replay and automatically returns to eager execution when
-the sparse budget is crossed. A 128K-token KV cap retains operating-system headroom.
-Relative to the previous 12.58 tok/s result, throughput improved by 32.0% and warm TTFT
-fell by 48.9%.
+disk staging, the pageable host LRU, and decode-time cache ownership updates. Dense QSA
+uses CUDA-graph replay through batch four and automatically returns to eager execution
+when the sparse budget is crossed. Hybrid radix caching snapshots the model's full
+recurrent state and reuses aligned prompt prefixes. A 128K-token KV cap retains
+operating-system headroom.
+
+The controlled cache A/B reused 64 of 96 prompt tokens and lowered warm TTFT from 404.0
+to 305.7 ms (24.3%) while preserving the exact `c1c0854490c6` greedy output hash and
+single-stream decode speed. The controlled concurrency-four graph A/B measured a 61.788
+tok/s median versus 57.616 tok/s eager, a 7.24% graph-specific improvement. Aggregate
+throughput scaled from 16.939 tok/s at concurrency one to 36.781 at two and 61.788 at
+four.
 
 Both numbers pass the Frontier performance thresholds. Exact 64K recall, reasoning and
 tool parsing, a coding-agent task, and the fixed five-problem quality sample also passed.
@@ -20,7 +28,7 @@ The recipe remains Experimental because the optimization result came from a dirt
 worktree and the clean-revision 60-minute endurance gate was not run.
 
 Compact evidence:
-[`GB10-QWEN38-NVFP4-OPT-002`](../benchmarks/gb10/results/GB10-QWEN38-NVFP4-OPT-002.json).
+[`GB10-QWEN38-NVFP4-OPT-003`](../benchmarks/gb10/results/GB10-QWEN38-NVFP4-OPT-003.json).
 
 ## Artifact and system
 
@@ -41,12 +49,13 @@ conversion-time requantization. Other served tensors retain their published prec
 
 ## Method
 
-The selected run used AIME-25 problem 0, batch size one, greedy sampling, 64 requested
-completion tokens, one warm request, and one measured request. Timing spans the streaming
-HTTP API. The runtime used QSA attention, a complete immutable 24,576-slot expert cache,
-no pageable host expert cache, a 131,072-token KV capacity, and a batch-one CUDA graph
-for the exact dense-QSA domain. The one-time expert preload took 35.26 seconds and graph
-capture took 1.15 seconds.
+The prefix A/B used AIME-25 problem 0, batch size one, greedy sampling, 64 requested
+completion tokens, one warm request, and one measured request. The concurrency A/B used
+four simultaneous copies of a fixed 87-token prompt, 64 requested completion tokens per
+request, one warm trial, and three measured trials. Timing spans the streaming HTTP API.
+The runtime used QSA attention, a complete immutable 24,576-slot expert cache, no pageable
+host expert cache, a 131,072-token KV capacity, hybrid radix caching, and CUDA graphs for
+batch sizes 1, 2, and 4 in the exact dense-QSA domain.
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 SPARKLAB_DISK_READ_WORKERS=16 PYTHONPATH=python:. \
@@ -56,11 +65,17 @@ CUDA_VISIBLE_DEVICES=0 SPARKLAB_DISK_READ_WORKERS=16 PYTHONPATH=python:. \
   --backend offload --storage disk --attention-backend qsa \
   --nvfp4-backend triton --host-cache-gb 0 --preload-all \
   --num-tokens 131072 \
-  --page-size 16 --cache-type naive \
+  --page-size 16 --cache-type radix \
   --include-output --greedy --decode 64
 ```
 
 The optimized path combines several changes:
+
+- hybrid radix entries donate a page-aligned snapshot of GDN recurrent/conv state and PLE
+  convolution history alongside the canonical QSA page mapping, then copy-on-write that
+  state into a new request's live slot on a prefix hit;
+- fixed-address QSA and PLE graph inputs now segment multiple requests safely, enabling
+  captured decode at batch sizes 1, 2, and 4;
 
 - an arbitrary-top-k fused router handles Qwen3.8's top-10 selection without the eager
   softmax/top-k/divide/cast chain (6.19 microseconds versus 38.79 microseconds in the
@@ -92,14 +107,32 @@ The optimized path combines several changes:
 
 | Metric | Value |
 |---|---:|
-| Decode throughput | 16.607 tok/s |
-| Warm TTFT | 0.403 s |
-| Inter-token p50 / p99 | 59.60 / 64.52 ms |
-| Device allocation | 76.43 GiB |
+| Single-stream decode throughput | 16.84 tok/s |
+| Hybrid warm TTFT | 0.306 s |
+| Naive-cache warm TTFT control | 0.404 s |
+| Reused prompt tokens | 64 / 96 |
+| Concurrency-two aggregate throughput | 36.781 tok/s |
+| Concurrency-four graph median | 61.788 tok/s |
+| Concurrency-four eager median | 57.616 tok/s |
+| Batch-four graph improvement | 7.24% |
 | Minimum host memory available | 23.44 GiB |
 | Expert cache miss rate | 0% by immutable mapping |
 | Routed-expert disk reads | 0 during steady-state decode |
 | Output hash | `c1c0854490c6` |
+
+The concurrency-four 256-token correctness repeat produced identical output for all four
+requests and reached the correct answer, 70. Batch-one and batch-four continuations can
+choose different wording at a low-margin greedy token because their GEMM reduction shapes
+differ; correctness and within-batch determinism are the acceptance criteria across batch
+sizes.
+
+The published checkpoint also contains one MTP layer, and the official vLLM multi-GPU
+recipe drafts three speculative tokens. SparkLab intentionally continues to exclude the
+MTP weights. Safe MTP support needs a multi-token verification scheduler plus
+accepted-boundary commit/rollback for paged KV, GDN recurrent state, PLE convolution
+history, and QSA pooled-index state. The existing fused GDN kernel contains part of the
+verification primitive, but the transactional scheduler/state protocol is not present;
+adding a weight loader alone would silently corrupt state after rejected draft tokens.
 
 The API returned 64 completion tokens and produced 63 timed decode steps. The measured
 request grew neither swap nor expert disk I/O and completed without an OOM or service

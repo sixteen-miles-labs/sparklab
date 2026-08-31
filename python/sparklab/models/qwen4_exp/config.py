@@ -153,7 +153,13 @@ def parse_config(hf_config: Any) -> ModelConfig:
         shared_expert_quant="none",
         weight_block_size=weight_block_size,
         fp8_block_scale_dtype="bfloat16",
-        linear_state_snapshots=False,
+        # Qwen4-Exp participates in the generic hybrid-radix snapshot protocol.
+        # GDN conv/recurrent state lives in LinearStatePool, and Qwen4PLE registers
+        # its dilated-conv history as an auxiliary state in the same pool, so a
+        # donated/COW-restored slot is a complete recurrent-state checkpoint.
+        # QSA K/V and pooled index keys are addressed through the ordinary paged
+        # cache and therefore follow the radix cache's canonical page mapping.
+        linear_state_snapshots=True,
         qwen4_exp_args=args,
     )
 

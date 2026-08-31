@@ -79,7 +79,7 @@ def test_config_declares_qsa_separately_from_minimax_bsa():
     assert cfg.qwen4_exp_args.ple_layer_ids == (1,)
     specs = cfg.kv_cache_group_specs()
     assert len(specs) == 1 and specs[0].layer_ids == (3, 7)
-    assert cfg.linear_state_snapshots is False
+    assert cfg.linear_state_snapshots is True
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
@@ -636,6 +636,23 @@ def test_ple_stages_disk_row_into_stable_graph_input():
     torch.testing.assert_close(ple._capture_embed, replacement)
 
 
+def test_ple_stages_smaller_batch_into_stable_graph_input_prefix():
+    ple = Qwen4PLE.__new__(Qwen4PLE)
+    rows = torch.arange(24, dtype=torch.bfloat16).view(3, 8)
+    ple.embedding = SimpleNamespace(forward=lambda _batch: rows)
+    ple.key_proj = SimpleNamespace(weight=torch.empty(4, 8, dtype=torch.bfloat16))
+    ple._capture_embed = None
+
+    ple.prepare_cuda_graph_inputs(SimpleNamespace())
+    pointer = ple._capture_embed.data_ptr()
+    replacement = rows[:2] + 1
+    ple.embedding = SimpleNamespace(forward=lambda _batch: replacement)
+    ple.prepare_cuda_graph_inputs(SimpleNamespace())
+
+    assert ple._capture_embed.data_ptr() == pointer
+    torch.testing.assert_close(ple._capture_embed[:2], replacement)
+
+
 def test_qsa_selects_complete_blocks_and_always_keeps_tail():
     backend = QSAAttnBackend.__new__(QSAAttnBackend)
     backend.args = SimpleNamespace(
@@ -779,7 +796,7 @@ def test_qsa_dense_metadata_is_built_once_and_supports_missing_index_query(monke
     assert captured["q_to_req"].tolist() == [0, 1, 2]
 
 
-def test_qsa_cuda_graph_domain_is_batch_one_and_dense():
+def test_qsa_cuda_graph_domain_supports_dense_batches():
     backend = QSAAttnBackend.__new__(QSAAttnBackend)
     backend.args = SimpleNamespace(index_compress_ratio=4, index_block_topk=512)
     dense = SimpleNamespace(cached_len=2050, extend_len=1)
@@ -791,7 +808,7 @@ def test_qsa_cuda_graph_domain_is_batch_one_and_dense():
     assert not backend.supports_cuda_graph(
         SimpleNamespace(is_decode=True, size=1, reqs=[sparse])
     )
-    assert not backend.supports_cuda_graph(
+    assert backend.supports_cuda_graph(
         SimpleNamespace(is_decode=True, size=2, reqs=[dense, dense])
     )
 
@@ -817,6 +834,30 @@ def test_qsa_capture_stages_dense_rows_into_fixed_buffers():
     assert md.dense_indices.tolist() == [9, 3, 12, 1, 0, 0, 0]
     assert md.dense_indptr.tolist() == [0, 4]
     assert md.dense_q_positions.tolist() == [3]
+
+
+def test_qsa_capture_stages_multiple_request_segments():
+    backend = QSAAttnBackend.__new__(QSAAttnBackend)
+    backend.capture = QSACaptureData.create(7, torch.device("cpu"), max_bs=2)
+    source = QSAMetadata(
+        qo_indptr=(0, 1, 2),
+        last_indices=torch.tensor([0, 1], dtype=torch.int32),
+        q_to_req=torch.tensor([0, 1], dtype=torch.int32),
+        dense_indptr=torch.tensor([0, 4, 7], dtype=torch.int32),
+        dense_indices=torch.tensor([9, 3, 12, 1, 8, 6, 2], dtype=torch.int32),
+        dense_q_positions=torch.tensor([3, 2], dtype=torch.int64),
+    )
+    batch = SimpleNamespace(padded_size=2, attn_metadata=source)
+
+    backend._point_to_capture(batch)
+
+    md = batch.attn_metadata
+    assert md.capture_decode
+    assert md.qo_indptr == (0, 1, 2)
+    assert md.q_to_req.tolist() == [0, 1]
+    assert md.dense_indptr.tolist() == [0, 4, 7]
+    assert md.dense_indices[:7].tolist() == [9, 3, 12, 1, 8, 6, 2]
+    assert md.dense_q_positions.tolist() == [3, 2]
 
 
 def test_qsa_capture_pool_update_matches_completed_group():
@@ -893,6 +934,45 @@ def test_qsa_capture_pool_update_clamps_incomplete_dense_boundary():
     )
 
     torch.testing.assert_close(cache[3].view(1, -1), raw)
+
+
+def test_qsa_capture_pool_update_keeps_request_segments_isolated():
+    backend = QSAAttnBackend.__new__(QSAAttnBackend)
+    backend.args = SimpleNamespace(index_compress_ratio=4)
+    backend.config = SimpleNamespace(rms_norm_eps=1e-6)
+    backend.device = torch.device("cpu")
+    cache = torch.arange(48, dtype=torch.float32).view(12, 4)
+    backend.kvcache = SimpleNamespace(index_k_cache=lambda _slot: cache)
+    physical = torch.tensor([1, 2, 3, 4, 7, 8, 9], dtype=torch.int32)
+    md = QSAMetadata(
+        qo_indptr=(0, 1, 2),
+        last_indices=torch.tensor([0, 1], dtype=torch.int32),
+        q_to_req=torch.tensor([0, 1], dtype=torch.int32),
+        dense_indptr=torch.tensor([0, 4, 7], dtype=torch.int32),
+        dense_indices=physical,
+        dense_q_positions=torch.tensor([3, 2], dtype=torch.int64),
+        capture_decode=True,
+    )
+    raw = torch.tensor([
+        [91.0, 92.0, 93.0, 94.0],
+        [81.0, 82.0, 83.0, 84.0],
+    ])
+    expected = cache.index_select(0, physical[:4].long()).mean(0, keepdim=True)
+    expected = expected * torch.rsqrt(
+        expected.square().mean(-1, keepdim=True) + 1e-6
+    )
+
+    backend._pool_completed_keys_capture(
+        0,
+        raw_index_k=raw,
+        out_loc=torch.tensor([4, 9], dtype=torch.int32),
+        metadata=md,
+        k_norm_weight=torch.zeros(4),
+        rotary=SimpleNamespace(forward=lambda positions, query, key: (query, key)),
+    )
+
+    torch.testing.assert_close(cache[4].view(1, -1), expected)
+    torch.testing.assert_close(cache[9].view(1, -1), raw[1].view(1, -1))
 
 
 def test_registry_has_qwen_wrapper_and_text_architectures():
