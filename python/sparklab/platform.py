@@ -126,6 +126,11 @@ def collect_gb10_snapshot(storage_path: str = ".") -> GB10Snapshot:
 
     swap_total = mem.get("SwapTotal", 0)
     swap_free = mem.get("SwapFree", 0)
+    try:
+        from sparklab.version import __version__ as runtime_version
+    except ImportError:
+        runtime_version = None
+
     return GB10Snapshot(
         os_name=host_platform.system(),
         machine=host_platform.machine(),
@@ -147,6 +152,11 @@ def collect_gb10_snapshot(storage_path: str = ".") -> GB10Snapshot:
         block_device=block_device,
         nvme=("nvme" in block_device.lower()) if block_device else None,
         dependencies={
+            # Use the imported code version for SparkLab, not distribution metadata. An
+            # editable checkout can move to a new release while its installed companion
+            # cache remains on the previous one -- the exact drift doctor must detect.
+            "sparklab": runtime_version,
+            "sparklab-kernel-cache": _package_version("sparklab-kernel-cache"),
             "torch": _package_version("torch"),
             "triton": _package_version("triton"),
             "flashinfer-python": _package_version("flashinfer-python"),
@@ -279,6 +289,28 @@ def assess_gb10(snapshot: GB10Snapshot) -> dict[str, Any]:
         )
     )
 
+    runtime_version = snapshot.dependencies.get("sparklab")
+    kernel_cache_version = snapshot.dependencies.get("sparklab-kernel-cache")
+    if runtime_version is not None and kernel_cache_version is not None:
+        from sparklab.kernels.utils import _kernel_cache_version_ok
+
+        cache_matches = _kernel_cache_version_ok(kernel_cache_version, runtime_version)
+        checks.append(
+            _check(
+                "kernel_cache_version",
+                "pass" if cache_matches else "fail",
+                {
+                    "sparklab": runtime_version,
+                    "sparklab-kernel-cache": kernel_cache_version,
+                },
+                "same release and build stamp",
+                (
+                    "The prebuilt CUDA kernels must come from the same SparkLab release "
+                    "and, when stamped, the same source build."
+                ),
+            )
+        )
+
     failures = [item["name"] for item in checks if item["status"] == "fail"]
     warnings = [item["name"] for item in checks if item["status"] == "warn"]
     identity_checks = {
@@ -310,6 +342,11 @@ def assess_gb10(snapshot: GB10Snapshot) -> dict[str, Any]:
         recommendations.append("Confirm the selected model directory is backed by local NVMe.")
     if "storage_capacity" in warnings:
         recommendations.append("Choose a storage path with at least 512 GiB free for frontier recipes.")
+    if "kernel_cache_version" in failures:
+        recommendations.append(
+            "Reinstall sparklab and sparklab-kernel-cache as a matched wheel pair before "
+            "loading a model."
+        )
     if not recommendations:
         recommendations.append("Platform identity is ready for recipe-level model validation.")
 

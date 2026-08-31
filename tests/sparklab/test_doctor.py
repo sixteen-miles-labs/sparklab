@@ -28,7 +28,12 @@ def _snapshot() -> GB10Snapshot:
         filesystem="ext4",
         block_device="/dev/nvme0n1p2",
         nvme=True,
-        dependencies={"torch": "2.11.0", "triton": "3.6.0"},
+        dependencies={
+            "sparklab": "0.1.0+gabc1234",
+            "sparklab-kernel-cache": "0.1.0+cu130.gabc1234",
+            "torch": "2.11.0",
+            "triton": "3.6.0",
+        },
     )
 
 
@@ -69,3 +74,40 @@ def test_non_nvme_or_low_capacity_is_an_explicit_warning():
     assert report["status"] == "supported_with_warnings"
     assert report["ready"] is True
     assert report["warnings"] == ["nvme_storage", "storage_capacity"]
+
+
+def test_mismatched_kernel_cache_blocks_readiness_before_model_load():
+    snapshot = _snapshot()
+    report = assess_gb10(
+        replace(
+            snapshot,
+            dependencies={
+                **snapshot.dependencies,
+                "sparklab-kernel-cache": "0.1.0b1+cu130.g07097cb30",
+            },
+        )
+    )
+
+    assert report["status"] == "supported_not_ready"
+    assert report["ready"] is False
+    assert report["failures"] == ["kernel_cache_version"]
+    check = next(item for item in report["checks"] if item["name"] == "kernel_cache_version")
+    assert check["observed"] == {
+        "sparklab": "0.1.0+gabc1234",
+        "sparklab-kernel-cache": "0.1.0b1+cu130.g07097cb30",
+    }
+    assert any("matched wheel pair" in item for item in report["recommendations"])
+
+
+def test_missing_optional_kernel_cache_does_not_block_jit_fallback():
+    snapshot = _snapshot()
+    report = assess_gb10(
+        replace(
+            snapshot,
+            dependencies={**snapshot.dependencies, "sparklab-kernel-cache": None},
+        )
+    )
+
+    assert report["status"] == "supported"
+    assert report["ready"] is True
+    assert all(item["name"] != "kernel_cache_version" for item in report["checks"])
