@@ -54,10 +54,12 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
         "qwen3.6-35b-a3b",
     }
     qwen = get_recipe("qwen3.8-flash-next")
-    assert qwen.recipe_version == "0.7.0"
+    assert qwen.recipe_version == "0.8.0"
     assert qwen.intended_tier == "frontier"
     assert qwen.status == "experimental"
     assert qwen.evidence == (
+        "GB10-QWEN38-NVFP4-OPT-004",
+        "GB10-QWEN38-NVFP4-OPT-003",
         "GB10-QWEN38-NVFP4-OPT-002",
         "GB10-QWEN38-NVFP4-OPT-001",
         "GB10-QWEN38-NVFP4-001",
@@ -69,8 +71,8 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert qwen.deployment.quantization == "nvfp4"
     assert "convert_expert_quantization" not in qwen.deployment.backend_options
     assert qwen.deployment.backend_options["nvfp4_backend"] == "triton"
-    assert qwen.performance.decode_tokens_per_second == pytest.approx(16.607355237469154)
-    assert qwen.performance.warm_ttft_seconds == pytest.approx(0.40297515969723463)
+    assert qwen.performance.decode_tokens_per_second == pytest.approx(16.84)
+    assert qwen.performance.warm_ttft_seconds == pytest.approx(0.3057)
     assert qwen.deployment.backend_options["moe_host_cache_gb"] == 0
     assert qwen.deployment.backend_options["moe_preload_all"] is True
     assert qwen.deployment.backend_options["num_tokens"] == 131_072
@@ -81,6 +83,10 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert qwen.runtime_artifact.repo_id == "oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW"
     assert qwen.runtime_artifact.revision == "cbbcf69f52b9815b8a987fe839003fae12aa8050"
     assert qwen.runtime_artifact.fingerprint == "47e11ddb878adf4c"
+    assert qwen.runtime_artifact.total_bytes == 182030550080
+    assert qwen.runtime_artifact.supplemental_files[0].filename == (
+        "nvfp4_experts_mtp.safetensors"
+    )
     kimi = get_recipe("kimi-k3")
     assert kimi.recipe_version == "0.3.0"
     assert kimi.deployment.runtime_format == "ftw-nvfp4"
@@ -353,15 +359,15 @@ def test_current_qwen_nvfp4_evidence_passes_all_non_endurance_frontier_gates():
     recipe = get_recipe("qwen3.8-flash-next")
     root = Path(__file__).resolve().parents[2]
     result = json.loads(
-        (root / "benchmarks/gb10/results/GB10-QWEN38-NVFP4-OPT-002.json").read_text()
+        (root / "benchmarks/gb10/results/GB10-QWEN38-NVFP4-OPT-003.json").read_text()
     )
-    assert result["result_id"] == recipe.evidence[0]
+    assert result["result_id"] == recipe.performance.evidence
     assert result["admission"]["performance_gate_passed"] is True
     assert result["metrics"]["decode_tokens_per_second"] == pytest.approx(
-        16.607355237469154
+        16.84
     )
     assert result["metrics"]["warm_ttft_seconds"] == pytest.approx(
-        0.40297515969723463
+        0.3057
     )
     assert result["validation"]["context_tokens"] == 65_536
     assert result["validation"]["context_gate_run"] is True
@@ -374,6 +380,26 @@ def test_current_qwen_nvfp4_evidence_passes_all_non_endurance_frontier_gates():
     assert not any("warm_ttft_seconds" in reason for reason in evaluation.reasons)
     assert not any("context_tokens" in reason for reason in evaluation.reasons)
     assert any("duration_minutes" in reason for reason in evaluation.reasons)
+
+
+def test_qwen_native_mtp_evidence_selects_two_drafts_with_parity():
+    recipe = get_recipe("qwen3.8-flash-next")
+    root = Path(__file__).resolve().parents[2]
+    result = json.loads(
+        (root / "benchmarks/gb10/results/GB10-QWEN38-NVFP4-OPT-004.json").read_text()
+    )
+
+    assert result["result_id"] in recipe.evidence
+    assert result["recipe"]["recipe_version"] == recipe.recipe_version
+    metrics = result["metrics"]
+    assert metrics["mtp2_decode_tokens_per_second"] > metrics[
+        "mtp1_decode_tokens_per_second"
+    ]
+    assert metrics["mtp2_decode_tokens_per_second"] > metrics[
+        "mtp3_decode_tokens_per_second"
+    ]
+    assert metrics["mtp2_improvement_percent"] == pytest.approx(34.237)
+    assert result["validation"]["all_widths_match_eager"] is True
 
 
 def test_preview_and_certified_statuses_fail_closed_without_evidence_or_memory():
