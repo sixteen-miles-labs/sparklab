@@ -17,6 +17,12 @@ recipes. Raw logs and large result streams stay outside the source repository.
   the current Inferact NVFP4 recipe.
 - `results/GB10-QWEN38-NVFP4-001.json` records the current Inferact NVFP4 recipe's
   complete-checkpoint performance probe: 12.58 decode tok/s and 0.786 s warm TTFT.
+- `results/GB10-QWEN38-NVFP4-OPT-003.json` records the current default concurrent
+  profile: 16.84 single-stream decode tok/s, 0.306 s repeated-prompt TTFT, and
+  61.79 aggregate tok/s at concurrency four.
+- `results/GB10-QWEN38-NVFP4-OPT-004.json` records the native MTP sweep. The selected
+  opt-in two-draft profile measured 20.31 decode tok/s and 0.212 s warm TTFT, a 34.2%
+  improvement over its controlled eager run with exact output parity.
 - `results/GB10-GLM53-NVFP4-001.json` records the GLM-5.3 Flash NVFP4
   complete-checkpoint probe: 4.46 decode tok/s and 5.760 s warm TTFT. Its corrected
   greedy probe reaches the reference answer; the broader quality gates remain outstanding.
@@ -25,9 +31,11 @@ recipes. Raw logs and large result streams stay outside the source repository.
   395.405 s warm TTFT, exact 256-token completion, and zero runtime OOM/swap-out.
   Cross-rung greedy determinism and answer correctness are explicitly not established.
 
-The Qwen3.8 recipe version 0.5.0 passes the Frontier performance thresholds but remains
-Experimental because its context, capability, quality, and endurance gates are outstanding.
-Neither historical Qwen3.8 result transfers across its checkpoint revision and recipe version.
+The Qwen3.8 recipe version 0.8.0 passes the Frontier performance, context, capability,
+and focused quality gates but remains Experimental because its clean-revision 60-minute
+endurance gate is outstanding. MTP is an opt-in batch-one greedy profile; its result does
+not replace the separate default/concurrent-profile measurements. Historical Qwen3.8
+results do not transfer across checkpoint revisions and recipe versions.
 
 A model catalog entry may cite a result ID, but that evidence does not make the
 recipe Certified by itself. Tier latency, context, correctness, agent, and

@@ -5,9 +5,12 @@ Last updated: 2026-08-31
 ## Result
 
 The complete pinned `Inferact/Qwen3.8-Flash-Next-NVFP4` checkpoint was prepared into
-SparkLab's FTW layout and ran through the OpenAI-compatible streaming API at **16.84
-single-stream decode tok/s** with **0.306 s repeated-prompt TTFT** on one NVIDIA GB10.
-At concurrency four it reached **61.79 aggregate tok/s**. Recipe 0.8.0 preloads all
+SparkLab's FTW layout and ran through the OpenAI-compatible streaming API at **20.31
+single-stream decode tok/s** with **0.212 s warm TTFT** on one NVIDIA GB10 using the
+selected opt-in two-draft native MTP profile. Its controlled eager run measured 15.13
+tok/s, so MTP improved decode throughput by 34.2% with exact output parity. The default
+concurrent profile measured 16.84 single-stream tok/s and 0.306 s repeated-prompt TTFT;
+at concurrency four it reached **61.79 aggregate tok/s**. Recipe 0.8.0 preloads all
 24,576 routed experts into deterministic immutable slots, removing steady-state expert
 disk staging, the pageable host LRU, and decode-time cache ownership updates. Dense QSA
 uses CUDA-graph replay through batch four and automatically returns to eager execution
@@ -107,8 +110,12 @@ The optimized path combines several changes:
 
 | Metric | Value |
 |---|---:|
-| Single-stream decode throughput | 16.84 tok/s |
-| Hybrid warm TTFT | 0.306 s |
+| Selected MTP2 decode throughput | 20.31 tok/s |
+| Selected MTP2 warm TTFT | 0.212 s |
+| Controlled eager decode throughput | 15.13 tok/s |
+| MTP2 decode improvement | 34.24% |
+| Default-profile single-stream throughput | 16.84 tok/s |
+| Default-profile hybrid warm TTFT | 0.306 s |
 | Naive-cache warm TTFT control | 0.404 s |
 | Reused prompt tokens | 64 / 96 |
 | Concurrency-two aggregate throughput | 36.781 tok/s |
@@ -126,13 +133,13 @@ choose different wording at a low-margin greedy token because their GEMM reducti
 differ; correctness and within-batch determinism are the acceptance criteria across batch
 sizes.
 
-The published checkpoint also contains one MTP layer, and the official vLLM multi-GPU
-recipe drafts three speculative tokens. SparkLab intentionally continues to exclude the
-MTP weights. Safe MTP support needs a multi-token verification scheduler plus
-accepted-boundary commit/rollback for paged KV, GDN recurrent state, PLE convolution
-history, and QSA pooled-index state. The existing fused GDN kernel contains part of the
-verification primitive, but the transactional scheduler/state protocol is not present;
-adding a weight loader alone would silently corrupt state after rejected draft tokens.
+SparkLab now loads the checkpoint's native MTP layer and transactionally verifies draft
+tokens across paged KV, GDN recurrent state, PLE convolution history, and QSA pooled-index
+state. One, two, and three drafts measured 18.21, 20.31, and 17.10 tok/s respectively;
+two drafts were selected. Their accepted-draft rates were 90.3%, 86.0%, and 66.7%, and
+every width reproduced the eager output hash on both fresh prompts and 64-token prefix
+hits. The current MTP path is opt-in, batch-one, and greedy; it disables CUDA graphs and
+overlap scheduling while transactional verification is active.
 
 The API returned 64 completion tokens and produced 63 timed decode steps. The measured
 request grew neither swap nor expert disk I/O and completed without an OOM or service

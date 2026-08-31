@@ -46,10 +46,13 @@
     "page_size": 16,
     "kv_tokens": 131072,
     "max_running_requests": 1,
+    "selected_speculative_tokens": 2,
     "cuda_graphs": false,
     "overlap_scheduling": false
   },
   "metrics": {
+    "decode_tokens_per_second": 20.30646577455425,
+    "warm_ttft_seconds": 0.21166132600046694,
     "eager_decode_tokens_per_second": 15.127319157329877,
     "mtp1_decode_tokens_per_second": 18.206939933638584,
     "mtp2_decode_tokens_per_second": 20.30646577455425,
