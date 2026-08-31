@@ -38,6 +38,7 @@ def test_models_can_select_primary_portfolio(capsys):
         "qwen3.6-35b-a3b",
         "deepseek-v4",
         "glm-5.3-flash",
+        "qwen3.8-27b",
         "qwen3.8-flash-next",
         "kimi-k3",
     ]
@@ -54,12 +55,15 @@ def test_models_human_table_groups_tiers_and_shows_performance_metrics(capsys):
     assert "RESEARCH — Complete or novel models" in output
     assert "10.28" in output and "0.604" in output
     assert "Qwen3.6 35B A3B" in output and "NVFP4" in output
+    assert "Qwen3.8 27B" in output
     assert "35B total / 3B active" in output
     assert "Qwen3.6 35B A3B NVFP4" not in output
     qwen36_row = next(line for line in output.splitlines() if line.startswith("Qwen3.6"))
     assert "CERTIFIED" in qwen36_row
     assert qwen36_row.split()[-2:] == ["67.79", "0.329"]
-    qwen38_row = next(line for line in output.splitlines() if line.startswith("Qwen3.8"))
+    qwen38_row = next(
+        line for line in output.splitlines() if line.startswith("Qwen3.8 Flash Next")
+    )
     assert qwen38_row.split()[-2:] == ["16.61", "0.403"]
     assert "No recipe is certified yet" not in output
 

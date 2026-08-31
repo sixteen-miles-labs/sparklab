@@ -33,6 +33,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert get_recipe("qwen3.8-flash-next").model == (
         "Inferact/Qwen3.8-Flash-Next-NVFP4"
     )
+    assert get_recipe("qwen3.8-27b").model == "Inferact/Qwen3.8-27B-NVFP4"
     assert get_recipe("qwen3.6-35b-a3b").name == "Qwen3.6 35B A3B"
     assert get_recipe("glm-5.2").name == "GLM-5.2"
     assert get_recipe("glm-5.2").intended_tier == "research"
@@ -41,6 +42,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
         recipe.slug: recipe.parameters for recipe in load_catalog()
     } == {
         "qwen3.6-35b-a3b": "35B total / 3B active",
+        "qwen3.8-27b": "27B dense",
         "deepseek-v4": "284B total / 13B active",
         "glm-5.3-flash": "320B total / 18B active",
         "qwen3.8-flash-next": "125B LM + 55B aux / 6B active",
@@ -128,6 +130,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     primary = select_recipes(load_catalog(), portfolio_role="primary")
     assert {(item.intended_tier, item.slug) for item in primary} == {
         ("fast", "qwen3.6-35b-a3b"),
+        ("frontier", "qwen3.8-27b"),
         ("frontier", "deepseek-v4"),
         ("frontier", "glm-5.3-flash"),
         ("frontier", "qwen3.8-flash-next"),
@@ -139,6 +142,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
 
 
 def test_next_model_recipes_are_immutable_and_capacity_plannable():
+    qwen27 = get_recipe("qwen3.8-27b")
     qwen = get_recipe("qwen3.8-flash-next")
     glm = get_recipe("glm-5.3-flash")
     kimi = get_recipe("kimi-k3")
@@ -146,6 +150,18 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     glm53 = get_recipe("glm-5.3")
     deepseek = get_recipe("deepseek-v4")
     assert qwen.revision == "103a7608316173ca6edd49929544244de7ffda70"
+    assert qwen27.revision == "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+    assert qwen27.source_bytes == 26404418018
+    assert qwen27.prepared_bytes == 24640689529
+    assert qwen27.intended_tier == "frontier"
+    assert qwen27.performance.decode_tokens_per_second == pytest.approx(8.832997654771269)
+    assert qwen27.performance.warm_ttft_seconds == pytest.approx(0.14434478300245246)
+    assert qwen27.performance.context_tokens == 65_536
+    assert qwen27.evidence == ("GB10-QWEN38-27B-001",)
+    assert qwen27.deployment.execution_policy == "resident"
+    assert qwen27.deployment.backend_options["num_tokens"] == 65_536
+    assert qwen27.deployment.backend_options["max_seq_len_override"] == 65_536
+    assert qwen27.deployment.backend_options["nvfp4_backend"] == "triton"
     assert glm.recipe_version == "0.3.2"
     assert glm.revision == "9eaeadaf026871a90640e32c0604f6ab0b2d641d"
     assert kimi.revision == "f8c5234a0a880bcc6cbf779a315e7ee2f405b812"

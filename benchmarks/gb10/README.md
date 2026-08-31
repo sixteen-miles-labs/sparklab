@@ -10,6 +10,9 @@ recipes. Raw logs and large result streams stay outside the source repository.
   output hash preserved.
 - `results/GB10-QWEN36-FAST-001.json` records the Qwen3.6 NVFP4 Fast
   performance probe.
+- `results/GB10-QWEN38-27B-001.json` records the dense Qwen3.8-27B ModelOpt
+  NVFP4 result: 8.83 decode tok/s, 0.144 s warm TTFT, exact 64K recall, and
+  passing reasoning, tool-call, and coding-agent probes.
 - `results/GB10-QWEN38-FRONTIER-001.json` records the certified text-only
   Qwen3.8-Flash-Next result for the superseded NVFP4 recipe.
 - `results/GB10-QWEN38-FP8-001.json` records the official FP8 recipe's measured

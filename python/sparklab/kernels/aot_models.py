@@ -302,7 +302,11 @@ SUPPORTED_MODELS: tuple[AotModel, ...] = (
         architecture="Qwen3_5ForConditionalGeneration",
         hidden_size=5120,
         kv_groups=((4, 256),),
-        aliases=("Qwen/Qwen3.6-27B-FP8", "nvidia/Qwen3.6-27B-NVFP4"),
+        aliases=(
+            "Qwen/Qwen3.6-27B-FP8",
+            "nvidia/Qwen3.6-27B-NVFP4",
+            "Inferact/Qwen3.8-27B-NVFP4",
+        ),
     ),
     AotModel(
         name="google/gemma-4-12B-it",

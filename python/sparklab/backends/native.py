@@ -31,6 +31,7 @@ _VALUE_OPTIONS: dict[str, tuple[str, type | tuple[type, ...]]] = {
     "cache_type": ("--cache-type", str),
     "page_size": ("--page-size", int),
     "max_running_req": ("--max-running-requests", int),
+    "max_seq_len_override": ("--max-seq-len-override", int),
     "num_tokens": ("--num-tokens", int),
 }
 _FLAG_OPTIONS: dict[str, str] = {
@@ -64,6 +65,7 @@ _OPTION_ORDER = (
     "cache_type",
     "page_size",
     "max_running_req",
+    "max_seq_len_override",
     "num_tokens",
     "kimi_mlp_fp8",
     "disable_startup_prefill_warmup",

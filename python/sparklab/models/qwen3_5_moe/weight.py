@@ -213,23 +213,31 @@ def iter_weights(
     if tp_info.size > 1:
         raise NotImplementedError("qwen3_5_moe weight loading currently supports TP=1 only")
 
-    # Pure-NVFP4 checkpoint (bf16 attn): the dense MLP projections (shared_expert) are still
-    # stored as packed FP4 -- keep them native (W4A16) when dense_quant=="nvfp4" rather than
-    # dequantizing to bf16. lm_head here is bf16 (pure NVFP4 doesn't quantize it).
+    # Pure ModelOpt NVFP4 checkpoint: preserve quantized attention/GDN output and dense MLP
+    # projections as native W4A16. GDN input projections and lm_head remain bf16.
+    attn_nvfp4 = config.attn_quant == "nvfp4"
     dense_nvfp4 = config.dense_quant == "nvfp4"
     lmhead_nvfp4 = config.lm_head_quant == "nvfp4"
     shared_buf: dict[str, dict[str, torch.Tensor]] = {}
     nvfp4_shared_buf: dict[str, dict[str, tuple]] = {}
     fuse_buf: dict[str, dict[int, torch.Tensor]] = {}
 
-    for file in tqdm(
-        iter_weight_files(model_path),
-        desc="Loading weights",
-        disable=not tp_info.is_primary(),
-    ):
-        with safetensors.safe_open(file, framework="pt", device=str(device)) as f:
-            keyset = set(f.keys())
-            for raw_name in f.keys():
+    # ModelOpt may split a packed weight from its block/global scales at a shard
+    # boundary. Resolve every sibling through the checkpoint index instead of assuming
+    # all three tensors live in the currently open shard.
+    reader = ShardReader(model_path, device)
+    keyset = {
+        raw_name
+        for file in reader.files()
+        for raw_name in reader.names_in(file)
+    }
+    try:
+        for file in tqdm(
+            reader.files(),
+            desc="Loading weights",
+            disable=not tp_info.is_primary(),
+        ):
+            for raw_name in reader.names_in(file):
                 # Per-expert NVFP4 tensors go to the offload cache (load_nvfp4_expert_sources),
                 # not the dense pass. bf16-base stacked experts (experts.gate_up_proj) have no
                 # ``.mlp.experts.<int>.`` so they are unaffected and still hit _PACKED_EXPERT.
@@ -251,18 +259,19 @@ def iter_weights(
 
                 # NVFP4 dense projections kept native (W4A16) where the model expects them
                 # (shared_expert); everything else dequantizes to bf16 below as before.
-                if (dense_nvfp4 or lmhead_nvfp4) and name.endswith(".weight") \
+                if (attn_nvfp4 or dense_nvfp4 or lmhead_nvfp4) and name.endswith(".weight") \
                         and raw_name[: -len(".weight")] + ".weight_scale_2" in keyset:
                     emit = _dense_nvfp4_emit(
-                        f, name[: -len(".weight")], raw_name[: -len(".weight")],
-                        shared_nvfp4=dense_nvfp4, lmhead_nvfp4=lmhead_nvfp4,
+                        reader, name[: -len(".weight")], raw_name[: -len(".weight")],
+                        attn_nvfp4=attn_nvfp4, shared_nvfp4=dense_nvfp4,
+                        lmhead_nvfp4=lmhead_nvfp4,
                         shared_buf=nvfp4_shared_buf,
                     )
                     if emit is not _NOT_DENSE_NVFP4:
                         yield from emit
                         continue
 
-                tensor = _load_maybe_quantized(f, raw_name, keyset)
+                tensor = _load_maybe_quantized(reader, raw_name, keyset)
 
                 # merge shared-expert gate/up -> gate_up_proj
                 if name.endswith(_SHARED_GATE) or name.endswith(_SHARED_UP):
@@ -286,6 +295,10 @@ def iter_weights(
                     tensor = tensor + 1.0  # (1 + weight) baked into the stored weight
 
                 yield name, tensor
+
+            drop_page_cache(file)
+    finally:
+        reader.close()
 
     assert not shared_buf, f"Incomplete shared-expert merges: {list(shared_buf.keys())}"
     assert not nvfp4_shared_buf, f"Incomplete NVFP4 shared-expert merges: {list(nvfp4_shared_buf.keys())}"
@@ -365,6 +378,40 @@ _NVFP4_MLP_LAYOUTS = (
     (".mlp.gate_proj", ".mlp.up_proj", ".mlp.down_proj", ".mlp."),
 )
 
+_MODEL_OPT_NVFP4_ATTN_FUSE: dict[str, tuple[str, ...]] = {
+    ".self_attn.qkv_proj": (
+        ".self_attn.q_proj", ".self_attn.k_proj", ".self_attn.v_proj",
+    ),
+}
+
+
+def _modelopt_nvfp4_attn_emit(base: str, parts: tuple, buf: dict):
+    """Fuse ModelOpt q/k/v NVFP4 parts, or emit a standalone attention projection."""
+    for fused_suffix, source_suffixes in _MODEL_OPT_NVFP4_ATTN_FUSE.items():
+        for index, source_suffix in enumerate(source_suffixes):
+            if not base.endswith(source_suffix):
+                continue
+            key = base[: -len(source_suffix)] + fused_suffix
+            slots = buf.setdefault(key, {})
+            slots[index] = parts
+            if len(slots) != len(source_suffixes):
+                return []
+            ordered = [slots[i] for i in range(len(source_suffixes))]
+            del buf[key]
+            return [
+                (key + ".weight", torch.cat([part[0] for part in ordered], dim=0)),
+                (key + ".weight_scale", torch.cat([part[1] for part in ordered], dim=0)),
+                (key + ".weight_global", torch.cat([part[2] for part in ordered], dim=0)),
+            ]
+    if base.endswith((".self_attn.o_proj", ".linear_attn.out_proj")):
+        w, s, g = parts
+        return [
+            (base + ".weight", w),
+            (base + ".weight_scale", s),
+            (base + ".weight_global", g),
+        ]
+    return _NOT_DENSE_NVFP4
+
 
 def _nvfp4_parts(f, raw_base: str):
     """Load a native NVFP4 weight as ``(packed uint8 [O, IN//2], block scale fp8 [O, IN//16],
@@ -381,7 +428,8 @@ _NOT_DENSE_NVFP4 = object()
 
 
 def _dense_nvfp4_emit(
-    f, base: str, raw_base: str, *, shared_nvfp4: bool, lmhead_nvfp4: bool, shared_buf: dict
+    f, base: str, raw_base: str, *, attn_nvfp4: bool = False,
+    shared_nvfp4: bool, lmhead_nvfp4: bool, shared_buf: dict
 ):
     """For a dense ``.weight`` whose checkpoint has a ``weight_scale_2`` (NVFP4), return the list
     of ``(key, tensor)`` to yield as native FP4 -- ``(.weight uint8, .weight_scale fp8 block,
@@ -395,18 +443,23 @@ def _dense_nvfp4_emit(
     Returns ``[]`` while a gate/up merge is still buffered, or ``_NOT_DENSE_NVFP4`` if the model
     does not keep this layer native (the caller dequantizes to bf16 exactly as before). Shared by
     the mixed-FP8 dense pass and the default (pure-NVFP4) dense pass."""
+    parts = _nvfp4_parts(f, raw_base)
+    if attn_nvfp4:
+        emit = _modelopt_nvfp4_attn_emit(base, parts, shared_buf)
+        if emit is not _NOT_DENSE_NVFP4:
+            return emit
     is_lmhead = base == "lm_head" or base.endswith(".lm_head")
     if lmhead_nvfp4 and is_lmhead:
-        w, s, g = _nvfp4_parts(f, raw_base)
+        w, s, g = parts
         return [(base + ".weight", w), (base + ".weight_scale", s), (base + ".weight_global", g)]
     if not shared_nvfp4:
         return _NOT_DENSE_NVFP4
     for gate_b, up_b, down_b, infix in _NVFP4_MLP_LAYOUTS:
         if base.endswith(down_b):
-            w, s, g = _nvfp4_parts(f, raw_base)
+            w, s, g = parts
             return [(base + ".weight", w), (base + ".weight_scale", s), (base + ".weight_global", g)]
         if base.endswith(gate_b) or base.endswith(up_b):
-            w, s, g = _nvfp4_parts(f, raw_base)
+            w, s, g = parts
             prefix = base.rsplit(infix, 1)[0] + infix
             slots = shared_buf.setdefault(prefix, {})
             slots["gate" if base.endswith(gate_b) else "up"] = (w, s, g)
@@ -494,7 +547,8 @@ def _iter_weights_attn_fp8(
                         continue
                     if has_s2:  # NVFP4 dense: keep native (W4A16) where the model expects it
                         emit = _dense_nvfp4_emit(
-                            f, base, raw_base, shared_nvfp4=dense_nvfp4,
+                            f, base, raw_base, attn_nvfp4=False,
+                            shared_nvfp4=dense_nvfp4,
                             lmhead_nvfp4=lmhead_nvfp4, shared_buf=nvfp4_shared_buf,
                         )
                         if emit is not _NOT_DENSE_NVFP4:

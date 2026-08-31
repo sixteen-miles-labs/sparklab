@@ -118,6 +118,27 @@ def test_native_backend_compiles_qwen_recipe_options_in_stable_order(tmp_path):
     )
 
 
+def test_native_backend_caps_qwen38_27b_advertised_context(tmp_path):
+    recipe = get_recipe("qwen3.8-27b")
+    checkpoint = tmp_path / "checkpoint"
+    checkpoint.mkdir()
+    (checkpoint / "config.json").write_text("{}", encoding="utf-8")
+    deployment = replace(recipe.deployment, runtime_format="safetensors")
+
+    plan = get_backend("native").build_launch_plan(
+        RuntimeRequest(
+            recipe=recipe.slug,
+            recipe_version=recipe.recipe_version,
+            model=recipe.model,
+            checkpoint=checkpoint,
+            deployment=deployment,
+        )
+    )
+
+    assert plan.arguments[plan.arguments.index("--max-seq-len-override") + 1] == "65536"
+    assert plan.arguments[plan.arguments.index("--num-tokens") + 1] == "65536"
+
+
 def test_native_backend_compiles_glm_residency_options(tmp_path):
     recipe = get_recipe("glm-5.3-flash")
     checkpoint = tmp_path / "checkpoint"

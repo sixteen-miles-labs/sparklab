@@ -63,7 +63,10 @@ def main(argv: list[str] | None = None, prog: str = "sparklab.checkpoint") -> in
     c = index["counts"]
     gib = index["total_bytes"] / (1 << 30)
     print(f"\nwrote FTW checkpoint -> {ns.out}")
-    print(f"  tensors: {c['weight']} weight + {c['experts_bank']} experts_bank")
+    print(
+        f"  tensors: {c.get('weight', 0)} weight + "
+        f"{c.get('experts_bank', 0)} experts_bank"
+    )
     print(f"  FTW: {gib:.2f} GiB across {len(index['shards'])} shard(s) "
           f"(<= {ns.shard_gib} GiB each)")
     print(f"  quant_format: {index['quant_format']}  fingerprint={index['fingerprint']}")

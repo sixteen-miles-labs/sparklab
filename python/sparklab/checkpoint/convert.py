@@ -468,7 +468,14 @@ def _convert_checkpoint(
         # checkpoint); recording it here too gives load_ftw_banks a cross-check that
         # the banks match the config they ship with. None for non-offload checkpoints.
         "expert_bank_num_layers": num_layers,
-        "counts": {"weight": n_weight, "experts_bank": n_bank + n_alpha},
+        "counts": {
+            kind: count
+            for kind, count in (
+                ("weight", n_weight),
+                ("experts_bank", n_bank + n_alpha),
+            )
+            if count
+        },
         "copied_metadata": copied,
         "external_artifacts": external_artifacts,
     })

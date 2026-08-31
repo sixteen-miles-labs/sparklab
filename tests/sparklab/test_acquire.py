@@ -95,6 +95,18 @@ def test_validate_ftw_checkpoint_checks_shards_tensors_and_external_artifacts(tm
     assert result["kind_counts"] == {"weight": 2}
 
 
+def test_validate_ftw_checkpoint_ignores_explicit_zero_kind_count(tmp_path):
+    _ftw_checkpoint(tmp_path)
+    index_path = tmp_path / "freetoken_weight.json"
+    index = json.loads(index_path.read_text(encoding="utf-8"))
+    index["counts"]["experts_bank"] = 0
+    index_path.write_text(json.dumps(index), encoding="utf-8")
+
+    result = validate_ftw_checkpoint(tmp_path)
+
+    assert result["kind_counts"] == {"weight": 2}
+
+
 def test_validate_ftw_checkpoint_rejects_truncated_shard(tmp_path):
     index = _ftw_checkpoint(tmp_path)
     shard = tmp_path / index["shards"][0]["file"]
