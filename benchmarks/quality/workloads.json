@@ -1,0 +1,30 @@
+{
+  "W1": {
+    "name": "AIME math reasoning",
+    "harness": "native OpenAI-compatible streaming client",
+    "quality_gate": "final extracted answer equals the AIME reference answer",
+    "turns": 1,
+    "protocol": "openai"
+  },
+  "W2": {
+    "name": "OpenCode + SWE-bench",
+    "harness": "OpenCode",
+    "quality_gate": "the scenario evaluator accepts the produced patch",
+    "turns": 3,
+    "protocol": "openai"
+  },
+  "W3": {
+    "name": "Claude Code + SWE-bench",
+    "harness": "Claude Code",
+    "quality_gate": "the scenario evaluator accepts the produced patch",
+    "turns": 3,
+    "protocol": "anthropic"
+  },
+  "W4": {
+    "name": "OpenClaw email/calendar agent",
+    "harness": "OpenClaw",
+    "quality_gate": "all thirteen scripted turns and the optional scenario evaluator succeed",
+    "turns": 13,
+    "protocol": "openai"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "replace-with-the-same-swe-bench-instance-as-w2",
+  "workspace": "/absolute/path/to/checked-out/repository",
+  "steps": [
+    {"argv": ["claude", "--print", "{prompt}"], "prompt": "First scripted user turn."},
+    {"argv": ["claude", "--continue", "--print", "{prompt}"], "prompt": "Second scripted user turn."},
+    {"argv": ["claude", "--continue", "--print", "{prompt}"], "prompt": "Third scripted user turn."}
+  ],
+  "evaluator": {
+    "argv": ["python", "/absolute/path/to/swebench_evaluator.py", "--workspace", "{workspace}"],
+    "expected_exit_code": 0
+  },
+  "metadata": {
+    "swebench_instance_id": "required",
+    "reference_patch_sha256": "required"
+  }
+}

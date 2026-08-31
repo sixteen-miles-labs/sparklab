@@ -1,0 +1,20 @@
+{
+  "qwen3.6-35b-a3b": {
+    "served_model": "qwen3.6-35b-a3b",
+    "paper_weight_format": "BF16",
+    "supported_weight_formats": ["BF16", "NVFP4"],
+    "paper_hardware": ["RTX 4060 Laptop", "RTX 3090", "RTX 4090", "RTX 5090"]
+  },
+  "deepseek-v4-flash-0731": {
+    "served_model": "deepseek-v4-flash-0731",
+    "paper_weight_format": "MXFP4",
+    "supported_weight_formats": ["MXFP4"],
+    "paper_hardware": ["RTX 5090"]
+  },
+  "glm-5.2": {
+    "served_model": "glm-5.2",
+    "paper_weight_format": "NVFP4",
+    "supported_weight_formats": ["NVFP4"],
+    "paper_hardware": ["RTX PRO 6000"]
+  }
+}
