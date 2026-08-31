@@ -33,10 +33,10 @@ sparklab pull qwen3.8-flash-next --root /path/to/models --prepare
 
 `pull --prepare` automatically downloads the pinned Hugging Face FTW artifact from
 [`oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW`](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW),
-plus the publisher's pinned 1.49 GiB MTP sidecar, then validates their immutable
-revisions, sizes, and FTW fingerprint. The artifact preserves the publisher's ModelOpt
-NVFP4 precision. Use `--from-source` only to reproduce the FTW conversion locally; that
-path copies the MTP sidecar into the prepared checkpoint automatically.
+which now contains the pinned 1.49 GiB native MTP sidecar. SparkLab validates the
+artifact's immutable revision, total size, and FTW fingerprint. The artifact preserves
+the publisher's ModelOpt NVFP4 precision. Use `--from-source` only to reproduce the FTW
+conversion locally; that path also copies the MTP sidecar into the prepared checkpoint.
 
 ## Run
 

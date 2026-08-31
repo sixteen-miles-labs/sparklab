@@ -81,12 +81,11 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert qwen.runtime_memory == {"total_bytes": 107374182400}
     assert qwen.runtime_artifact is not None
     assert qwen.runtime_artifact.repo_id == "oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW"
-    assert qwen.runtime_artifact.revision == "cbbcf69f52b9815b8a987fe839003fae12aa8050"
+    assert qwen.runtime_artifact.revision == "5ab790b83f149a96594237a35905d84be24599a3"
     assert qwen.runtime_artifact.fingerprint == "47e11ddb878adf4c"
+    assert qwen.runtime_artifact.bytes == 182030550080
     assert qwen.runtime_artifact.total_bytes == 182030550080
-    assert qwen.runtime_artifact.supplemental_files[0].filename == (
-        "nvfp4_experts_mtp.safetensors"
-    )
+    assert qwen.runtime_artifact.supplemental_files == ()
     kimi = get_recipe("kimi-k3")
     assert kimi.recipe_version == "0.3.0"
     assert kimi.deployment.runtime_format == "ftw-nvfp4"
