@@ -103,10 +103,10 @@ a SparkLab support claim.
     <tr>
       <td><a href="https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW">Qwen3.8-Flash-Next</a></td>
       <td>125B LM + 55B auxiliary / 6B active</td>
-      <td>NVFP4 · FTW</td>
+      <td>NVFP4 · FTW + MTP2</td>
       <td>Experimental</td>
-      <td align="right">16.61</td>
-      <td align="right">0.403</td>
+      <td align="right">20.31</td>
+      <td align="right">0.212</td>
       <td><a href="docs/models/qwen3.8-flash-next.md">Instructions</a></td>
     </tr>
     <tr>
@@ -170,6 +170,10 @@ Status meanings:
 
 Run `sparklab models --json` for exact recipe versions, checkpoint revisions, artifact
 fingerprints, implementation state, evidence IDs, and known constraints.
+
+The Qwen3.8-Flash-Next row reports its selected opt-in two-draft MTP profile. Enable it
+with `-- --speculative-tokens 2` for batch-one greedy workloads. The default profile for
+concurrent or sampled traffic remains 16.84 single-stream tok/s.
 
 ## Documentation
 
