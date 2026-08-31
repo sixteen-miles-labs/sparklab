@@ -1,0 +1,77 @@
+{
+  "schema_version": "1.0",
+  "paper": "arXiv:2608.16157v1",
+  "workload": "W1",
+  "model": "qwen3.6-35b-a3b",
+  "served_model": "qwen3.6-35b-a3b",
+  "weight_format": "NVFP4",
+  "mode": "smoke",
+  "base_url": "http://127.0.0.1:18080",
+  "provenance": {
+    "timestamp_utc": "2026-08-31T16:40:25.705876+00:00",
+    "git_revision": "b7486b653afadc3f5350c25b5c967050ee3eed08",
+    "python": "3.11.15",
+    "platform": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+    "server": {
+      "status": "ok",
+      "model": "qwen3.6-35b-a3b",
+      "instance_id": "d340cfee-dd9e-4fea-85e0-51e7645ca35c",
+      "uptime_s": 235,
+      "maintenance": "serving",
+      "version": "0.1.0"
+    },
+    "model_registry": {
+      "served_model": "qwen3.6-35b-a3b",
+      "paper_weight_format": "BF16",
+      "supported_weight_formats": [
+        "BF16",
+        "NVFP4"
+      ],
+      "paper_hardware": [
+        "RTX 4060 Laptop",
+        "RTX 3090",
+        "RTX 4090",
+        "RTX 5090"
+      ]
+    }
+  },
+  "quality": {
+    "passed": false,
+    "correct": 0,
+    "total": 1,
+    "accuracy": 0,
+    "gate": "final extracted answer equals the AIME reference answer"
+  },
+  "metrics": {
+    "request_count": 1,
+    "mean_decode_tokens_per_second": 22.695903640613174,
+    "mean_ttft_seconds": 26.40551258999767,
+    "max_ttft_seconds": 26.40551258999767
+  },
+  "requests": [
+    {
+      "problem": 0,
+      "expected": "70",
+      "answer": null,
+      "correct": false,
+      "prompt_tokens": 49,
+      "completion_tokens": 4096,
+      "ttft_seconds": 26.40551258999767,
+      "duration_seconds": 206.83454792799603,
+      "decode_seconds": 180.42903533799836,
+      "decode_tokens_per_second": 22.695903640613174,
+      "finish_reason": "length",
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "reasoning_output": "Let $N = 97_b$ and $D = 17_b$.\nThe notation $xy_b$ means the number with digits $x$ and $y$ in base $b$.\nSo, $D = 1 \\cdot b + 7 = b + 7$.\nAnd $N = 9 \\cdot b + 7 = 9b + 7$.\nThe problem asks for the sum of all integer bases $b > 9$ such that $D$ divides $N$.\nSo we need to find the sum of integers $b > 9$ such that $b+7$ divides $9b+7$.\n\nLet's write down the condition:\n$(9b + 7) \\pmod{(b + 7)} = 0$.\n\nWe can perform polynomial division or modular arithmetic to simplify this expression.\nWe have $9b + 7$. We want to relate it to $b+7$.\n$9b + 7 = 9(b+7) - 63 + 7 = 9(b+7) - 56$.\nSo,\n$9b + 7 \\equiv -56 \\pmod{b+7}$.\nFor $b+7$ to divide $9b+7$, it must divide the remainder, which is $-56$.\nThis is equivalent to saying $b+7$ must divide 56.\nSo $b+7$ is a divisor of 56.\n\nLet $k = b+7$.\nSince $b$ is an integer base, $b$ must be an integer.\nAlso, the problem states $b > 9$.\nThe digits used in the numbers are 9 and 7.\nFor a number to be valid in base $b$, the digits must be less than $b$.\nThe digits appearing are 9 and 7.\nSo we must have $b > 9$ and $b > 7$.\nSince $b > 9$ is given, the condition $b > 7$ is automatically satisfied.\nHowever, usually bases are integers $\\ge 2$.\nBut the condition $b > 9$ is stronger.\n\nSo we need to find integer divisors $k$ of 56 such that $k = b+7$ and $b > 9$.\nSince $b > 9$, we have $k = b+7 > 9+7 = 16$.\nSo we need to find divisors of 56 that are greater than 16.\nAlso, $b$ must be an integer, which implies $k$ must be an integer.\nWait, $b$ is an integer base.\nSo we need to find all divisors of 56 that are strictly greater than 16.\nLet's list the divisors of 56.\n$56 = 2^3 \\cdot 7$.\nThe divisors are 1, 2, 4, 7, 8, 14, 28, 56.\nLet's check each divisor $k$ to see if it is greater than 16.\nDivisors:\n1: No\n2: No\n4: No\n7: No\n8: No\n14: No (14 is not > 16)\n28: Yes (28 > 16)\n56: Yes (56 > 16)\n\nSo the possible values for $k$ are 28 and 56.\nNow we find the corresponding values for $b$.\nCase 1: $k = 28$.\n$b + 7 = 28 \\implies b = 21$.\nCheck if $b > 9$. $21 > 9$, yes.\nCheck if digits are valid. Digits are 9 and 7. $9 < 21$ and $7 < 21$. Yes.\nLet's check divisibility.\n$D = 17_{21} = 1 \\cdot 21 + 7 = 28$.\n$N = 97_{21} = 9 \\cdot 21 + 7 = 189 + 7 = 196$.\n$196 / 28 = 7$. Yes, it divides.\n\nCase 2: $k = 56$.\n$b + 7 = 56 \\implies b = 49$.\nCheck if $b > 9$. $49 > 9$, yes.\nCheck if digits are valid. Digits are 9 and 7. $9 < 49$ and $7 < 49$. Yes.\nLet's check divisibility.\n$D = 17_{49} = 1 \\cdot 49 + 7 = 56$.\n$N = 97_{49} = 9 \\cdot 49 + 7 = 441 + 7 = 448$.\n$448 / 56 = 8$. Yes, it divides.\n\nAre there any other constraints?\n\"Integer bases $b > 9$\".\nThe bases must be integers.\nAre there any negative bases?\nUsually \"bases\" refer to integers $b \\ge 2$.\nBut the problem says \"integer bases $b > 9$\". So $b$ is positive.\nIs it possible that $b+7$ divides $9b+7$ in a different way?\nWe established $9b+7 = 9(b+7) - 56$.\nSo $b+7$ divides $9b+7$ iff $b+7$ divides 56.\nThis logic holds for any integer $b$.\nSince $b > 9$, $b+7 > 16$.\nDivisors of 56 are $\\pm 1, \\pm 2, \\pm 4, \\pm 7, \\pm 8, \\pm 14, \\pm 28, \\pm 56$.\nBut $b+7$ must be positive since $b > 9$.\nSo we only look at positive divisors.\nWe already did that.\n\nLet's double check if I missed any divisors.\n$56 = 1 \\times 56$\n$2 \\times 28$\n$4 \\times 14$\n$7 \\times 8$\nDivisors: 1, 2, 4, 7, 8, 14, 28, 56.\nCorrect.\nInequalities: $k > 16$.\n1, 2, 4, 7, 8, 14 are all $\\le 16$.\n28, 56 are $> 16$.\nSo $k \\in \\{28, 56\\}$.\nCorresponding $b$:\n$b = 28 - 7 = 21$.\n$b = 56 - 7 = 49$.\nSum of all such bases = $21 + 49 = 70$.\n\nLet me re-read the question carefully to ensure no misinterpretation.\n\"Find the sum of all integer bases $b>9$ for which $17_b$ is a divisor of $97_b$.\"\nBase $b$ must be integer.\n$b > 9$.\n$17_b = 1 \\cdot b + 7$.\n$97_b = 9 \\cdot b + 7$.\nCondition: $(9b+7) / (b+7)$ is an integer.\n$(9b+7)/(b+7) = (9(b+7) - 63 + 7)/(b+7) = 9 - 56/(b+7)$.\nFor this to be an integer, $b+7$ must divide 56.\nSince $b > 9$, $b+7 > 16$.\nDivisors of 56 greater than 16.\nFactors of 56: 1, 2, 4, 7, 8, 14, 28, 56.\nValues of $b+7$: 28, 56.\nValues of $b$: 21, 49.\nSum: 21 + 49 = 70.\n\nIs there any ambiguity about \"divisor\"?\nUsually means integer division.\nAlso, could $b+7$ be negative?\nIf $b$ is an integer, $b+7$ is an integer.\nBut $b > 9$ implies $b+7 > 16 > 0$.\nSo no negative divisors.\n\nIs it possible that $17_b$ is 0?\n$b+7 = 0 \\implies b = -7$.\nBut $b > 9$, so not possible.\nIs it possible that $97_b$ is 0?\n$9b+7 = 0 \\implies b = -7/9$. Not an integer.\n\nWait, the digits are 9 and 7.\nIn base $b$, digits must be strictly less than $b$.\nFor $17_b$, digits are 1 and 7. So $b > 7$.\nFor $97_b$, digits are 9 and 7. So $b > 9$.\nThe condition $b > 9$ is explicitly given.\nSo digit validity is satisfied.\n\nLet's just double check the arithmetic.\n$9b+7 = 9(b+7) - 63 + 7 = 9b + 63 - 56 = 9b+7$. Correct.\n$56$ factors:\n$56 / 1 = 56$\n$56 / 2 = 28$\n$56 / 4 = 14$\n$56 / 7 = 8$\n$56 / 8 = 7$\n$56 / 14 = 4$\n$56 / 28 = 2$\n$56 / 56 = 1$\nSet of divisors: $\\{1, 2, 4, 7, 8, 14, 28, 56\\}$.\nCondition $b+7 > 16$.\n$28 > 16$ (True). $b = 21$.\n$56 > 16$ (True). $b = 49$.\n$14 > 16$ (False).\n$8 > 16$ (False).\netc.\nSum = $21 + 49 = 70$.\n\nLet's check if $b$ could be non-integer?\n\"integer bases $b$\". No.\n\nLet's consider if I missed any interpretation of $17_b$ or $97_b$.\nMaybe digits can be greater than or equal to base?\nNo, that's not a standard positional notation.\nHowever, sometimes \"base\" just refers to the radix of the polynomial, and coefficients can be larger?\nUsually $N = d_n b^n + \\dots + d_0$ where $0 \\le d_i < b$.\nIf $d_i \\ge b$, it's not a valid representation in base $b$, though the value is well defined.\nBut usually \"base $b$\" implies valid digits.\nBut even if we allowed digits $\\ge b$, the condition $b > 9$ is given.\nSo $b > 9$ implies $b > 7$ and $b > 1$.\nSo digits 1, 7, 9 are all valid.\n\nLet's check if $b$ can be such that $b+7$ divides 56, but $b$ is not an integer?\n\"integer bases\". So $b$ is integer.\n\nWhat if $b$ is negative?\n\"integer bases $b > 9$\". So $b$ is positive.\n\nCould there be any trick with \"divisor\"?\nIf $A$ divides $B$, there exists integer $k$ such that $B = kA$.\nHere $9b+7 = k(b+7)$.\nWe found $k = 9 - 56/(b+7)$.\nSince $b+7$ divides 56, let $m = 56/(b+7)$. Then $m$ is an integer divisor.\nThen $k = 9 - m$.\nSince $b+7 > 16$, $m = 56/(b+7)$ must be a divisor of 56 such that $m < 56/16 = 3.5$.\nSo $m$ can be 1, 2, 3?\nDivisors of 56 are 1, 2, 4, 7, ...\nSo possible integer values for $m$ are 1 and 2.\nIf $m=1$, $b+7 = 56/1 = 56 \\implies b=49$.\nIf $m=2$, $b+7 = 56/2 = 28 \\implies b=21$.\nIf $m=4$, $b+7 = 14 \\implies b=7$. But $b>9$, so reject.\nIf $m$ is not a divisor, $b$ wouldn't be integer?\nActually, $b = 56/m - 7$. For $b$ to be integer, $m$ must divide 56?\nWait. $b+7$ is an integer divisor of 56.\nSo $b+7$ must be a divisor.\nYes, we found all divisors $k$ of 56 such that $k > 16$.\nThose are 28 and 56.\nWhich correspond to $b=21$ and $b=49$.\n\nLet me re-verify the problem statement numbers.\n$17_b$ and $97_b$.\nMaybe it's $17_b$ divides $97_b$? Yes.\nMaybe bases are different? No, same base $b$.\nMaybe \"sum of all integer bases\" means something else? No.\nMaybe I calculated $56$ wrong?\n$9(b+7) = 9b + 63$.\n$9b+7 = 9b + 63 - 56$.\nYes, remainder is -56.\nDivisibility condition is correct.\n\nLet's check $b=10$.\n$17_{10} = 17$.\n$97_{10} = 97$.\n$97 / 17 \\approx 5.7$. Not integer.\nFormula: $b+7 = 17$.\n$56 / 17 \\approx 3.29$. Not integer. Correct.\n\nLet's check $b=19$.\n$b+7 = 26$.\n$56/26$ not integer.\n$N = 9(19)+7 = 171+7 = 178$.\n$D = 1(19)+7 = 26$.\n$178 / 26 = 89 / 13 \\approx 6.8$.\n\nLet's check $b=21$.\n$D = 28$.\n$N = 9(21)+7 = 189+7 = 196$.\n$196 / 28 = 7$.\n$196 = 28 \\times 7$.\n$28 \\times 7 = (30-2) \\times 7 = 210 - 14 = 196$. Correct.\n\nLet's check $b=49$.\n$D = 56$.\n$N = 9(49)+7 = 441+7 = 448$.\n$448 / 56 = 8$.\n$56 \\times 8 = 448$.\n$50 \\times 8 = 400$. $6 \\times 8 = 48$. $400+48=448$. Correct.\n\nAre there any larger bases?\nWe need $b+7$ to divide 56.\nIf $b$ is very large, $b+7$ is very large.\nIf $b+7 > 56$, it cannot divide 56 (unless 56 is 0, which it is not).\nWait, divisibility definition: $A$ divides $B$ if $B/A$ is an integer.\nIf $|A| > |B|$ and $B \\ne 0$, then $A$ cannot divide $B$.\nHere $B=56$ (or $-56$).\nSo we need $|b+7| \\le 56$.\nSince $b > 9$, $b+7 > 16$.\nSo we need $16 < b+7 \\le 56$.\nThis restricts the search space, which we already did by listing divisors.\nDivisors of 56 in range $(16, 56]$.\nDivisors are 28, 56.\nSo we found all of them.\n\nWait, is it possible that $b+7$ is a divisor of $9b+7$ in a way that isn't captured by \"divisor of 56\"?\nWe did $9b+7 = 9(b+7) - 56$.\nSo $b+7$ divides $9b+7$ iff $b+7$ divides 56.\nThis equivalence is solid.\n$X | Y \\iff X | (Y - kX)$.\nHere $X = b+7$, $Y = 9b+7$, $k=9$.\n$Y - 9X = 9b+7 - 9(b+7) = 9b+7 - 9b - 63 = -56$.\nSo $b+7 | 9b+7 \\iff b+7 | -56 \\iff b+7 | 56$.\nCorrect.\n\nSo the logic seems flawless.\nThe sum is 70.\n\nLet's check if there are any other constraints I missed.\n\"integer bases $b>9$\".\nInteger means $\\mathbb{Z",
+      "output": ""
+    }
+  ],
+  "configuration": {
+    "dataset": "math-ai/aime25/test.jsonl",
+    "problems": "0",
+    "max_tokens": 4096,
+    "temperature": null,
+    "top_p": null,
+    "seed": null
+  }
+}

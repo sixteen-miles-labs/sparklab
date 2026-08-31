@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sparklab.local/schemas/paper-quality-result-v1.json",
+  "title": "SparkLab paper quality benchmark result",
+  "type": "object",
+  "required": [
+    "schema_version", "paper", "workload", "model", "weight_format",
+    "mode", "quality", "metrics", "requests", "provenance"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "paper": {"const": "arXiv:2608.16157v1"},
+    "workload": {"enum": ["W1", "W2", "W3", "W4"]},
+    "model": {"type": "string", "minLength": 1},
+    "weight_format": {"type": "string", "minLength": 1},
+    "mode": {"enum": ["smoke", "full"]},
+    "quality": {
+      "type": "object",
+      "required": ["passed"],
+      "properties": {"passed": {"type": "boolean"}}
+    },
+    "metrics": {
+      "type": "object",
+      "required": ["request_count", "mean_decode_tokens_per_second", "mean_ttft_seconds"],
+      "properties": {
+        "request_count": {"type": "integer", "minimum": 0},
+        "mean_decode_tokens_per_second": {"type": "number", "minimum": 0},
+        "mean_ttft_seconds": {"type": "number", "minimum": 0}
+      }
+    },
+    "requests": {"type": "array", "items": {"type": "object"}},
+    "provenance": {"type": "object"}
+  },
+  "additionalProperties": true
+}

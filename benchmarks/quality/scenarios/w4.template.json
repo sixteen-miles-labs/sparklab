@@ -1,0 +1,23 @@
+{
+  "name": "replace-with-paper-mailbox-kit-and-thirteen-turn-script",
+  "workspace": "/absolute/path/to/mailbox-kit",
+  "steps": [
+    {"argv": ["openclaw", "agent", "--message", "{prompt}"], "prompt": "Turn 1"},
+    {"argv": ["openclaw", "agent", "--message", "{prompt}"], "prompt": "Turn 2"},
+    {"argv": ["openclaw", "agent", "--message", "{prompt}"], "prompt": "Turn 3"},
+    {"argv": ["openclaw", "agent", "--message", "{prompt}"], "prompt": "Turn 4"},
+    {"argv": ["openclaw", "agent", "--message", "{prompt}"], "prompt": "Turn 5"},
+    {"argv": ["openclaw", "agent", "--message", "{prompt}"], "prompt": "Turn 6"},
+    {"argv": ["openclaw", "agent", "--message", "{prompt}"], "prompt": "Turn 7"},
+    {"argv": ["openclaw", "agent", "--message", "{prompt}"], "prompt": "Turn 8"},
+    {"argv": ["openclaw", "agent", "--message", "{prompt}"], "prompt": "Turn 9"},
+    {"argv": ["openclaw", "agent", "--message", "{prompt}"], "prompt": "Turn 10"},
+    {"argv": ["openclaw", "agent", "--message", "{prompt}"], "prompt": "Turn 11"},
+    {"argv": ["openclaw", "agent", "--message", "{prompt}"], "prompt": "Turn 12"},
+    {"argv": ["openclaw", "agent", "--message", "{prompt}"], "prompt": "Turn 13"}
+  ],
+  "metadata": {
+    "mailbox_kit_revision": "required",
+    "turn_script_sha256": "required"
+  }
+}
