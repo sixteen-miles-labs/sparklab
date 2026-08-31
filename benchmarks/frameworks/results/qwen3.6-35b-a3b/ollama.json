@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0",
+  "framework": "ollama",
+  "framework_version": "0.33.2",
+  "status": "measured",
+  "weights": {
+    "source": "ollama.com/library/qwen3.6:35b-a3b",
+    "format": "Q4_K_M"
+  },
+  "method": {
+    "concurrency": 1,
+    "temperature": 0,
+    "warmup_requests": 1,
+    "measured_requests": 3,
+    "max_output_tokens": 256,
+    "prompt": "Solve this problem carefully and show your reasoning. Find the smallest positive integer n for which 7n is a perfect square and 5n is a perfect cube.",
+    "ttft": "request start to first non-empty content/reasoning SSE delta",
+    "decode": "(completion_tokens - 1) / (last delta - first delta)"
+  },
+  "warmup": {
+    "ttft_seconds": 6.870779919998313,
+    "decode_seconds": 0.3263595240023278,
+    "decode_tokens_per_second": 94.9872693152319,
+    "completion_tokens": 32,
+    "request_seconds": 7.197232195998367,
+    "output_sha256": "cc8d42bac1dab94ba9b72c590af2da5169360913afc186f5ce60b95c674fbc68"
+  },
+  "trials": [
+    {
+      "ttft_seconds": 0.05046375199890463,
+      "decode_seconds": 2.705840843002079,
+      "decode_tokens_per_second": 94.24057614456079,
+      "completion_tokens": 256,
+      "request_seconds": 2.756375763001415,
+      "output_sha256": "c9f5004318f766ed8ad74de21edf268d56d1fafe3099e66ecc4b111720817387"
+    },
+    {
+      "ttft_seconds": 0.11614355499841622,
+      "decode_seconds": 2.7120887950004544,
+      "decode_tokens_per_second": 94.02347020129821,
+      "completion_tokens": 256,
+      "request_seconds": 2.8283675179991405,
+      "output_sha256": "c9f5004318f766ed8ad74de21edf268d56d1fafe3099e66ecc4b111720817387"
+    },
+    {
+      "ttft_seconds": 0.060254473999521,
+      "decode_seconds": 2.715784699001233,
+      "decode_tokens_per_second": 93.89551391676216,
+      "completion_tokens": 256,
+      "request_seconds": 2.77647152499776,
+      "output_sha256": "c9f5004318f766ed8ad74de21edf268d56d1fafe3099e66ecc4b111720817387"
+    }
+  ],
+  "metrics": {
+    "warm_ttft_seconds_median": 0.060254473999521,
+    "decode_tokens_per_second_median": 94.02347020129821
+  }
+}

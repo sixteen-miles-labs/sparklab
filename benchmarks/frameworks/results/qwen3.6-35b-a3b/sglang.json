@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0",
+  "framework": "sglang",
+  "framework_version": "0.5.18",
+  "status": "measured",
+  "method": {
+    "concurrency": 1,
+    "temperature": 0,
+    "warmup_requests": 1,
+    "measured_requests": 3,
+    "max_output_tokens": 256,
+    "prompt": "Solve this problem carefully and show your reasoning. Find the smallest positive integer n for which 7n is a perfect square and 5n is a perfect cube.",
+    "ttft": "request start to first non-empty content/reasoning SSE delta",
+    "decode": "(completion_tokens - 1) / (last delta - first delta)"
+  },
+  "warmup": {
+    "ttft_seconds": 0.26236061600047833,
+    "decode_seconds": 0.9383760820001044,
+    "decode_tokens_per_second": 33.035795130162484,
+    "completion_tokens": 32,
+    "request_seconds": 1.2008154220002325,
+    "output_sha256": "83f9de56516ce245a7f1cc2a77cf32d9f20c24d23bb7787486c4300d23137913"
+  },
+  "trials": [
+    {
+      "ttft_seconds": 0.08714153599976271,
+      "decode_seconds": 7.721950978000677,
+      "decode_tokens_per_second": 33.022742662635125,
+      "completion_tokens": 256,
+      "request_seconds": 7.809174551000069,
+      "output_sha256": "88088842f7048ac1cc395691a21fc6fe44e459e962bebc6e70bb91298308e7ab"
+    },
+    {
+      "ttft_seconds": 0.08681661299942789,
+      "decode_seconds": 7.6168231060000835,
+      "decode_tokens_per_second": 33.47852463570095,
+      "completion_tokens": 256,
+      "request_seconds": 7.703723531999458,
+      "output_sha256": "0ca81d831ee627e8c7572ccd83b7ff071de11b369c6d14f1858004709f882a5e"
+    },
+    {
+      "ttft_seconds": 0.08834320200003276,
+      "decode_seconds": 7.586978143999659,
+      "decode_tokens_per_second": 33.61021939962656,
+      "completion_tokens": 256,
+      "request_seconds": 7.675416710999343,
+      "output_sha256": "0d5ac5460ec672c35684ac990c9b5edae6fbaf960943a0b7bdef0073632d3d21"
+    }
+  ],
+  "metrics": {
+    "warm_ttft_seconds_median": 0.08714153599976271,
+    "decode_tokens_per_second_median": 33.47852463570095
+  }
+}

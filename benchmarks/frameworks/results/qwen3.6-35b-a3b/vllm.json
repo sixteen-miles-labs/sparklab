@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0",
+  "framework": "vllm",
+  "framework_version": "0.28.0",
+  "status": "measured",
+  "method": {
+    "concurrency": 1,
+    "temperature": 0,
+    "warmup_requests": 1,
+    "measured_requests": 3,
+    "max_output_tokens": 256,
+    "prompt": "Solve this problem carefully and show your reasoning. Find the smallest positive integer n for which 7n is a perfect square and 5n is a perfect cube.",
+    "ttft": "request start to first non-empty content/reasoning SSE delta",
+    "decode": "(completion_tokens - 1) / (last delta - first delta)"
+  },
+  "warmup": {
+    "ttft_seconds": 17.059296691790223,
+    "decode_seconds": 0.48245472367852926,
+    "decode_tokens_per_second": 64.25473413056686,
+    "completion_tokens": 32,
+    "request_seconds": 17.541837063618004,
+    "output_sha256": "e7df0d926f2c0fe03d5c94450acac082c78ad07540ddbddb1ac0af0ade682e67"
+  },
+  "trials": [
+    {
+      "ttft_seconds": 0.16001198813319206,
+      "decode_seconds": 3.6451650047674775,
+      "decode_tokens_per_second": 69.95568092706033,
+      "completion_tokens": 256,
+      "request_seconds": 3.8052683044224977,
+      "output_sha256": "6515087516777133f5f6a5b29396f910619e1d90d6584f418a38f988b8dea4cd"
+    },
+    {
+      "ttft_seconds": 0.06649998482316732,
+      "decode_seconds": 3.636943666264415,
+      "decode_tokens_per_second": 70.11381626977911,
+      "completion_tokens": 256,
+      "request_seconds": 3.703502387739718,
+      "output_sha256": "6a6fb73b267770a4a4ff59e4a1461522a6d17e0a993b698b54206e58019444f7"
+    },
+    {
+      "ttft_seconds": 0.07887429650872946,
+      "decode_seconds": 3.6464018877595663,
+      "decode_tokens_per_second": 69.93195150978761,
+      "completion_tokens": 256,
+      "request_seconds": 3.7253712564706802,
+      "output_sha256": "49a1ca4ce9dc811674cae7c97864b13824f7cc96dee615e71346c9142f1b24ed"
+    }
+  ],
+  "metrics": {
+    "warm_ttft_seconds_median": 0.07887429650872946,
+    "decode_tokens_per_second_median": 69.95568092706033
+  }
+}

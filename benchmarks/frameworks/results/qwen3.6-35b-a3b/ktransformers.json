@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0",
+  "framework": "ktransformers",
+  "framework_version": "unknown",
+  "status": "unavailable",
+  "reason": "KTransformers runtime is unavailable on this platform: its pinned kt-kernel release has no aarch64 wheel",
+  "server_log": "benchmarks/frameworks/results/qwen3.6-35b-a3b/ktransformers.log"
+}
