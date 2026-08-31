@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0",
+  "framework": "sparklab",
+  "framework_version": "SparkLab 0.1.0",
+  "status": "measured",
+  "weights": {
+    "source": "oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW@cbbcf69f52b9815b8a987fe839003fae12aa8050",
+    "format": "FTW NVFP4"
+  },
+  "warnings": [
+    "Five recoverable NVIDIA driver NV_ERR_NO_MEMORY allocation warnings occurred at 2026-08-31 01:53:36 during startup. The process was not killed and subsequently completed preload, graph capture, and all measured trials."
+  ],
+  "method": {
+    "concurrency": 1,
+    "temperature": 0,
+    "warmup_requests": 1,
+    "measured_requests": 3,
+    "max_output_tokens": 256,
+    "prompt": "Solve this problem carefully and show your reasoning. Find the smallest positive integer n for which 7n is a perfect square and 5n is a perfect cube.",
+    "ttft": "request start to first non-empty content/reasoning SSE delta",
+    "decode": "(completion_tokens - 1) / (last delta - first delta)"
+  },
+  "warmup": {
+    "ttft_seconds": 1.0205496919988946,
+    "decode_seconds": 1.9676862710002752,
+    "decode_tokens_per_second": 15.754544033201553,
+    "completion_tokens": 32,
+    "request_seconds": 2.98853181999948,
+    "output_sha256": "b092831052f990f2d6b722af2d74424cd814dd835bd0517508598f4e6758a421"
+  },
+  "trials": [
+    {
+      "ttft_seconds": 0.38599650799733354,
+      "decode_seconds": 15.864306262003083,
+      "decode_tokens_per_second": 16.07381979322699,
+      "completion_tokens": 256,
+      "request_seconds": 16.250573346998863,
+      "output_sha256": "d9cd2ec2a0c7145389eb1705c031f4dbc9f97a35631f91b7e463e95c4be6119f"
+    },
+    {
+      "ttft_seconds": 0.389334573999804,
+      "decode_seconds": 14.928146259000641,
+      "decode_tokens_per_second": 17.08182620774181,
+      "completion_tokens": 256,
+      "request_seconds": 15.317776113999571,
+      "output_sha256": "d9cd2ec2a0c7145389eb1705c031f4dbc9f97a35631f91b7e463e95c4be6119f"
+    },
+    {
+      "ttft_seconds": 0.3838914730004035,
+      "decode_seconds": 15.529134996999346,
+      "decode_tokens_per_second": 16.420747198686403,
+      "completion_tokens": 256,
+      "request_seconds": 15.91391666400159,
+      "output_sha256": "81f6bbdd4d6a9c654091b04a81592d26b0131e3f5a3e89caf54d62c22767deba"
+    }
+  ],
+  "metrics": {
+    "warm_ttft_seconds_median": 0.38599650799733354,
+    "decode_tokens_per_second_median": 16.420747198686403
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0",
+  "framework": "sparklab",
+  "framework_version": "SparkLab 0.1.0",
+  "status": "measured",
+  "weights": {
+    "source": "oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW@fecab7acfd0590d2b268d8fb9ea1c88431471111",
+    "format": "FTW NVFP4"
+  },
+  "method": {
+    "concurrency": 1,
+    "temperature": 0,
+    "warmup_requests": 1,
+    "measured_requests": 3,
+    "max_output_tokens": 256,
+    "prompt": "Solve this problem carefully and show your reasoning. Find the smallest positive integer n for which 7n is a perfect square and 5n is a perfect cube.",
+    "ttft": "request start to first non-empty content/reasoning SSE delta",
+    "decode": "(completion_tokens - 1) / (last delta - first delta)"
+  },
+  "warmup": {
+    "ttft_seconds": 0.9693077599986282,
+    "decode_seconds": 0.4998225179988367,
+    "decode_tokens_per_second": 62.02201558288366,
+    "completion_tokens": 32,
+    "request_seconds": 1.4698038309979893,
+    "output_sha256": "83f9de56516ce245a7f1cc2a77cf32d9f20c24d23bb7787486c4300d23137913"
+  },
+  "trials": [
+    {
+      "ttft_seconds": 0.33298703900072724,
+      "decode_seconds": 3.7262239170013345,
+      "decode_tokens_per_second": 68.43389063027924,
+      "completion_tokens": 256,
+      "request_seconds": 4.060031838002033,
+      "output_sha256": "9a8a2116f9450197919cdacd13ea3f1b50c8f82013c78fcdcb4bfb327d7fdd45"
+    },
+    {
+      "ttft_seconds": 0.2788968940003542,
+      "decode_seconds": 3.6367349829997693,
+      "decode_tokens_per_second": 70.11783954344197,
+      "completion_tokens": 256,
+      "request_seconds": 3.916260149999289,
+      "output_sha256": "9afd6810669a1a14be940da128c95619a542941a01db3ec2d321117340c16a2a"
+    },
+    {
+      "ttft_seconds": 0.2759480099994107,
+      "decode_seconds": 3.6371646629995666,
+      "decode_tokens_per_second": 70.10955610398506,
+      "completion_tokens": 256,
+      "request_seconds": 3.913766162000684,
+      "output_sha256": "9afd6810669a1a14be940da128c95619a542941a01db3ec2d321117340c16a2a"
+    }
+  ],
+  "metrics": {
+    "warm_ttft_seconds_median": 0.2788968940003542,
+    "decode_tokens_per_second_median": 70.10955610398506
+  }
+}

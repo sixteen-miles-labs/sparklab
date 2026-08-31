@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0",
+  "framework": "llama.cpp",
+  "framework_version": "version: 0.3.0-dev (build 10711, commit 9723942ad)\nbuilt with GNU 13.3.0 for Linux aarch64",
+  "status": "measured",
+  "weights": {
+    "source": "ollama.com/library/qwen3.6:35b-a3b (GGUF layer sha256:d372de8e9348...)",
+    "format": "Q4_K_M"
+  },
+  "method": {
+    "concurrency": 1,
+    "temperature": 0,
+    "warmup_requests": 1,
+    "measured_requests": 3,
+    "max_output_tokens": 256,
+    "prompt": "Solve this problem carefully and show your reasoning. Find the smallest positive integer n for which 7n is a perfect square and 5n is a perfect cube.",
+    "ttft": "request start to first non-empty content/reasoning SSE delta",
+    "decode": "(completion_tokens - 1) / (last delta - first delta)"
+  },
+  "warmup": {
+    "ttft_seconds": 0.2771920779996435,
+    "decode_seconds": 0.4060751329998311,
+    "decode_tokens_per_second": 76.34055247606825,
+    "completion_tokens": 32,
+    "request_seconds": 0.6833605550018547,
+    "output_sha256": "cc8d42bac1dab94ba9b72c590af2da5169360913afc186f5ce60b95c674fbc68"
+  },
+  "trials": [
+    {
+      "ttft_seconds": 0.04836218000127701,
+      "decode_seconds": 3.2572403869999107,
+      "decode_tokens_per_second": 78.2871295031646,
+      "completion_tokens": 256,
+      "request_seconds": 3.305724519002979,
+      "output_sha256": "71d30a715abb06d6ff414be98eb1b74fc80b3dc6f5a98bd679d3a5ef52ded070"
+    },
+    {
+      "ttft_seconds": 0.10856948899890995,
+      "decode_seconds": 3.2529950969983474,
+      "decode_tokens_per_second": 78.38929736946037,
+      "completion_tokens": 256,
+      "request_seconds": 3.361708201999136,
+      "output_sha256": "71d30a715abb06d6ff414be98eb1b74fc80b3dc6f5a98bd679d3a5ef52ded070"
+    },
+    {
+      "ttft_seconds": 0.05791089099875535,
+      "decode_seconds": 3.2500394550006604,
+      "decode_tokens_per_second": 78.46058595000909,
+      "completion_tokens": 256,
+      "request_seconds": 3.3080221059972246,
+      "output_sha256": "71d30a715abb06d6ff414be98eb1b74fc80b3dc6f5a98bd679d3a5ef52ded070"
+    }
+  ],
+  "metrics": {
+    "warm_ttft_seconds_median": 0.05791089099875535,
+    "decode_tokens_per_second_median": 78.38929736946037
+  }
+}
