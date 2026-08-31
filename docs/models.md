@@ -41,94 +41,39 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | [GLM-5.3](https://huggingface.co/oakmindai/GLM-5.3-NVFP4-FTW) | 753B total / 40B active | NVFP4 + resident FP8 · FTW | `glm-5.3` | Experimental fallback | 0.81 | 2.530 |
 | [Kimi K3](https://huggingface.co/oakmindai/Kimi-K3-NVFP4-FTW) | 2.8T total / 16 of 896 experts | ModelOpt NVFP4/FP8 · FTW | `kimi-k3` | Experimental | 0.16 | 395.405 |
 
-Model links point to the selected source or published FTW checkpoints. Qwen3.6, GLM-5.3,
-and Kimi K3 use pinned prebuilt FTW artifacts; their source-conversion paths remain
-available for reproducibility.
+Model links point to the selected source or published FTW checkpoint. Qwen3.6, GLM-5.3,
+and Kimi K3 use pinned prebuilt artifacts with reproducible source-conversion paths.
+Parameter counts come from model publishers, and performance values come from the
+evidence attached to each recipe. Certification applies only to that exact checkpoint
+and recipe version.
 
-Parameter values use publisher-reported architecture counts. Qwen3.8's auxiliary total is
-the 51B n-gram embedding plus its 4B MTP module. NVIDIA reports Kimi K3 activation as 16 of
-896 experts rather than as an active-parameter count.
+## Evidence and caveats
 
-Measured values are copied from the evidence named by the recipe. “Not yet measured”
-means no accepted complete-checkpoint GB10 performance evidence is attached.
+| Model | Current result | Evidence |
+|---|---|---|
+| Qwen3.6-35B-A3B | Fast-certified, including exact 32K recall and a 60-minute zero-swap run. Certification is operational; its five-problem AIME sample scored 0/5 after reaching the output cap. | [GB10-QWEN36-FAST-002](../benchmarks/gb10/results/GB10-QWEN36-FAST-002.json) |
+| Qwen3.8-Flash-Next | Passes Frontier speed and 64K capability probes; the clean-revision endurance gate remains outstanding. | [GB10-QWEN38-NVFP4-OPT-002](../benchmarks/gb10/results/GB10-QWEN38-NVFP4-OPT-002.json) |
+| DeepSeek V4 Flash | Passes Frontier speed; broader certification remains incomplete. | [Experiment](../exps/exp_dsv4_gb10.md) |
+| GLM-5.3 Flash | Passes Frontier speed; NVMe-sensitive TTFT and remaining certification gates keep it Experimental. | [GB10-GLM53-MHC-003](../benchmarks/gb10/results/GB10-GLM53-MHC-003.json) |
+| GLM-5.2 | Below Frontier speed and recorded swap growth, so it remains Experimental. | [Experiment](../exps/exp_glm5_2_gb10.md) |
+| GLM-5.3 | Correctness is not established; the measured output reached its length cap before answering. | [GB10-GLM53-RESEARCH-001](../benchmarks/gb10/results/GB10-GLM53-RESEARCH-001.json) |
+| Kimi K3 | Complete-checkpoint serving was measured, but correctness and cross-run determinism are not established. | [GB10-KIMI-001](../benchmarks/gb10/results/GB10-KIMI-001.json) |
 
-The primary lineup is Qwen3.6 NVFP4 for Fast; Qwen3.8 Flash Next, GLM-5.3 Flash,
-and DeepSeek V4 Flash for Frontier; and Kimi K3 for Research. The Beta Qwen3.8 recipe
-preserves Inferact's publisher-quantized ModelOpt NVFP4 precision. Recipe 0.7.0 preloads
-all routed experts into immutable unified-memory slots, caps KV capacity at 128K tokens,
-and uses CUDA-graph replay for batch-one dense QSA before automatically falling back to
-eager sparse QSA. It measured 16.61 decode tok/s with 0.403 s warm TTFT, passing the
-Frontier performance thresholds. Exact 64K sparse-QSA recall, reasoning/tool parsing,
-the coding-agent probe, and a five-problem quality sample also passed; the clean-revision
-60-minute endurance gate remains outstanding. Its historical FP8 and earlier NVFP4
-results do not transfer across checkpoint and recipe-version boundaries. See the
-[optimization evidence](../benchmarks/gb10/results/GB10-QWEN38-NVFP4-OPT-002.json).
-Qwen3.6 recipe 0.3.0 passed the Fast gate on its pinned FTW artifact: 67.79 decode
-tok/s, 0.329 s warm TTFT, exact 32K recall, capability probes, and an uninterrupted
-60.28-minute zero-swap run. The fixed five-problem AIME sample hit the 2,048-token cap
-on every problem and scored 0/5, so the certification is an operational Fast-tier claim,
-not a quality-benchmark claim. See the
-[versioned evidence](../benchmarks/gb10/results/GB10-QWEN36-FAST-002.json).
-GLM-5.3 Flash's fused-mHC complete-checkpoint probe measured 6.27 tok/s and 5.681 s
-warm TTFT. Against an identical-geometry eager-mHC control, decode throughput improved
-by 25.6% and per-token latency fell by 20.4%; a confirmation run reproduced the output
-hash within 0.2% throughput. It now passes the Frontier performance thresholds, but
-prompt-selected NVMe expert reads still dominate TTFT and the broader certification gates
-remain outstanding. See the
-[versioned evidence](../benchmarks/gb10/results/GB10-GLM53-MHC-003.json).
-DeepSeek V4's optimized route-first sparse prefill measured 10.28 tok/s and 0.604 s
-warm TTFT with an auto-sized 5,321-slot expert cache. The repeated fixed probe required
-no physical expert reads during the measured request and preserved the established greedy
-output hash. Longer prompts fall back to bounded full-layer streaming. See the
-[full experiment](../exps/exp_dsv4_gb10.md).
-The Kimi K3 FTW artifact preserves NVIDIA's mixed checkpoint: routed experts remain NVFP4,
-supported attention projections remain block FP8, and other tensors retain their source
-precision on disk. Its validated GB10 resident profile converts 188 dense/shared/embedding/
-head matrices to per-row FP8 while loading so the minimum 896-slot expert cache fits. The
-exact 256-token probe measured 0.1613 tok/s and 395.405 s warm TTFT with zero scoped runtime
-OOM or swap-out. It stopped before a final AIME answer and diverged from shorter greedy
-rungs, so correctness and cross-rung determinism are not established. See the
-[versioned evidence](../benchmarks/gb10/results/GB10-KIMI-001.json) and
-[full experiment](../exps/exp_kimik3_gb10.md).
+## Running a recipe
 
-GLM-5.3 uses the GLM-5.2 runtime recipe because the pinned checkpoint declares the same
-`glm_moe_dsa` architecture and execution dimensions. Its own complete-checkpoint probe
-measured 0.813 tok/s and 2.530 s warm TTFT with no OOM or swap-out growth. The 256-token
-output hit its length cap before stating the expected answer, so correctness is not
-established and the recipe remains Experimental. See the
-[versioned evidence](../benchmarks/gb10/results/GB10-GLM53-RESEARCH-001.json) and
-[full experiment](../exps/exp_glm5_3_full_gb10.md).
-
-GLM-5.2 is listed in Research because its selected GB10 experiment sustained 0.802 tok/s,
-below the 5 tok/s Frontier threshold. The displayed 2.57 s TTFT and throughput are measured,
-but the result remains Experimental because the 256-token trial swapped out 680 KiB and did
-not pass the strict Research gate. See the [full experiment](../exps/exp_glm5_2_gb10.md).
-
-## Engine architecture support
-
-SparkLab's native runtime can load additional checkpoints, including
-GLM-4.7, Qwen3.x, GPT-OSS, Gemma-4, MiniMax, and Muse-Glimmer variants. That
-compatibility is not a SparkLab support or performance claim. Only entries
-returned by `sparklab models` participate in the GB10 product portfolio.
-
-## FTW and NVMe execution
-
-FTW is the engine's self-contained fast-load format. Conversion is optional for
-resident checkpoints and required by recipes such as full Kimi K3 whose routed
-experts must be independently addressable from NVMe:
+Use the recipe workflow for a validated checkpoint and configuration:
 
 ```bash
-sparklab checkpoint --model /path/to/hf-checkpoint --out /path/to/model-ftw
+sparklab plan <recipe> --prepare
+sparklab pull <recipe> --prepare
+sparklab run <recipe>
 ```
 
-Recipe-backed `sparklab pull <recipe> --prepare` downloads a prebuilt FTW when
-the recipe declares an immutable `runtime_artifact`; otherwise it performs this
-conversion at the pinned source revision. A runtime artifact declaration records
-its Hugging Face repository, full commit revision, byte size, and FTW source
-fingerprint. `--from-source` forces conversion. Direct conversion and serving
-flags remain an expert interface documented in [cli.md](cli.md).
+`--prepare` uses a pinned prebuilt FTW artifact when one is available. Use
+`--from-source` to reproduce conversion locally. FTW preserves the source checkpoint's
+precision while arranging weights for fast loading; separately quantized artifacts do
+not inherit the source recipe's certification.
 
-For Beta 0.1 recipes, FTW preparation is precision-preserving: it may align, shard,
-fuse, or repack tensors for the native backend, but it must retain the source
-checkpoint's dtype and quantization. Any precision-changing transform is a separately
-named experimental artifact and cannot inherit the source recipe's certification.
+SparkLab can load additional uncataloged architectures, but only recipes returned by
+`sparklab models` are part of the supported GB10 portfolio. Direct conversion and serving
+options are documented in [cli.md](cli.md).
