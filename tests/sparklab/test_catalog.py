@@ -285,6 +285,13 @@ def test_glm53_full_recipe_points_to_measured_failed_research_evidence():
     from sparklab.certification import evaluate_tier
 
     recipe = get_recipe("glm-5.3")
+    assert recipe.runtime_artifact is not None
+    assert recipe.runtime_artifact.repo_id == "oakmindai/GLM-5.3-NVFP4-FTW"
+    assert recipe.runtime_artifact.revision == (
+        "024b437e3f31f9cf9b8a936dffaf1302fbda1d30"
+    )
+    assert recipe.runtime_artifact.bytes == 428713099264
+    assert recipe.runtime_artifact.fingerprint == "a0e799b03bceb4bf"
     assert recipe.performance.evidence == "GB10-GLM53-RESEARCH-001"
     assert recipe.performance.evidence in recipe.evidence
     root = Path(__file__).resolve().parents[2]

@@ -38,12 +38,12 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 + KDA FP8 · FTW | `glm-5.3-flash` | Experimental | 6.27 | 5.681 |
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
 | [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | 753B total / 40B active | NVFP4 | `glm-5.2` | Experimental fallback | 0.80 | 2.570 |
-| [GLM-5.3](https://huggingface.co/Inferact/GLM-5.3-NVFP4) | 753B total / 40B active | NVFP4 | `glm-5.3` | Experimental fallback | 0.81 | 2.530 |
+| [GLM-5.3](https://huggingface.co/oakmindai/GLM-5.3-NVFP4-FTW) | 753B total / 40B active | NVFP4 + resident FP8 · FTW | `glm-5.3` | Experimental fallback | 0.81 | 2.530 |
 | [Kimi K3](https://huggingface.co/oakmindai/Kimi-K3-NVFP4-FTW) | 2.8T total / 16 of 896 experts | ModelOpt NVFP4/FP8 · FTW | `kimi-k3` | Experimental | 0.16 | 395.405 |
 
-Model links point to the selected source or published FTW checkpoints. Qwen3.6 and Kimi K3
-use pinned prebuilt FTW artifacts; their source-conversion paths remain available for
-reproducibility.
+Model links point to the selected source or published FTW checkpoints. Qwen3.6, GLM-5.3,
+and Kimi K3 use pinned prebuilt FTW artifacts; their source-conversion paths remain
+available for reproducibility.
 
 Parameter values use publisher-reported architecture counts. Qwen3.8's auxiliary total is
 the 51B n-gram embedding plus its 4B MTP module. NVIDIA reports Kimi K3 activation as 16 of
