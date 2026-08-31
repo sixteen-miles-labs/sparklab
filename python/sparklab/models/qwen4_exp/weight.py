@@ -37,6 +37,7 @@ _EXPERT_LAYER = re.compile(
     r"layers\.(\d+)\.mlp\.experts\.(gate_up_proj|down_proj)$"
 )
 _SHARD_RE = re.compile(r"ngram_embedding\.shard_(\d+)\.weight$")
+_MTP_FILE = "nvfp4_experts_mtp.safetensors"
 _SKIP = (
     "model.visual.", "visual.", "mtp.",
 )
@@ -264,6 +265,30 @@ def _copy_range(src_fd: int, dst_fd: int, offset: int, length: int) -> None:
         remaining -= copied
 
 
+def find_mtp_sidecar(model_path: str) -> str | None:
+    """Return the publisher's standalone Qwen4 MTP checkpoint, if present."""
+    override = os.getenv("SPARKLAB_QWEN4_MTP_PATH")
+    candidates = [override, os.path.join(model_path, _MTP_FILE)]
+    for path in candidates:
+        if path and os.path.isfile(path):
+            return os.path.realpath(path)
+    return None
+
+
+def _copy_file_atomic(source: str, destination: str) -> int:
+    size = os.path.getsize(source)
+    temporary = destination + ".tmp"
+    src_fd = os.open(source, os.O_RDONLY)
+    try:
+        with open(temporary, "wb", buffering=0) as out:
+            _copy_range(src_fd, out.fileno(), 0, size)
+            os.fsync(out.fileno())
+    finally:
+        os.close(src_fd)
+    os.replace(temporary, destination)
+    return size
+
+
 def copy_external_artifacts(model_path: str, out_dir: str, model_config) -> list[dict]:
     """Extract the PLE table into one precision-preserving random-read file.
 
@@ -344,11 +369,23 @@ def copy_external_artifacts(model_path: str, out_dir: str, model_config) -> list
     with open(temp_manifest, "w", encoding="utf-8") as handle:
         json.dump(manifest, handle, sort_keys=True)
     os.replace(temp_manifest, manifest_path)
-    return [{"kind": "qwen4_ngram", **manifest}]
+    artifacts = [{"kind": "qwen4_ngram", **manifest}]
+    mtp_source = find_mtp_sidecar(model_path)
+    if mtp_source is not None:
+        mtp_file = _MTP_FILE
+        mtp_bytes = _copy_file_atomic(mtp_source, os.path.join(out_dir, mtp_file))
+        artifacts.append({
+            "kind": "qwen4_mtp",
+            "file": mtp_file,
+            "nbytes": mtp_bytes,
+            "format": "safetensors-nvfp4",
+        })
+    return artifacts
 
 
 __all__ = [
     "copy_external_artifacts",
+    "find_mtp_sidecar",
     "iter_weights",
     "load_nvfp4_expert_sources",
     "load_nvfp4_expert_sources_parallel",

@@ -82,6 +82,57 @@ def test_config_declares_qsa_separately_from_minimax_bsa():
     assert cfg.linear_state_snapshots is True
 
 
+def test_mtp_config_injects_one_qsa_slot_and_disables_graphs():
+    from sparklab.runtime.engine.engine import _adjust_speculative_config
+
+    model_config = parse_config(_config())
+    config = SimpleNamespace(
+        model_config=model_config,
+        speculative_tokens=3,
+        max_running_req=8,
+        cache_type="naive",
+        cuda_graph_bs=[1, 2, 4],
+        cuda_graph_max_bs=4,
+    )
+
+    def override(name, value):
+        setattr(config, name, value)
+
+    _adjust_speculative_config(config, override)
+    # Reconciliation is idempotent if a caller validates the same config twice.
+    _adjust_speculative_config(config, override)
+
+    mtp_layer = model_config.num_layers
+    assert model_config.qwen4_exp_args.qsa_layer_ids.count(mtp_layer) == 1
+    qsa = model_config.kv_cache_group_specs()[0]
+    assert qsa.layer_ids[-1] == mtp_layer
+    assert qsa.num_index_layers == len(qsa.layer_ids)
+    assert model_config.speculative_tokens == 3
+    assert config.max_running_req == 1
+    assert config.cache_type == "radix"
+    assert config.cuda_graph_bs == [] and config.cuda_graph_max_bs == 0
+
+
+@pytest.mark.parametrize(
+    ("truth", "drafts", "expected"),
+    [
+        ([4, 5], [9], 0),
+        ([4, 5, 6], [4, 9], 1),
+        ([4, 5, 6, 7], [4, 5, 6], 3),
+    ],
+)
+def test_mtp_acceptance_stops_at_first_mismatch(truth, drafts, expected):
+    from sparklab.runtime.engine.engine import _longest_accepted_prefix
+
+    assert _longest_accepted_prefix(torch.tensor(truth), torch.tensor(drafts)) == expected
+
+
+def test_zero_temperature_is_greedy_despite_model_top_p_default():
+    from sparklab.core import SamplingParams
+
+    assert SamplingParams(temperature=0.0, top_p=0.95).is_greedy
+
+
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 def test_qwen_shared_expert_overlap_launches_before_routed_staging():
     from sparklab.models.qwen3_5_moe.moe import Qwen3_5MoE
@@ -424,6 +475,34 @@ def test_external_ngram_artifact_streams_exact_rows(tmp_path):
     assert reads == 3
 
 
+def test_external_artifacts_copy_optional_mtp_sidecar(tmp_path):
+    source, out = tmp_path / "source", tmp_path / "out"
+    source.mkdir()
+    out.mkdir()
+    name = "model.language_model.layers.1.ple.ple_embedding.ngram_embedding.shard_0.weight"
+    save_file({name: torch.ones(2, 4, dtype=torch.bfloat16)}, source / "model.safetensors")
+    (source / "model.safetensors.index.json").write_text(
+        json.dumps({"weight_map": {name: "model.safetensors"}}), encoding="utf-8"
+    )
+    sidecar = source / "nvfp4_experts_mtp.safetensors"
+    sidecar.write_bytes(b"synthetic-mtp")
+    args = SimpleNamespace(
+        split_ngram_parts=1, ple_embed_dim=64, ngram_size=3, heads_per_ngram=8
+    )
+
+    artifacts = copy_external_artifacts(
+        str(source), str(out), SimpleNamespace(qwen4_exp_args=args)
+    )
+
+    assert artifacts[1] == {
+        "kind": "qwen4_mtp",
+        "file": "nvfp4_experts_mtp.safetensors",
+        "nbytes": len(b"synthetic-mtp"),
+        "format": "safetensors-nvfp4",
+    }
+    assert (out / "nvfp4_experts_mtp.safetensors").read_bytes() == b"synthetic-mtp"
+
+
 def test_external_ngram_artifact_preserves_official_fp8_payload(tmp_path):
     source, out = tmp_path / "source", tmp_path / "out"
     source.mkdir()
@@ -651,6 +730,45 @@ def test_ple_stages_smaller_batch_into_stable_graph_input_prefix():
 
     assert ple._capture_embed.data_ptr() == pointer
     torch.testing.assert_close(ple._capture_embed[:2], replacement)
+
+
+def test_ple_prefill_checkpoint_includes_convolution_history(monkeypatch):
+    """A hybrid prefix restore needs PLE state from the same boundary as GDN."""
+    width, state_len, length = 2, 2, 65
+    states = torch.zeros(3, width, state_len)
+    states[0] = torch.tensor([[100.0, 101.0], [200.0, 201.0]])
+    pool = SimpleNamespace(ensure_aux_state=lambda *_args, **_kwargs: states)
+    monkeypatch.setattr(
+        "sparklab.models.qwen4_exp.ple.get_global_ctx",
+        lambda: SimpleNamespace(linear_state_pool=pool),
+    )
+    ple = Qwen4PLE.__new__(Qwen4PLE)
+    ple.layer_id = 0
+    ple.width = width
+    ple.state_len = state_len
+    ple.dilation = 1
+    ple.conv1d = SimpleNamespace(weight=torch.ones(width, 1, 3))
+    req = SimpleNamespace(
+        extend_len=length,
+        linear_slot_idx=0,
+        table_idx=0,
+        mamba_ping_pong=(1, 2),
+    )
+    batch = SimpleNamespace(
+        padded_reqs=[req],
+        uses_prefill_kernels=True,
+        fla_metadata=SimpleNamespace(track_dst=torch.tensor([1])),
+    )
+    current = torch.arange(length * width, dtype=torch.float32).view(length, width)
+
+    ple._conv(current, batch)
+
+    history = torch.cat((
+        torch.tensor([[100.0, 101.0], [200.0, 201.0]]),
+        current.T,
+    ), -1)
+    torch.testing.assert_close(states[1], history[:, 64:66])
+    torch.testing.assert_close(states[0], history[:, -state_len:])
 
 
 def test_qsa_selects_complete_blocks_and_always_keeps_tail():

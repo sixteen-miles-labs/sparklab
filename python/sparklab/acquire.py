@@ -239,6 +239,38 @@ def acquire_recipe(
                 f"{hosted.repo_id}@{hosted.revision}: {exc}; "
                 "retry or use --from-source to convert locally"
             ) from exc
+        supplemental_files = []
+        for supplemental in hosted.supplemental_files:
+            try:
+                downloader(
+                    repo_id=supplemental.repo_id,
+                    revision=supplemental.revision,
+                    local_dir=str(destination),
+                    allow_patterns=[supplemental.filename],
+                )
+            except Exception as exc:
+                raise AcquisitionError(
+                    "cannot acquire supplemental runtime file "
+                    f"{supplemental.repo_id}@{supplemental.revision}:"
+                    f"{supplemental.filename}: {exc}"
+                ) from exc
+            supplemental_path = resolved_runtime / supplemental.filename
+            try:
+                actual_bytes = supplemental_path.stat().st_size
+            except OSError as exc:
+                raise AcquisitionError(
+                    f"supplemental runtime file is missing: {supplemental_path}"
+                ) from exc
+            if actual_bytes != supplemental.bytes:
+                raise AcquisitionError(
+                    f"supplemental runtime file size mismatch for "
+                    f"{supplemental.filename}: expected {supplemental.bytes}, "
+                    f"found {actual_bytes}"
+                )
+            supplemental_files.append({
+                **supplemental.to_dict(),
+                "path": str(supplemental_path.resolve()),
+            })
         if not (resolved_runtime / "config.json").is_file():
             raise AcquisitionError(
                 f"prebuilt runtime artifact has no config.json: {resolved_runtime}"
@@ -263,6 +295,7 @@ def acquire_recipe(
             "revision": hosted.revision,
             "fingerprint": validation.fingerprint,
             "validation": _validation_payload(validation),
+            "supplemental_files": supplemental_files,
         }
     else:
         source = source_path(recipe, root)

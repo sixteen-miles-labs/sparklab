@@ -3,6 +3,7 @@ from __future__ import annotations
 import gc
 import math
 import os
+from dataclasses import replace
 from datetime import timedelta
 from typing import Any, Dict, Iterable, NamedTuple, Tuple
 
@@ -269,6 +270,47 @@ def _validate_attention_backend_choice(config, override, required: frozenset[Att
             )
 
 
+def _adjust_speculative_config(config: EngineConfig, override) -> None:
+    """Inject the Qwen4 MTP layer before cache/backend resolution."""
+    speculative_tokens = int(getattr(config, "speculative_tokens", 0) or 0)
+    if speculative_tokens < 0 or speculative_tokens > 3:
+        raise ValueError("--speculative-tokens must be between 0 and 3")
+    if not speculative_tokens:
+        return
+
+    model_config = config.model_config
+    if getattr(model_config, "qwen4_exp_args", None) is None:
+        raise ValueError("--speculative-tokens currently supports Qwen4-Exp only")
+    # The draft layer owns an independent QSA KV/index slot at the first layer
+    # id beyond the target tower. Inject it without changing num_layers, which
+    # still constructs exactly the target blocks. Do this before hybrid-cache
+    # resolution so verification always receives recurrent-state snapshots.
+    from sparklab.models.config import FullAttentionGroupConfig
+
+    mtp_layer_id = model_config.num_layers
+    args = model_config.qwen4_exp_args
+    if mtp_layer_id not in args.qsa_layer_ids:
+        args = replace(args, qsa_layer_ids=(*args.qsa_layer_ids, mtp_layer_id))
+    groups = []
+    for group in model_config.attention_groups:
+        if isinstance(group, FullAttentionGroupConfig) and mtp_layer_id not in group.layer_ids:
+            group = replace(
+                group,
+                layer_ids=(*group.layer_ids, mtp_layer_id),
+                num_index_layers=group.num_index_layers + 1,
+            )
+        groups.append(group)
+    object.__setattr__(model_config, "qwen4_exp_args", args)
+    object.__setattr__(model_config, "attention_groups", tuple(groups))
+    object.__setattr__(model_config, "speculative_tokens", speculative_tokens)
+    # Transactional verification is eager and currently batch-one. This is an
+    # explicit bring-up constraint, not a silent numerical compromise.
+    override("max_running_req", 1)
+    override("cache_type", "radix")
+    override("cuda_graph_bs", [])
+    override("cuda_graph_max_bs", 0)
+
+
 def _make_dummy_weight_state_dict(
     model_state: Dict[str, torch.Tensor],
     *,
@@ -314,10 +356,22 @@ def _materialize_loaded_weight_state_dict(
     return state_dict
 
 
+def _longest_accepted_prefix(truth: torch.Tensor, drafts: torch.Tensor) -> int:
+    """Return the number of consecutive draft tokens accepted by the target."""
+    accepted = 0
+    for value in truth[:-1].eq(drafts).to("cpu").tolist():
+        if not value:
+            break
+        accepted += 1
+    return accepted
+
+
 class ForwardOutput(NamedTuple):
     next_tokens_gpu: torch.Tensor
     next_tokens_cpu: torch.Tensor
     copy_done_event: torch.cuda.Event
+    token_counts: Tuple[int, ...]
+    managed_writes: bool
 
 
 class Engine:
@@ -342,6 +396,10 @@ class Engine:
         torch.cuda.set_stream(self.stream)
         self.dtype = config.dtype
         self.config = config  # retained for runtime cache rebuild (rebuild_runtime_cache)
+        self.mtp_stats = {
+            "target_forwards": 0, "drafted": 0, "accepted": 0,
+            "outputs": 0,
+        }
         # KV pool family fixed at construction from the model config: its classmethods own the
         # page-token geometry and cost arithmetic the engine needs BEFORE the pool exists
         # (num_pages sizing, --moe-cache-auto); the instance owns rebuild/validation after.
@@ -981,8 +1039,26 @@ class Engine:
 
     def forward_batch(self, batch: Batch, args: BatchSamplingArgs) -> ForwardOutput:
         assert torch.cuda.current_stream() == self.stream
+        if self.config.speculative_tokens and batch.is_prefill:
+            self.mtp_stats = {
+                "target_forwards": 0, "drafted": 0, "accepted": 0,
+                "outputs": 0,
+            }
+        if self.config.speculative_tokens:
+            self.mtp_stats["target_forwards"] += 1
+        state_snapshots: list[tuple[int, int]] = []
+        if batch.is_verify:
+            pool = self.linear_state_pool
+            if pool is None:
+                raise RuntimeError("MTP verification requires a recurrent-state pool")
+            for req in batch.reqs:
+                if req.linear_slot_idx is None or req.mamba_ping_pong is None:
+                    raise RuntimeError("MTP verification requires hybrid-radix state slots")
+                scratch = req.mamba_ping_pong[req.mamba_next_track_idx]
+                pool.copy_from(req.linear_slot_idx, scratch)
+                state_snapshots.append((req.linear_slot_idx, scratch))
         with self.ctx.forward_batch(batch):
-            if self.graph_runner.can_use_cuda_graph(batch):
+            if not batch.is_verify and self.graph_runner.can_use_cuda_graph(batch):
                 logits = self.graph_runner.replay(batch)
             else:
                 logits = self.model.forward()
@@ -991,16 +1067,92 @@ class Engine:
             # -> stale expert outputs) as a loud error instead of silent corruption.
             self.cpu_moe_executor.raise_if_unhealthy()
 
-        for req in batch.reqs:
-            req.complete_one()
-        batch.can_decode_after_forward = tuple(req.can_decode for req in batch.reqs)
+        if batch.is_verify:
+            if batch.size != 1:
+                raise RuntimeError("Qwen4 MTP verification currently supports batch size 1")
+            req = batch.reqs[0]
+            start = batch.verify_cached_lens[0]
+            truth = torch.argmax(logits, dim=-1).to(torch.int32)
+            drafts = batch.input_ids[1:].to(torch.int32)
+            accepted = _longest_accepted_prefix(truth, drafts)
+            self.mtp_stats["drafted"] += int(drafts.numel())
+            self.mtp_stats["accepted"] += accepted
+            chosen = torch.cat((drafts[:accepted], truth[accepted : accepted + 1]))
+            if accepted < drafts.numel():
+                live, scratch = state_snapshots[0]
+                self.linear_state_pool.copy_from(scratch, live)
+                self._replay_verified_prefix(batch, accepted + 1, start)
+                req.speculative_drafts = None
+            else:
+                req.speculative_drafts = self.model.propose_mtp(
+                    batch, truth[-1:]
+                )
+            req.cached_len = start + accepted + 1
+            req.device_len = req.cached_len + 1
+            # Accepted draft rows already occupy token_pool. The correction or
+            # bonus token is the one new logical output row managed here.
+            # token_pool is scheduler-owned; expose the logical write location
+            # and value on the batch for Scheduler._forward.
+            batch.speculative_write = (req.table_idx, req.cached_len, chosen[-1])
+            next_tokens_gpu = chosen
+            token_counts = (int(chosen.numel()),)
+            managed_writes = True
+        else:
+            batch_logits = logits[: batch.size]
+            next_tokens_gpu = self.sampler.sample(batch_logits, args).to(torch.int32)
+            proposer = getattr(self.model, "propose_mtp", None)
+            proposals = proposer(batch, next_tokens_gpu) if proposer is not None else None
+            for index, req in enumerate(batch.reqs):
+                req.speculative_drafts = proposals if index == 0 else None
+                req.complete_one()
+            token_counts = tuple(1 for _ in batch.reqs)
+            managed_writes = False
 
-        batch_logits = logits[: batch.size]
-        next_tokens_gpu = self.sampler.sample(batch_logits, args).to(torch.int32)
+        if self.config.speculative_tokens:
+            self.mtp_stats["outputs"] += int(next_tokens_gpu.numel())
+
+        batch.can_decode_after_forward = tuple(req.can_decode for req in batch.reqs)
         next_tokens_cpu = next_tokens_gpu.to("cpu", non_blocking=True)
         copy_done_event = torch.cuda.Event()
         copy_done_event.record(self.stream)
-        return ForwardOutput(next_tokens_gpu, next_tokens_cpu, copy_done_event)
+        return ForwardOutput(
+            next_tokens_gpu, next_tokens_cpu, copy_done_event,
+            token_counts, managed_writes,
+        )
+
+    def _replay_verified_prefix(self, batch: Batch, length: int, start: int) -> None:
+        """Rebuild GDN/PLE state after a partial speculative rejection."""
+        from sparklab.attention.linear import build_fla_metadata
+
+        original = batch.reqs[0]
+        query = batch.input_ids[:length]
+        host_ids = torch.cat((
+            original.input_ids[:start],
+            query.detach().to(device="cpu", dtype=original.input_ids.dtype),
+        ))
+        replay_req = Req(
+            input_ids=host_ids,
+            table_idx=original.table_idx,
+            cached_len=start,
+            output_len=1,
+            uid=original.uid,
+            sampling_params=original.sampling_params,
+            cache_handle=original.cache_handle,
+        )
+        replay_req.linear_slot_idx = original.linear_slot_idx
+        replay = Batch(reqs=[replay_req], phase="prefill")
+        replay.padded_reqs = replay.reqs
+        replay.disable_state_tracking = True
+        replay.input_ids = query
+        replay.positions = batch.positions[:length]
+        replay.out_loc = batch.out_loc[:length]
+        replay.linear_table_idx = torch.tensor(
+            [original.linear_slot_idx], dtype=torch.int32, device=self.device
+        )
+        replay.fla_metadata = build_fla_metadata(replay, self.device)
+        self.attn_backend.prepare_metadata(replay)
+        with self.ctx.forward_batch(replay):
+            self.model.model.forward(replay.input_ids)
 
     @torch.inference_mode()
     def _warmup_prefill(self) -> None:
@@ -1223,6 +1375,8 @@ def _adjust_config(config: EngineConfig):
     has_linear_attention = getattr(model_config, "has_linear_attention", False)
     is_moe = getattr(model_config, "is_moe", False)
     expert_quant = getattr(model_config, "expert_quant", "none")
+
+    _adjust_speculative_config(config, override)
 
     cache_policy = getattr(config, "moe_cache_policy", "lru")
     prefill_overlap = getattr(config, "moe_prefill_overlap", True)

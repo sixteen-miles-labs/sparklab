@@ -280,7 +280,7 @@ class Scheduler(SchedulerIOMixin):
         # backend's per-batch SNAPSHOT (staged in prepare_for_replay right before the replay, on
         # the same stream, like the generic out_loc copy_from), not the live slot maps -- so the
         # next batch's allocate_paged cannot corrupt the in-flight graph replay. DSV4 overlaps.
-        if ENV.DISABLE_OVERLAP_SCHEDULING:
+        if ENV.DISABLE_OVERLAP_SCHEDULING or self.config.speculative_tokens:
             with self.engine_stream_ctx:
                 self.engine.stream.wait_stream(self.stream)
                 while True:
@@ -300,12 +300,25 @@ class Scheduler(SchedulerIOMixin):
         if last_data is None:
             return
 
-        batch, (_, next_tokens_cpu, copy_done) = last_data[0].batch, last_data[1]
+        batch, output = last_data[0].batch, last_data[1]
+        if hasattr(output, "next_tokens_cpu"):
+            next_tokens_cpu = output.next_tokens_cpu
+            copy_done = output.copy_done_event
+            token_counts = output.token_counts
+        else:
+            # Compatibility with simple ForwardOutput-shaped tuples used by
+            # direct scheduler callers and older in-process integrations.
+            _, next_tokens_cpu, copy_done = output
+            token_counts = tuple(1 for _ in batch.reqs)
         copy_done.synchronize()
         reply: List[DetokenizeMsg] = []
         new_finished_reqs: Set[Req] = set()
         with self.cache_manager.lazy_free_region():
+            token_offset = 0
             for i, req in enumerate(batch.reqs):
+                count = token_counts[i]
+                req_tokens = next_tokens_cpu[token_offset : token_offset + count]
+                token_offset += count
                 if isinstance(req, ChunkedReq):
                     # Don't cache intermediate chunks; the full prompt is cached once when the
                     # final chunk is processed. Caching here snapshots a handle the next chunk
@@ -331,49 +344,52 @@ class Scheduler(SchedulerIOMixin):
                     # are freed below/already; shipping this token would append past the
                     # client's terminal reply.
                     continue
-                next_token = next_tokens_cpu[i]
-                req.append_host(next_token.unsqueeze(0))
-                next_token = int(next_token.item())
-                # EOS / stop-string -> "stop", output budget exhausted -> "length";
-                # EOS and stop strings win over length.
-                # The next overlapped forward may already have advanced ``req``.  Use the
-                # state captured by the batch being drained or the penultimate token is
-                # incorrectly declared terminal and the actual last token is discarded.
-                hit_length = not (
-                    batch.can_decode_after_forward[i]
-                    if batch.can_decode_after_forward
-                    else req.can_decode
-                )
-                hit_eos = (
-                    not req.sampling_params.ignore_eos and next_token in self.eos_token_ids
-                )
-                matched_stop = (
-                    self._match_stop_str(req)
-                    if not hit_eos and req.sampling_params.stop_strs
-                    else None
-                )
-                finished = hit_length or hit_eos or matched_stop is not None
-                finish_reason = (
-                    ("stop" if (hit_eos or matched_stop is not None) else "length")
-                    if finished
-                    else None
-                )
-                if (
-                    next_token == self.toolcall_anchor_id
-                    and req.toolcall_anchor_len is None
-                    and not finished
-                ):
-                    req.toolcall_anchor_len = req.input_ids.numel()
-                reply.append(
-                    DetokenizeMsg(
+                finished = False
+                for token_index, next_tensor in enumerate(req_tokens):
+                    req.append_host(next_tensor.unsqueeze(0))
+                    next_token = int(next_tensor.item())
+                    # Multi-token verification can finish at any accepted token.
+                    # Host length is the exact per-token boundary; device_len is
+                    # already at the post-verification boundary.
+                    hit_length = req.input_ids.numel() >= req.max_device_len
+                    hit_eos = (
+                        not req.sampling_params.ignore_eos
+                        and next_token in self.eos_token_ids
+                    )
+                    matched_stop = (
+                        self._match_stop_str(req)
+                        if not hit_eos and req.sampling_params.stop_strs
+                        else None
+                    )
+                    finished = hit_length or hit_eos or matched_stop is not None
+                    finish_reason = (
+                        ("stop" if (hit_eos or matched_stop is not None) else "length")
+                        if finished else None
+                    )
+                    if (
+                        next_token == self.toolcall_anchor_id
+                        and req.toolcall_anchor_len is None
+                        and not finished
+                    ):
+                        req.toolcall_anchor_len = req.input_ids.numel()
+                    reply.append(DetokenizeMsg(
                         uid=req.uid,
                         next_token=next_token,
                         finished=finished,
                         finish_reason=finish_reason,
                         matched_stop=matched_stop,
                         stop_strs=req.sampling_params.stop_strs or None,
-                    )
-                )
+                    ))
+                    if finished:
+                        if token_index + 1 < count:
+                            req.cached_len = min(
+                                req.cached_len, req.input_ids.numel()
+                            )
+                            # One trailing token is the unprocessed bonus or
+                            # correction. Two or more means target state also
+                            # consumed a token beyond the terminal boundary.
+                            req.state_overadvanced = token_index + 2 < count
+                        break
 
                 # NOTE: overlap scheduling may make the request freed twice, skip second free
                 if finished and req not in self.finished_reqs:
@@ -392,6 +408,19 @@ class Scheduler(SchedulerIOMixin):
                     self.cache_manager.cache_req(req, finished=False)
 
         self.finished_reqs = new_finished_reqs
+        speculative_tokens = int(getattr(self.config, "speculative_tokens", 0) or 0)
+        if new_finished_reqs and speculative_tokens:
+            stats = self.engine.mtp_stats
+            drafted = stats["drafted"]
+            rate = stats["accepted"] / drafted if drafted else 0.0
+            logger.info_rank0(
+                "MTP summary: steps=%d, accepted=%d/%d (%.1f%%), "
+                "outputs=%d, target_forwards=%d, outputs/target=%.2f",
+                speculative_tokens,
+                stats["accepted"], drafted, 100.0 * rate,
+                stats["outputs"], stats["target_forwards"],
+                stats["outputs"] / max(stats["target_forwards"], 1),
+            )
         # Stamp each reply with the post-batch KV page occupancy so the frontend (shell
         # status bar) can show live KV usage without a separate query.
         used, total = self._kv_usage_pages()
@@ -852,6 +881,22 @@ class Scheduler(SchedulerIOMixin):
         )
         if batch is None:
             return None
+        if getattr(batch, "phase", None) == "decode" and batch.size == 1:
+            req = batch.reqs[0]
+            drafts = req.speculative_drafts
+            req.speculative_drafts = None
+            if drafts is not None:
+                count = min(int(drafts.numel()), max(0, req.remain_len - 1))
+                if count:
+                    start = req.device_len
+                    self.token_pool[req.table_idx, start : start + count].copy_(
+                        drafts[:count]
+                    )
+                    batch.verify_cached_lens = (req.cached_len,)
+                    req.device_len += count
+                    batch.phase = "verify"
+                    batch.return_all_logits = True
+                    batch.disable_state_tracking = True
         forward_input = self._prepare_batch(batch)
         self._report_prompt_admissions(batch)
         return forward_input
@@ -885,7 +930,11 @@ class Scheduler(SchedulerIOMixin):
         if self.toolcall_anchor_id is not None and not batch.is_prefill:
             self.cache_manager.snapshot_toolcall_anchor(batch.reqs)
         forward_output = self.engine.forward_batch(batch, sample_args)
-        self.token_pool[output_mapping] = forward_output.next_tokens_gpu
+        if forward_output.managed_writes:
+            table_idx, position, token = batch.speculative_write
+            self.token_pool[table_idx, position] = token
+        else:
+            self.token_pool[output_mapping] = forward_output.next_tokens_gpu
         self.decode_manager.filter_reqs(forward_input.batch.reqs)
         return forward_output
 

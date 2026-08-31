@@ -164,7 +164,9 @@ def create_kvcache_pool(
         spec = kv_specs[0]
         return BSAKVCache(
             num_kv_heads=spec.num_kv_heads,
-            num_layers=model_config.num_layers,
+            # An attached speculative layer can own KV at the first id beyond
+            # the target tower without becoming a target decoder block.
+            num_layers=max(model_config.num_layers, max(spec.layer_ids, default=-1) + 1),
             head_dim=spec.head_dim,
             num_pages=num_pages,
             page_size=page_size,

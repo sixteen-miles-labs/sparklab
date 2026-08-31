@@ -28,7 +28,10 @@ class SamplingParams:
 
     @property
     def is_greedy(self) -> bool:
-        return (self.temperature <= 0.0 or self.top_k == 1) and self.top_p == 1.0
+        # Zero temperature and top-k=1 are independently deterministic. API
+        # defaults for top_p must not turn temperature=0 into stochastic sampling
+        # (or disable deterministic-only features such as MTP verification).
+        return self.temperature <= 0.0 or self.top_k == 1
 
 
 @dataclass(eq=False)
@@ -64,10 +67,21 @@ class Req:
     # handler must not free resources under an in-flight forward; it sets this flag and
     # _process_last_data frees the request when the batch drains (after copy_done.synchronize).
     aborted: bool = False
+    # Greedy MTP proposals waiting to be verified by the next target forward.
+    # Kept on device so the scheduler can stage them without a host round trip.
+    speculative_drafts: torch.Tensor | None = None
+    # A terminal token can occur before the end of a verified multi-token result.
+    # In that case recurrent state ran past the client-visible sequence and must
+    # not be donated to the radix tree at finish.
+    state_overadvanced: bool = False
 
     def __post_init__(self) -> None:
         assert self.input_ids.is_cpu
         self.device_len = len(self.input_ids)
+        # Furthest logical length whose physical pages were allocated. Usually
+        # this equals cached_len at completion; speculative staging can allocate
+        # one page beyond the final accepted boundary and must still return it.
+        self.allocated_len = self.cached_len
         self.max_device_len = len(self.input_ids) + self.output_len
         assert 0 <= self.cached_len < self.device_len <= self.max_device_len
         self._alloc_ids_buf()
@@ -112,7 +126,7 @@ class Req:
 @dataclass
 class Batch:
     reqs: List[Req]
-    phase: Literal["prefill", "decode"]
+    phase: Literal["prefill", "decode", "verify"]
     # these fields should be set by scheduler
     input_ids: torch.Tensor = field(init=False)
     positions: torch.Tensor = field(init=False)
@@ -150,6 +164,11 @@ class Batch:
     # overlapped forward mutates the same Req objects before this batch is drained, so
     # termination accounting must not consult their then-current ``can_decode`` state.
     can_decode_after_forward: Tuple[bool, ...] = field(default_factory=tuple, init=False)
+    # Verification remains a decode lifecycle event, but its recurrent update
+    # is a multi-token continuation and therefore uses the varlen kernels.
+    return_all_logits: bool = field(default=False, init=False)
+    disable_state_tracking: bool = field(default=False, init=False)
+    verify_cached_lens: Tuple[int, ...] = field(default_factory=tuple, init=False)
 
     @property
     def is_prefill(self) -> bool:
@@ -157,7 +176,15 @@ class Batch:
 
     @property
     def is_decode(self) -> bool:
-        return self.phase == "decode"
+        return self.phase in {"decode", "verify"}
+
+    @property
+    def is_verify(self) -> bool:
+        return self.phase == "verify"
+
+    @property
+    def uses_prefill_kernels(self) -> bool:
+        return self.phase in {"prefill", "verify"}
 
     @property
     def size(self) -> int:

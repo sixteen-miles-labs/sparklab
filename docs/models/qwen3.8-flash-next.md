@@ -33,9 +33,10 @@ sparklab pull qwen3.8-flash-next --root /path/to/models --prepare
 
 `pull --prepare` automatically downloads the pinned Hugging Face FTW artifact from
 [`oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW`](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW),
-then validates its immutable revision and fingerprint. The artifact preserves the
-publisher's ModelOpt NVFP4 precision. Use `--from-source` only to reproduce the FTW
-conversion locally.
+plus the publisher's pinned 1.49 GiB MTP sidecar, then validates their immutable
+revisions, sizes, and FTW fingerprint. The artifact preserves the publisher's ModelOpt
+NVFP4 precision. Use `--from-source` only to reproduce the FTW conversion locally; that
+path copies the MTP sidecar into the prepared checkpoint automatically.
 
 ## Run
 
@@ -65,12 +66,23 @@ auto-allocation.
 
 ## Speculative decoding
 
-The upstream model publishes one MTP layer, and vLLM's multi-GPU recipe uses three MTP
-speculative tokens. SparkLab does not enable those weights yet. Correct support requires
-the scheduler to verify multiple target tokens in one pass and commit or roll back KV,
-GDN, PLE, and QSA state at the accepted-token boundary. Loading the MTP weights without
-that transactional state path would not be correct, so there is currently no MTP flag in
-this recipe.
+SparkLab can use the upstream model's native MTP layer. It verifies draft tokens with the
+target model and transactionally commits or rolls back paged KV, GDN, PLE, and QSA state
+at the accepted boundary. Enable the measured two-token setting with:
+
+```bash
+sparklab run qwen3.8-flash-next --root /path/to/models -- --speculative-tokens 2
+```
+
+On GB10, a controlled 64-token greedy decode measured 20.31 tok/s versus 15.13 tok/s
+without speculative decoding, a 34.2% improvement. One and three draft tokens measured
+18.21 and 17.10 tok/s respectively, so more drafts are not automatically faster. All four
+settings reproduced the same output hash on fresh prompts and 64-token radix-prefix hits.
+
+MTP is intentionally opt-in. The current transactional path supports one running greedy
+request, runs eagerly with overlap scheduling disabled, and falls back to ordinary target
+decoding for non-greedy sampling. Keep the default recipe for concurrent traffic and use
+`--speculative-tokens 2` for single-stream deterministic chat or agent workloads.
 
 Wait for the API to listen on `127.0.0.1:1919`, then verify it:
 

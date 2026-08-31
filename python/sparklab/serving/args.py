@@ -321,6 +321,14 @@ def parse_args(
     )
 
     parser.add_argument(
+        "--speculative-tokens",
+        type=int,
+        choices=range(0, 4),
+        default=ServerArgs.speculative_tokens,
+        help="Qwen4 MTP draft length (0 disables; supported values: 1, 2, 3).",
+    )
+
+    parser.add_argument(
         "--num-tokenizer",
         "--tokenizer-count",
         type=int,
