@@ -71,8 +71,12 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert qwen.deployment.quantization == "nvfp4"
     assert "convert_expert_quantization" not in qwen.deployment.backend_options
     assert qwen.deployment.backend_options["nvfp4_backend"] == "triton"
-    assert qwen.performance.decode_tokens_per_second == pytest.approx(16.84)
-    assert qwen.performance.warm_ttft_seconds == pytest.approx(0.3057)
+    assert qwen.performance.decode_tokens_per_second == pytest.approx(
+        20.30646577455425
+    )
+    assert qwen.performance.warm_ttft_seconds == pytest.approx(
+        0.21166132600046694
+    )
     assert qwen.deployment.backend_options["moe_host_cache_gb"] == 0
     assert qwen.deployment.backend_options["moe_preload_all"] is True
     assert qwen.deployment.backend_options["num_tokens"] == 131_072
@@ -352,7 +356,7 @@ def test_historical_qwen_fp8_evidence_does_not_transfer_to_nvfp4_recipe():
     assert any("recipe_version mismatch" in reason for reason in evaluation.reasons)
 
 
-def test_current_qwen_nvfp4_evidence_passes_all_non_endurance_frontier_gates():
+def test_qwen_default_profile_evidence_passes_all_non_endurance_frontier_gates():
     from sparklab.certification import evaluate_tier
 
     recipe = get_recipe("qwen3.8-flash-next")
@@ -360,7 +364,7 @@ def test_current_qwen_nvfp4_evidence_passes_all_non_endurance_frontier_gates():
     result = json.loads(
         (root / "benchmarks/gb10/results/GB10-QWEN38-NVFP4-OPT-003.json").read_text()
     )
-    assert result["result_id"] == recipe.performance.evidence
+    assert result["result_id"] in recipe.evidence
     assert result["admission"]["performance_gate_passed"] is True
     assert result["metrics"]["decode_tokens_per_second"] == pytest.approx(
         16.84
@@ -389,8 +393,15 @@ def test_qwen_native_mtp_evidence_selects_two_drafts_with_parity():
     )
 
     assert result["result_id"] in recipe.evidence
+    assert result["result_id"] == recipe.performance.evidence
     assert result["recipe"]["recipe_version"] == recipe.recipe_version
     metrics = result["metrics"]
+    assert metrics["decode_tokens_per_second"] == pytest.approx(
+        recipe.performance.decode_tokens_per_second
+    )
+    assert metrics["warm_ttft_seconds"] == pytest.approx(
+        recipe.performance.warm_ttft_seconds
+    )
     assert metrics["mtp2_decode_tokens_per_second"] > metrics[
         "mtp1_decode_tokens_per_second"
     ]

@@ -33,7 +33,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |  |
 | [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW | `qwen3.6-35b-a3b` | Certified | 67.79 | 0.329 |
 | **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |  |
-| [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW | `qwen3.8-flash-next` | Experimental | 16.61 | 0.403 |
+| [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW + MTP2 | `qwen3.8-flash-next` | Experimental | 20.31 | 0.212 |
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | `deepseek-v4` | Preview | 10.28 | 0.604 |
 | [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 + KDA FP8 · FTW | `glm-5.3-flash` | Experimental | 6.27 | 5.681 |
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
@@ -47,12 +47,16 @@ Parameter counts come from model publishers, and performance values come from th
 evidence attached to each recipe. Certification applies only to that exact checkpoint
 and recipe version.
 
+The Qwen3.8-Flash-Next row reports its selected two-draft MTP profile. It is opt-in with
+`-- --speculative-tokens 2` and currently applies only to batch-one greedy requests;
+the default profile remains available for concurrent or sampled traffic.
+
 ## Evidence and caveats
 
 | Model | Current result | Evidence |
 |---|---|---|
 | Qwen3.6-35B-A3B | Fast-certified, including exact 32K recall and a 60-minute zero-swap run. Certification is operational; its five-problem AIME sample scored 0/5 after reaching the output cap. | [GB10-QWEN36-FAST-002](../benchmarks/gb10/results/GB10-QWEN36-FAST-002.json) |
-| Qwen3.8-Flash-Next | Passes Frontier speed and 64K capability probes; the clean-revision endurance gate remains outstanding. | [GB10-QWEN38-NVFP4-OPT-002](../benchmarks/gb10/results/GB10-QWEN38-NVFP4-OPT-002.json) |
+| Qwen3.8-Flash-Next | The opt-in two-draft MTP profile measured 20.31 tok/s with exact eager-output parity; the default concurrent profile remains 16.84 single-stream tok/s. The clean-revision endurance gate remains outstanding. | [GB10-QWEN38-NVFP4-OPT-004](../benchmarks/gb10/results/GB10-QWEN38-NVFP4-OPT-004.json) |
 | DeepSeek V4 Flash | Passes Frontier speed; broader certification remains incomplete. | [Experiment](../exps/exp_dsv4_gb10.md) |
 | GLM-5.3 Flash | Passes Frontier speed; NVMe-sensitive TTFT and remaining certification gates keep it Experimental. | [GB10-GLM53-MHC-003](../benchmarks/gb10/results/GB10-GLM53-MHC-003.json) |
 | GLM-5.2 | Below Frontier speed and recorded swap growth, so it remains Experimental. | [Experiment](../exps/exp_glm5_2_gb10.md) |
