@@ -39,6 +39,10 @@ Run (one backend):
 
 Run (all three backends, one server per backend):
     ... --model /path/to/model --backend offload,cpu,hybrid --json out.json
+
+Run DeepSeek-V4 DSpark (the official 7-token probabilistic profile):
+    ... --model /path/to/ftw --backend offload --speculative-method dspark \
+        --speculative-tokens 7 --draft-sample-method probabilistic --json out.json
 """
 
 from __future__ import annotations
@@ -448,6 +452,25 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="explicit KV capacity; 0 keeps server auto-sizing",
     )
     p.add_argument(
+        "--speculative-method",
+        choices=("auto", "mtp", "dspark"),
+        default="auto",
+        help="checkpoint-native speculative decoder",
+    )
+    p.add_argument(
+        "--speculative-tokens",
+        type=int,
+        choices=range(8),
+        default=0,
+        help="draft length (0 disables, DSpark supports up to 7)",
+    )
+    p.add_argument(
+        "--draft-sample-method",
+        choices=("greedy", "probabilistic"),
+        default="greedy",
+        help="draft sampling and target verification rule",
+    )
+    p.add_argument(
         "--disable-prefill-overlap", action="store_true",
         help="disable the two-layer prefill staging reservation (permits a one-layer cache)",
     )
@@ -590,6 +613,9 @@ def serve_cmd(args: argparse.Namespace, backend: str, port: int) -> list[str]:
         "--cuda-graph-max-bs", "0" if args.no_graph else "1",
         "--moe-hybrid-max-fetch", str(args.hybrid_fetch),
         "--moe-cache-policy", args.cache_policy,
+        "--speculative-method", args.speculative_method,
+        "--speculative-tokens", str(args.speculative_tokens),
+        "--draft-sample-method", args.draft_sample_method,
     ]
     if args.num_tokens > 0:
         cmd += ["--num-tokens", str(args.num_tokens)]
@@ -629,6 +655,27 @@ def oom_marker_count(log_text: str) -> int:
         r"MemoryError",
     )
     return sum(len(re.findall(pattern, log_text, re.I)) for pattern in patterns)
+
+
+def parse_speculative_summary(log_text: str) -> dict | None:
+    """Extract the final measured request's native speculative counters."""
+    matches = re.findall(
+        r"MTP summary: steps=(\d+), accepted=(\d+)/(\d+) \(([\d.]+)%\), "
+        r"outputs=(\d+), target_forwards=(\d+), outputs/target=([\d.]+)",
+        log_text,
+    )
+    if not matches:
+        return None
+    steps, accepted, drafted, rate, outputs, forwards, efficiency = matches[-1]
+    return {
+        "steps": int(steps),
+        "accepted": int(accepted),
+        "drafted": int(drafted),
+        "acceptance_rate": float(rate) / 100.0,
+        "outputs": int(outputs),
+        "target_forwards": int(forwards),
+        "outputs_per_target_forward": float(efficiency),
+    }
 
 
 def wait_ready(origin: str, proc: subprocess.Popen, log_path: str, timeout: float) -> None:
@@ -872,6 +919,9 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
             "requested_cache_rate": args.cache_rate,
             "memory_ratio": args.mem_ratio,
             "requested_num_tokens": args.num_tokens,
+            "speculative_method": args.speculative_method,
+            "speculative_tokens": args.speculative_tokens,
+            "draft_sample_method": args.draft_sample_method,
             "cpu_threads": args.cpu_threads,
             "hybrid_fetch": args.hybrid_fetch,
             "disk_read_workers": int(os.getenv("SPARKLAB_DISK_READ_WORKERS", "16")),
@@ -921,6 +971,9 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
     }
     if args.include_output:
         row["output_text"] = r["text"]
+    speculative = parse_speculative_summary(log_text)
+    if speculative is not None:
+        row["speculative"] = speculative
     before_moe = stats_before.get("moe") or {}
     after_moe = stats.get("moe") or {}
     if after_moe:

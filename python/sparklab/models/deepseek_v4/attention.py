@@ -235,6 +235,64 @@ class Attention(nn.Module):
         apply_rotary_emb(o[..., -rd:], freqs, True)
         return self._wo(o, 1, T)
 
+    def store_dspark_context(
+        self, x: torch.Tensor, positions: torch.Tensor, window_slots: torch.Tensor
+    ) -> None:
+        """Project target auxiliary states into this draft layer's context KV."""
+        if self.compress_ratio:
+            raise RuntimeError("DSpark draft layers must use sliding-window attention")
+        rd = self.rope_head_dim
+        freqs = self.freqs_cis.index_select(0, positions.long())
+        kv = self.kv_norm(self.wkv(x))
+        apply_rotary_emb(kv[..., -rd:], freqs)
+        act_quant_fp8_inplace(kv[..., :-rd], 64)
+        self.attn.store_window(kv.reshape(-1, self.head_dim), self.layer_id, window_slots)
+
+    def forward_dspark_block(
+        self,
+        x: torch.Tensor,
+        *,
+        positions: torch.Tensor,
+        table_idx: int,
+        context_start: int,
+    ) -> torch.Tensor:
+        """Non-causal DSpark query block over context plus all parallel queries."""
+        if self.compress_ratio:
+            raise RuntimeError("DSpark draft layers must have compress_ratio=0")
+        _, n_query, _ = x.shape
+        rd = self.rope_head_dim
+        freqs = self.freqs_cis.index_select(0, positions.long())
+        qr = self.q_norm(self.wq_a(x))
+        q = self.wq_b(qr).unflatten(-1, (self.n_heads, self.head_dim))
+        q = rms_norm(q, None, self.eps)
+        apply_rotary_emb(q[..., -rd:], freqs)
+
+        kv = self.kv_norm(self.wkv(x))
+        apply_rotary_emb(kv[..., -rd:], freqs)
+        act_quant_fp8_inplace(kv[..., :-rd], 64)
+        query_start = int(positions[0].item())
+        query_end = query_start + n_query
+        query_slots = self.attn.window_slots_of(table_idx, query_start, query_end)
+        if bool((query_slots < 0).any()):
+            raise RuntimeError("DSpark query crossed an unallocated KV page")
+        self.attn.store_window(kv[0], self.layer_id, query_slots)
+
+        context_slots = self.attn.window_slots_of(table_idx, context_start, query_start)
+        candidates = torch.cat((context_slots, query_slots)).view(1, 1, -1)
+        topk_idxs = candidates.expand(1, n_query, -1).to(torch.int32)
+        n_window = topk_idxs.shape[-1]
+        o = self.attn.attend(
+            q,
+            self.layer_id,
+            topk_idxs,
+            n_window,
+            self.attn_sink,
+            self.softmax_scale,
+            has_compression=False,
+        )
+        apply_rotary_emb(o[..., -rd:], freqs, True)
+        return self._wo(o, 1, n_query)
+
     def _compress_topk_extend(self, seqlen, start_pos, end, offset, device, bsz):
         # ratio-128 layers (no indexer): each new query at abs pos p attends compressed blocks
         # [0, (p+1)//ratio); pool index = block + offset, causal-masked to -1 beyond (p+1)//ratio.

@@ -34,7 +34,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW | `qwen3.6-35b-a3b` | Certified | 67.79 | 0.329 |
 | **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |  |
 | [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW + MTP2 | `qwen3.8-flash-next` | Experimental | 20.31 | 0.212 |
-| [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | `deepseek-v4` | Preview | 10.28 | 0.604 |
+| [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | `deepseek-v4` | Preview | 7.41 | 2.120 |
 | [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 + KDA FP8 · FTW | `glm-5.3-flash` | Experimental | 6.27 | 5.681 |
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
 | [GLM-5.2](https://huggingface.co/nvidia/GLM-5.2-NVFP4) | 753B total / 40B active | NVFP4 | `glm-5.2` | Experimental fallback | 0.80 | 2.570 |
@@ -57,7 +57,7 @@ the default profile remains available for concurrent or sampled traffic.
 |---|---|---|
 | Qwen3.6-35B-A3B | Fast-certified, including exact 32K recall and a 60-minute zero-swap run. Certification is operational; its five-problem AIME sample scored 0/5 after reaching the output cap. | [GB10-QWEN36-FAST-002](../benchmarks/gb10/results/GB10-QWEN36-FAST-002.json) |
 | Qwen3.8-Flash-Next | The opt-in two-draft MTP profile measured 20.31 tok/s with exact eager-output parity; the default concurrent profile remains 16.84 single-stream tok/s. The clean-revision endurance gate remains outstanding. | [GB10-QWEN38-NVFP4-OPT-004](../benchmarks/gb10/results/GB10-QWEN38-NVFP4-OPT-004.json) |
-| DeepSeek V4 Flash | Passes Frontier speed; broader certification remains incomplete. | [Experiment](../exps/exp_dsv4_gb10.md) |
+| DeepSeek V4 Flash | Native DSpark is available but remains opt-in: every N=1/3/5/7 setting was slower than target-only decoding with disk-backed experts on one GB10. | [GB10-DSV4-DSPARK-002](../benchmarks/gb10/results/GB10-DSV4-DSPARK-002.json) |
 | GLM-5.3 Flash | Passes Frontier speed; NVMe-sensitive TTFT and remaining certification gates keep it Experimental. | [GB10-GLM53-MHC-003](../benchmarks/gb10/results/GB10-GLM53-MHC-003.json) |
 | GLM-5.2 | Below Frontier speed and recorded swap growth, so it remains Experimental. | [Experiment](../exps/exp_glm5_2_gb10.md) |
 | GLM-5.3 | Correctness is not established; the measured output reached its length cap before answering. | [GB10-GLM53-RESEARCH-001](../benchmarks/gb10/results/GB10-GLM53-RESEARCH-001.json) |

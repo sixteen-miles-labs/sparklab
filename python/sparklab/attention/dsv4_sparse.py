@@ -170,7 +170,7 @@ class DSV4SparseAttnBackend(BaseAttnBackend, CompressorBackendMixin, IndexerBack
         last = torch.tensor(
             [r.extend_len for r in batch.padded_reqs], dtype=torch.int32, device=self.device
         ).cumsum_(0) - 1
-        if not batch.is_decode:
+        if batch.uses_prefill_kernels:
             # Segments tile the flat token stream per request: (offset, extend_len, table_idx,
             # start_pos). Built host-side here (the scheduler stream under overlap) from the
             # same Req counters every backend's prepare_metadata reads, so the model's forward

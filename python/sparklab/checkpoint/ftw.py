@@ -324,15 +324,22 @@ class FTWReader:
         if mixed:
             raise ValueError(f"FTW bank(s) mix flat and per-layer layouts: {sorted(mixed)}")
 
+        stored_layers = int(self.meta("expert_bank_num_layers", num_layers))
+        if stored_layers < num_layers:
+            raise ValueError(
+                f"FTW expert banks contain {stored_layers} layers, fewer than the "
+                f"requested {num_layers}"
+            )
+
         result: dict[tuple[int, int, str], ExpertRowDescriptor] = {}
         for entry in flat:
             total, *row_shape = entry["shape"]
-            if total % num_layers:
+            if total % stored_layers:
                 raise ValueError(
                     f"FTW bank {entry['name']!r} has {total} rows, not divisible by "
-                    f"num_layers={num_layers}"
+                    f"stored num_layers={stored_layers}"
                 )
-            num_experts = total // num_layers
+            num_experts = total // stored_layers
             dtype = _dtype_of(entry["dtype"])
             row_bytes = (math.prod(row_shape) if row_shape else 1) * _elsize(dtype)
             for layer_id in range(num_layers):
@@ -353,11 +360,14 @@ class FTWReader:
 
         for bank_name, by_layer in layered.items():
             expected = list(range(num_layers))
-            if sorted(by_layer) != expected:
+            available = sorted(by_layer)
+            if available[:num_layers] != expected:
                 raise ValueError(
-                    f"FTW bank {bank_name!r} has layers {sorted(by_layer)}, expected {expected}"
+                    f"FTW bank {bank_name!r} has layers {available}, expected {expected} "
+                    "or a contiguous superset"
                 )
-            for layer_id, entry in by_layer.items():
+            for layer_id in expected:
+                entry = by_layer[layer_id]
                 num_experts = entry["shape"][0]
                 for expert_id in range(num_experts):
                     desc = _expert_row_descriptor(
@@ -1065,13 +1075,14 @@ def load_ftw_banks(
     row_entries = [e for e in bank_entries if e["name"] not in _ALPHA_NAMES]
 
     meta_layers = reader.meta("expert_bank_num_layers")
-    if meta_layers is not None and meta_layers != num_layers:
+    if meta_layers is not None and meta_layers < num_layers:
         reader.close()
         raise RuntimeError(
             f"{path!r} was converted with {meta_layers} expert-bank layers but the "
-            f"model config says num_moe_layers={num_layers}; the checkpoint does not "
-            "match its config"
+            f"runtime needs num_moe_layers={num_layers}; the checkpoint does not "
+            "contain enough layers"
         )
+    stored_layers = int(meta_layers or num_layers)
 
     # Alphas: unchanged, one flat HostBank per entry.
     alpha_specs = {e["name"]: (tuple(e["shape"]), _dtype_of(e["dtype"])) for e in alpha_entries}
@@ -1101,12 +1112,14 @@ def load_ftw_banks(
     for e in flat_entries:
         name = e["name"]
         total, *row_shape = e["shape"]
-        assert total % num_layers == 0, (name, total, num_layers)
-        num_experts = total // num_layers
+        assert total % stored_layers == 0, (name, total, stored_layers)
+        num_experts = total // stored_layers
         dtype = _dtype_of(e["dtype"])
         row_bytes = (math.prod(row_shape) if row_shape else 1) * _elsize(dtype)
         layer_bytes = num_experts * row_bytes
-        assert layer_bytes * num_layers == e["nbytes"], (name, layer_bytes, num_layers, e["nbytes"])
+        assert layer_bytes * stored_layers == e["nbytes"], (
+            name, layer_bytes, stored_layers, e["nbytes"]
+        )
         row_hb[name] = []
         row_view_args[name] = []
         for layer_id in range(num_layers):
@@ -1120,9 +1133,10 @@ def load_ftw_banks(
             row_jobs.append((name, bank, win_off, win_end - win_off, layer_bytes))
 
     for base, by_layer in per_layer_groups.items():
-        assert sorted(by_layer) == list(range(num_layers)), (
+        expected = list(range(num_layers))
+        assert sorted(by_layer)[:num_layers] == expected, (
             f"FTW bank {base!r} has per-layer entries for layers {sorted(by_layer)}, "
-            f"expected exactly range({num_layers})"
+            f"expected at least range({num_layers})"
         )
         row_hb[base] = []
         row_view_args[base] = []

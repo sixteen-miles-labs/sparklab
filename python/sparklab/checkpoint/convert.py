@@ -328,6 +328,20 @@ def _convert_checkpoint(
         nvfp4_backend=nvfp4_backend,
     )
     mc = cfg.model_config
+    # A fused DSV4 checkpoint carries three DSpark MoE layers under ``mtp.*``.
+    # Convert them into the same expert-bank artifact even though target-only
+    # serving does not instantiate the draft. FTW readers can expose either the
+    # 43-layer prefix or the complete 46-layer bank at runtime.
+    dsv4_args = getattr(mc, "dsv4_args", None)
+    if dsv4_args is not None and (
+        int(getattr(dsv4_args, "n_mtp_layers", 0) or 0) > 0
+        and tuple(getattr(dsv4_args, "dspark_target_layer_ids", ()) or ())
+        and int(getattr(dsv4_args, "dspark_markov_rank", 0) or 0) > 0
+    ):
+        from dataclasses import replace
+
+        object.__setattr__(mc, "dsv4_args", replace(dsv4_args, dspark_enabled=True))
+        object.__setattr__(mc, "speculative_method", "dspark")
     # Conversion bypasses Engine._adjust_config(), which normally copies this runtime
     # choice onto the parsed ModelConfig before expert-bank construction. Do it here so
     # FTW is written in the requested backend-owned layout (for example SM12x b12x), not
@@ -349,7 +363,7 @@ def _convert_checkpoint(
     from sparklab.utils.progress import byte_bar, count_bar
 
     writer = FTWWriter(out_dir, shard_limit=shard_limit)
-    n_weight = n_bank = n_alpha = 0
+    n_weight = n_speculative = n_bank = n_alpha = 0
 
     # 1) dense weights (host tensors; load straight to CPU to avoid GPU pressure)
     _progress("dense", 0, 0)  # phase start; per-tensor cumulative bytes follow (total unknown)
@@ -361,6 +375,23 @@ def _convert_checkpoint(
         n_weight += 1
         dense_bytes += tensor.numel() * tensor.element_size()
         _progress("dense", dense_bytes, 0)
+
+    # Optional checkpoint-native draft weights are a separate kind so ordinary
+    # target serving never reads or allocates them.
+    from sparklab.models.register import _load_attr, get_model_spec
+
+    spec = get_model_spec(mc.architectures[0])
+    try:
+        iter_speculative = _load_attr(spec.module, "iter_speculative_weights")
+    except AttributeError:
+        iter_speculative = None
+    if iter_speculative is not None:
+        for name, tensor in count_bar(
+            iter_speculative(model_path, torch.device("cpu")),
+            "Converting speculative weights",
+        ):
+            writer.add_tensor(name, tensor, kind="speculative_weight")
+            n_speculative += 1
 
     # 2) offload expert banks (post-repack) + alpha scales (slow path auto-picks parallel/serial)
     quant_format = None
@@ -436,9 +467,6 @@ def _convert_checkpoint(
     # Models with very large non-parameter runtime stores can stream a self-contained
     # side artifact beside FTW (Qwen4 PLE's 95 GiB random-row n-gram table). The hook
     # runs before finalize, so a failed extraction never publishes a valid FTW index.
-    from sparklab.models.register import _load_attr, get_model_spec
-
-    spec = get_model_spec(mc.architectures[0])
     try:
         external_hook = _load_attr(spec.module, "copy_external_artifacts")
     except AttributeError:
@@ -468,7 +496,15 @@ def _convert_checkpoint(
         # checkpoint); recording it here too gives load_ftw_banks a cross-check that
         # the banks match the config they ship with. None for non-offload checkpoints.
         "expert_bank_num_layers": num_layers,
-        "counts": {"weight": n_weight, "experts_bank": n_bank + n_alpha},
+        "counts": {
+            kind: count
+            for kind, count in (
+                ("weight", n_weight),
+                ("speculative_weight", n_speculative),
+                ("experts_bank", n_bank + n_alpha),
+            )
+            if count
+        },
         "copied_metadata": copied,
         "external_artifacts": external_artifacts,
     })

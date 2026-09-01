@@ -1,14 +1,14 @@
 {
   "schema_version": "2.0",
-  "recipe_version": "0.2.0",
+  "recipe_version": "0.3.0",
   "slug": "deepseek-v4",
   "name": "DeepSeek V4 Flash",
   "model": "deepseek-ai/DeepSeek-V4-Flash-0731",
   "parameters": "284B total / 13B active",
   "revision": "7872f01b1d1fe23eabc4c98b48bffcef5a386062",
   "source_bytes": 166878536440,
-  "prepared_bytes": 157460918272,
-  "minimum_free_bytes": 461778408184,
+  "prepared_bytes": 168424579072,
+  "minimum_free_bytes": 472742068984,
   "intended_tier": "frontier",
   "status": "preview",
   "implementation": "available",
@@ -37,16 +37,17 @@
     "total_bytes": 107374182400
   },
   "performance": {
-    "decode_tokens_per_second": 10.282266070445095,
-    "warm_ttft_seconds": 0.6035212678834796,
-    "evidence": "GB10-DSV4-SPARSE-001",
-    "note": "Auto-sized route-first sparse-prefill probe; not a complete Frontier certification."
+    "decode_tokens_per_second": 7.407656188456706,
+    "warm_ttft_seconds": 2.1198420680011623,
+    "evidence": "GB10-DSV4-DSPARK-002",
+    "note": "Fused 0731 checkpoint, fixed 256-token probe with DSpark disabled. DSpark is supported as an opt-in experiment; every measured N=1/3/5/7 setting was slower with disk-backed experts on one GB10."
   },
-  "description": "Optimized DS-FP4 Frontier recipe with auto-sized expert residency and route-first sparse prefill on one NVIDIA GB10.",
-  "evidence": ["GB10-DSV4-SPARSE-001"],
+  "description": "Fused DS-FP4 Frontier recipe with optional native DSpark speculative decoding, auto-sized expert residency, and route-first sparse prefill on one NVIDIA GB10.",
+  "evidence": ["GB10-DSV4-DSPARK-002"],
   "limitations": [
     "The 64K context and 60-minute agent gates have not passed.",
-    "The fixed probe passed Frontier performance thresholds, but capability, quality, parser, and agent gates remain incomplete.",
+    "Capability, quality, parser, and agent gates remain incomplete.",
+    "DSpark is opt-in: the one-GB10 disk-offload matrix measured 7.07, 6.19, 5.97, and 5.16 tok/s for N=1, 3, 5, and 7 versus a 7.41 tok/s target-only control.",
     "The 512-token sparse-prefill threshold is optimized for short interactive prompts; longer prefills retain the bounded full-layer streaming path."
   ]
 }

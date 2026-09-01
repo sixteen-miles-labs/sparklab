@@ -69,3 +69,15 @@ def test_native_backend_compiles_speculative_token_option():
         "--speculative-tokens",
         "2",
     )
+
+
+def test_native_backend_compiles_dspark_options():
+    assert _compile_options({
+        "speculative_method": "dspark",
+        "speculative_tokens": 7,
+        "draft_sample_method": "probabilistic",
+    }) == (
+        "--speculative-method", "dspark",
+        "--speculative-tokens", "7",
+        "--draft-sample-method", "probabilistic",
+    )

@@ -70,6 +70,9 @@ class Req:
     # Greedy MTP proposals waiting to be verified by the next target forward.
     # Kept on device so the scheduler can stage them without a host round trip.
     speculative_drafts: torch.Tensor | None = None
+    # Full-vocabulary draft distributions for exact stochastic rejection
+    # sampling. None for deterministic/greedy speculative decoding.
+    speculative_draft_probs: torch.Tensor | None = None
     # A terminal token can occur before the end of a verified multi-token result.
     # In that case recurrent state ran past the client-visible sequence and must
     # not be donated to the radix tree at finish.

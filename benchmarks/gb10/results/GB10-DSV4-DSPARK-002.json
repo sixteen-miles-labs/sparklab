@@ -1,0 +1,135 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-DSV4-DSPARK-002",
+  "status": "measured",
+  "platform": {
+    "device": "NVIDIA GB10",
+    "memory_gib": 128,
+    "machine": "aarch64",
+    "cuda": "13.0",
+    "driver": "580.126.09"
+  },
+  "engine": {
+    "name": "SparkLab",
+    "revision": "7d5808cb7e5d99268aa32010a36d2e40a39a9cf9",
+    "tracked_dirty": true
+  },
+  "model": {
+    "repository": "deepseek-ai/DeepSeek-V4-Flash-0731",
+    "revision": "7872f01b1d1fe23eabc4c98b48bffcef5a386062",
+    "checkpoint_format": "ftw-ds-fp4",
+    "fingerprint": "aeb9734fe8747554",
+    "checkpoint_bytes": 168424579072,
+    "prepared_shards": 24,
+    "expert_layers": 46,
+    "target_layers": 43,
+    "draft_layers": 3
+  },
+  "workload": {
+    "name": "AIME-25 problem 0 fixed 256-token decode probe",
+    "batch_size": 1,
+    "sampling": "target greedy; DSpark probabilistic draft",
+    "prompt_tokens": 48,
+    "requested_completion_tokens": 256,
+    "returned_completion_tokens": 256,
+    "timed_decode_steps": 255,
+    "warmup_requests": 1,
+    "measured_requests": 1,
+    "client_path": "OpenAI-compatible streaming HTTP API"
+  },
+  "metrics": {
+    "baseline_decode_tokens_per_second": 7.407656188456706,
+    "baseline_warm_ttft_seconds": 2.1198420680011623,
+    "baseline_output_hash": "461810a57c7c",
+    "best_speculative_tokens": 1,
+    "best_speculative_decode_tokens_per_second": 7.071858733952631,
+    "best_speculative_speedup": 0.954672905271216,
+    "matrix": [
+      {
+        "speculative_tokens": 0,
+        "decode_tokens_per_second": 7.407656188456706,
+        "warm_ttft_seconds": 2.1198420680011623,
+        "device_allocation_gib": 81.34375,
+        "physical_io_gib": 38.43672561645508,
+        "expert_cache_miss_rate_percent": 3.281653746770026,
+        "output_hash": "461810a57c7c"
+      },
+      {
+        "speculative_tokens": 1,
+        "decode_tokens_per_second": 7.071858733952631,
+        "warm_ttft_seconds": 2.23359107800934,
+        "device_allocation_gib": 81.333984375,
+        "physical_io_gib": 49.58056640625,
+        "expert_cache_miss_rate_percent": 4.106141736686846,
+        "accepted": 98,
+        "drafted": 127,
+        "acceptance_rate": 0.772,
+        "outputs_per_target_forward": 1.62,
+        "output_hash": "98ceaba767cb"
+      },
+      {
+        "speculative_tokens": 3,
+        "decode_tokens_per_second": 6.19210463077472,
+        "warm_ttft_seconds": 2.3886677859991323,
+        "device_allocation_gib": 81.40625,
+        "physical_io_gib": 52.6435546875,
+        "expert_cache_miss_rate_percent": 2.944903981038069,
+        "accepted": 104,
+        "drafted": 246,
+        "acceptance_rate": 0.423,
+        "outputs_per_target_forward": 1.68,
+        "output_hash": "2caea7db1988"
+      },
+      {
+        "speculative_tokens": 5,
+        "decode_tokens_per_second": 5.972442887555408,
+        "warm_ttft_seconds": 2.3057911780051654,
+        "device_allocation_gib": 81.794921875,
+        "physical_io_gib": 59.865234375,
+        "expert_cache_miss_rate_percent": 3.346028047851606,
+        "accepted": 115,
+        "drafted": 352,
+        "acceptance_rate": 0.327,
+        "outputs_per_target_forward": 1.82,
+        "output_hash": "7e300c342042"
+      },
+      {
+        "speculative_tokens": 7,
+        "decode_tokens_per_second": 5.15963574314919,
+        "warm_ttft_seconds": 2.5049645520048216,
+        "device_allocation_gib": 81.85546875,
+        "physical_io_gib": 61.55859375,
+        "expert_cache_miss_rate_percent": 2.7300942882779518,
+        "accepted": 96,
+        "drafted": 548,
+        "acceptance_rate": 0.175,
+        "outputs_per_target_forward": 1.6,
+        "output_hash": "2caea7db1988"
+      }
+    ]
+  },
+  "validation": {
+    "checkpoint_checksum_verified": true,
+    "complete_checkpoint_loaded": true,
+    "draft_weights_loaded": true,
+    "api_stream_completed": true,
+    "all_runs_returned_requested_tokens": true,
+    "all_runs_oom_count": 0,
+    "all_runs_swap_growth_bytes": 0,
+    "baseline_output_hash_preserved": false,
+    "answer_reached_in_all_samples": true,
+    "memory_bounded": true,
+    "quality_gate_run": false,
+    "endurance_gate_run": false
+  },
+  "source": {
+    "summary": "benchmarks/gb10/results/GB10-DSV4-DSPARK-002.json",
+    "raw_artifact": "$HOME/results/dsv4-dspark/gb10-dspark-matrix.jsonl"
+  },
+  "limitations": [
+    "This is a one-request single-stream performance matrix, not a quality or endurance certification.",
+    "The target uses disk-backed experts on one GB10; vLLM's official DSpark recipe expects a resident deployment spanning two DGX Spark systems.",
+    "Greedy output hashes differ because target verification uses the multi-token sparse-prefill kernels rather than the single-token decode kernels; all sampled outputs still reached the same answer.",
+    "The tracked-dirty revision includes the DSpark implementation under test and unrelated workspace changes."
+  ]
+}

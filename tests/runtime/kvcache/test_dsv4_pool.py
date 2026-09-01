@@ -106,6 +106,31 @@ def test_indexer_state_ring_separate_object_and_shape():
             assert pool.indexer_state_ring[L] is None
 
 
+def test_speculative_snapshot_restores_only_touched_ring_blocks():
+    pool, _, _ = _pool()
+    pool.full_loc_map = torch.arange(256, dtype=torch.int64).view(1, -1)
+    pool.bind_window_pages(0, 0)
+    pool.bind_window_pages(P, P)
+    ring = pool.state_ring[2]  # ratio-4
+    index_ring = pool.indexer_state_ring[2]
+    ring.buffer[:-1].copy_(
+        torch.arange(ring.buffer[:-1].numel()).view_as(ring.buffer[:-1])
+    )
+    index_ring.buffer[:-1].copy_(
+        torch.arange(index_ring.buffer[:-1].numel()).view_as(index_ring.buffer[:-1])
+    )
+    original = ring.buffer.clone()
+    original_index = index_ring.buffer.clone()
+
+    snapshots = pool.snapshot_speculative(0, P - 2, P + 2)
+    for saved_ring, rows, _ in snapshots:
+        saved_ring.buffer[rows] = -123
+    pool.restore_speculative(snapshots)
+
+    assert torch.equal(ring.buffer, original)
+    assert torch.equal(index_ring.buffer, original_index)
+
+
 # --------------------------------------------------------------------------- #
 # state_loc derivation
 # --------------------------------------------------------------------------- #
