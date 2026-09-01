@@ -321,11 +321,23 @@ def parse_args(
     )
 
     parser.add_argument(
+        "--speculative-method",
+        choices=("auto", "mtp", "dspark"),
+        default=ServerArgs.speculative_method,
+        help="Speculative decoder (auto selects the checkpoint-native method).",
+    )
+    parser.add_argument(
         "--speculative-tokens",
         type=int,
-        choices=range(0, 4),
+        choices=range(0, 8),
         default=ServerArgs.speculative_tokens,
-        help="Qwen4 MTP draft length (0 disables; supported values: 1, 2, 3).",
+        help="Draft length (0 disables; Qwen MTP supports 1-3, DSV4 DSpark 1-7).",
+    )
+    parser.add_argument(
+        "--draft-sample-method",
+        choices=("greedy", "probabilistic"),
+        default=ServerArgs.draft_sample_method,
+        help="Draft sampling/verification rule for speculative decoding.",
     )
 
     parser.add_argument(

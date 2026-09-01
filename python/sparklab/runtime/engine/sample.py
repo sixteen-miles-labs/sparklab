@@ -7,7 +7,7 @@ import torch
 from sparklab.utils import is_sm90_supported, nvtx_annotate
 
 if TYPE_CHECKING:
-    from sparklab.core import Batch
+    from sparklab.core import Batch, SamplingParams
 
 
 @dataclass
@@ -48,6 +48,23 @@ def sample_impl(
 
     assert top_k is not None and top_p is not None
     return sampling.top_k_top_p_sampling_from_probs(probs, top_k, top_p)
+
+
+def sampling_distribution(logits: torch.Tensor, params: SamplingParams) -> torch.Tensor:
+    """Reference torch distribution used by stochastic speculative verification."""
+    values = logits.float() / max(float(params.temperature), 1e-6)
+    if params.top_k >= 1 and params.top_k < values.shape[-1]:
+        threshold = values.topk(int(params.top_k), dim=-1).values[..., -1, None]
+        values = values.masked_fill(values < threshold, float("-inf"))
+    if float(params.top_p) < 1.0:
+        ordered, indices = values.sort(dim=-1, descending=True)
+        ordered_probs = ordered.softmax(dim=-1)
+        remove = ordered_probs.cumsum(dim=-1) - ordered_probs > float(params.top_p)
+        ordered = ordered.masked_fill(remove, float("-inf"))
+        values = torch.full_like(values, float("-inf")).scatter(
+            -1, indices, ordered
+        )
+    return values.softmax(dim=-1)
 
 
 @dataclass

@@ -318,10 +318,10 @@ class ModelConfig:
     glm5_next_args: Any | None = None
     # Qwen4-Exp text-tower payload: QSA, Hyper-Connection and PLE geometry.
     qwen4_exp_args: Any | None = None
-    # Number of greedy Qwen4 MTP draft tokens proposed per target forward.
-    # Runtime configuration injects this after parsing; zero keeps every other
-    # model and the ordinary Qwen4 path byte-for-byte unchanged.
+    # Runtime speculative-decoding selection injected after parsing.
+    speculative_method: str = "none"
     speculative_tokens: int = 0
+    draft_sample_method: str = "greedy"
     # Generic execution-path capability flags (set by a model's parse_config) so the engine and
     # factories stay model-agnostic instead of branching on dsv4_args:
     single_stream_only: bool = False  # model runs one sequence at a time -> force bs=1
@@ -337,7 +337,10 @@ class ModelConfig:
         Models with leading dense layers (``first_k_dense_replace`` > 0, e.g. GLM-4)
         only store experts for the trailing layers; everything else has all layers MoE.
         """
-        return self.num_layers - self.first_k_dense_replace
+        base = self.num_layers - self.first_k_dense_replace
+        if self.speculative_method == "dspark" and self.dsv4_args is not None:
+            base += int(self.dsv4_args.n_mtp_layers)
+        return base
 
     @property
     def routed_expert_hidden_size(self) -> int:

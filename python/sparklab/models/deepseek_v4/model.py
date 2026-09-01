@@ -126,6 +126,30 @@ class Block(nn.Module):
         x = self.hc_post(x, residual, post, comb)
         return x
 
+    def dspark_forward(
+        self, x, input_ids, *, positions, table_idx: int, context_start: int
+    ):
+        residual = x
+        x, post, comb = self.hc_pre(
+            x, self.hc_attn_fn, self.hc_attn_scale, self.hc_attn_base
+        )
+        x = self.attn_norm(x)
+        x = self.attn.forward_dspark_block(
+            x,
+            positions=positions,
+            table_idx=table_idx,
+            context_start=context_start,
+        )
+        x = self.hc_post(x, residual, post, comb)
+
+        residual = x
+        x, post, comb = self.hc_pre(
+            x, self.hc_ffn_fn, self.hc_ffn_scale, self.hc_ffn_base
+        )
+        x = self.ffn_norm(x)
+        x = self.ffn(x, input_ids)
+        return self.hc_post(x, residual, post, comb)
+
 
 class Transformer(nn.Module):
     def __init__(self, args: DeepseekV4Args):
@@ -160,8 +184,9 @@ class Transformer(nn.Module):
 
     def prefill_batched(
         self, input_ids: torch.Tensor, segments, flat_positions: torch.Tensor,
-        last_indices: torch.Tensor,
-    ) -> torch.Tensor:
+        last_indices: torch.Tensor, *, return_all_logits: bool = False,
+        aux_layer_ids: tuple[int, ...] = (),
+    ):
         # Ragged batched prefill (bs >= 1). ``input_ids`` is [1, T] -- the requests' NEW tokens
         # concatenated (cu_seqlens, no padding); each request starts at its own cached_len
         # (cold == 0, radix hit / chunk continuation > 0). Per-token ops run batched over all T
@@ -174,15 +199,22 @@ class Transformer(nn.Module):
         # final token -> its next-token logits row.
         h = self.embed(input_ids)
         h = h.unsqueeze(2).repeat(1, 1, self.hc_mult, 1)
+        aux = []
+        selected = set(aux_layer_ids)
         for layer in self.layers:
             h = layer.prefill_batched(h, input_ids, segments, flat_positions)
+            if layer.layer_id + 1 in selected:
+                aux.append(h.mean(dim=2))
         h = self.hc_head(h)
         h = self.norm(h)
-        return F.linear(h[0, last_indices], self.head)  # [B, vocab]
+        rows = h[0] if return_all_logits else h[0, last_indices]
+        logits = F.linear(rows, self.head)
+        return (logits, aux) if aux_layer_ids else logits
 
     def decode(
-        self, input_ids: torch.Tensor, pos: torch.Tensor, cmp_stage_cap: int
-    ) -> torch.Tensor:
+        self, input_ids: torch.Tensor, pos: torch.Tensor, cmp_stage_cap: int,
+        *, aux_layer_ids: tuple[int, ...] = (),
+    ):
         # input_ids [B,1], pos [B] (GPU int). cmp_stage_cap = max position any row reaches; each
         # layer derives its compressed staging width = (cmp_stage_cap+1)//ratio (max valid count
         # over rows in eager; a static capture width = max_seq-1 under graph).
@@ -202,11 +234,16 @@ class Transformer(nn.Module):
         # into every layer. They read only the shared snapshot / positions, so they are identical
         # across layers.
         wctx = get_global_ctx().batch.attn_metadata.window_ctx(pos, rows)
+        aux = []
+        selected = set(aux_layer_ids)
         for layer in self.layers:
             h = layer.decode_step(h, pos, rows, cmp_stage_cap, input_ids, wctx)
+            if layer.layer_id + 1 in selected:
+                aux.append(h.mean(dim=2))
         h = self.hc_head(h)
         h = self.norm(h)
-        return F.linear(h[:, -1], self.head)
+        logits = F.linear(h[:, -1], self.head)
+        return (logits, aux) if aux_layer_ids else logits
 
 
 class DeepseekV4ForCausalLM(BaseLLMModel):
@@ -221,6 +258,15 @@ class DeepseekV4ForCausalLM(BaseLLMModel):
         self._config = config
         self._args: DeepseekV4Args = config.dsv4_args
         self._transformer = Transformer(self._args)
+        self._dspark = None
+        if self._args.dspark_enabled:
+            from .dspark import DSparkDraft
+
+            self._dspark = DSparkDraft(
+                self._args,
+                config.speculative_tokens,
+                getattr(config, "draft_sample_method", "greedy"),
+            )
         self._bound = False
 
     def _ensure_bound(self) -> None:
@@ -228,6 +274,8 @@ class DeepseekV4ForCausalLM(BaseLLMModel):
             return
         pool = get_global_ctx().kv_cache
         self._transformer.bind(pool, pool.device)
+        if self._dspark is not None:
+            self._dspark.bind(pool, pool.device)
         self._bound = True
 
     def mark_for_rebind(self) -> None:
@@ -236,6 +284,8 @@ class DeepseekV4ForCausalLM(BaseLLMModel):
         when the engine drops ctx.kv_cache. But the per-bind scratch (the indexer's arange over the
         block count, freqs) depends on the new pool's geometry, so re-derive it via _ensure_bound."""
         self._bound = False
+        if self._dspark is not None:
+            self._dspark.mark_for_rebind()
 
     def _iter_offload_moe_layers(self):
         # Hook for moe.offload_cache.iter_offload_moe_layers: DSV4's MoE block (block.ffn)
@@ -243,6 +293,9 @@ class DeepseekV4ForCausalLM(BaseLLMModel):
         # layer instead, whose .offload_cache the generic attach sets.
         for block in self._transformer.layers:
             yield block.ffn.experts
+        if self._dspark is not None:
+            for block in self._dspark.layers:
+                yield block.ffn.experts
 
     def state_dict(self, *, prefix: str = "", result=None):
         result = {} if result is None else result
@@ -261,22 +314,50 @@ class DeepseekV4ForCausalLM(BaseLLMModel):
             raise RuntimeError(f"Unexpected keys in state_dict: {list(state_dict.keys())}")
         self._transformer.load_state_dict(casted, assign=True, strict=False)
 
+    def speculative_state_dict(self):
+        if self._dspark is None:
+            return {}
+        return dict(self._dspark.named_parameters())
+
+    def load_speculative_state_dict(self, state_dict) -> None:
+        if self._dspark is None:
+            if state_dict:
+                raise RuntimeError("received DSpark weights while DSpark is disabled")
+            return
+        casted = {}
+        for name, parameter in self._dspark.named_parameters():
+            if name not in state_dict:
+                raise RuntimeError(f"Missing DSpark weight: {name}")
+            casted[name] = state_dict.pop(name).to(parameter.dtype)
+        if state_dict:
+            raise RuntimeError(f"Unexpected DSpark weights: {list(state_dict)}")
+        self._dspark.load_state_dict(casted, assign=True, strict=False)
+
     def forward(self) -> torch.Tensor:
         self._ensure_bound()
         batch = get_global_ctx().batch
         input_ids = batch.input_ids.long()
         md = batch.attn_metadata
-        if batch.is_prefill:
+        aux_ids = self._args.dspark_target_layer_ids if self._dspark is not None else ()
+        if batch.uses_prefill_kernels:
             # Ragged batched prefill (bs >= 1): each request starts from its own cached_len.
             # A cold segment (start_pos == 0) re-seeds the compressor carry register inside its
             # own attention segment; a radix hit / chunk continuation (start_pos > 0) resumes it
             # FROM THE RING. Per-token ops (embed / HC / norm / MoE) run batched over the
             # concatenated tokens; attention runs per segment so the carry / slot maps never
             # cross requests.
-            return self._transformer.prefill_batched(
+            result = self._transformer.prefill_batched(
                 input_ids.view(1, -1), md.segments, batch.positions.long(),
-                md.last_indices.long(),
+                md.last_indices.long(), return_all_logits=batch.return_all_logits,
+                aux_layer_ids=aux_ids,
             )
+            if self._dspark is None:
+                return result
+            logits, aux = result
+            self._dspark.store_target_context(
+                aux, segments=md.segments, positions=batch.positions.long()
+            )
+            return logits
         # DECODE (bs>=1): per-row position (GPU int tensor -> no host syncs / graph safe). The
         # compressed staging cap is the max position any row reaches (eager); a static max_seq-1
         # under graph capture (so the captured static-shape graph serves any real replay position).
@@ -290,7 +371,35 @@ class DeepseekV4ForCausalLM(BaseLLMModel):
             cmp_stage_cap = md.stage_width - 1
         else:
             cmp_stage_cap = int(pos.max().item())
-        return self._transformer.decode(input_ids.view(B, 1), pos, cmp_stage_cap)
+        result = self._transformer.decode(
+            input_ids.view(B, 1), pos, cmp_stage_cap, aux_layer_ids=aux_ids
+        )
+        if self._dspark is None:
+            return result
+        logits, aux = result
+        req = batch.reqs[0]
+        segments = [(0, 1, req.table_idx, int(pos[0].item()))]
+        self._dspark.store_target_context(
+            aux, segments=segments, positions=pos[:1]
+        )
+        return logits
+
+    def propose_mtp(self, batch, next_token: torch.Tensor) -> torch.Tensor | None:
+        if self._dspark is None:
+            return None
+        return self._dspark.propose(
+            batch,
+            next_token,
+            embedding_weight=self._transformer.embed.weight,
+            head_weight=self._transformer.head,
+        )
+
+    def take_speculative_probs(self) -> torch.Tensor | None:
+        if self._dspark is None:
+            return None
+        probs = self._dspark.last_draft_probs
+        self._dspark.last_draft_probs = None
+        return probs
 
 
 __all__ = ["Transformer", "DeepseekV4ForCausalLM"]

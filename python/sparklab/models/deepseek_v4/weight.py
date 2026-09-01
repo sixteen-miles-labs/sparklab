@@ -163,13 +163,92 @@ def iter_weights(
         reader.close()
 
 
+def iter_speculative_weights(model_path: str, device):
+    """Stream the resident ``mtp.*`` DSpark tensors under draft-model names.
+
+    Routed experts remain in the shared expert-bank artifact. The target embedding
+    and LM head are aliased at runtime and therefore are not duplicated here.
+    """
+    args = load_args(model_path, max_batch_size=1)
+    if not (
+        args.n_mtp_layers
+        and args.dspark_target_layer_ids
+        and args.dspark_markov_rank
+    ):
+        return
+    reader = _ShardReader(model_path, _weight_map(model_path), device)
+
+    def get(name: str) -> torch.Tensor:
+        return reader.get(name)
+
+    def linear(source: str, target: str):
+        yield f"{target}.weight", get(f"{source}.weight")
+        if reader.has(f"{source}.scale"):
+            yield f"{target}.scale", get(f"{source}.scale")
+
+    try:
+        yield from linear("mtp.0.main_proj", "main_proj")
+        yield "main_norm.weight", get("mtp.0.main_norm.weight")
+        for stage in range(args.n_mtp_layers):
+            source = f"mtp.{stage}"
+            target = f"layers.{stage}"
+            a_source, a_target = f"{source}.attn", f"{target}.attn"
+            yield from linear(f"{a_source}.wq_a", f"{a_target}.wq_a")
+            yield f"{a_target}.q_norm.weight", get(f"{a_source}.q_norm.weight")
+            yield from linear(f"{a_source}.wq_b", f"{a_target}.wq_b")
+            yield from linear(f"{a_source}.wkv", f"{a_target}.wkv")
+            yield f"{a_target}.kv_norm.weight", get(f"{a_source}.kv_norm.weight")
+            yield f"{a_target}.wo_a", _dequant_fp8_block(
+                get(f"{a_source}.wo_a.weight"), get(f"{a_source}.wo_a.scale")
+            )
+            yield from linear(f"{a_source}.wo_b", f"{a_target}.wo_b")
+            yield f"{a_target}.attn_sink", get(f"{a_source}.attn_sink")
+            yield f"{target}.attn_norm.weight", get(f"{source}.attn_norm.weight")
+            yield f"{target}.ffn_norm.weight", get(f"{source}.ffn_norm.weight")
+
+            gate = f"{target}.ffn.gate"
+            yield f"{gate}.weight", get(f"{source}.ffn.gate.weight")
+            yield f"{gate}.bias", get(f"{source}.ffn.gate.bias")
+            for proj in ("w1", "w2", "w3"):
+                yield from linear(
+                    f"{source}.ffn.shared_experts.{proj}",
+                    f"{target}.ffn.shared_experts.{proj}",
+                )
+            for name in (
+                "hc_attn_fn", "hc_ffn_fn", "hc_attn_base", "hc_ffn_base",
+                "hc_attn_scale", "hc_ffn_scale",
+            ):
+                yield f"{target}.{name}", get(f"{source}.{name}")
+
+        final = args.n_mtp_layers - 1
+        for name in ("hc_head_fn", "hc_head_base", "hc_head_scale"):
+            yield name, get(f"mtp.{final}.{name}")
+        yield "norm.weight", get(f"mtp.{final}.norm.weight")
+        yield "markov_w1", get(f"mtp.{final}.markov_head.markov_w1.weight")
+        yield "markov_w2", get(f"mtp.{final}.markov_head.markov_w2.weight")
+        if reader.has(f"mtp.{final}.confidence_head.proj.weight"):
+            yield "confidence_weight", get(
+                f"mtp.{final}.confidence_head.proj.weight"
+            )
+    finally:
+        reader.close()
+
+
 # --------------------------------------------------------------------------------------
 # Routed FP4 expert pinned banks.
 # --------------------------------------------------------------------------------------
 _EXPERT_RE = re.compile(
-    r"^layers\.(?P<layer>\d+)\.ffn\.experts\.(?P<expert>\d+)\."
+    r"^(?:layers\.(?P<layer>\d+)|mtp\.(?P<mtp_layer>\d+))\.ffn\.experts\."
+    r"(?P<expert>\d+)\."
     r"(?P<proj>w1|w2|w3)\.(?P<kind>weight|scale)$"
 )
+
+
+def _expert_layer(match: re.Match, target_layers: int) -> int:
+    layer = match.group("layer")
+    if layer is not None:
+        return int(layer)
+    return target_layers + int(match.group("mtp_layer"))
 
 
 def load_dsfp4_expert_sources(
@@ -191,7 +270,7 @@ def load_dsfp4_expert_sources(
 
     folder = model_path
     weight_map = _weight_map(folder)
-    L, E = args.n_layers, args.n_routed_experts
+    L, E = args.runtime_n_layers, args.n_routed_experts
     H, I = args.dim, args.moe_inter_dim
 
     for shard in sorted(set(weight_map.values())):
@@ -202,7 +281,7 @@ def load_dsfp4_expert_sources(
         m = _EXPERT_RE.match(name)
         if m is None:
             continue
-        if int(m.group("layer")) >= L:  # skip the MTP layer (index L)
+        if _expert_layer(m, args.n_layers) >= L:
             continue
         shards[shard].append((name, m))
 
@@ -223,7 +302,9 @@ def load_dsfp4_expert_sources(
             path = os.path.join(folder, shard)
             with safetensors.safe_open(path, framework="pt", device="cpu") as f:
                 for name, m in shards[shard]:
-                    layer = _place_dsfp4(banks, name, f.get_tensor(name), I)
+                    layer = _place_dsfp4(
+                        banks, name, f.get_tensor(name), I, args.n_layers
+                    )
                     tracker.note(layer)
                     placed += 1
             drop_page_cache(path)
@@ -244,7 +325,7 @@ def dummy_dsfp4_expert_sources(args: DeepseekV4Args) -> dict[str, list[torch.Ten
     """Fabricate the 4 ds_fp4 banks for --dummy-weight (no checkpoint on disk)."""
     from sparklab.moe.host_banks import alloc_layer_banks, pin_banks
 
-    L, E = args.n_layers, args.n_routed_experts
+    L, E = args.runtime_n_layers, args.n_routed_experts
     H, I = args.dim, args.moe_inter_dim
     e8m0 = torch.float8_e8m0fnu
     specs = {
@@ -268,11 +349,14 @@ def is_expert_tensor(name: str) -> bool:
     return _EXPERT_RE.match(name) is not None
 
 
-def _place_dsfp4(banks: dict, name: str, t: torch.Tensor, I: int) -> int:
+def _place_dsfp4(
+    banks: dict, name: str, t: torch.Tensor, I: int, target_layers: int
+) -> int:
     """Copy one expert tensor into its layer/expert slot (shared by serial + parallel
     readers): w1->gate_up[:,:I], w3->gate_up[:,I:], w2->down. Returns the layer index."""
     m = _EXPERT_RE.match(name)
-    layer, expert = int(m.group("layer")), int(m.group("expert"))
+    layer = _expert_layer(m, target_layers)
+    expert = int(m.group("expert"))
     proj, kind = m.group("proj"), m.group("kind")
     if kind == "weight":
         t = t.view(torch.uint8)
@@ -302,7 +386,7 @@ def load_dsfp4_expert_sources_parallel(
     from sparklab.models.weight import iter_expert_tensors_parallel
     from sparklab.moe.host_banks import LayerCompletionTracker, PinPipeline, alloc_layer_banks
 
-    L, E = args.n_layers, args.n_routed_experts
+    L, E = args.runtime_n_layers, args.n_routed_experts
     H, I = args.dim, args.moe_inter_dim
     e8m0 = torch.float8_e8m0fnu
     specs = {
@@ -316,13 +400,13 @@ def load_dsfp4_expert_sources_parallel(
 
     def _is_expert(name: str) -> bool:
         m = _EXPERT_RE.match(name)
-        return m is not None and int(m.group("layer")) < L  # skip the MTP layer (index L)
+        return m is not None and _expert_layer(m, args.n_layers) < L
 
     def _load(sink) -> int:
         tracker = LayerCompletionTracker(E * 6, hb, sink)
         placed = 0
         for name, t in iter_expert_tensors_parallel(model_path, _is_expert, workers=workers, chunk=chunk):
-            layer = _place_dsfp4(banks, name, t, I)
+            layer = _place_dsfp4(banks, name, t, I, args.n_layers)
             tracker.note(layer)
             placed += 1
         return placed
@@ -340,6 +424,7 @@ def load_dsfp4_expert_sources_parallel(
 
 __all__ = [
     "iter_weights",
+    "iter_speculative_weights",
     "load_dsfp4_expert_sources",
     "load_dsfp4_expert_sources_parallel",
     "is_expert_tensor",

@@ -52,7 +52,7 @@ def test_models_human_table_groups_tiers_and_shows_performance_metrics(capsys):
     assert "FAST — Routine chat, editing, and short agent loops" in output
     assert "FRONTIER — Hard coding, reasoning, and long agent work" in output
     assert "RESEARCH — Complete or novel models" in output
-    assert "10.28" in output and "0.604" in output
+    assert "7.41" in output and "2.120" in output
     assert "Qwen3.6 35B A3B" in output and "NVFP4" in output
     assert "35B total / 3B active" in output
     assert "Qwen3.6 35B A3B NVFP4" not in output

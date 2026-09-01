@@ -191,23 +191,27 @@ class Compressor(nn.Module):
     def extend(self, x, start_pos: int, window_slots: torch.Tensor, tail_window_slot: int, ti: int = 0):
         """Carry-aware compressor extend for new tokens [start_pos, start_pos+seqlen).
 
-        ``start_pos`` is 128-aligned (== the radix match boundary, divisible by both ratios).
-        The carry needed at ``start_pos`` lives in the matched window TAIL page's ring block;
-        seed the register from it, then run the SAME reduction as the from-scratch prefill on the
-        new tokens (the seeded ``ks[:ratio]`` overlap provides the first new block's previous-
-        block overlap, exactly as the from-scratch overlap-seed does). Compressed blocks scatter
-        to their arithmetic rows (full_loc // ratio). ``window_slots`` is the new tokens' window
-        slots (translate(full_loc_map[ti, start_pos:start_pos+seqlen])) for the boundary
-        write-through; ``tail_window_slot`` is the matched tail page slot at start_pos-1.
+        Radix/chunk continuations normally start at a 128-aligned page boundary. Speculative
+        verification is also a continuation, but starts at the current decode position and is
+        therefore usually unaligned. In both cases the exact carry needed at ``start_pos`` lives
+        in the matched window TAIL page's ring block. The aligned path reduces whole blocks in
+        parallel; the short unaligned path advances the ring exactly like consecutive decode
+        steps and emits only blocks which finish inside this call.
+
+        ``window_slots`` is the new tokens' window slots
+        (translate(full_loc_map[ti, start_pos:start_pos+seqlen])) for carry write-through;
+        ``tail_window_slot`` is the matched tail page slot at start_pos-1.
         """
         assert self.cmp_pool is not None
-        assert start_pos % self.P == 0, "radix re-prefill boundary must be 128-aligned"
         bsz, seqlen, _ = x.size()
         ratio, overlap, d, rd = self.compress_ratio, self.overlap, self.head_dim, self.rope_head_dim
         dtype = x.dtype
         # Seed the register carry FROM the ring (the matched tail page covering
         # [start_pos-128, start_pos)). The producing request wrote this boundary carry by value.
         self._seed_carry_from_ring(tail_window_slot)
+
+        if start_pos % self.P:
+            return self._extend_unaligned(x, start_pos, window_slots, ti)
 
         x = x.float()
         kv = self.wkv(x)
@@ -288,6 +292,79 @@ class Compressor(nn.Module):
         self.attn.scatter_compressed(
             self.layer_id, self.tier,
             self.attn.compress_rows_of(ti, block_starts, self.compress_ratio), reduced[0],
+        )
+        return reduced
+
+    def _extend_unaligned(
+        self, x: torch.Tensor, start_pos: int, window_slots: torch.Tensor, ti: int
+    ) -> torch.Tensor | None:
+        """Advance a short, non-page-aligned continuation from its persisted carry.
+
+        This is the verification counterpart of :meth:`decode_step`. Unlike the page-aligned
+        radix path, the first token may land in the middle of a ratio-4/128 compression block, so
+        grouping ``x`` from column zero would pool the wrong boundaries. Verification spans at
+        most eight tokens; advancing those positions in order is exact while the expensive target
+        attention, dense projections, and MoE remain batched.
+        """
+        bsz, seqlen, _ = x.size()
+        assert bsz == 1, "unaligned compressor continuation currently supports batch size 1"
+        ratio, overlap, d, rd = (
+            self.compress_ratio, self.overlap, self.head_dim, self.rope_head_dim
+        )
+        dtype = x.dtype
+        x = x.float()
+        kv = self.wkv(x)
+        score = self.wgate(x)
+        ks, ss = self._kv_state, self._score_state
+        completed: list[torch.Tensor] = []
+        block_starts: list[int] = []
+
+        for i in range(seqlen):
+            pos = start_pos + i
+            idx = pos % ratio
+            kv_i = kv[:, i : i + 1]
+            score_i = score[:, i : i + 1] + self.ape[idx : idx + 1]
+            if overlap:
+                # A holds the preceding complete block and B the block being filled. At a block
+                # boundary pool A.left with B.right, then roll B into A for the next block.
+                ks[:, ratio + idx : ratio + idx + 1] = kv_i
+                ss[:, ratio + idx : ratio + idx + 1] = score_i
+                if idx == ratio - 1:
+                    kv_eff = torch.cat([ks[:, :ratio, :d], ks[:, ratio:, d:]], dim=1)
+                    score_eff = torch.cat([ss[:, :ratio, :d], ss[:, ratio:, d:]], dim=1)
+                    completed.append(gated_pool(kv_eff, score_eff, dtype))
+                    block_starts.append(pos + 1 - ratio)
+                    ks[:, :ratio].copy_(ks[:, ratio:].clone())
+                    ss[:, :ratio].copy_(ss[:, ratio:].clone())
+            else:
+                ks[:, idx : idx + 1] = kv_i
+                ss[:, idx : idx + 1] = score_i
+                if idx == ratio - 1:
+                    completed.append(gated_pool(ks, ss, dtype))
+                    block_starts.append(pos + 1 - ratio)
+
+            # Preserve the boundary carry in the physical page which just closed. The register
+            # itself continues into the next page; the final write below seeds that page.
+            if pos % self.P == self.P - 1:
+                self._write_through_carry(int(window_slots[i].item()))
+
+        end = start_pos + seqlen
+        if seqlen and end % self.P:
+            self._write_through_carry(int(window_slots[-1].item()))
+        if not completed:
+            return None
+
+        reduced = self.norm(torch.cat(completed, dim=1))
+        starts = torch.tensor(block_starts, device=self._device, dtype=torch.int64)
+        apply_rotary_emb(reduced[..., -rd:], self.freqs_cis.index_select(0, starts))
+        if self.rotate:
+            reduced = hadamard_transform(reduced)
+            fp4_act_quant_inplace(reduced, 32)
+        else:
+            act_quant_fp8_inplace(reduced[..., :-rd], 64)
+        self.attn.scatter_compressed(
+            self.layer_id, self.tier,
+            self.attn.compress_rows_of(ti, starts, ratio), reduced[0],
         )
         return reduced
 

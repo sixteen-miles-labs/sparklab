@@ -8,6 +8,10 @@ recipes. Raw logs and large result streams stay outside the source repository.
 - `results/GB10-DSV4-SPARSE-001.json` records the optimized DeepSeek V4 route-first
   sparse-prefill probe: 10.28 decode tok/s and 0.604 s warm TTFT, with the baseline
   output hash preserved.
+- `results/GB10-DSV4-DSPARK-002.json` records the fused 0731 checkpoint's fixed
+  256-token DSpark matrix. The target-only control reached 7.41 tok/s; N=1/3/5/7
+  reached 7.07/6.19/5.97/5.16 tok/s, so speculation remains opt-in for the
+  single-GB10 disk-offload recipe.
 - `results/GB10-QWEN36-FAST-001.json` records the Qwen3.6 NVFP4 Fast
   performance probe.
 - `results/GB10-QWEN38-FRONTIER-001.json` records the certified text-only

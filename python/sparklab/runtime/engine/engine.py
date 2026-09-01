@@ -271,16 +271,74 @@ def _validate_attention_backend_choice(config, override, required: frozenset[Att
 
 
 def _adjust_speculative_config(config: EngineConfig, override) -> None:
-    """Inject the Qwen4 MTP layer before cache/backend resolution."""
+    """Resolve and inject checkpoint-native speculation before cache sizing."""
     speculative_tokens = int(getattr(config, "speculative_tokens", 0) or 0)
-    if speculative_tokens < 0 or speculative_tokens > 3:
-        raise ValueError("--speculative-tokens must be between 0 and 3")
+    if speculative_tokens < 0 or speculative_tokens > 7:
+        raise ValueError("--speculative-tokens must be between 0 and 7")
     if not speculative_tokens:
         return
 
     model_config = config.model_config
-    if getattr(model_config, "qwen4_exp_args", None) is None:
-        raise ValueError("--speculative-tokens currently supports Qwen4-Exp only")
+    requested = str(getattr(config, "speculative_method", "auto") or "auto")
+    qwen_mtp = getattr(model_config, "qwen4_exp_args", None) is not None
+    dsv4_args = getattr(model_config, "dsv4_args", None)
+    dsv4_dspark = bool(
+        dsv4_args is not None
+        and int(getattr(dsv4_args, "n_mtp_layers", 0) or 0) > 0
+        and tuple(getattr(dsv4_args, "dspark_target_layer_ids", ()) or ())
+        and int(getattr(dsv4_args, "dspark_markov_rank", 0) or 0) > 0
+    )
+    if requested == "auto":
+        method = "dspark" if dsv4_dspark else "mtp" if qwen_mtp else "none"
+    else:
+        method = requested
+    if method == "none":
+        raise ValueError(
+            "--speculative-tokens was provided, but this checkpoint has no supported draft"
+        )
+
+    if method == "dspark":
+        if not dsv4_dspark:
+            raise ValueError(
+                "--speculative-method dspark requires a fused DeepSeek-V4 DSpark checkpoint"
+            )
+        if getattr(config, "draft_sample_method", "greedy") not in {
+            "greedy", "probabilistic"
+        }:
+            raise ValueError("unsupported --draft-sample-method")
+        from sparklab.models.config import DSV4AttentionGroupConfig
+
+        args = replace(dsv4_args, dspark_enabled=True)
+        first = model_config.num_layers
+        draft_ids = tuple(range(first, first + args.n_mtp_layers))
+        groups = []
+        for group in model_config.attention_groups:
+            if isinstance(group, DSV4AttentionGroupConfig):
+                missing = tuple(layer for layer in draft_ids if layer not in group.layer_ids)
+                group = replace(group, layer_ids=(*group.layer_ids, *missing))
+            groups.append(group)
+        object.__setattr__(model_config, "dsv4_args", args)
+        object.__setattr__(model_config, "attention_groups", tuple(groups))
+        object.__setattr__(model_config, "speculative_method", "dspark")
+        object.__setattr__(model_config, "speculative_tokens", speculative_tokens)
+        object.__setattr__(
+            model_config, "draft_sample_method", config.draft_sample_method
+        )
+        override("speculative_method", "dspark")
+        # Correctness-first verification is eager and batch one. The DSpark
+        # query block itself is still parallel inside one model forward.
+        override("max_running_req", 1)
+        override("cache_type", "radix")
+        override("cuda_graph_bs", [])
+        override("cuda_graph_max_bs", 0)
+        return
+
+    if method != "mtp" or not qwen_mtp:
+        raise ValueError("--speculative-method mtp currently supports Qwen4-Exp only")
+    if speculative_tokens > 3:
+        raise ValueError("Qwen4 MTP supports at most 3 speculative tokens")
+    if getattr(config, "draft_sample_method", "greedy") != "greedy":
+        raise ValueError("Qwen4 MTP currently supports greedy draft sampling only")
     # The draft layer owns an independent QSA KV/index slot at the first layer
     # id beyond the target tower. Inject it without changing num_layers, which
     # still constructs exactly the target blocks. Do this before hybrid-cache
@@ -302,7 +360,9 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
         groups.append(group)
     object.__setattr__(model_config, "qwen4_exp_args", args)
     object.__setattr__(model_config, "attention_groups", tuple(groups))
+    object.__setattr__(model_config, "speculative_method", "mtp")
     object.__setattr__(model_config, "speculative_tokens", speculative_tokens)
+    override("speculative_method", "mtp")
     # Transactional verification is eager and currently batch-one. This is an
     # explicit bring-up constraint, not a silent numerical compromise.
     override("max_running_req", 1)
@@ -366,6 +426,44 @@ def _longest_accepted_prefix(truth: torch.Tensor, drafts: torch.Tensor) -> int:
     return accepted
 
 
+def _verify_speculative_tokens(
+    logits: torch.Tensor,
+    drafts: torch.Tensor,
+    draft_probs: torch.Tensor | None,
+    sampling_params,
+) -> tuple[int, torch.Tensor]:
+    """Verify deterministic drafts or apply exact stochastic rejection sampling."""
+    drafts = drafts.to(torch.int64)
+    if sampling_params.is_greedy or draft_probs is None:
+        truth = torch.argmax(logits, dim=-1).to(torch.int64)
+        accepted = _longest_accepted_prefix(truth, drafts)
+        chosen = torch.cat((drafts[:accepted], truth[accepted : accepted + 1]))
+        return accepted, chosen.to(torch.int32)
+
+    from sparklab.runtime.engine.sample import sampling_distribution
+
+    target_probs = sampling_distribution(logits, sampling_params)
+    draft_probs = draft_probs[: drafts.numel()].float()
+    accepted = 0
+    for index, token in enumerate(drafts):
+        target_p = target_probs[index, token]
+        draft_p = draft_probs[index, token].clamp_min(1e-20)
+        accept_p = torch.minimum(target_p / draft_p, target_p.new_tensor(1.0))
+        if bool((torch.rand((), device=logits.device) <= accept_p).item()):
+            accepted += 1
+            continue
+        residual = (target_probs[index] - draft_probs[index]).clamp_min(0)
+        total = residual.sum()
+        correction_probs = (
+            residual / total if bool((total > 0).item()) else target_probs[index]
+        )
+        correction = torch.multinomial(correction_probs, 1).to(torch.int32)
+        return accepted, torch.cat((drafts[:accepted].to(torch.int32), correction))
+
+    bonus = torch.multinomial(target_probs[drafts.numel()], 1).to(torch.int32)
+    return accepted, torch.cat((drafts.to(torch.int32), bonus))
+
+
 class ForwardOutput(NamedTuple):
     next_tokens_gpu: torch.Tensor
     next_tokens_cpu: torch.Tensor
@@ -422,6 +520,12 @@ class Engine:
                 config.model_path, dummy=config.use_dummy_weight
             )
         self.model.load_state_dict(self._load_weight_state_dict(config))
+        if hasattr(self.model, "speculative_state_dict"):
+            speculative = self.model.speculative_state_dict()
+            if speculative:
+                self.model.load_speculative_state_dict(
+                    self._load_speculative_weight_state_dict(config, speculative)
+                )
         post_weights_free = self._sync_get_memory()[0]
         self._weights_bytes = self._baseline_free - post_weights_free
         # Pool-budget baseline for the desktop cache sliders: free VRAM after the weights are
@@ -575,6 +679,27 @@ class Engine:
                 include_moe_experts=not is_offload_moe_backend(config.moe_backend),
             ),
             device=self.device,
+        )
+
+    def _load_speculative_weight_state_dict(
+        self, config: EngineConfig, model_state: Dict[str, torch.Tensor]
+    ) -> Dict[str, torch.Tensor]:
+        if config.use_dummy_weight:
+            return _make_dummy_weight_state_dict(model_state, device=self.device)
+        from sparklab.checkpoint.ftw import is_ftw_checkpoint, iter_ftw_weights
+
+        if is_ftw_checkpoint(config.model_path):
+            weights = iter_ftw_weights(
+                config.model_path, kinds=("speculative_weight",)
+            )
+        else:
+            from sparklab.models.register import _load_attr, get_model_spec
+
+            spec = get_model_spec(config.model_config.architectures[0])
+            loader = _load_attr(spec.module, "iter_speculative_weights")
+            weights = loader(config.model_path, torch.device("cpu"))
+        return _materialize_loaded_weight_state_dict(
+            model_state, weights, device=self.device
         )
 
     def _resolve_auto_moe_cache_size(
@@ -1047,16 +1172,25 @@ class Engine:
         if self.config.speculative_tokens:
             self.mtp_stats["target_forwards"] += 1
         state_snapshots: list[tuple[int, int]] = []
+        kv_snapshot = None
         if batch.is_verify:
-            pool = self.linear_state_pool
-            if pool is None:
-                raise RuntimeError("MTP verification requires a recurrent-state pool")
-            for req in batch.reqs:
-                if req.linear_slot_idx is None or req.mamba_ping_pong is None:
-                    raise RuntimeError("MTP verification requires hybrid-radix state slots")
-                scratch = req.mamba_ping_pong[req.mamba_next_track_idx]
-                pool.copy_from(req.linear_slot_idx, scratch)
-                state_snapshots.append((req.linear_slot_idx, scratch))
+            if self.config.speculative_method == "dspark":
+                if batch.size != 1:
+                    raise RuntimeError("DSpark verification currently supports batch size 1")
+                start = batch.verify_cached_lens[0]
+                kv_snapshot = self.kv_cache.snapshot_speculative(
+                    batch.reqs[0].table_idx, start, start + batch.input_ids.numel()
+                )
+            else:
+                pool = self.linear_state_pool
+                if pool is None:
+                    raise RuntimeError("MTP verification requires a recurrent-state pool")
+                for req in batch.reqs:
+                    if req.linear_slot_idx is None or req.mamba_ping_pong is None:
+                        raise RuntimeError("MTP verification requires hybrid-radix state slots")
+                    scratch = req.mamba_ping_pong[req.mamba_next_track_idx]
+                    pool.copy_from(req.linear_slot_idx, scratch)
+                    state_snapshots.append((req.linear_slot_idx, scratch))
         with self.ctx.forward_batch(batch):
             if not batch.is_verify and self.graph_runner.can_use_cuda_graph(batch):
                 logits = self.graph_runner.replay(batch)
@@ -1069,23 +1203,34 @@ class Engine:
 
         if batch.is_verify:
             if batch.size != 1:
-                raise RuntimeError("Qwen4 MTP verification currently supports batch size 1")
+                raise RuntimeError("speculative verification currently supports batch size 1")
             req = batch.reqs[0]
             start = batch.verify_cached_lens[0]
-            truth = torch.argmax(logits, dim=-1).to(torch.int32)
             drafts = batch.input_ids[1:].to(torch.int32)
-            accepted = _longest_accepted_prefix(truth, drafts)
+            accepted, chosen = _verify_speculative_tokens(
+                logits,
+                drafts,
+                req.speculative_draft_probs,
+                req.sampling_params,
+            )
             self.mtp_stats["drafted"] += int(drafts.numel())
             self.mtp_stats["accepted"] += accepted
-            chosen = torch.cat((drafts[:accepted], truth[accepted : accepted + 1]))
             if accepted < drafts.numel():
-                live, scratch = state_snapshots[0]
-                self.linear_state_pool.copy_from(scratch, live)
+                if self.config.speculative_method == "dspark":
+                    self.kv_cache.restore_speculative(kv_snapshot)
+                else:
+                    live, scratch = state_snapshots[0]
+                    self.linear_state_pool.copy_from(scratch, live)
                 self._replay_verified_prefix(batch, accepted + 1, start)
                 req.speculative_drafts = None
+                req.speculative_draft_probs = None
             else:
-                req.speculative_drafts = self.model.propose_mtp(
-                    batch, truth[-1:]
+                req.speculative_drafts = self._propose_speculative(
+                    batch, chosen[-1:]
+                )
+                take_probs = getattr(self.model, "take_speculative_probs", None)
+                req.speculative_draft_probs = (
+                    take_probs() if take_probs is not None else None
                 )
             req.cached_len = start + accepted + 1
             req.device_len = req.cached_len + 1
@@ -1100,10 +1245,12 @@ class Engine:
         else:
             batch_logits = logits[: batch.size]
             next_tokens_gpu = self.sampler.sample(batch_logits, args).to(torch.int32)
-            proposer = getattr(self.model, "propose_mtp", None)
-            proposals = proposer(batch, next_tokens_gpu) if proposer is not None else None
+            proposals = self._propose_speculative(batch, next_tokens_gpu)
+            take_probs = getattr(self.model, "take_speculative_probs", None)
+            proposal_probs = take_probs() if take_probs is not None else None
             for index, req in enumerate(batch.reqs):
                 req.speculative_drafts = proposals if index == 0 else None
+                req.speculative_draft_probs = proposal_probs if index == 0 else None
                 req.complete_one()
             token_counts = tuple(1 for _ in batch.reqs)
             managed_writes = False
@@ -1120,9 +1267,23 @@ class Engine:
             token_counts, managed_writes,
         )
 
+    def _propose_speculative(
+        self, batch: Batch, next_tokens: torch.Tensor
+    ) -> torch.Tensor | None:
+        """Run the checkpoint-native draft with the target batch context active.
+
+        Draft blocks execute after target sampling, so the target forward's context
+        manager has already exited.  Their MoE layers still need ``ctx.batch`` to
+        select the multi-token prefill/decode dispatch and collect cache telemetry.
+        """
+        proposer = getattr(self.model, "propose_mtp", None)
+        if proposer is None:
+            return None
+        with self.ctx.forward_batch(batch):
+            return proposer(batch, next_tokens)
+
     def _replay_verified_prefix(self, batch: Batch, length: int, start: int) -> None:
-        """Rebuild GDN/PLE state after a partial speculative rejection."""
-        from sparklab.attention.linear import build_fla_metadata
+        """Rebuild stateful target/draft cache after a partial rejection."""
 
         original = batch.reqs[0]
         query = batch.input_ids[:length]
@@ -1146,13 +1307,19 @@ class Engine:
         replay.input_ids = query
         replay.positions = batch.positions[:length]
         replay.out_loc = batch.out_loc[:length]
-        replay.linear_table_idx = torch.tensor(
-            [original.linear_slot_idx], dtype=torch.int32, device=self.device
-        )
-        replay.fla_metadata = build_fla_metadata(replay, self.device)
+        if self.linear_state_pool is not None:
+            from sparklab.attention.linear import build_fla_metadata
+
+            replay.linear_table_idx = torch.tensor(
+                [original.linear_slot_idx], dtype=torch.int32, device=self.device
+            )
+            replay.fla_metadata = build_fla_metadata(replay, self.device)
         self.attn_backend.prepare_metadata(replay)
         with self.ctx.forward_batch(replay):
-            self.model.model.forward(replay.input_ids)
+            if self.config.speculative_method == "dspark":
+                self.model.forward()
+            else:
+                self.model.model.forward(replay.input_ids)
 
     @torch.inference_mode()
     def _warmup_prefill(self) -> None:

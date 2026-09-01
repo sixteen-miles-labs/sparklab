@@ -167,12 +167,10 @@ class DSV4PagedKVCache(BaseKVCachePool):
         self._device = device
         self._dtype = dtype
         self.P = P
-        self._n_layers = args.n_layers
+        self._n_layers = args.runtime_n_layers
         self.head_dim = args.head_dim
         self.index_head_dim = args.index_head_dim
-        # The checkpoint can ship one extra trailing ratio (44 for 43 layers); the model only uses
-        # the first n_layers, so truncate to match.
-        self.compress_ratios = tuple(args.compress_ratios)[: self._n_layers]
+        self.compress_ratios = args.runtime_compress_ratios
         assert len(self.compress_ratios) == self._n_layers
         # Scratch rows appended to each cmp/idx pool tensor BEYOND the allocator's capacity
         # (never handed out): batched decode routes each row whose compressed block did NOT
@@ -568,6 +566,49 @@ class DSV4PagedKVCache(BaseKVCachePool):
         pool = self.idx_pool[layer_id]
         assert pool is not None, f"layer {layer_id} has no indexer pool (only ratio-4)"
         pool.index_copy_(0, idx_slot, k.to(self._dtype))
+
+    def snapshot_speculative(self, table_idx: int, start: int, end: int):
+        """Snapshot only compressor carry blocks touched by speculative verification."""
+        if end <= start:
+            return []
+        full = self.full_loc_map[table_idx, start:end]
+        slots = self.translate_full_to_window(full)
+        slots = slots[slots >= 0]
+        if slots.numel() == 0:
+            return []
+        page_bases = torch.unique(
+            torch.div(slots, self.P, rounding_mode="floor") * self.P
+        )
+        snapshots = []
+        for layer_id, ratio in enumerate(self.compress_ratios):
+            if not ratio:
+                continue
+            ring_size = ring_size_for_ratio(ratio)
+            state_bases = torch.div(
+                page_bases, self.P, rounding_mode="floor"
+            ) * ring_size
+            rows = (
+                state_bases[:, None]
+                + torch.arange(ring_size, device=self._device)[None, :]
+            ).flatten()
+            ring = self.state_ring[layer_id]
+            snapshots.append((ring, rows, ring.buffer.index_select(0, rows).clone()))
+            index_ring = self.indexer_state_ring[layer_id]
+            if index_ring is not None:
+                snapshots.append(
+                    (
+                        index_ring,
+                        rows,
+                        index_ring.buffer.index_select(0, rows).clone(),
+                    )
+                )
+        return snapshots
+
+    @staticmethod
+    def restore_speculative(snapshots) -> None:
+        for ring, rows, values in snapshots:
+            ring.buffer.index_copy_(0, rows, values)
+            ring._clear_scratch()
 
     def total_bytes(self) -> int:
         n = self.full_to_window.numel() * self.full_to_window.element_size()

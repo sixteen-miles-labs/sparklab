@@ -15,11 +15,11 @@ from sparklab.checkpoint.ftw import (
 )
 
 
-def _write_ftw(path, tensors):
+def _write_ftw(path, tensors, *, num_layers=2):
     writer = FTWWriter(str(path), shard_limit=4096 * 3)
     for name, tensor in tensors:
         writer.add_tensor(name, tensor, kind="experts_bank")
-    writer.finalize({"expert_bank_num_layers": 2, "quant_format": "test"})
+    writer.finalize({"expert_bank_num_layers": num_layers, "quant_format": "test"})
 
 
 def test_writer_syncs_and_evicts_each_completed_shard(tmp_path, monkeypatch):
@@ -91,6 +91,34 @@ def test_flat_expert_rows_round_trip(tmp_path):
             for expert_id in range(3):
                 got = reader.read_expert_row(index[(layer_id, expert_id, "weight")])
                 assert torch.equal(got, flat[layer_id * 3 + expert_id])
+    finally:
+        reader.close()
+
+
+@pytest.mark.parametrize("layout", ["flat", "layered"])
+def test_expert_row_index_can_open_prefix_of_superset(tmp_path, layout):
+    layers = [
+        torch.arange(2 * 17, dtype=torch.int16).view(2, 17) + layer * 1_000
+        for layer in range(3)
+    ]
+    if layout == "flat":
+        tensors = [("weight", torch.cat(layers))]
+    else:
+        tensors = [
+            (layer_bank_entry_name("weight", layer), value)
+            for layer, value in enumerate(layers)
+        ]
+    _write_ftw(tmp_path, tensors, num_layers=3)
+
+    reader = FTWReader(str(tmp_path))
+    try:
+        index = reader.expert_row_descriptors(num_layers=2)
+        assert len(index) == 2 * 2
+        assert not any(layer_id == 2 for layer_id, _, _ in index)
+        for layer_id in range(2):
+            for expert_id in range(2):
+                got = reader.read_expert_row(index[(layer_id, expert_id, "weight")])
+                assert torch.equal(got, layers[layer_id][expert_id])
     finally:
         reader.close()
 

@@ -69,14 +69,40 @@ class DeepseekV4Args:
     hc_sinkhorn_iters: int = 20
     hc_eps: float = 1e-6
 
+    # ----- fused DSpark draft -----
+    # The 0731 checkpoint ships three draft decoder blocks under ``mtp.*``.
+    # They are optional at runtime: ordinary target-only serving keeps the
+    # original 43-layer cache/expert geometry byte-for-byte unchanged.
+    dspark_block_size: int = 0
+    dspark_noise_token_id: int = -1
+    dspark_target_layer_ids: Tuple[int, ...] = ()
+    dspark_markov_rank: int = 0
+    dspark_enabled: bool = False
+
     def __post_init__(self) -> None:
         # JSON lists -> tuple so the dataclass stays hashable / immutable-ish.
         if isinstance(self.compress_ratios, list):
             self.compress_ratios = tuple(self.compress_ratios)
+        if isinstance(self.dspark_target_layer_ids, list):
+            self.dspark_target_layer_ids = tuple(self.dspark_target_layer_ids)
 
     @property
     def nope_head_dim(self) -> int:
         return self.head_dim - self.rope_head_dim
+
+    @property
+    def runtime_n_layers(self) -> int:
+        return self.n_layers + (self.n_mtp_layers if self.dspark_enabled else 0)
+
+    @property
+    def runtime_compress_ratios(self) -> Tuple[int, ...]:
+        ratios = tuple(self.compress_ratios)[: self.runtime_n_layers]
+        if self.dspark_enabled and len(ratios) != self.runtime_n_layers:
+            raise ValueError(
+                f"DeepSeek-V4 config has {len(ratios)} compression ratios for "
+                f"{self.runtime_n_layers} runtime layers"
+            )
+        return ratios
 
 
 def _config_path(model_path: str) -> str:

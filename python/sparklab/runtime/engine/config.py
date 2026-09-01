@@ -95,9 +95,11 @@ class EngineConfig:
     # KV capacity in tokens; resolved into num_page_override by _adjust_config once page_size
     # is final. Mutually exclusive with num_page_override.
     num_token_override: int | None = None
-    # Native Qwen4 MTP speculative decoding. Zero disables it; the first
-    # implementation intentionally caps the checkpoint's one-layer head at 3.
+    # Native speculative decoding. ``auto`` selects Qwen MTP or the fused DSV4
+    # DSpark head from checkpoint metadata. Zero tokens disables the path.
+    speculative_method: str = "auto"
     speculative_tokens: int = 0
+    draft_sample_method: str = "greedy"
 
     @cached_property
     def hf_config(self):
