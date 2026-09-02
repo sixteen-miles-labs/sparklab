@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
+from pathlib import Path
 from collections.abc import Sequence
 
 # Flags that mean "start an engine here" rather than "attach to one". Anything else engine-
@@ -45,6 +46,12 @@ def _build_parser(prog: str) -> argparse.ArgumentParser:
         default=None,
         help="SparkLab server URL (default: $SPARKLAB_HOST, else http://127.0.0.1:1919)",
     )
+    parser.add_argument(
+        "--documents",
+        type=Path,
+        default=None,
+        help="Directory of UTF-8 .txt and .md files used to ground each chat turn",
+    )
     return parser
 
 
@@ -52,6 +59,13 @@ def main(argv: Sequence[str] | None = None, *, prog: str = "sparklab shell") -> 
     args = list(sys.argv[1:] if argv is None else argv)
 
     if _wants_local_engine(args):
+        if "--documents" in args or any(arg.startswith("--documents=") for arg in args):
+            print(
+                "--documents currently attaches to an already running server; "
+                "start the server first, then run sparklab shell --documents PATH",
+                file=sys.stderr,
+            )
+            return 2
         from sparklab.serving import launch_server
 
         launch_server(run_shell=True, argv=args, prog=prog)
@@ -74,7 +88,7 @@ def main(argv: Sequence[str] | None = None, *, prog: str = "sparklab shell") -> 
     from .tui import run_shell
 
     try:
-        return asyncio.run(run_shell(server.origin))
+        return asyncio.run(run_shell(server.origin, documents=parsed.documents))
     except KeyboardInterrupt:
         return 130
 
