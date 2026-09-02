@@ -405,8 +405,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="NVFP4 expert kernel/layout; must match an FTW checkpoint's converted layout",
     )
     p.add_argument(
-        "--host-cache-gb", type=float, default=1.0,
-        help="disk mode pageable host expert-LRU budget in GiB",
+        "--host-cache-gb", type=float, default=0.0,
+        help=(
+            "disk mode pageable host expert-LRU budget in GiB; default 0 keeps "
+            "GB10 unified memory available for the faster GPU expert cache"
+        ),
     )
     p.add_argument(
         "--cpu-threads", type=int, default=0,
@@ -621,7 +624,7 @@ def serve_cmd(args: argparse.Namespace, backend: str, port: int) -> list[str]:
         cmd += ["--num-tokens", str(args.num_tokens)]
     if args.cpu_threads > 0:
         cmd += ["--moe-cpu-threads", str(args.cpu_threads)]
-    if args.disable_prefill_overlap:
+    if not prefill_overlap_enabled(args):
         cmd.append("--disable-moe-prefill-overlap")
     if getattr(args, "preload_all", False):
         cmd.append("--moe-preload-all")
@@ -640,6 +643,12 @@ def serve_cmd(args: argparse.Namespace, backend: str, port: int) -> list[str]:
     else:
         cmd.append("--moe-cache-auto")
     return cmd
+
+
+def prefill_overlap_enabled(args: argparse.Namespace) -> bool:
+    """Resolve the benchmark's disk staging mode before launch and reporting."""
+    no_host_budget = args.storage == "disk" and args.host_cache_gb <= 0
+    return not args.disable_prefill_overlap and not args.preload_all and not no_host_budget
 
 
 def die_with_log(msg: str, log_path: str) -> None:
@@ -926,7 +935,7 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
             "hybrid_fetch": args.hybrid_fetch,
             "disk_read_workers": int(os.getenv("SPARKLAB_DISK_READ_WORKERS", "16")),
             "cache_policy": args.cache_policy,
-            "prefill_overlap": not args.disable_prefill_overlap and not args.preload_all,
+            "prefill_overlap": prefill_overlap_enabled(args),
             "preload_all": args.preload_all,
             "prefill_hit_d2d": args.prefill_hit_d2d,
             "prefill_sparse_max_tokens": args.prefill_sparse_max_tokens,

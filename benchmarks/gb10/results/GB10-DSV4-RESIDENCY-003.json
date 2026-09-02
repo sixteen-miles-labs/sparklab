@@ -1,0 +1,115 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-DSV4-RESIDENCY-003",
+  "status": "measured",
+  "date": "2026-09-01",
+  "platform": {
+    "device": "NVIDIA GB10",
+    "memory_gib": 128,
+    "machine": "aarch64",
+    "cuda": "13.0",
+    "driver": "580.126.09",
+    "integrated_gpu": true
+  },
+  "engine": {
+    "name": "SparkLab",
+    "revision": "37efdf5ed10863f9ced88e327008e472459fd93c",
+    "tracked_dirty": true
+  },
+  "model": {
+    "repository": "deepseek-ai/DeepSeek-V4-Flash-0731",
+    "revision": "7872f01b1d1fe23eabc4c98b48bffcef5a386062",
+    "checkpoint_format": "ftw-ds-fp4",
+    "fingerprint": "aeb9734fe8747554",
+    "checkpoint_bytes": 168424579072,
+    "prepared_shards": 24,
+    "target_layers": 43,
+    "draft_layers": 3
+  },
+  "workload": {
+    "name": "AIME-25 problem 0 fixed 256-token decode probe",
+    "batch_size": 1,
+    "sampling": "greedy",
+    "prompt_tokens": 48,
+    "requested_completion_tokens": 256,
+    "returned_completion_tokens": 256,
+    "timed_decode_steps": 255,
+    "warmup_requests": 1,
+    "measured_requests": 1,
+    "client_path": "OpenAI-compatible streaming HTTP API"
+  },
+  "configuration": {
+    "storage": "disk",
+    "attention_backend": "dsv4_sparse",
+    "max_seq_len": 8448,
+    "num_tokens": 2048,
+    "memory_ratio": 0.9,
+    "host_cache_gib": 0,
+    "host_cache_entries": 0,
+    "staging_buffers": 1,
+    "prefill_overlap": false,
+    "prefill_sparse_max_tokens": 512,
+    "cache_policy": "lru",
+    "cuda_graph": false
+  },
+  "comparison": {
+    "baseline_result": "GB10-DSV4-DSPARK-002",
+    "baseline_host_cache_gib": 4,
+    "baseline_staging_buffers": 2,
+    "rationale": "GB10 host and GPU allocations consume the same unified-memory pool. The prior host LRU had zero measured hits, so assigning that capacity to persistent GPU expert slots avoids more disk reads and host-to-device copies."
+  },
+  "metrics": {
+    "target_only": {
+      "decode_tokens_per_second": 8.673403327989714,
+      "warm_ttft_seconds": 1.7943157120025717,
+      "speedup_percent": 17.087012508833933,
+      "gpu_expert_cache_slots": 6304,
+      "expert_cache_miss_rate_percent": 2.047423620611035,
+      "physical_io_gib": 25.6494140625,
+      "physical_io_reduction_percent": 33.268472662199734,
+      "device_allocation_gib": 88.4140625,
+      "output_hash": "461810a57c7c"
+    },
+    "dspark_n1": {
+      "decode_tokens_per_second": 8.267861322153117,
+      "warm_ttft_seconds": 1.7966334570082836,
+      "speedup_percent": 16.912139130528292,
+      "relative_to_target_only_percent": -4.675696384692307,
+      "gpu_expert_cache_slots": 6228,
+      "expert_cache_miss_rate_percent": 3.0561885721475807,
+      "physical_io_gib": 36.942626953125,
+      "physical_io_reduction_percent": 25.489703666499242,
+      "device_allocation_gib": 88.130859375,
+      "accepted": 98,
+      "drafted": 127,
+      "acceptance_rate": 0.772,
+      "outputs_per_target_forward": 1.62,
+      "output_hash": "98ceaba767cb"
+    }
+  },
+  "validation": {
+    "checkpoint_checksum_verified": true,
+    "complete_checkpoint_loaded": true,
+    "api_stream_completed": true,
+    "all_runs_returned_requested_tokens": true,
+    "all_runs_oom_count": 0,
+    "all_runs_swap_growth_bytes": 0,
+    "target_output_hash_preserved": true,
+    "dspark_output_hash_preserved": true,
+    "dspark_acceptance_preserved": true,
+    "answer_reached_in_all_samples": true,
+    "quality_gate_run": false,
+    "endurance_gate_run": false
+  },
+  "source": {
+    "summary": "benchmarks/gb10/results/GB10-DSV4-RESIDENCY-003.json",
+    "target_raw_artifact": "/tmp/dsv4-no-host-n0.jsonl",
+    "dspark_raw_artifact": "/tmp/dsv4-no-host-n1.jsonl"
+  },
+  "limitations": [
+    "This is a one-request single-stream performance comparison, not a quality or endurance certification.",
+    "The optimization is specific to unified-memory systems such as GB10; a discrete GPU may benefit from a separate host expert cache.",
+    "DSpark N=1 remains slower than target-only decode on one disk-backed GB10 despite the shared residency improvement.",
+    "The tracked-dirty revision includes unrelated workspace changes."
+  ]
+}
