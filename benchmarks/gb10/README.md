@@ -12,8 +12,14 @@ recipes. Raw logs and large result streams stay outside the source repository.
   256-token DSpark matrix. The target-only control reached 7.41 tok/s; N=1/3/5/7
   reached 7.07/6.19/5.97/5.16 tok/s, so speculation remains opt-in for the
   single-GB10 disk-offload recipe.
+- `results/GB10-DSV4-RESIDENCY-003.json` records the unified-memory residency
+  optimization: removing the unused host expert LRU raised target-only decode
+  from 7.41 to 8.67 tok/s and DSpark N=1 from 7.07 to 8.27 tok/s.
 - `results/GB10-QWEN36-FAST-001.json` records the Qwen3.6 NVFP4 Fast
   performance probe.
+- `results/GB10-QWEN38-27B-001.json` records the dense Qwen3.8-27B ModelOpt
+  NVFP4 result: 8.83 decode tok/s, 0.144 s warm TTFT, exact 64K recall, and
+  passing reasoning, tool-call, and coding-agent probes.
 - `results/GB10-QWEN38-FRONTIER-001.json` records the certified text-only
   Qwen3.8-Flash-Next result for the superseded NVFP4 recipe.
 - `results/GB10-QWEN38-FP8-001.json` records the official FP8 recipe's measured

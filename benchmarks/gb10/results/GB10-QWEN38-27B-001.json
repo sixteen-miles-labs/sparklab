@@ -1,0 +1,116 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWEN38-27B-001",
+  "status": "measured",
+  "recipe": {
+    "slug": "qwen3.8-27b",
+    "recipe_version": "0.1.0",
+    "revision": "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+  },
+  "engine": {
+    "name": "FreeToken",
+    "product_identity": "SparkLab",
+    "git_revision": "b7486b653afadc3f5350c25b5c967050ee3eed08",
+    "git_tracked_dirty": true
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "machine": "aarch64",
+    "os": "Linux 6.17.0-1014-nvidia",
+    "driver": "580.126.09",
+    "cuda": "13.0",
+    "torch": "2.11.0+cu130",
+    "triton": "3.6.0"
+  },
+  "checkpoint": {
+    "repository": "Inferact/Qwen3.8-27B-NVFP4",
+    "revision": "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462",
+    "full_model": true,
+    "format": "ftw-nvfp4",
+    "quantization": "nvfp4",
+    "fingerprint": "af78f7411817bb73",
+    "source_bytes": 26404418018,
+    "bytes": 24617562112,
+    "prepared_shards": 3,
+    "prepared_tensors": 1027
+  },
+  "workload": {
+    "name": "Greedy reasoning decode, capability suite, and exact 64K recall",
+    "batch_size": 1,
+    "sampling": "greedy",
+    "requested_completion_tokens": 256,
+    "warmup_requests": 1,
+    "measured_requests": 3,
+    "client_path": "OpenAI-compatible HTTP API"
+  },
+  "configuration": {
+    "execution_policy": "resident",
+    "nvfp4_backend": "triton",
+    "attention_backend": "fi",
+    "cuda_graph": true,
+    "cuda_graph_batch_size": 1,
+    "kv_tokens": 65536,
+    "page_size": 16,
+    "cache_type": "hybrid_radix"
+  },
+  "metrics": {
+    "decode_tokens_per_second": 8.832997654771269,
+    "decode_milliseconds_per_token": 113.211858306,
+    "warm_ttft_seconds": 0.14434478300245246,
+    "context_request_seconds": 64.76532150399726,
+    "context_vram_bytes": 32218546176,
+    "context_physical_disk_bytes": 0,
+    "power_watts_average": 87.80145161290322,
+    "power_watts_peak": 93.46,
+    "gpu_temperature_celsius_peak": 77.0,
+    "swap_in_pages": 0,
+    "swap_out_pages": 0
+  },
+  "validation": {
+    "checkpoint_checksum_verified": true,
+    "complete_checkpoint_loaded": true,
+    "api_stream_completed": true,
+    "output_correctness": true,
+    "reasoning_parser": true,
+    "tool_parser": true,
+    "coding_agent_task": true,
+    "memory_bounded": true,
+    "nvme_behavior": "no_stalls",
+    "context_tokens": 65536,
+    "context_gate_run": true,
+    "context_recall": "SPARK-7319",
+    "capability_gate_run": true,
+    "endurance_gate_run": false
+  },
+  "stability": {
+    "duration_minutes": 1.5318224554666813,
+    "oom_count": 0,
+    "service_restarts": 0,
+    "swap_growth_bytes": 0,
+    "parser_failures": 0,
+    "uninterrupted": true
+  },
+  "admission": {
+    "tier": "frontier",
+    "performance_gate_passed": true,
+    "passed": false,
+    "reasons": [
+      "The three-trial median measured 8.833 tok/s and 0.144 s warm TTFT, passing Frontier performance thresholds but not the Fast decode threshold.",
+      "The exact 65,536-token prompt returned the planted key with bounded memory, no physical model reads, no swap growth, and no OOMs.",
+      "Reasoning-channel, structured tool-call, and executable coding-agent probes passed; the 60-minute endurance gate remains outstanding."
+    ]
+  },
+  "source": {
+    "performance_artifact": "$HOME/results/qwen3.8-27b/performance-native-attn.json",
+    "capability_artifact": "$HOME/results/qwen3.8-27b/capabilities-native-attn.json",
+    "context_artifact": "$HOME/results/qwen3.8-27b/context-65536-native-attn.json"
+  },
+  "limitations": [
+    "This is dirty-worktree implementation evidence, not a clean-revision certification result.",
+    "The published multimodal checkpoint is served text-only; the vision tower is not loaded.",
+    "The model's declared 262,144-token maximum was not tested; the recipe is capped and validated at 65,536 tokens.",
+    "The host had 219,271,168 bytes of pre-existing swap resident, although the measured 64K request produced no swap growth, swap-in, or swap-out.",
+    "Frontier certification requires a clean-revision 60-minute endurance run."
+  ]
+}

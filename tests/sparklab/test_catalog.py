@@ -33,6 +33,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert get_recipe("qwen3.8-flash-next").model == (
         "Inferact/Qwen3.8-Flash-Next-NVFP4"
     )
+    assert get_recipe("qwen3.8-27b").model == "Inferact/Qwen3.8-27B-NVFP4"
     assert get_recipe("qwen3.6-35b-a3b").name == "Qwen3.6 35B A3B"
     assert get_recipe("glm-5.2").name == "GLM-5.2"
     assert get_recipe("glm-5.2").intended_tier == "research"
@@ -41,6 +42,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
         recipe.slug: recipe.parameters for recipe in load_catalog()
     } == {
         "qwen3.6-35b-a3b": "35B total / 3B active",
+        "qwen3.8-27b": "27B dense",
         "deepseek-v4": "284B total / 13B active",
         "glm-5.3-flash": "320B total / 18B active",
         "qwen3.8-flash-next": "125B LM + 55B aux / 6B active",
@@ -114,16 +116,18 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert glm52.performance.decode_tokens_per_second == pytest.approx(0.802)
     assert glm52.performance.warm_ttft_seconds == pytest.approx(2.57)
     deepseek = get_recipe("deepseek-v4")
-    assert deepseek.recipe_version == "0.3.0"
+    assert deepseek.recipe_version == "0.3.1"
     assert deepseek.revision == "7872f01b1d1fe23eabc4c98b48bffcef5a386062"
     assert deepseek.performance.decode_tokens_per_second == pytest.approx(
-        7.407656188456706
+        8.673403327989714
     )
     assert deepseek.performance.warm_ttft_seconds == pytest.approx(
-        2.1198420680011623
+        1.7943157120025717
     )
     assert deepseek.deployment.backend_options["moe_prefill_sparse_max_tokens"] == 512
     assert deepseek.deployment.backend_options["moe_cache_auto"] is True
+    assert deepseek.deployment.backend_options["moe_host_cache_gb"] == 0
+    assert deepseek.deployment.backend_options["moe_prefill_overlap"] is False
     qwen36 = get_recipe("qwen3.6-35b-a3b")
     assert qwen36.status == "certified"
     assert qwen36.runtime_memory == {"total_bytes": 34359738368}
@@ -137,6 +141,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     primary = select_recipes(load_catalog(), portfolio_role="primary")
     assert {(item.intended_tier, item.slug) for item in primary} == {
         ("fast", "qwen3.6-35b-a3b"),
+        ("frontier", "qwen3.8-27b"),
         ("frontier", "deepseek-v4"),
         ("frontier", "glm-5.3-flash"),
         ("frontier", "qwen3.8-flash-next"),
@@ -148,6 +153,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
 
 
 def test_next_model_recipes_are_immutable_and_capacity_plannable():
+    qwen27 = get_recipe("qwen3.8-27b")
     qwen = get_recipe("qwen3.8-flash-next")
     glm = get_recipe("glm-5.3-flash")
     kimi = get_recipe("kimi-k3")
@@ -155,6 +161,18 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     glm53 = get_recipe("glm-5.3")
     deepseek = get_recipe("deepseek-v4")
     assert qwen.revision == "103a7608316173ca6edd49929544244de7ffda70"
+    assert qwen27.revision == "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+    assert qwen27.source_bytes == 26404418018
+    assert qwen27.prepared_bytes == 24640689529
+    assert qwen27.intended_tier == "frontier"
+    assert qwen27.performance.decode_tokens_per_second == pytest.approx(8.832997654771269)
+    assert qwen27.performance.warm_ttft_seconds == pytest.approx(0.14434478300245246)
+    assert qwen27.performance.context_tokens == 65_536
+    assert qwen27.evidence == ("GB10-QWEN38-27B-001",)
+    assert qwen27.deployment.execution_policy == "resident"
+    assert qwen27.deployment.backend_options["num_tokens"] == 65_536
+    assert qwen27.deployment.backend_options["max_seq_len_override"] == 65_536
+    assert qwen27.deployment.backend_options["nvfp4_backend"] == "triton"
     assert glm.recipe_version == "0.3.2"
     assert glm.revision == "9eaeadaf026871a90640e32c0604f6ab0b2d641d"
     assert kimi.revision == "f8c5234a0a880bcc6cbf779a315e7ee2f405b812"
@@ -199,27 +217,34 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     assert deepseek.minimum_free_bytes > deepseek.source_bytes + deepseek.prepared_bytes
 
 
-def test_deepseek_recipe_points_to_checked_in_dspark_evidence():
+def test_deepseek_recipe_points_to_checked_in_residency_evidence():
     recipe = get_recipe("deepseek-v4")
-    assert recipe.evidence == ("GB10-DSV4-DSPARK-002",)
+    assert recipe.evidence == (
+        "GB10-DSV4-RESIDENCY-003",
+        "GB10-DSV4-DSPARK-002",
+    )
     root = Path(__file__).resolve().parents[2]
     result = json.loads(
-        (root / "benchmarks/gb10/results/GB10-DSV4-DSPARK-002.json").read_text()
+        (root / "benchmarks/gb10/results/GB10-DSV4-RESIDENCY-003.json").read_text()
     )
     assert result["result_id"] == recipe.evidence[0]
     assert result["status"] == "measured"
     assert result["model"]["revision"] == recipe.revision
     assert result["model"]["checkpoint_bytes"] == recipe.prepared_bytes
-    assert result["metrics"]["baseline_decode_tokens_per_second"] == pytest.approx(
-        7.407656188456706
+    assert result["metrics"]["target_only"]["decode_tokens_per_second"] == pytest.approx(
+        8.673403327989714
     )
-    assert result["metrics"]["baseline_warm_ttft_seconds"] == pytest.approx(
-        2.1198420680011623
+    assert result["metrics"]["target_only"]["warm_ttft_seconds"] == pytest.approx(
+        1.7943157120025717
     )
-    assert result["metrics"]["best_speculative_tokens"] == 1
-    assert result["metrics"]["best_speculative_speedup"] < 1
+    assert result["metrics"]["target_only"]["speedup_percent"] == pytest.approx(
+        17.087012508833933
+    )
+    assert result["metrics"]["dspark_n1"]["decode_tokens_per_second"] < result[
+        "metrics"
+    ]["target_only"]["decode_tokens_per_second"]
+    assert result["validation"]["target_output_hash_preserved"] is True
     assert result["validation"]["all_runs_oom_count"] == 0
-    assert result["validation"]["baseline_output_hash_preserved"] is False
 
 
 def test_glm53_recipe_points_to_checked_in_fused_mhc_evidence():

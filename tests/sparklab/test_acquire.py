@@ -15,7 +15,7 @@ from sparklab.acquire import (
     validate_ftw_checkpoint,
     validate_safetensors_snapshot,
 )
-from sparklab.catalog import RuntimeArtifact, get_recipe
+from sparklab.catalog import RuntimeArtifact, SupplementalArtifact, get_recipe
 
 
 def _indexed_snapshot(path):
@@ -95,6 +95,18 @@ def test_validate_ftw_checkpoint_checks_shards_tensors_and_external_artifacts(tm
     assert result["kind_counts"] == {"weight": 2}
 
 
+def test_validate_ftw_checkpoint_ignores_explicit_zero_kind_count(tmp_path):
+    _ftw_checkpoint(tmp_path)
+    index_path = tmp_path / "freetoken_weight.json"
+    index = json.loads(index_path.read_text(encoding="utf-8"))
+    index["counts"]["experts_bank"] = 0
+    index_path.write_text(json.dumps(index), encoding="utf-8")
+
+    result = validate_ftw_checkpoint(tmp_path)
+
+    assert result["kind_counts"] == {"weight": 2}
+
+
 def test_validate_ftw_checkpoint_rejects_truncated_shard(tmp_path):
     index = _ftw_checkpoint(tmp_path)
     shard = tmp_path / index["shards"][0]["file"]
@@ -163,6 +175,49 @@ def test_acquire_recipe_downloads_and_manifests_pinned_prebuilt_ftw(tmp_path):
     assert runtime["repository"] == "sparklab/qwen-ftw"
     assert runtime["revision"] == "a" * 40
     assert runtime["fingerprint"] == "0123456789abcdef"
+
+
+def test_acquire_recipe_adds_pinned_supplemental_runtime_file(tmp_path):
+    supplemental = SupplementalArtifact(
+        repo_id="publisher/qwen",
+        revision="b" * 40,
+        filename="nvfp4_experts_mtp.safetensors",
+        bytes=3,
+    )
+    recipe = replace(
+        get_recipe("qwen3.8-flash-next"),
+        source_bytes=1,
+        prepared_bytes=4,
+        minimum_free_bytes=5,
+        runtime_artifact=RuntimeArtifact(
+            repo_id="sparklab/qwen-ftw",
+            revision="a" * 40,
+            bytes=1,
+            fingerprint="0123456789abcdef",
+            supplemental_files=(supplemental,),
+        ),
+    )
+    calls = []
+
+    def downloader(**kwargs):
+        calls.append(kwargs)
+        destination = Path(kwargs["local_dir"])
+        destination.mkdir(parents=True, exist_ok=True)
+        if kwargs.get("allow_patterns"):
+            (destination / supplemental.filename).write_bytes(b"mtp")
+        else:
+            (destination / "config.json").write_text("{}", encoding="utf-8")
+            _ftw_checkpoint(destination)
+        return str(destination)
+
+    result = acquire_recipe(
+        recipe, root=str(tmp_path), prepare=True, downloader=downloader
+    )
+
+    assert calls[1]["allow_patterns"] == [supplemental.filename]
+    runtime = result["manifest"]["artifacts"]["runtime"]
+    assert runtime["supplemental_files"][0]["bytes"] == 3
+    assert Path(runtime["supplemental_files"][0]["path"]).read_bytes() == b"mtp"
 
 
 def test_acquire_recipe_rejects_wrong_prebuilt_fingerprint(tmp_path):
