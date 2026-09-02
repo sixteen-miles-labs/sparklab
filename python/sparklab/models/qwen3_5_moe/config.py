@@ -273,6 +273,7 @@ def parse_config(hf_config: Any) -> ModelConfig:
         attn_quant=attn_quant,
         dense_quant=dense_quant,
         lm_head_quant=lm_head_quant,
+        mtp_num_hidden_layers=int(getattr(text, "mtp_num_hidden_layers", 0) or 0),
     )
 
 

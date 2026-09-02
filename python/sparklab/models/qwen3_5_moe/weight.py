@@ -152,6 +152,84 @@ def _is_gemma_norm(name: str) -> bool:
     return name == "model.norm.weight" or name.endswith(_GEMMA_NORM_SUFFIXES)
 
 
+_MTP_FUSIONS: dict[str, tuple[str, ...]] = {
+    ".self_attn.qkv_proj.weight": (
+        ".self_attn.q_proj.weight",
+        ".self_attn.k_proj.weight",
+        ".self_attn.v_proj.weight",
+    ),
+    ".mlp.shared_expert.gate_up_proj.weight": (
+        ".mlp.shared_expert.gate_proj.weight",
+        ".mlp.shared_expert.up_proj.weight",
+    ),
+}
+
+
+def _is_mtp_gemma_norm(name: str) -> bool:
+    return name in {
+        "norm.weight",
+        "pre_fc_norm_embedding.weight",
+        "pre_fc_norm_hidden.weight",
+    } or name.endswith(
+        (
+            ".input_layernorm.weight",
+            ".post_attention_layernorm.weight",
+            ".self_attn.q_norm.weight",
+            ".self_attn.k_norm.weight",
+        )
+    )
+
+
+def iter_speculative_weights(
+    model_path: str, device: torch.device
+) -> Iterator[tuple[str, torch.Tensor]]:
+    """Stream the BF16 ``mtp.*`` head under draft-model state-dict names."""
+    reader = ShardReader(model_path, device)
+    pending: dict[str, dict[int, torch.Tensor]] = {}
+    try:
+        raw_names = sorted(name for name in reader.names() if name.startswith("mtp."))
+        for raw_name in raw_names:
+            name = raw_name.removeprefix("mtp.")
+            tensor = reader.get_tensor(raw_name)
+            fused = _try_fuse(name, tensor, pending)
+            # _try_fuse also knows target-only groups. MTP names can only match
+            # qkv, dense gate/up, or the shared-expert group below.
+            if fused is not None:
+                if fused:
+                    out_name, out = fused
+                    if _is_mtp_gemma_norm(out_name):
+                        out = out + 1.0
+                    yield out_name, out
+                continue
+            shared_fused = None
+            for out_suffix, parts in _MTP_FUSIONS.items():
+                if out_suffix == ".self_attn.qkv_proj.weight":
+                    continue  # already handled by _try_fuse
+                for index, suffix in enumerate(parts):
+                    if name.endswith(suffix):
+                        out_name = name[: -len(suffix)] + out_suffix
+                        slots = pending.setdefault(out_name, {})
+                        slots[index] = tensor
+                        if len(slots) == len(parts):
+                            del pending[out_name]
+                            yield out_name, torch.cat(
+                                [slots[i] for i in range(len(parts))], dim=0
+                            )
+                        shared_fused = True
+                        break
+                if shared_fused:
+                    break
+            if shared_fused:
+                continue
+            if _is_mtp_gemma_norm(name):
+                tensor = tensor + 1.0
+            yield name, tensor
+        if pending:
+            raise ValueError(f"incomplete Qwen MTP projection groups: {sorted(pending)}")
+    finally:
+        reader.close()
+
+
 def _try_fuse(
     name: str, tensor: torch.Tensor, buf: dict[str, dict[int, torch.Tensor]]
 ) -> tuple[str, torch.Tensor] | tuple[()] | None:

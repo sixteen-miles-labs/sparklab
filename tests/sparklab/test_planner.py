@@ -125,7 +125,7 @@ def test_qwen36_prepare_uses_pinned_prebuilt_runtime(tmp_path, monkeypatch):
 
     assert recipe.runtime_artifact is not None
     assert recipe.runtime_artifact.repo_id == "oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW"
-    assert recipe.runtime_artifact.revision == "fecab7acfd0590d2b268d8fb9ea1c88431471111"
+    assert recipe.runtime_artifact.revision == "4826bc15c0f91ab9de7c57040bda36cfc57b3974"
     assert plan.acquisition == "prebuilt-runtime"
     assert plan.ready is True
 

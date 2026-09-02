@@ -108,11 +108,15 @@ class HybridBackend(BaseAttnBackend):
         batch: Batch,
         attn_spec: AttentionSpec | None = None,
     ) -> torch.Tensor:
-        backend = self.prefill_backend if batch.is_prefill else self.decode_backend
+        backend = (
+            self.prefill_backend if batch.uses_prefill_kernels else self.decode_backend
+        )
         return backend.forward(q, k, v, layer_id, batch, attn_spec=attn_spec)
 
     def prepare_metadata(self, batch: Batch) -> None:
-        backend = self.prefill_backend if batch.is_prefill else self.decode_backend
+        backend = (
+            self.prefill_backend if batch.uses_prefill_kernels else self.decode_backend
+        )
         return backend.prepare_metadata(batch)
 
     def init_capture_graph(self, max_seq_len: int, bs_list: List[int]) -> None:

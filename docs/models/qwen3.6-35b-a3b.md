@@ -34,14 +34,38 @@ sparklab pull qwen3.6-35b-a3b --root /path/to/models --prepare
 `pull --prepare` downloads the immutable FTW revision from
 [`oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW`](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW)
 and validates its fingerprint before it can run. The artifact preserves the source NVFP4
-quantization; it does not requantize the model. Use `--from-source` only when you want to
-reproduce the FTW repack locally from NVIDIA's pinned source checkpoint.
+quantization and includes the upstream model's BF16 MTP layer as a fourth FTW shard; it
+does not requantize either component. Use `--from-source` only when you want to reproduce
+the complete FTW repack locally from NVIDIA's pinned source checkpoint.
 
 ## Run
 
 ```bash
 sparklab run qwen3.6-35b-a3b --root /path/to/models
 ```
+
+## Experimental speculative decoding
+
+SparkLab can load Qwen3.6's native MTP layer, verify its draft tokens with the target,
+and commit or roll back paged KV and GDN recurrent state at the accepted boundary. The
+[upstream vLLM profile](https://recipes.vllm.ai/Qwen/Qwen3.6-35B-A3B) uses three drafts:
+
+```bash
+sparklab run qwen3.6-35b-a3b --root /path/to/models -- \
+  --speculative-method mtp \
+  --speculative-tokens 3
+```
+
+This path is available for experimentation, not recommended for production on GB10. In
+a controlled 64-token greedy sweep, target-only decode reached 52.63 tok/s. Draft widths
+one, two, and three reached 5.68, 7.02, and 8.57 tok/s respectively. Width three accepted
+41/50 drafts and reduced the run to 23 target forwards, but the resident BF16 draft layer
+cost more than the saved NVFP4 target work. It was also the only measured width that
+reproduced the target-only output hash. Keep the default target-only recipe for normal
+chat and agent use. See [GB10-QWEN36-MTP-003](../../benchmarks/gb10/results/GB10-QWEN36-MTP-003.json).
+
+MTP currently applies to one running greedy request. Sampled requests fall back to target
+decoding, and target verification runs eagerly.
 
 Wait for the API to listen on `127.0.0.1:1919`, then verify it:
 

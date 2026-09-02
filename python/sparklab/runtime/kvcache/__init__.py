@@ -207,7 +207,13 @@ def create_kvcache_pool(
         num_kv_heads=num_kv_heads,
         num_pages=num_pages,
         page_size=page_size,
-        num_layers=model_config.num_layers,
+        # A checkpoint-native draft may own the first logical KV id after the
+        # target tower. Keep target num_layers unchanged for model construction,
+        # but size the global-id map from the declared cache group.
+        num_layers=max(
+            model_config.num_layers,
+            max((layer for spec in kv_specs for layer in spec.layer_ids), default=-1) + 1,
+        ),
         head_dim=head_dim,
         device=device,
         dtype=dtype,

@@ -256,7 +256,15 @@ class FlashInferBackend(BaseAttnBackend):
             pos_encoding_mode="NONE",
             seq_lens_cpu=seq_len_cpu,
             dtype=self.kvcache.dtype,
-            wrapper=self.decode_wrappers if batch.is_decode else self.prefill_wrapper,
+            # Verification extends one request with anchor + draft tokens.  It is
+            # still part of the decode lifecycle, but FlashInfer must process it
+            # with the causal multi-token wrapper rather than the one-query decode
+            # wrapper.
+            wrapper=(
+                self.prefill_wrapper
+                if batch.uses_prefill_kernels
+                else self.decode_wrappers
+            ),
         )
 
     def reset_capture(self) -> None:

@@ -280,7 +280,11 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
 
     model_config = config.model_config
     requested = str(getattr(config, "speculative_method", "auto") or "auto")
-    qwen_mtp = getattr(model_config, "qwen4_exp_args", None) is not None
+    qwen4_mtp = getattr(model_config, "qwen4_exp_args", None) is not None
+    qwen35_mtp = int(
+        getattr(model_config, "mtp_num_hidden_layers", 0) or 0
+    ) > 0
+    qwen_mtp = qwen4_mtp or qwen35_mtp
     dsv4_args = getattr(model_config, "dsv4_args", None)
     dsv4_dspark = bool(
         dsv4_args is not None
@@ -334,9 +338,11 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
         return
 
     if method != "mtp" or not qwen_mtp:
-        raise ValueError("--speculative-method mtp currently supports Qwen4-Exp only")
+        raise ValueError(
+            "--speculative-method mtp requires a supported Qwen checkpoint-native MTP head"
+        )
     if speculative_tokens > 3:
-        raise ValueError("Qwen4 MTP supports at most 3 speculative tokens")
+        raise ValueError("Qwen MTP supports at most 3 speculative tokens")
     if getattr(config, "draft_sample_method", "greedy") != "greedy":
         raise ValueError("Qwen4 MTP currently supports greedy draft sampling only")
     # The draft layer owns an independent QSA KV/index slot at the first layer
@@ -347,18 +353,20 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
 
     mtp_layer_id = model_config.num_layers
     args = model_config.qwen4_exp_args
-    if mtp_layer_id not in args.qsa_layer_ids:
+    if args is not None and mtp_layer_id not in args.qsa_layer_ids:
         args = replace(args, qsa_layer_ids=(*args.qsa_layer_ids, mtp_layer_id))
     groups = []
     for group in model_config.attention_groups:
         if isinstance(group, FullAttentionGroupConfig) and mtp_layer_id not in group.layer_ids:
-            group = replace(
-                group,
-                layer_ids=(*group.layer_ids, mtp_layer_id),
-                num_index_layers=group.num_index_layers + 1,
-            )
+            changes = {"layer_ids": (*group.layer_ids, mtp_layer_id)}
+            # Qwen4's draft is QSA and owns an index slot. Qwen3.5/3.6 uses
+            # ordinary full attention, so only its KV layer is added.
+            if args is not None:
+                changes["num_index_layers"] = group.num_index_layers + 1
+            group = replace(group, **changes)
         groups.append(group)
-    object.__setattr__(model_config, "qwen4_exp_args", args)
+    if args is not None:
+        object.__setattr__(model_config, "qwen4_exp_args", args)
     object.__setattr__(model_config, "attention_groups", tuple(groups))
     object.__setattr__(model_config, "speculative_method", "mtp")
     object.__setattr__(model_config, "speculative_tokens", speculative_tokens)
@@ -1279,8 +1287,15 @@ class Engine:
         proposer = getattr(self.model, "propose_mtp", None)
         if proposer is None:
             return None
-        with self.ctx.forward_batch(batch):
-            return proposer(batch, next_tokens)
+        # DSpark's fused proposal consumes the active target batch directly.
+        # Qwen MTP switches between the target-shaped first step and synthetic
+        # one-token draft batches, so its model adapter owns those context
+        # manager scopes itself (nesting forward_batch is forbidden).
+        method = getattr(getattr(self, "config", None), "speculative_method", "dspark")
+        if method == "dspark":
+            with self.ctx.forward_batch(batch):
+                return proposer(batch, next_tokens)
+        return proposer(batch, next_tokens)
 
     def _replay_verified_prefix(self, batch: Batch, length: int, start: int) -> None:
         """Rebuild stateful target/draft cache after a partial rejection."""
