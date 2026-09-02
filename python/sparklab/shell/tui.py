@@ -14,6 +14,7 @@ import shutil
 import signal
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, List, Tuple
 
 from sparklab.cache_report import (
@@ -515,20 +516,35 @@ def _format_load_progress(doc: dict) -> str:
     return f"loading ({phase})..."
 
 
-async def run_shell(origin: str, *, connect_grace: float = 0.0) -> int:
+async def run_shell(
+    origin: str, *, connect_grace: float = 0.0, documents: Path | None = None
+) -> int:
     """Attach to the SparkLab server at ``origin`` and run the terminal chat.
 
     ``connect_grace`` is how long to keep retrying a refused connection before giving up --
     left at 0 when attaching to a server the user says is already running, raised when the
     caller just started one in this process (see ``server/api_server.py``)."""
+    document_index = None
+    if documents is not None:
+        from .documents import DocumentIndex
+
+        try:
+            document_index = DocumentIndex.from_directory(documents)
+        except ValueError as exc:
+            ShellConsoleRenderer._write_stdout(f"{exc}\n")
+            return 2
     client = ShellClient(origin)
     try:
-        return await _run_shell(client, origin, connect_grace=connect_grace)
+        return await _run_shell(
+            client, origin, connect_grace=connect_grace, document_index=document_index
+        )
     finally:
         await client.aclose()
 
 
-async def _run_shell(client: ShellClient, origin: str, *, connect_grace: float) -> int:
+async def _run_shell(
+    client: ShellClient, origin: str, *, connect_grace: float, document_index=None
+) -> int:
     write = ShellConsoleRenderer._write_stdout
     last_line = ""
     last_at = 0.0
@@ -580,6 +596,11 @@ async def _run_shell(client: ShellClient, origin: str, *, connect_grace: float) 
     stats.apply_stats_doc(stats_doc)
 
     write(f"SparkLab shell -> {model_id} @ {origin}  (/help for commands, /exit to quit)\n")
+    if document_index is not None:
+        write(
+            f"Document grounding: {document_index.source_count} files, "
+            f"{len(document_index.chunks)} chunks\n"
+        )
 
     terminal_size = shutil.get_terminal_size((SHELL_FALLBACK_WIDTH, 24))
     status_line = ShellStatusLine(
@@ -609,10 +630,20 @@ async def _run_shell(client: ShellClient, origin: str, *, connect_grace: float) 
     async def run_turn(cmd: str) -> None:
         nonlocal history
         messages: List[dict] = []
+        if document_index is not None:
+            from .documents import DOCUMENT_SYSTEM_PROMPT
+
+            messages.append({"role": "system", "content": DOCUMENT_SYSTEM_PROMPT})
         for user_msg, assistant_msg in history:
             messages.append({"role": "user", "content": user_msg})
             messages.append({"role": "assistant", "content": assistant_msg})
-        messages.append({"role": "user", "content": cmd})
+        if document_index is None:
+            user_content = cmd
+        else:
+            retrieval_query = f"{history[-1][0]} {cmd}" if history else cmd
+            context = document_index.context(retrieval_query)
+            user_content = f"Question: {cmd}\n\nDocument excerpts:\n{context}"
+        messages.append({"role": "user", "content": user_content})
 
         try:
             prompt_baseline = _prompt_tokens_total(await client.stats())

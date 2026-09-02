@@ -29,6 +29,7 @@ from bench_decode_moe import (
     free_port,
     gb10_evidence,
     get_json,
+    prefill_overlap_enabled,
     pump_output,
     resolve_sampling,
     runtime_provenance,
@@ -75,7 +76,15 @@ def parse_args() -> argparse.Namespace:
         choices=("auto", "marlin", "flashinfer", "triton"),
         default="triton",
     )
-    p.add_argument("--host-cache-gb", type=float, default=40.0)
+    p.add_argument(
+        "--host-cache-gb",
+        type=float,
+        default=0.0,
+        help=(
+            "disk mode pageable host expert-LRU budget in GiB; default 0 keeps "
+            "GB10 unified memory available for the faster GPU expert cache"
+        ),
+    )
     p.add_argument("--cache", type=int, default=0)
     p.add_argument("--cache-rate", type=float, default=None)
     p.add_argument("--cache-policy", choices=("lru", "layer_lru"), default="lru")
@@ -378,7 +387,7 @@ def summarize(
             "cpu_threads": args.cpu_threads,
             "disk_read_workers": int(os.getenv("SPARKLAB_DISK_READ_WORKERS", "16")),
             "cache_policy": args.cache_policy,
-            "prefill_overlap": not args.disable_prefill_overlap and not args.preload_all,
+            "prefill_overlap": prefill_overlap_enabled(args),
             "preload_all": args.preload_all,
             "prefill_hit_d2d": args.prefill_hit_d2d,
             "prefill_sparse_max_tokens": args.prefill_sparse_max_tokens,

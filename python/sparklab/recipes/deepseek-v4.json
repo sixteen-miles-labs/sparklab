@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "recipe_version": "0.3.0",
+  "recipe_version": "0.3.1",
   "slug": "deepseek-v4",
   "name": "DeepSeek V4 Flash",
   "model": "deepseek-ai/DeepSeek-V4-Flash-0731",
@@ -23,10 +23,11 @@
     "backend_options": {
       "moe_backend": "offload",
       "moe_storage": "disk",
-      "moe_host_cache_gb": 4,
+      "moe_host_cache_gb": 0,
       "memory_ratio": 0.9,
       "moe_cache_auto": true,
       "moe_prefill_sparse_max_tokens": 512,
+      "moe_prefill_overlap": false,
       "cuda_graph_max_bs": 0,
       "cache_type": "radix",
       "max_running_req": 1
@@ -37,17 +38,18 @@
     "total_bytes": 107374182400
   },
   "performance": {
-    "decode_tokens_per_second": 7.407656188456706,
-    "warm_ttft_seconds": 2.1198420680011623,
-    "evidence": "GB10-DSV4-DSPARK-002",
-    "note": "Fused 0731 checkpoint, fixed 256-token probe with DSpark disabled. DSpark is supported as an opt-in experiment; every measured N=1/3/5/7 setting was slower with disk-backed experts on one GB10."
+    "decode_tokens_per_second": 8.673403327989714,
+    "warm_ttft_seconds": 1.7943157120025717,
+    "evidence": "GB10-DSV4-RESIDENCY-003",
+    "note": "A zero-entry host LRU leaves GB10 unified memory available for 6,304 GPU expert slots. The fixed 256-token target-only probe improved 17.1% over the prior 4 GiB host-LRU recipe while preserving its exact greedy hash. DSpark N=1 improved to 8.27 tok/s but remains slower than target-only."
   },
-  "description": "Fused DS-FP4 Frontier recipe with optional native DSpark speculative decoding, auto-sized expert residency, and route-first sparse prefill on one NVIDIA GB10.",
-  "evidence": ["GB10-DSV4-DSPARK-002"],
+  "description": "Fused DS-FP4 Frontier recipe with GPU-first expert residency, optional native DSpark speculative decoding, and route-first sparse prefill on one NVIDIA GB10.",
+  "evidence": ["GB10-DSV4-RESIDENCY-003", "GB10-DSV4-DSPARK-002"],
   "limitations": [
     "The 64K context and 60-minute agent gates have not passed.",
     "Capability, quality, parser, and agent gates remain incomplete.",
-    "DSpark is opt-in: the one-GB10 disk-offload matrix measured 7.07, 6.19, 5.97, and 5.16 tok/s for N=1, 3, 5, and 7 versus a 7.41 tok/s target-only control.",
+    "DSpark is opt-in: N=1 measured 8.27 tok/s versus an 8.67 tok/s target-only control after the residency optimization; longer draft widths need a fresh matrix under this policy.",
+    "The zero-entry host LRU is tuned for GB10 unified memory, where host and GPU allocations compete for the same physical capacity; discrete-GPU systems may benefit from a host LRU.",
     "The 512-token sparse-prefill threshold is optimized for short interactive prompts; longer prefills retain the bounded full-layer streaming path."
   ]
 }

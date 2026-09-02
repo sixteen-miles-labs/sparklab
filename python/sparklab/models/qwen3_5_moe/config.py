@@ -123,6 +123,22 @@ def _attn_quant(hf_config: Any) -> str:
     return "none"
 
 
+def _modelopt_nvfp4(hf_config: Any) -> bool:
+    """Whether this is a pure ModelOpt NVFP4 checkpoint.
+
+    ModelOpt's ``targets: [\"Linear\"]`` layout stores Qwen full-attention projections and
+    GDN ``out_proj`` in NVFP4.  The checkpoint ignore list leaves GDN input projections and
+    ``lm_head`` in bf16, matching the model's existing ``attn_quant == \"nvfp4\"`` contract.
+    """
+    get = _quant_accessor(hf_config)
+    if get is None:
+        return False
+    return (
+        str(get("quant_method") or "").lower() == "modelopt"
+        and str(get("quant_algo") or "").upper() == "NVFP4"
+    )
+
+
 def _layer_types(text: Any) -> list[str]:
     layer_types = getattr(text, "layer_types", None)
     if layer_types is not None:
@@ -179,10 +195,10 @@ def parse_config(hf_config: Any) -> ModelConfig:
     dense_quant = "nvfp4" if expert_quant == "nvfp4" else _dense_mlp_quant(hf_config)
     lm_head_quant = _lm_head_quant(hf_config)
 
-    # compressed-tensors NVFP4 (dense Qwen3.6-27B): the attention (q/k/v/o, GDN out_proj) AND
-    # the dense MLP are W4A16 NVFP4; GDN in_proj_*, lm_head, norms stay bf16. Wire the shared
-    # W4A16 kernels (attn_quant=="nvfp4" routes the attention/GDN linears through them too).
-    if _compressed_tensors_nvfp4(hf_config):
+    # Dense NVFP4 exports from compressed-tensors and ModelOpt quantize attention
+    # (q/k/v/o and GDN out_proj) plus the MLP. GDN in_proj_*, lm_head, and norms stay bf16.
+    # Wire the shared W4A16 kernels for both storage layouts.
+    if _compressed_tensors_nvfp4(hf_config) or _modelopt_nvfp4(hf_config):
         attn_quant = "nvfp4"
         dense_quant = "nvfp4"
         lm_head_quant = "none"

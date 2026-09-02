@@ -78,7 +78,54 @@ Anthropic Messages API.
 
 ## 5. Use the terminal or a coding agent
 
+Use SparkLab's built-in terminal chat:
+
 ```bash
 sparklab shell
-sparklab launch codex
 ```
+
+Ground the terminal chat in local text or Markdown documents:
+
+```bash
+sparklab shell --documents /path/to/documents
+```
+
+SparkLab retrieves relevant excerpts for each turn and asks the model to cite
+the source file and chunk. The repository includes
+[`docs/sample-insurance-users.md`](sample-insurance-users.md) as synthetic test
+data.
+
+Or launch any supported coding-agent framework against the running server:
+
+```bash
+sparklab launch codex
+sparklab launch claude
+sparklab launch dsh
+sparklab launch hermes
+sparklab launch opencode
+sparklab launch openclaw
+```
+
+`sparklab launch` discovers the served model through `/v1/models`, configures
+the selected agent for SparkLab's local API, and starts it. If the agent CLI is
+missing, SparkLab offers to install it. Cloud API credentials are removed from
+the child process so it cannot silently fall back to a paid endpoint.
+
+Preview the configuration without changing files, or configure an agent
+without starting it:
+
+```bash
+sparklab launch codex --dry-run
+sparklab launch codex --config
+```
+
+Arguments after `--` are passed directly to the selected agent:
+
+```bash
+sparklab launch codex -- --full-auto
+```
+
+The agent framework still provides its terminal interface, file tools, and
+approval workflow, while the model's inference comes from SparkLab. Available
+model-specific features can therefore differ from the framework's hosted
+service.

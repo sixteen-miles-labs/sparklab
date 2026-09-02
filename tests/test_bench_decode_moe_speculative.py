@@ -22,6 +22,28 @@ def test_decode_benchmark_forwards_speculative_options():
     assert command[command.index("--draft-sample-method") + 1] == "probabilistic"
 
 
+def test_decode_benchmark_defaults_to_gpu_first_unified_memory_residency():
+    args = parse_args(["--model", "/tmp/model", "--storage", "disk"])
+
+    command = serve_cmd(args, "offload", 12345)
+
+    assert args.host_cache_gb == 0
+    assert command[command.index("--moe-host-cache-gb") + 1] == "0.0"
+    assert "--disable-moe-prefill-overlap" in command
+
+
+def test_decode_benchmark_keeps_overlap_with_an_explicit_host_cache():
+    args = parse_args([
+        "--model", "/tmp/model",
+        "--storage", "disk",
+        "--host-cache-gb", "4",
+    ])
+
+    command = serve_cmd(args, "offload", 12345)
+
+    assert "--disable-moe-prefill-overlap" not in command
+
+
 def test_decode_benchmark_extracts_final_speculative_summary():
     log = """
 MTP summary: steps=7, accepted=4/7 (57.1%), outputs=6, target_forwards=3, outputs/target=2.00

@@ -133,7 +133,19 @@ def validate_ftw(path: Path, *, runtime_format: str) -> ArtifactValidation:
         raise BackendError(
             f"FTW tensor stream mismatch: index={total_bytes}, tensors={tensor_cursor}"
         )
-    recorded_counts = index.get("counts") or {}
+    raw_counts = index.get("counts") or {}
+    if not isinstance(raw_counts, dict):
+        raise BackendError("FTW kind counts must be an object")
+    try:
+        recorded_counts = {
+            str(kind): int(count)
+            for kind, count in raw_counts.items()
+            if int(count) != 0
+        }
+    except (TypeError, ValueError) as exc:
+        raise BackendError(f"invalid FTW kind counts: {raw_counts!r}") from exc
+    if any(int(count) < 0 for count in raw_counts.values()):
+        raise BackendError(f"invalid FTW kind counts: {raw_counts!r}")
     if recorded_counts != kind_counts:
         raise BackendError(
             f"FTW kind count mismatch: index={recorded_counts!r}, tensors={kind_counts!r}"
