@@ -55,10 +55,14 @@ def ring_size_for_ratio(ratio: int) -> int:
 
 
 def _kv_bytes(args) -> int:
-    return args.head_dim * _BF16_BYTES
+    width = 1 if getattr(args, "kv_storage_dtype", "bf16") == "fp8" else _BF16_BYTES
+    return args.head_dim * width
 
 
 def _index_bytes(args) -> int:
+    if getattr(args, "index_storage_dtype", "bf16") == "fp4":
+        # Two E2M1 codes per byte plus one fp32 scale per 32-value block.
+        return args.index_head_dim // 2 + args.index_head_dim // 32 * _FP32_BYTES
     return args.index_head_dim * _BF16_BYTES
 
 

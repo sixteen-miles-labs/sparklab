@@ -4,7 +4,8 @@ import os
 
 import torch
 import torch.nn.functional as F
-from sparklab.layers import BaseOP, LinearReplicated
+from sparklab.layers import BaseOP
+from sparklab.models.quant_linear import make_replicated_quant
 
 
 class GroupedPlusOneRMSNorm(BaseOP):
@@ -46,19 +47,22 @@ class Qwen4GatedResidual(BaseOP):
         eps: float,
         *,
         use_combine: bool = True,
+        quant: str = "none",
     ):
         self.hidden_size = hidden_size
         self.hc_count = hc_count
         self.width = hidden_size * hc_count
         self.hc_norm = GroupedPlusOneRMSNorm(self.width, hidden_size, eps)
-        self.input_mix_weight_down = LinearReplicated(
-            self.width, hc_lowrank, has_bias=False
+        self.input_mix_weight_down = make_replicated_quant(
+            "none", quant, self.width, hc_lowrank, has_bias=False
         )
-        self.input_mix_weight_up = LinearReplicated(
-            hc_lowrank, self.width, has_bias=False
+        self.input_mix_weight_up = make_replicated_quant(
+            "none", quant, hc_lowrank, self.width, has_bias=False
         )
         self.block_inject_weight = (
-            LinearReplicated(self.width, hc_count, has_bias=False) if use_combine else None
+            make_replicated_quant(
+                "none", quant, self.width, hc_count, has_bias=False
+            ) if use_combine else None
         )
         self._fused = os.getenv(
             "SPARKLAB_DISABLE_QWEN4_HYPER_FUSION", "0"

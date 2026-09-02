@@ -21,6 +21,8 @@ import os
 
 import torch
 
+from sparklab.core import get_global_ctx
+
 
 class CompressorBackendMixin:
     # DSV4_RING_CHECK=1 -> assert the ring read-back equals what was written. Off by default.
@@ -68,7 +70,14 @@ class CompressorBackendMixin:
         self, layer_id: int, tier: str, rows: torch.Tensor, kv: torch.Tensor
     ) -> None:
         pool = self.compress_pool(layer_id, tier)
-        pool.index_copy_(0, rows, kv.to(pool.dtype))
+        if tier == "idx" and pool.dtype == torch.uint8:
+            self.pool.store_indexer(kv, layer_id, rows)
+            return
+        value = kv.to(pool.dtype)
+        if pool.dtype == torch.float8_e4m3fn:
+            pool.view(torch.uint8).index_copy_(0, rows, value.view(torch.uint8))
+        else:
+            pool.index_copy_(0, rows, value)
 
     # ----- compress-state ring ---------------------------------------------------------
     def carry_state_loc(self, window_slot: int, ring_size: int) -> torch.Tensor:
@@ -116,7 +125,11 @@ class CompressorBackendMixin:
         blocks: torch.Tensor,
     ) -> None:
         ring = self.compress_state_ring(layer_id, tier)
-        ring.set_blocks(self.ring_page_base(window_slots, ring_size), blocks)
+        page_base = self.ring_page_base(window_slots, ring_size)
+        batch = getattr(get_global_ctx(), "batch", None)
+        if batch is not None and batch.is_verify:
+            self.pool.capture_first_speculative_carry(ring, page_base, blocks)
+        ring.set_blocks(page_base, blocks)
 
     def write_boundary_carries(
         self, *, layer_id: int, tier: str, ratio: int, overlap: bool, ring_size: int,

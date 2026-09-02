@@ -225,6 +225,7 @@ def load_weight(
     device: torch.device,
     *,
     include_moe_experts: bool = True,
+    model_config=None,
 ) -> Iterator[Tuple[str, torch.Tensor]]:
     # FTW checkpoint: dense weights are stored post-iter_weights, so we replay them
     # model-agnostically instead of re-running the per-model reader. Which tensors exist is
@@ -239,7 +240,8 @@ def load_weight(
         # stack. Vision is opt-in (default OFF, see vision_load_enabled): when it is off the
         # model never builds the tower, so replaying those tensors would trip load_state_dict's
         # strict unexpected-key check. Skip them here to match the model the engine built.
-        config, spec = _spec_for_model_path(model_path)
+        parsed_config, spec = _spec_for_model_path(model_path)
+        config = model_config if model_config is not None else parsed_config
         weights = iter_ftw_weights(model_path)
         transform = _model_override(spec, "transform_ftw_weights")
         if transform is not None:
@@ -256,14 +258,19 @@ def load_weight(
             yield name, tensor
         return
 
-    _config, spec = _spec_for_model_path(model_path)
+    parsed_config, spec = _spec_for_model_path(model_path)
+    config = model_config if model_config is not None else parsed_config
     iter_weights = _load_attr(spec.module, spec.iter_weights)
-    yield from iter_weights(
+    weights = iter_weights(
         model_path,
         device,
         include_moe_experts=include_moe_experts,
         include_non_moe=True,
     )
+    transform = _model_override(spec, "transform_runtime_weights")
+    if transform is not None:
+        weights = transform(weights, config)
+    yield from weights
 
 
 def load_moe_expert_sources(

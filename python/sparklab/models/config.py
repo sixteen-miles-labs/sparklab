@@ -326,6 +326,7 @@ class ModelConfig:
     speculative_method: str = "none"
     speculative_tokens: int = 0
     draft_sample_method: str = "greedy"
+    dspark_confidence_threshold: float = 0.0
     # Generic execution-path capability flags (set by a model's parse_config) so the engine and
     # factories stay model-agnostic instead of branching on dsv4_args:
     single_stream_only: bool = False  # model runs one sequence at a time -> force bs=1

@@ -267,6 +267,9 @@ class DeepseekV4ForCausalLM(BaseLLMModel):
                 config.speculative_tokens,
                 getattr(config, "draft_sample_method", "greedy"),
             )
+            self._dspark.confidence_threshold = float(
+                getattr(config, "dspark_confidence_threshold", 0.0) or 0.0
+            )
         self._bound = False
 
     def _ensure_bound(self) -> None:
@@ -400,6 +403,16 @@ class DeepseekV4ForCausalLM(BaseLLMModel):
         probs = self._dspark.last_draft_probs
         self._dspark.last_draft_probs = None
         return probs
+
+    def reset_speculative_stats(self) -> None:
+        if self._dspark is not None:
+            self._dspark.reset_confidence_stats()
+
+    def speculative_stats(self) -> dict:
+        if self._dspark is None:
+            return {}
+        confidence = self._dspark.confidence_stats()
+        return {"confidence": confidence} if confidence else {}
 
 
 __all__ = ["Transformer", "DeepseekV4ForCausalLM"]

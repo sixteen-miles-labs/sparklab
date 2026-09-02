@@ -7,6 +7,8 @@ of anchor/noise queries is then refined by a sequential low-rank Markov bias.
 
 from __future__ import annotations
 
+import os
+
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -30,12 +32,31 @@ def draft_query_geometry(
     return anchor_pos, min(max_steps, page_end - anchor_pos)
 
 
+def confidence_prefix_length(
+    confidence_probs: torch.Tensor, threshold: float
+) -> int:
+    """Return the contiguous confident prefix, keeping at least one draft."""
+    if confidence_probs.numel() == 0:
+        return 0
+    if threshold <= 0:
+        return int(confidence_probs.numel())
+    below = torch.nonzero(confidence_probs < threshold, as_tuple=False)
+    return (
+        int(confidence_probs.numel())
+        if not below.numel()
+        else max(1, int(below[0, 0].item()))
+    )
+
+
 class DSparkDraft(nn.Module):
     def __init__(self, args: DeepseekV4Args, steps: int, sample_method: str):
         super().__init__()
         self.args = args
         self.steps = int(steps)
         self.sample_method = sample_method
+        self.confidence_threshold = float(
+            getattr(args, "confidence_threshold", 0.0)
+        )
         self.hc_mult = args.hc_mult
         self.norm_eps = args.norm_eps
         self.hc_eps = args.hc_eps
@@ -71,6 +92,44 @@ class DSparkDraft(nn.Module):
         )
         self._bound = False
         self.last_draft_probs: torch.Tensor | None = None
+        self.last_confidence_probs: torch.Tensor | None = None
+        self.profile_confidence = os.getenv(
+            "SPARKLAB_DSPARK_PROFILE_CONFIDENCE", "0"
+        ).strip().lower() in {"1", "true", "yes", "on"}
+        # Plain lazy tensors, not registered buffers: the model is constructed on
+        # ``meta`` and weights are assigned afterward, while these diagnostics need
+        # to be created directly on the confidence output's real CUDA device.
+        self._confidence_sum: torch.Tensor | None = None
+        self._confidence_min: torch.Tensor | None = None
+        self._confidence_max: torch.Tensor | None = None
+        self._confidence_count: torch.Tensor | None = None
+
+    def reset_confidence_stats(self) -> None:
+        if self._confidence_sum is None:
+            return
+        self._confidence_sum.zero_()
+        self._confidence_min.fill_(float("inf"))
+        self._confidence_max.fill_(float("-inf"))
+        self._confidence_count.zero_()
+
+    def confidence_stats(self) -> list[dict]:
+        if self._confidence_count is None:
+            return []
+        counts = self._confidence_count.tolist()
+        sums = self._confidence_sum.tolist()
+        mins = self._confidence_min.tolist()
+        maxs = self._confidence_max.tolist()
+        return [
+            {
+                "position": index + 1,
+                "count": count,
+                "mean": sums[index] / count,
+                "min": mins[index],
+                "max": maxs[index],
+            }
+            for index, count in enumerate(counts)
+            if count
+        ]
 
     def bind(self, pool, device: torch.device) -> None:
         if self._bound:
@@ -139,6 +198,7 @@ class DSparkDraft(nn.Module):
         self.bind(pool, pool.device)
         req = batch.reqs[0]
         self.last_draft_probs = None
+        self.last_confidence_probs = None
         if self.sample_method == "greedy" and not req.sampling_params.is_greedy:
             return None
         # ``next_token`` is the just-sampled anchor at device_len - 1.  Draft
@@ -190,8 +250,10 @@ class DSparkDraft(nn.Module):
         previous = anchor
         drafts = []
         draft_probs = []
+        markov_embeds = []
         for row in range(n_query):
             markov = F.embedding(previous, self.markov_w1)
+            markov_embeds.append(markov.squeeze(0))
             logits = base_logits[row : row + 1] + F.linear(markov, self.markov_w2)
             if req.sampling_params.is_greedy:
                 token = torch.argmax(logits, dim=-1)
@@ -205,7 +267,45 @@ class DSparkDraft(nn.Module):
             previous = token
         if draft_probs:
             self.last_draft_probs = torch.stack(draft_probs)
-        return torch.stack(drafts)
+        result = torch.stack(drafts)
+        threshold = self.confidence_threshold
+        if threshold > 0 or self.profile_confidence:
+            features = torch.cat(
+                (head_hidden[0].float(), torch.stack(markov_embeds).float()), dim=-1
+            )
+            confidence = torch.sigmoid(F.linear(features, self.confidence_weight)).squeeze(-1)
+            self.last_confidence_probs = confidence
+            if self._confidence_sum is None:
+                self._confidence_sum = torch.zeros(
+                    self.steps, dtype=torch.float32, device=confidence.device
+                )
+                self._confidence_min = torch.full(
+                    (self.steps,), float("inf"), device=confidence.device
+                )
+                self._confidence_max = torch.full(
+                    (self.steps,), float("-inf"), device=confidence.device
+                )
+                self._confidence_count = torch.zeros(
+                    self.steps, dtype=torch.int64, device=confidence.device
+                )
+            n_confidence = confidence.numel()
+            self._confidence_sum[:n_confidence].add_(confidence)
+            self._confidence_min[:n_confidence].copy_(
+                torch.minimum(self._confidence_min[:n_confidence], confidence)
+            )
+            self._confidence_max[:n_confidence].copy_(
+                torch.maximum(self._confidence_max[:n_confidence], confidence)
+            )
+            self._confidence_count[:n_confidence].add_(1)
+            # Verification must remain a contiguous prefix. Always keep one draft:
+            # the full parallel draft has already run, and an empty block would only
+            # add scheduler overhead without reducing target work below one token.
+            length = confidence_prefix_length(confidence, threshold)
+            if length < result.numel():
+                result = result[:length]
+                if self.last_draft_probs is not None:
+                    self.last_draft_probs = self.last_draft_probs[: result.numel()]
+        return result
 
 
-__all__ = ["DSparkDraft"]
+__all__ = ["DSparkDraft", "confidence_prefix_length", "draft_query_geometry"]

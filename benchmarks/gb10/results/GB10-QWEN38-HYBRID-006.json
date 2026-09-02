@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0", "result_id": "GB10-QWEN38-HYBRID-006",
+  "status": "measured", "date": "2026-09-02",
+  "platform": {"device": "NVIDIA GB10", "memory_gib": 128, "cuda": "13.0"},
+  "model": {"repository": "Inferact/Qwen3.8-Flash-Next-NVFP4", "routed_experts": "NVFP4", "ple_storage": "float8_e4m3fn", "resident_projections": "float8_e4m3fn-per-output-row"},
+  "workload": {"batch_size": 1, "sampling": "greedy", "completion_tokens": 128, "mtp_tokens": 2},
+  "metrics": {
+    "bf16_dense_fp8_ple_tok_s": 21.8234,
+    "fp8_dense_fp8_ple_tok_s": 22.1641,
+    "speedup_percent": 1.56,
+    "bf16_dense_server_vram_gib": 78.9688,
+    "fp8_dense_server_vram_gib": 75.6113,
+    "server_vram_saved_gib": 3.3575,
+    "w1_smoke_decode_tok_s": 22.1202,
+    "w1_smoke_completion_tokens": 705
+  },
+  "validation": {"bf16_dense_output_hash": "37a7098d6fbc", "fp8_dense_output_hash": "37a7098d6fbc", "w1_smoke_expected_answer": "70", "w1_smoke_extracted_answer": "70", "w1_smoke_passed": true, "full_w1_run": false},
+  "conclusion": "Load-time streaming FP8 resident projection conversion saves 3.36 GiB and improves the matched decode probe by 1.56% without changing its 128-token output. The 4096-token-cap W1 smoke passes; the deliberately truncated 512-token diagnostic is retained separately and is not a quality result.",
+  "source": {"raw_artifacts": "/home/lidaiqing/results/qwen3.8-fp8-dense/", "quality_result": "benchmarks/quality/results/qwen3.8-flash-next-hybrid-w1-smoke-4096-20260902.json"}
+}

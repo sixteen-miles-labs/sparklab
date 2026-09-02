@@ -98,6 +98,33 @@ def test_per_row_valid(pool):
         assert torch.isinf(got[i, v:]).all()
 
 
+def test_packed_fp4_reader_matches_explicit_dequantized_cache():
+    from sparklab.kernels.triton.dsv4.fp4_cache import (
+        pack_fp4_rows,
+        unpack_fp4_rows,
+    )
+
+    rows = 256
+    g = torch.Generator(device="cuda").manual_seed(17)
+    source = torch.randn(rows, D, device="cuda", dtype=torch.bfloat16, generator=g)
+    packed = torch.empty(rows, D // 2, device="cuda", dtype=torch.uint8)
+    scales = torch.empty(rows, D // 32, device="cuda", dtype=torch.float32)
+    row_ids = torch.arange(rows, device="cuda", dtype=torch.int64)
+    pack_fp4_rows(source, row_ids, packed, scales)
+    dequantized = unpack_fp4_rows(packed, scales, row_ids, D)
+
+    n_stage = 64
+    q, w, snap, valid = _build([n_stage * RATIO - 1], n_stage, seed=19)
+    snap.random_(0, rows * RATIO, generator=g)
+    reference = indexer_decode_logits(
+        q, w, dequantized, snap, valid, n_stage, RATIO
+    )
+    fused = indexer_decode_logits(
+        q, w, packed, snap, valid, n_stage, RATIO, fp4_scales=scales
+    )
+    torch.testing.assert_close(fused, reference, rtol=0, atol=0)
+
+
 def test_cuda_graph_follows_valid(pool):
     """A captured graph must read the bound from device memory, not from capture time."""
     n_stage = 2048

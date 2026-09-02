@@ -339,6 +339,50 @@ def parse_args(
         default=ServerArgs.draft_sample_method,
         help="Draft sampling/verification rule for speculative decoding.",
     )
+    parser.add_argument(
+        "--dspark-confidence-threshold",
+        type=float,
+        default=ServerArgs.dspark_confidence_threshold,
+        help=(
+            "Truncate DSpark verification at the first draft whose confidence "
+            "probability falls below this value; 0 disables adaptive truncation."
+        ),
+    )
+    parser.add_argument(
+        "--dspark-draft-cache-slots",
+        type=int,
+        default=ServerArgs.dspark_draft_cache_slots,
+        help=(
+            "Aggregate layer-LRU quota reserved for DSpark draft layers; 0 uses "
+            "equal per-layer quotas (requires --moe-cache-policy layer_lru)."
+        ),
+    )
+    parser.add_argument(
+        "--dspark-draft-cache-quotas",
+        default=ServerArgs.dspark_draft_cache_quotas,
+        help=(
+            "Comma-separated exact layer-LRU quotas for the DSpark draft layers "
+            "(for example 160,115,115); overrides --dspark-draft-cache-slots."
+        ),
+    )
+    parser.add_argument(
+        "--dsv4-kv-storage",
+        choices=("bf16", "fp8"),
+        default=ServerArgs.dsv4_kv_storage,
+        help="Physical storage for DeepSeek-V4 window/compressed KV pools.",
+    )
+    parser.add_argument(
+        "--dsv4-index-storage",
+        choices=("bf16", "fp4"),
+        default=ServerArgs.dsv4_index_storage,
+        help="Physical storage for DeepSeek-V4 Lightning-Indexer keys.",
+    )
+    parser.add_argument(
+        "--qwen4-dense-storage",
+        choices=("bf16", "fp8"),
+        default=ServerArgs.qwen4_dense_storage,
+        help="Physical storage for Qwen4-Exp resident projection weights.",
+    )
 
     parser.add_argument(
         "--num-tokenizer",

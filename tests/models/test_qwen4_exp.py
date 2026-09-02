@@ -13,7 +13,11 @@ from sparklab.attention.qsa import QSAAttnBackend, QSACaptureData, QSAMetadata
 from sparklab.models.qwen4_exp.config import parse_config
 from sparklab.models.qwen4_exp.hyper import GroupedPlusOneRMSNorm, Qwen4GatedResidual
 from sparklab.models.qwen4_exp.ple import DiskNGramEmbedding, Qwen4PLE, RawNGramStore
-from sparklab.models.qwen4_exp.weight import copy_external_artifacts
+from sparklab.models.qwen4_exp.weight import (
+    copy_external_artifacts,
+    requantize_raw_ngram_artifact,
+    transform_runtime_weights,
+)
 from sparklab.models.qwen4_exp.weight import _iter_experts_layer_order
 from sparklab.models.qwen4_exp.weight import iter_weights
 
@@ -217,6 +221,88 @@ def test_config_detects_inferact_modelopt_nvfp4_experts():
     assert config.expert_quant == "nvfp4"
     assert config.weight_block_size is None
     assert config.shared_expert_quant == "none"
+
+
+def test_runtime_fp8_transform_splits_gdn_and_quantizes_resident_projections():
+    config = parse_config(_config())
+    object.__setattr__(config, "attn_quant", "fp8_pertensor")
+    object.__setattr__(config, "dense_quant", "fp8_pertensor")
+    object.__setattr__(config, "shared_expert_quant", "fp8_pertensor")
+    linear = config.linear_attention_group()
+    key_dim = linear.num_key_heads * linear.key_head_dim
+    value_dim = linear.num_value_heads * linear.value_head_dim
+    qkvz_rows = 2 * key_dim + 2 * value_dim
+    total_rows = qkvz_rows + 2 * linear.num_value_heads
+    gdn = torch.linspace(-2, 2, total_rows * config.hidden_size).reshape(
+        total_rows, config.hidden_size
+    ).to(torch.bfloat16)
+    shared = torch.randn(32, config.hidden_size, dtype=torch.bfloat16)
+
+    transformed = dict(transform_runtime_weights(iter([
+        ("model.layers.0.linear_attn.in_proj.weight", gdn),
+        ("model.layers.0.mlp.shared_expert.gate_up_proj.weight", shared),
+        ("model.layers.0.mlp.gate.weight", torch.randn(8, 64)),
+    ]), config))
+
+    q = transformed["model.layers.0.linear_attn.in_proj_qkvz.weight"]
+    s = transformed["model.layers.0.linear_attn.in_proj_qkvz.weight_scale"]
+    assert q.dtype == torch.float8_e4m3fn and s.dtype == torch.float32
+    assert transformed["model.layers.0.linear_attn.in_proj_ba.weight"].shape[0] == 8
+    torch.testing.assert_close(
+        q.float() * s[:, None], gdn[:qkvz_rows].float(), rtol=0.07, atol=0.02
+    )
+    assert transformed[
+        "model.layers.0.mlp.shared_expert.gate_up_proj.weight"
+    ].dtype == torch.float8_e4m3fn
+    assert "model.layers.0.mlp.shared_expert.gate_up_proj.weight_scale" in transformed
+    # Routers remain BF16/FP32; they are small and numerically sensitive.
+    assert transformed["model.layers.0.mlp.gate.weight"].dtype == torch.float32
+
+
+def test_qwen4_fp8_config_builds_physical_fp8_projection_modules(monkeypatch):
+    from sparklab.kernels.triton.fp8_pertensor_linear import Fp8PerTensorLinear
+    from sparklab.layers import LinearColParallelMerged
+    from sparklab.models.qwen4_exp.attention import Qwen4ExpAttention
+    from sparklab.models.qwen4_exp.hyper import Qwen4GatedResidual
+
+    monkeypatch.setattr(
+        "sparklab.models.qwen4_exp.attention.get_tp_info",
+        lambda: SimpleNamespace(size=1),
+    )
+    monkeypatch.setattr(
+        "sparklab.layers.linear.get_tp_info", lambda: SimpleNamespace(size=1)
+    )
+    monkeypatch.setattr(
+        "sparklab.models.qwen4_exp.attention.get_rope",
+        lambda **_kwargs: object(),
+    )
+    config = parse_config(_config())
+    object.__setattr__(config, "attn_quant", "fp8_pertensor")
+    attention = Qwen4ExpAttention(config, 3)
+    hyper = Qwen4GatedResidual(64, 4, 8, 1e-6, quant="fp8_pertensor")
+    assert isinstance(attention.o_proj, Fp8PerTensorLinear)
+    assert attention.o_proj.weight.dtype == torch.float8_e4m3fn
+    assert isinstance(hyper.input_mix_weight_down, Fp8PerTensorLinear)
+
+    # Official block-FP8 metadata applies only to routed experts; without the
+    # explicit resident switch the publisher's dense attention remains BF16.
+    source = _config()
+    source.quantization_config = {
+        "quant_method": "fp8", "weight_block_size": [128, 128]
+    }
+    official = Qwen4ExpAttention(parse_config(source), 3)
+    assert isinstance(official.qkv_proj, LinearColParallelMerged)
+
+
+def test_fp8_ple_projection_keeps_external_activation_buffer_bf16():
+    ple = object.__new__(Qwen4PLE)
+    ple.key_proj = SimpleNamespace(
+        weight=torch.empty(4, 4, dtype=torch.float8_e4m3fn)
+    )
+    ple._capture_embed = None
+    ple._capture_host = None
+    output = ple._copy_to_stable_device(torch.randn(3, 4, dtype=torch.bfloat16))
+    assert output.dtype == torch.bfloat16
 
 
 def test_expert_wrapper_receives_conversion_streaming_controls(monkeypatch):
@@ -475,6 +561,68 @@ def test_external_ngram_artifact_streams_exact_rows(tmp_path):
     assert reads == 3
 
 
+def test_external_ngram_artifact_can_stream_bf16_as_fp8(tmp_path):
+    source, out = tmp_path / "source", tmp_path / "out"
+    source.mkdir()
+    out.mkdir()
+    values = torch.tensor([
+        [-3.25, -0.2, 0.0, 1.75],
+        [2.5, 4.25, 17.0, 31.0],
+    ], dtype=torch.bfloat16)
+    name = "model.language_model.layers.1.ple.ple_embedding.ngram_embedding.shard_0.weight"
+    save_file({name: values}, source / "model.safetensors")
+    (source / "model.safetensors.index.json").write_text(
+        json.dumps({"weight_map": {name: "model.safetensors"}}), encoding="utf-8"
+    )
+    args = SimpleNamespace(
+        split_ngram_parts=1, ple_embed_dim=64, ngram_size=3, heads_per_ngram=8
+    )
+
+    artifacts = copy_external_artifacts(
+        str(source), str(out), SimpleNamespace(qwen4_exp_args=args),
+        ngram_dtype="float8_e4m3fn",
+    )
+
+    manifest = json.loads((out / "qwen4_ngram.json").read_text(encoding="utf-8"))
+    assert artifacts[0]["dtype"] == "float8_e4m3fn"
+    assert manifest["nbytes"] == values.numel()
+    store = RawNGramStore(str(out), manifest, dim=4)
+    try:
+        got = store.lookup(torch.tensor([0, 1]))
+    finally:
+        store.close()
+    expected = values.to(torch.float8_e4m3fn).to(torch.bfloat16)
+    torch.testing.assert_close(got, expected, rtol=0, atol=0)
+
+
+def test_requantize_existing_raw_ngram_artifact(tmp_path):
+    source, out = tmp_path / "source", tmp_path / "out"
+    source.mkdir()
+    values = torch.arange(24, dtype=torch.bfloat16).view(6, 4)
+    (source / "qwen4_ngram.bin").write_bytes(values.view(torch.uint8).numpy().tobytes())
+    (source / "qwen4_ngram.json").write_text(json.dumps({
+        "schema_version": "1.0", "file": "qwen4_ngram.bin",
+        "dtype": "bfloat16", "rows": 6, "dim": 4,
+        "nbytes": values.numel() * 2, "parts": 1,
+    }), encoding="utf-8")
+
+    manifest = requantize_raw_ngram_artifact(
+        str(source), str(out), chunk_rows=2
+    )
+
+    assert manifest["source_dtype"] == "bfloat16"
+    assert manifest["dtype"] == "float8_e4m3fn"
+    assert manifest["nbytes"] == values.numel()
+    store = RawNGramStore(str(out), manifest, dim=4)
+    try:
+        got = store.lookup(torch.arange(6))
+    finally:
+        store.close()
+    torch.testing.assert_close(
+        got, values.to(torch.float8_e4m3fn).to(torch.bfloat16), rtol=0, atol=0
+    )
+
+
 def test_external_artifacts_copy_optional_mtp_sidecar(tmp_path):
     source, out = tmp_path / "source", tmp_path / "out"
     source.mkdir()
@@ -713,6 +861,41 @@ def test_ple_stages_disk_row_into_stable_graph_input():
     ple.prepare_cuda_graph_inputs(SimpleNamespace())
     assert ple._capture_embed.data_ptr() == pointer
     torch.testing.assert_close(ple._capture_embed, replacement)
+
+
+def test_ple_consumes_prelaunched_lookup_without_sync_fallback():
+    ple = Qwen4PLE.__new__(Qwen4PLE)
+    rows = torch.arange(8, dtype=torch.bfloat16).view(1, 8)
+    calls = []
+
+    class Embedding:
+        def begin(self, batch):
+            from concurrent.futures import Future
+            calls.append(("begin", batch))
+            future = Future()
+            future.set_result(rows.view(1, 2, 4))
+            return future
+
+        def finish(self, future):
+            calls.append(("finish", future))
+            return future.result().flatten(-2)
+
+        def forward(self, _batch):
+            raise AssertionError("synchronous fallback must not run")
+
+    ple.embedding = Embedding()
+    ple.key_proj = SimpleNamespace(weight=torch.empty(4, 8, dtype=torch.bfloat16))
+    ple._capture_embed = None
+    ple._capture_host = None
+    ple._pending_embed = None
+    batch = SimpleNamespace()
+
+    ple.begin_external_input(batch)
+    assert [kind for kind, _ in calls] == ["begin"]
+    ple.prepare_cuda_graph_inputs(batch)
+
+    assert [kind for kind, _ in calls] == ["begin", "finish"]
+    torch.testing.assert_close(ple._capture_embed, rows)
 
 
 def test_ple_stages_smaller_batch_into_stable_graph_input_prefix():

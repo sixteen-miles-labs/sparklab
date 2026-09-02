@@ -179,6 +179,8 @@ class OffloadMoeCache:
         self.layer_counts = torch.zeros(
             (self.num_layers,), dtype=torch.int32, device=self.device
         )
+        self._reserved_layer_quotas: dict[int, int] = {}
+        self.layer_quotas = self._equal_layer_quotas(self.cache_size)
         self.active_mask = torch.zeros((self.num_experts,), dtype=torch.int32, device=self.device)
         self.evict_slots = torch.empty((self.num_experts,), dtype=torch.int32, device=self.device)
         self.src_indices = torch.empty((self.num_experts,), dtype=torch.int32, device=self.device)
@@ -492,6 +494,7 @@ class OffloadMoeCache:
         self.sparse_prefill_fallback_layers = 0
         self.shared_expert_overlap_calls = 0
         self._hit_d2d_fallback_logged = False  # geometry changed; re-log if still unusable
+        self.layer_quotas = self._layer_quotas_for_size(cache_size)
         # 5. Re-evaluate prefill overlap against the new size.
         if self.prefill_overlap and cache_size < 2 * self.num_experts:
             logger.warning(
@@ -501,6 +504,73 @@ class OffloadMoeCache:
             self.prefill_overlap = False
         if self.prefill_overlap:
             self._init_prefill_overlap_buffers()
+
+    def _equal_layer_quotas(self, cache_size: int) -> torch.Tensor:
+        base, extra = divmod(cache_size, self.num_layers)
+        values = [base + (layer < extra) for layer in range(self.num_layers)]
+        return torch.tensor(values, dtype=torch.int32, device=self.device)
+
+    def _layer_quotas_for_size(self, cache_size: int) -> torch.Tensor:
+        if not self._reserved_layer_quotas:
+            return self._equal_layer_quotas(cache_size)
+        reserved = sum(self._reserved_layer_quotas.values())
+        regular_ids = [
+            layer for layer in range(self.num_layers)
+            if layer not in self._reserved_layer_quotas
+        ]
+        if reserved + len(regular_ids) > cache_size:
+            raise ValueError(
+                "reserved layer quotas leave fewer than one slot for each other layer: "
+                f"reserved={reserved}, cache_size={cache_size}, other_layers={len(regular_ids)}"
+            )
+        values = [0] * self.num_layers
+        if regular_ids:
+            base, extra = divmod(cache_size - reserved, len(regular_ids))
+            for index, layer in enumerate(regular_ids):
+                values[layer] = base + (index < extra)
+        for layer, quota in self._reserved_layer_quotas.items():
+            values[layer] = quota
+        if any(value > self.num_experts for value in values):
+            raise ValueError(
+                "layer cache quota exceeds the number of experts in one layer: "
+                f"max={max(values)}, experts={self.num_experts}"
+            )
+        return torch.tensor(values, dtype=torch.int32, device=self.device)
+
+    def reserve_layer_slots(self, layer_ids: tuple[int, ...], slots: int) -> None:
+        """Give selected layers an aggregate protected layer-LRU quota."""
+        if self.cache_policy != "layer_lru":
+            raise ValueError("layer slot reservations require cache_policy='layer_lru'")
+        ids = tuple(sorted(set(int(layer) for layer in layer_ids)))
+        if not ids or any(layer < 0 or layer >= self.num_layers for layer in ids):
+            raise ValueError(f"invalid reserved layer ids: {ids}")
+        if slots <= 0:
+            raise ValueError("reserved layer slots must be positive")
+        base, extra = divmod(int(slots), len(ids))
+        self.reserve_layer_quotas({
+            layer: base + (index < extra) for index, layer in enumerate(ids)
+        })
+
+    def reserve_layer_quotas(self, quotas: dict[int, int]) -> None:
+        """Set exact protected layer-LRU quotas for selected layers."""
+        if self.cache_policy != "layer_lru":
+            raise ValueError("layer slot reservations require cache_policy='layer_lru'")
+        normalized = {int(layer): int(quota) for layer, quota in quotas.items() if quota}
+        if not normalized or any(
+            layer < 0 or layer >= self.num_layers for layer in normalized
+        ):
+            raise ValueError(f"invalid reserved layer quotas: {normalized}")
+        if any(quota <= 0 or quota > self.num_experts for quota in normalized.values()):
+            raise ValueError(
+                f"layer quotas must be in [1, {self.num_experts}]: {normalized}"
+            )
+        self._reserved_layer_quotas = normalized
+        self.layer_quotas = self._layer_quotas_for_size(self.cache_size)
+        logger.info_rank0(
+            f"Reserved exact MoE cache quotas {normalized}; "
+            f"other-layer quota range="
+            f"{min(self.layer_quotas.tolist())}-{max(self.layer_quotas.tolist())}"
+        )
 
     def set_alphas(
         self, gate_up_alpha: torch.Tensor | None, down_alpha: torch.Tensor | None
@@ -1059,6 +1129,9 @@ class OffloadMoeCache:
             per_layer.append({
                 "layer": L,
                 "steps": s,
+                "active": a,
+                "missing": m,
+                "fetched": f,
                 "active_per_step": (a / s) if s else 0.0,
                 "missing_per_step": (m / s) if s else 0.0,
                 "miss_rate": (m / a) if a else 0.0,

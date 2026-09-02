@@ -161,11 +161,20 @@ class DSV4PagedKVCache(BaseKVCachePool):
         P: int = 128,
         n_scratch: int = 1,
     ) -> None:
-        assert dtype == torch.bfloat16, "KV pools are bf16 (fp4/fp8 is an in-place round-trip)"
+        assert dtype == torch.bfloat16, "DSV4 compute dtype must be bf16"
         self.args = args
         self.sizes = sizes
         self._device = device
         self._dtype = dtype
+        storage = getattr(args, "kv_storage_dtype", "bf16")
+        if storage not in {"bf16", "fp8"}:
+            raise ValueError(f"unsupported DSV4 KV storage: {storage}")
+        self._kv_storage_dtype = (
+            torch.float8_e4m3fn if storage == "fp8" else torch.bfloat16
+        )
+        self._index_storage_dtype = getattr(args, "index_storage_dtype", "bf16")
+        if self._index_storage_dtype not in {"bf16", "fp4"}:
+            raise ValueError(f"unsupported DSV4 index storage: {self._index_storage_dtype}")
         self.P = P
         self._n_layers = args.runtime_n_layers
         self.head_dim = args.head_dim
@@ -178,6 +187,11 @@ class DSV4PagedKVCache(BaseKVCachePool):
         # write), so the masked per-row scatter is graph-safe (no host sync, no -1 index, no
         # cross-row collision). One per running request row.
         self.n_scratch = int(n_scratch)
+        # The verified anchor's carry can be committed directly on a first-draft
+        # rejection, avoiding a full transformer replay.
+        self._speculative_first_carries: list[
+            tuple[CompressStateRing, torch.Tensor, torch.Tensor]
+        ] = []
 
         # Logical full-loc currency: ONE mapping from the virtual full-token index space to window
         # slots; cmp/idx rows derive arithmetically (full_loc // ratio), the state ring off the
@@ -193,7 +207,8 @@ class DSV4PagedKVCache(BaseKVCachePool):
         """(Re)allocate every physical buffer for the CURRENT ``self.sizes``. Shared by __init__
         and the in-place ``rebuild`` (identity-preserving, like HybridSWAKVCache.rebuild -- the
         CacheManager/engine/ctx all hold THIS object)."""
-        sizes, device, dtype = self.sizes, self._device, self._dtype
+        sizes, device = self.sizes, self._device
+        kv_dtype = self._kv_storage_dtype
         self.cmp_scratch_base = []
         self.idx_scratch_base = []
         self.full_to_window = torch.full(
@@ -207,7 +222,7 @@ class DSV4PagedKVCache(BaseKVCachePool):
 
         # Window KV: every layer.
         self.window_pool: list[torch.Tensor] = [
-            torch.zeros(sizes.n_win_slots, self.head_dim, device=device, dtype=dtype)
+            torch.zeros(sizes.n_win_slots, self.head_dim, device=device, dtype=kv_dtype)
             for _ in range(self._n_layers)
         ]
 
@@ -217,6 +232,7 @@ class DSV4PagedKVCache(BaseKVCachePool):
         # the indexer's own compressor -- a separate pool, no collision.
         self.cmp_pool: list[torch.Tensor | None] = []
         self.idx_pool: list[torch.Tensor | None] = []
+        self.idx_scale_pool: list[torch.Tensor | None] = []
         self.state_ring: list[CompressStateRing | None] = []
         self.indexer_state_ring: list[CompressStateRing | None] = []
         for L in range(self._n_layers):
@@ -224,6 +240,7 @@ class DSV4PagedKVCache(BaseKVCachePool):
             if ratio == 0:
                 self.cmp_pool.append(None)
                 self.idx_pool.append(None)
+                self.idx_scale_pool.append(None)
                 self.state_ring.append(None)
                 self.indexer_state_ring.append(None)
                 self.cmp_scratch_base.append(None)
@@ -233,7 +250,8 @@ class DSV4PagedKVCache(BaseKVCachePool):
             self.cmp_scratch_base.append(sizes.cmp_blocks[L])
             self.cmp_pool.append(
                 torch.zeros(
-                    sizes.cmp_blocks[L] + self.n_scratch, self.head_dim, device=device, dtype=dtype
+                    sizes.cmp_blocks[L] + self.n_scratch, self.head_dim,
+                    device=device, dtype=kv_dtype
                 )
             )
             if ratio == 4:
@@ -241,10 +259,23 @@ class DSV4PagedKVCache(BaseKVCachePool):
                 self.idx_pool.append(
                     torch.zeros(
                         sizes.idx_blocks[L] + self.n_scratch,
-                        self.index_head_dim,
+                        self.index_head_dim // (2 if self._index_storage_dtype == "fp4" else 1),
                         device=device,
-                        dtype=dtype,
+                        dtype=(
+                            torch.uint8
+                            if self._index_storage_dtype == "fp4"
+                            else torch.bfloat16
+                        ),
                     )
+                )
+                self.idx_scale_pool.append(
+                    torch.zeros(
+                        sizes.idx_blocks[L] + self.n_scratch,
+                        self.index_head_dim // 32,
+                        device=device,
+                        dtype=torch.float32,
+                    )
+                    if self._index_storage_dtype == "fp4" else None
                 )
                 # Indexer compressor ring: index_head_dim, overlap, ring_size=8.
                 self.indexer_state_ring.append(
@@ -258,6 +289,7 @@ class DSV4PagedKVCache(BaseKVCachePool):
                 )
             else:
                 self.idx_pool.append(None)
+                self.idx_scale_pool.append(None)
                 self.indexer_state_ring.append(None)
                 self.idx_scratch_base.append(None)
 
@@ -447,7 +479,7 @@ class DSV4PagedKVCache(BaseKVCachePool):
 
         assert self._paged_params is not None, "rebuild before _init_paged_state"
         self.sizes = sizes
-        self.window_pool = self.cmp_pool = self.idx_pool = None
+        self.window_pool = self.cmp_pool = self.idx_pool = self.idx_scale_pool = None
         self.state_ring = self.indexer_state_ring = None
         self.full_to_window = None
         gc.collect()
@@ -555,17 +587,32 @@ class DSV4PagedKVCache(BaseKVCachePool):
 
     # ----- specialized writes -----
     def store_window(self, k: torch.Tensor, layer_id: int, window_slot: torch.Tensor) -> None:
-        self.window_pool[layer_id].index_copy_(0, window_slot, k.to(self._dtype))
+        pool = self.window_pool[layer_id]
+        value = k.to(pool.dtype)
+        if pool.dtype == torch.float8_e4m3fn:
+            pool.view(torch.uint8).index_copy_(0, window_slot, value.view(torch.uint8))
+        else:
+            pool.index_copy_(0, window_slot, value)
 
     def store_compressed(self, kv: torch.Tensor, layer_id: int, cmp_slot: torch.Tensor) -> None:
         pool = self.cmp_pool[layer_id]
         assert pool is not None, f"layer {layer_id} (ratio 0) has no compressed pool"
-        pool.index_copy_(0, cmp_slot, kv.to(self._dtype))
+        value = kv.to(pool.dtype)
+        if pool.dtype == torch.float8_e4m3fn:
+            pool.view(torch.uint8).index_copy_(0, cmp_slot, value.view(torch.uint8))
+        else:
+            pool.index_copy_(0, cmp_slot, value)
 
     def store_indexer(self, k: torch.Tensor, layer_id: int, idx_slot: torch.Tensor) -> None:
         pool = self.idx_pool[layer_id]
         assert pool is not None, f"layer {layer_id} has no indexer pool (only ratio-4)"
-        pool.index_copy_(0, idx_slot, k.to(self._dtype))
+        scales = self.idx_scale_pool[layer_id]
+        if scales is not None:
+            from sparklab.kernels.triton.dsv4.fp4_cache import pack_fp4_rows
+
+            pack_fp4_rows(k, idx_slot, pool, scales)
+        else:
+            pool.index_copy_(0, idx_slot, k.to(self._dtype))
 
     def snapshot_speculative(self, table_idx: int, start: int, end: int):
         """Snapshot only compressor carry blocks touched by speculative verification."""
@@ -604,6 +651,31 @@ class DSV4PagedKVCache(BaseKVCachePool):
                 )
         return snapshots
 
+    def begin_speculative_carry_capture(self) -> None:
+        self._speculative_first_carries.clear()
+
+    def capture_first_speculative_carry(
+        self,
+        ring: CompressStateRing,
+        page_base: torch.Tensor,
+        block: torch.Tensor,
+    ) -> None:
+        if page_base.numel() and block.numel():
+            rows = page_base[:1, None] + torch.arange(
+                ring.ring_size, device=self._device
+            )[None, :]
+            self._speculative_first_carries.append(
+                (ring, rows.flatten(), block[0].clone())
+            )
+
+    def commit_first_speculative_carry(self, snapshots) -> None:
+        """Restore old rings, then commit the already-computed anchor carry."""
+        self.restore_speculative(snapshots)
+        for ring, rows, values in self._speculative_first_carries:
+            ring.buffer.index_copy_(0, rows, values)
+            ring._clear_scratch()
+        self._speculative_first_carries.clear()
+
     @staticmethod
     def restore_speculative(snapshots) -> None:
         for ring, rows, values in snapshots:
@@ -615,6 +687,9 @@ class DSV4PagedKVCache(BaseKVCachePool):
         n += sum(t.numel() * t.element_size() for t in self.window_pool)
         n += sum(t.numel() * t.element_size() for t in self.cmp_pool if t is not None)
         n += sum(t.numel() * t.element_size() for t in self.idx_pool if t is not None)
+        n += sum(
+            t.numel() * t.element_size() for t in self.idx_scale_pool if t is not None
+        )
         n += sum(
             r.buffer.numel() * r.buffer.element_size()
             for r in self.state_ring

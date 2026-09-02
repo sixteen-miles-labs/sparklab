@@ -100,6 +100,20 @@ class EngineConfig:
     speculative_method: str = "auto"
     speculative_tokens: int = 0
     draft_sample_method: str = "greedy"
+    # DSpark confidence-head probability floor. Zero keeps fixed-width verification.
+    dspark_confidence_threshold: float = 0.0
+    # Aggregate layer-LRU quota for DSpark's draft MoE layers. Zero keeps equal quotas.
+    dspark_draft_cache_slots: int = 0
+    # Optional comma-separated exact quotas for the DSpark draft layers. This is useful
+    # after a routing profile shows that only some draft layers need extra residency.
+    dspark_draft_cache_quotas: str = ""
+    # DeepSeek-V4 window and compressed KV pool representation.
+    dsv4_kv_storage: str = "bf16"
+    # DeepSeek-V4 Lightning-Indexer key representation.
+    dsv4_index_storage: str = "bf16"
+    # Qwen4-Exp resident projection representation. Routed experts and the PLE
+    # table retain their independently selected formats.
+    qwen4_dense_storage: str = "bf16"
 
     @cached_property
     def hf_config(self):

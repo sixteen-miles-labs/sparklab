@@ -6,10 +6,13 @@ from .weight import (
     load_nvfp4_expert_sources,
     load_nvfp4_expert_sources_parallel,
     setup_offload_expert_banks,
+    transform_ftw_weights,
+    transform_runtime_weights,
 )
 
 __all__ = [
     "Qwen4ExpForCausalLM", "copy_external_artifacts", "parse_config", "iter_weights",
     "load_nvfp4_expert_sources", "load_nvfp4_expert_sources_parallel",
     "setup_offload_expert_banks",
+    "transform_ftw_weights", "transform_runtime_weights",
 ]

@@ -292,6 +292,7 @@ def _convert_checkpoint(
     moe_backend: str = "offload",
     nvfp4_backend: str = "triton",
     expert_quantization: str | None = None,
+    qwen4_ngram_dtype: str = "preserve",
     shard_limit: int = DEFAULT_SHARD_LIMIT,
     device: str | None = None,
 ) -> dict:
@@ -471,9 +472,14 @@ def _convert_checkpoint(
         external_hook = _load_attr(spec.module, "copy_external_artifacts")
     except AttributeError:
         external_hook = None
-    external_artifacts = (
-        external_hook(model_path, out_dir, mc) if external_hook is not None else []
-    )
+    external_artifacts = []
+    if external_hook is not None:
+        external_artifacts = external_hook(
+            model_path,
+            out_dir,
+            mc,
+            ngram_dtype=qwen4_ngram_dtype,
+        )
 
     try:
         fingerprint = _source_fingerprint(
@@ -520,12 +526,17 @@ def convert_checkpoint(
     nvfp4_backend: str = "triton",
     expert_quantization: str | None = None,
     kda_quantization: str | None = None,
+    qwen4_ngram_dtype: str = "preserve",
     shard_limit: int = DEFAULT_SHARD_LIMIT,
     device: str | None = None,
 ) -> dict:
     """Write a self-contained FTW checkpoint, including requested format transforms."""
     if kda_quantization not in {None, "fp8_pertensor"}:
         raise ValueError(f"unsupported KDA quantization: {kda_quantization!r}")
+    if qwen4_ngram_dtype not in {"preserve", "float8_e4m3fn"}:
+        raise ValueError(
+            f"unsupported Qwen4 n-gram target dtype: {qwen4_ngram_dtype!r}"
+        )
     previous = os.environ.get(_GLM_KDA_QUANT_ENV)
     try:
         if kda_quantization is None:
@@ -539,6 +550,7 @@ def convert_checkpoint(
             moe_backend=moe_backend,
             nvfp4_backend=nvfp4_backend,
             expert_quantization=expert_quantization,
+            qwen4_ngram_dtype=qwen4_ngram_dtype,
             shard_limit=shard_limit,
             device=device,
         )

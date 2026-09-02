@@ -9,10 +9,9 @@ from sparklab.runtime.distributed import get_tp_info
 from sparklab.layers import (
     BaseOP,
     GemmaPlusOneRMSNorm,
-    LinearColParallelMerged,
-    LinearReplicated,
 )
 from sparklab.layers.rotary import get_rope
+from sparklab.models.quant_linear import make_col_merged_quant, make_replicated_quant
 from sparklab.utils import nvtx_annotate
 
 if TYPE_CHECKING:
@@ -33,17 +32,26 @@ class Qwen4ExpAttention(BaseOP):
         self.q_dim = self.num_q * self.head_dim
         self.kv_dim = self.num_kv * self.head_dim
         self._split = [2 * self.q_dim, self.kv_dim, self.kv_dim]
-        self.qkv_proj = LinearColParallelMerged(config.hidden_size, self._split, has_bias=False)
+        # Qwen4 checkpoint quantization describes routed experts independently
+        # from the publisher's BF16 dense tower. Never let expert_quant select a
+        # dense projection kernel here.
+        self.qkv_proj = make_col_merged_quant(
+            "none", config.attn_quant, config.hidden_size, self._split, has_bias=False
+        )
         self.q_norm = GemmaPlusOneRMSNorm(self.head_dim, eps=config.rms_norm_eps)
         self.k_norm = GemmaPlusOneRMSNorm(self.head_dim, eps=config.rms_norm_eps)
-        self.o_proj = LinearReplicated(self.q_dim, config.hidden_size, has_bias=False)
+        self.o_proj = make_replicated_quant(
+            "none", config.attn_quant, self.q_dim, config.hidden_size, has_bias=False
+        )
 
         self.index_n_heads = args.index_n_heads
         self.index_dim = args.index_head_dim
         self.index_q_dim = self.index_n_heads * self.index_dim
-        self.index_qk_proj = LinearReplicated(
-            config.hidden_size, self.index_q_dim + self.index_dim, has_bias=False
+        self.index_qk_proj = make_replicated_quant(
+            "none", config.attn_quant, config.hidden_size,
+            self.index_q_dim + self.index_dim, has_bias=False
         )
+        self._pertensor_fp8 = config.attn_quant == "fp8_pertensor"
         self.index_q_norm = GemmaPlusOneRMSNorm(self.index_dim, eps=config.rms_norm_eps)
         self.index_k_norm = GemmaPlusOneRMSNorm(self.index_dim, eps=config.rms_norm_eps)
         self.rotary = get_rope(
@@ -93,7 +101,20 @@ class Qwen4ExpAttention(BaseOP):
             # Dense-budget selection ignores index queries. Retain only the raw key
             # projection so a request that later crosses the sparse threshold still
             # has the complete index-key history available.
-            raw_ik = F.linear(x, self.index_qk_proj.weight[-self.index_dim:]).contiguous()
+            if self._pertensor_fp8:
+                from sparklab.kernels.triton.fp8_pertensor_linear import (
+                    fp8_pertensor_linear,
+                )
+
+                raw_ik = fp8_pertensor_linear(
+                    x,
+                    self.index_qk_proj.weight[-self.index_dim:].contiguous(),
+                    self.index_qk_proj.weight_scale[-self.index_dim:].contiguous(),
+                ).contiguous()
+            else:
+                raw_ik = F.linear(
+                    x, self.index_qk_proj.weight[-self.index_dim:]
+                ).contiguous()
             index_q = None
         out = ctx.attn_backend.qsa_forward(
             q_flat.view(-1, self.num_q, self.head_dim),

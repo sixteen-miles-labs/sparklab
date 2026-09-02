@@ -143,6 +143,46 @@ def test_layer_lru_borrows_then_protects_each_layers_quota_cpu():
     assert cache.slot_for_id[0, 3] >= 0
 
 
+def test_layer_lru_supports_weighted_draft_layer_reservation_cpu():
+    from sparklab.moe.offload_cache import OffloadMoeCache
+
+    cache = OffloadMoeCache(
+        num_layers=4,
+        num_experts=8,
+        cache_size=16,
+        device=torch.device("cpu"),
+        cache_policy="layer_lru",
+    )
+    cache.reserve_layer_slots((3,), 7)
+
+    assert cache.layer_quotas.tolist() == [3, 3, 3, 7]
+    for layer, count in enumerate(cache.layer_quotas.tolist()):
+        ids = torch.arange(count, dtype=torch.int32)
+        cache.ensure_experts(layer, ids)
+    assert cache.layer_counts.tolist() == [3, 3, 3, 7]
+
+    # Once full, a target miss replaces only within its own quota and cannot
+    # evict the separately protected draft working set.
+    before = cache.slot_for_id[3].clone()
+    cache.ensure_experts(0, torch.tensor([7], dtype=torch.int32))
+    assert torch.equal(cache.slot_for_id[3], before)
+
+
+def test_layer_lru_supports_exact_per_layer_quotas_cpu():
+    from sparklab.moe.offload_cache import OffloadMoeCache
+
+    cache = OffloadMoeCache(
+        num_layers=4,
+        num_experts=8,
+        cache_size=20,
+        device=torch.device("cpu"),
+        cache_policy="layer_lru",
+    )
+    cache.reserve_layer_quotas({2: 7, 3: 5})
+
+    assert cache.layer_quotas.tolist() == [4, 4, 7, 5]
+
+
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 def test_layer_lru_cuda_matches_cpu_reference():
     from sparklab.moe.offload_cache import OffloadMoeCache
@@ -748,6 +788,47 @@ def test_offload_moe_layer_decode_forward_uses_remapped_slot_ids(monkeypatch):
     assert calls["topk_weights"] is topk_weights
     assert calls["topk_ids"].dtype == torch.int32
     assert calls["topk_ids"].tolist() == [[5, 0]]
+
+
+@pytest.mark.parametrize(
+    ("uses_prefill_kernels", "is_verify", "is_speculative_replay", "expected"),
+    [
+        (True, False, False, "prefill"),
+        (True, True, False, "decode"),
+        (True, False, True, "decode"),
+        (False, False, False, "decode"),
+    ],
+)
+def test_offload_moe_verification_uses_small_batch_decode_kernel(
+    monkeypatch, uses_prefill_kernels, is_verify, is_speculative_replay, expected
+):
+    from types import SimpleNamespace
+
+    layer, _ = _make_layer_and_cache()
+    batch = SimpleNamespace(
+        uses_prefill_kernels=uses_prefill_kernels,
+        is_verify=is_verify,
+        is_speculative_replay=is_speculative_replay,
+    )
+    monkeypatch.setattr(
+        "sparklab.layers.moe.get_global_ctx",
+        lambda: SimpleNamespace(batch=batch),
+    )
+    calls = []
+    monkeypatch.setattr(
+        layer,
+        "prefill_forward",
+        lambda hidden, logits: calls.append("prefill") or hidden,
+    )
+    monkeypatch.setattr(
+        layer,
+        "decode_forward",
+        lambda hidden, logits: calls.append("decode") or hidden,
+    )
+
+    hidden = torch.randn(4, 8)
+    assert layer.forward(hidden, torch.randn(4, 4)) is hidden
+    assert calls == [expected]
 
 
 

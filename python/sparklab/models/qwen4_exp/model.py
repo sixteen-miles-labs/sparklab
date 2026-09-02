@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import torch
@@ -35,6 +37,7 @@ class Qwen4ExpDecoderLayer(BaseOP):
                 conv_kernel_size=group.conv_kernel_dim,
                 rms_norm_eps=config.rms_norm_eps,
                 layer_id=layer_id,
+                attn_quant=config.attn_quant,
                 output_gate_activation=args.output_gate_activation,
             )
         else:
@@ -45,10 +48,12 @@ class Qwen4ExpDecoderLayer(BaseOP):
             if layer_id in args.ple_layer_ids else None
         )
         self.attn_hyper_connection = Qwen4GatedResidual(
-            config.hidden_size, args.hc_count, args.hc_lowrank, config.rms_norm_eps
+            config.hidden_size, args.hc_count, args.hc_lowrank, config.rms_norm_eps,
+            quant=config.attn_quant,
         )
         self.mlp_hyper_connection = Qwen4GatedResidual(
-            config.hidden_size, args.hc_count, args.hc_lowrank, config.rms_norm_eps
+            config.hidden_size, args.hc_count, args.hc_lowrank, config.rms_norm_eps,
+            quant=config.attn_quant,
         )
 
     @nvtx_annotate("Layer_{}", layer_id_field="_layer_id")
@@ -75,7 +80,7 @@ class Qwen4ExpModel(BaseOP):
         ])
         self.hyper_connection_mixer = Qwen4GatedResidual(
             config.hidden_size, args.hc_count, args.hc_lowrank,
-            config.rms_norm_eps, use_combine=False,
+            config.rms_norm_eps, use_combine=False, quant=config.attn_quant,
         )
         self._hc_count = args.hc_count
 
@@ -99,8 +104,17 @@ class Qwen4ExpForCausalLM(BaseLLMModel):
         )
         # Private so BaseOP's strict target state dict remains unchanged. The
         # standalone sidecar is loaded explicitly after the target + expert cache.
+        # The standalone MTP sidecar has its own native expert representation and
+        # BF16 dense tensors. Keep that independent from target-only runtime
+        # requantization until the sidecar ships corresponding scale metadata.
+        mtp_config = replace(
+            config,
+            attn_quant="none",
+            dense_quant="none",
+            shared_expert_quant="none",
+        )
         self._mtp = (
-            Qwen4ExpMultiTokenPredictor(config)
+            Qwen4ExpMultiTokenPredictor(mtp_config)
             if int(getattr(config, "speculative_tokens", 0) or 0) else None
         )
         self._mtp_steps = int(getattr(config, "speculative_tokens", 0) or 0)
@@ -127,6 +141,16 @@ class Qwen4ExpForCausalLM(BaseLLMModel):
             if self._mtp_path is None:
                 raise RuntimeError("Qwen4 MTP sidecar path was not prepared")
             self._mtp.load_sidecar(self._mtp_path, self.model.embed_tokens.weight.device)
+
+    def begin_external_inputs(self, batch) -> None:
+        # Opt in until a checkpoint with multiple/later PLE layers provides enough
+        # transformer work to hide the thread handoff. The current Qwen3.8 artifact
+        # has one early PLE layer and its controlled GB10 result was neutral.
+        if os.getenv("SPARKLAB_QWEN4_ASYNC_PLE", "0") != "1":
+            return
+        for layer in self.model.layers.op_list:
+            if layer.ple is not None:
+                layer.ple.begin_external_input(batch)
 
     def prepare_cuda_graph_inputs(self, batch) -> None:
         for layer in self.model.layers.op_list:

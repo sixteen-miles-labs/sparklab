@@ -4,6 +4,14 @@ This directory contains compact, reviewable summaries for SparkLab model
 recipes. Raw logs and large result streams stay outside the source repository.
 
 - `result.schema.json` defines the versioned summary contract.
+- `results/GB10-QWEN38-FP8-PLE-005.json` measures NVFP4 routed experts with a
+  50%-smaller FP8 external PLE table.
+- `results/GB10-QWEN38-HYBRID-006.json` adds physical FP8 resident projections:
+  22.16 tok/s, 3.36 GiB lower server VRAM, exact 128-token output parity, and a
+  passing 4096-token-cap W1 smoke gate.
+- `results/GB10-DSV4-ADAPTIVE-004.json` records confidence-adaptive DSpark,
+  replay-free first-draft rejection commits, residency profiling, true FP8
+  window/compressed KV, and packed FP4 Lightning-Indexer storage.
 - `results/GB10-BASELINE-001.json` records the measured DeepSeek V4 launch baseline.
 - `results/GB10-DSV4-SPARSE-001.json` records the optimized DeepSeek V4 route-first
   sparse-prefill probe: 10.28 decode tok/s and 0.604 s warm TTFT, with the baseline
