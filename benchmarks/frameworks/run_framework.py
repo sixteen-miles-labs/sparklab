@@ -307,7 +307,7 @@ def main() -> None:
                 "--framework", args.framework, "--version", version,
                 "--weight-source", (
                     "oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW@cbbcf69f52b9815b8a987fe839003fae12aa8050" if args.framework in {"freetoken", "sparklab"} and args.model_family == "qwen38"
-                    else "oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW@fecab7acfd0590d2b268d8fb9ea1c88431471111" if args.framework in {"freetoken", "sparklab"}
+                    else "oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW@4826bc15c0f91ab9de7c57040bda36cfc57b3974" if args.framework in {"freetoken", "sparklab"}
                     else "ollama.com/library/qwen3.6:35b-a3b" if args.framework in {"ollama", "ollama-no-mtp"}
                     else "ollama.com/library/qwen3.6:35b-a3b (GGUF layer sha256:d372de8e9348...)" if args.framework in {"llama.cpp", "ktransformers"}
                     else "nvidia/Qwen3.6-35B-A3B-NVFP4"

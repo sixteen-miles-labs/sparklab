@@ -182,6 +182,10 @@ class ShardReader:
     def names_in(self, file: str) -> list[str]:
         return [name for name, shard in self._map.items() if shard == file]
 
+    def names(self) -> tuple[str, ...]:
+        """All indexed tensor names without opening any weight shard."""
+        return tuple(self._map)
+
     def get_tensor(self, name: str) -> torch.Tensor:
         import safetensors
 

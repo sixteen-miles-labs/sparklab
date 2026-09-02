@@ -107,11 +107,90 @@ class Qwen3_5MoEForCausalLM(BaseLLMModel):
                 tie_word_embeddings=config.tie_word_embeddings,
                 tied_embedding=self.model.embed_tokens if config.tie_word_embeddings else None,
             )
+        self._mtp = None
+        self._mtp_steps = int(getattr(config, "speculative_tokens", 0) or 0)
+        if self._mtp_steps:
+            from .mtp import Qwen3_5MultiTokenPredictor
+
+            self._mtp = Qwen3_5MultiTokenPredictor(config)
+        self._mtp_target_hidden: torch.Tensor | None = None
         super().__init__()
 
     def forward(self) -> torch.Tensor:
         output = self.model.forward(get_global_ctx().batch.input_ids)
+        if self._mtp is not None:
+            self._mtp_target_hidden = output
         return self.lm_head.forward(output)
+
+    def speculative_state_dict(self):
+        return {} if self._mtp is None else self._mtp.state_dict()
+
+    def load_speculative_state_dict(self, state_dict) -> None:
+        if self._mtp is None:
+            if state_dict:
+                raise RuntimeError("received Qwen MTP weights while MTP is disabled")
+            return
+        self._mtp.load_state_dict(state_dict)
+
+    def propose_mtp(self, batch, next_token: torch.Tensor) -> torch.Tensor | None:
+        if self._mtp is None or self._mtp_target_hidden is None or batch.size != 1:
+            return None
+        from sparklab.core import Batch, Req
+
+        req = batch.reqs[0]
+        if not req.sampling_params.is_greedy:
+            return None
+        ctx = get_global_ctx()
+        project_logits = getattr(self.lm_head, "forward_all", self.lm_head.forward)
+        query = batch.input_ids
+        shifted = torch.cat((query[1:], next_token.reshape(1)))
+        original_input = batch.input_ids
+        batch.input_ids = shifted
+        try:
+            with ctx.forward_batch(batch):
+                feedback = self._mtp.forward(
+                    self.model.embed_tokens.forward(shifted), self._mtp_target_hidden
+                )
+                last = batch.attn_metadata.get_last_indices(1).to(torch.long)
+                feedback = feedback.index_select(0, last)
+                draft = torch.argmax(project_logits(feedback), dim=-1)
+        finally:
+            batch.input_ids = original_input
+
+        drafts = [draft.squeeze(0).to(torch.int32)]
+
+        steps = min(
+            self._mtp_steps, max(1, req.max_device_len - req.device_len)
+        )
+        for step in range(1, steps):
+            position = req.device_len + step - 1
+            draft_req = Req(
+                input_ids=torch.zeros(position + 1, dtype=req.input_ids.dtype),
+                table_idx=req.table_idx,
+                cached_len=position,
+                output_len=1,
+                uid=req.uid,
+                sampling_params=req.sampling_params,
+                cache_handle=req.cache_handle,
+            )
+            draft_req.linear_slot_idx = req.linear_slot_idx
+            draft_batch = Batch(reqs=[draft_req], phase="decode")
+            draft_batch.padded_reqs = draft_batch.reqs
+            draft_batch.input_ids = draft.reshape(1)
+            draft_batch.positions = torch.tensor(
+                [position], dtype=torch.int32, device=draft.device
+            )
+            draft_batch.out_loc = ctx.page_table[
+                draft_req.table_idx, position : position + 1
+            ]
+            ctx.attn_backend.prepare_metadata(draft_batch)
+            with ctx.forward_batch(draft_batch):
+                feedback = self._mtp.forward(
+                    self.model.embed_tokens.forward(draft_batch.input_ids), feedback
+                )
+                draft = torch.argmax(project_logits(feedback), dim=-1)
+            drafts.append(draft.squeeze(0).to(torch.int32))
+        return torch.stack(drafts)
 
 
 __all__ = ["Qwen3_5MoEForCausalLM"]

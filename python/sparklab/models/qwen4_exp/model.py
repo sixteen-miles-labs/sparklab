@@ -179,12 +179,12 @@ class Qwen4ExpForCausalLM(BaseLLMModel):
         draft = torch.argmax(F.linear(sample_hidden, head.weight, self.lm_head.bias), -1)
         drafts = [draft.squeeze(0).to(torch.int32)]
 
-        # A future physical page is not allocated until verification is
-        # scheduled. Stop at the current page boundary; MTP-1 is therefore
-        # always available, while MTP-2/3 shorten one step every 16 tokens.
-        page_size = ctx.page_size
-        page_end = ((req.device_len + page_size - 1) // page_size) * page_size
-        steps = min(self._mtp_steps, 1 + max(0, page_end - req.device_len))
+        # The scheduler reserves the configured lookahead before this forward,
+        # including with page_size=1, so every configured draft step has a
+        # physical KV row.
+        steps = min(
+            self._mtp_steps, max(1, req.max_device_len - req.device_len)
+        )
         for step in range(1, steps):
             position = req.device_len + step - 1
             draft_req = Req(

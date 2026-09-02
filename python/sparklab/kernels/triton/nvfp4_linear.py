@@ -925,6 +925,14 @@ class Nvfp4LMHead(BaseOP):
         if batch.is_prefill:
             indices = batch.attn_metadata.get_last_indices(batch.size)
             x = x[indices].contiguous()
+        return self.forward_all(x)
+
+    def forward_all(self, x: torch.Tensor) -> torch.Tensor:
+        """Project exactly the supplied rows without prefill last-token slicing.
+
+        Native MTP already selects its one draft row while the surrounding
+        target-shaped batch can still be a multi-token prefill.
+        """
         if self._transposed:
             return nvfp4_dense_linear_t(x, self.weight, self.weight_scale, self.weight_global)
         return nvfp4_dense_linear(x, self.weight, self.weight_scale, self.weight_global)

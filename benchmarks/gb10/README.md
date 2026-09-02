@@ -17,6 +17,9 @@ recipes. Raw logs and large result streams stay outside the source repository.
   from 7.41 to 8.67 tok/s and DSpark N=1 from 7.07 to 8.27 tok/s.
 - `results/GB10-QWEN36-FAST-001.json` records the Qwen3.6 NVFP4 Fast
   performance probe.
+- `results/GB10-QWEN36-MTP-003.json` records the native BF16 MTP sweep. Three drafts
+  reproduced the target-only output hash and accepted 41/50 proposals, but measured only
+  8.57 tok/s versus the 52.63 tok/s control, so MTP remains experimental and opt-in.
 - `results/GB10-QWEN38-27B-001.json` records the dense Qwen3.8-27B ModelOpt
   NVFP4 result: 8.83 decode tok/s, 0.144 s warm TTFT, exact 64K recall, and
   passing reasoning, tool-call, and coding-agent probes.

@@ -396,6 +396,10 @@ class CacheManager:
                 self.unlock(old_handle)
                 self._free(page_indices[free_upto : max(free_upto, prefix_len)])
                 keep_live = not mamba_exist           # tree now owns linear_slot_idx
+                # Speculative proposal can reserve physical rows beyond the
+                # accepted final boundary. The tree owns through cached_len;
+                # return the page-aligned lookahead tail explicitly.
+                self._free(self._padded_tail(req, req.cached_len))
             else:
                 self.unlock(old_handle)
                 self._free(page_indices[free_upto :])

@@ -110,6 +110,38 @@ def test_hybrid_finish_skips_overadvanced_speculative_state():
     cm.check_integrity()
 
 
+def test_hybrid_finish_reclaims_speculative_lookahead_tail():
+    pool = _pool()
+    page_table = torch.zeros(4, 64, dtype=torch.int32)
+    cm = CacheManager(64, 1, page_table, "hybrid_radix", linear_state_pool=pool)
+    pending = _pend([7, 8, 9, 10, 11])
+    mr = cm.match_req(pending)
+    live, pp = pool.alloc(1)[0], tuple(pool.alloc(2))
+    req = Req(
+        input_ids=pending.input_ids,
+        table_idx=1,
+        cached_len=0,
+        output_len=4,
+        uid=1,
+        sampling_params=SamplingParams(),
+        cache_handle=mr.cuda_handle,
+    )
+    req.linear_slot_idx, req.mamba_ping_pong = live, pp
+    cm.lock(mr.cuda_handle)
+    cm.allocate_paged([req])
+    actual = req.device_len
+    req.device_len += 1
+    cm.allocate_paged([req])
+    req.device_len = actual
+    assert req.allocated_len == 6
+    req.cached_len = 4
+
+    cm.cache_req(req, finished=True)
+
+    assert cm.match_req(pending).cuda_handle.cached_len == 4
+    cm.check_integrity()
+
+
 def test_free_req_slots_idempotent():
     """C2: a finish/abort double-free of the same request must NOT push its GDN slots twice."""
     pool = _pool()

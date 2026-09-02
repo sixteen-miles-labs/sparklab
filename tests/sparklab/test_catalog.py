@@ -129,14 +129,20 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert deepseek.deployment.backend_options["moe_host_cache_gb"] == 0
     assert deepseek.deployment.backend_options["moe_prefill_overlap"] is False
     qwen36 = get_recipe("qwen3.6-35b-a3b")
+    assert qwen36.recipe_version == "0.4.0"
     assert qwen36.status == "certified"
     assert qwen36.runtime_memory == {"total_bytes": 34359738368}
     assert qwen36.performance.decode_tokens_per_second == pytest.approx(67.7870954092827)
     assert qwen36.performance.warm_ttft_seconds == pytest.approx(0.32882933877408504)
-    assert qwen36.evidence == ("GB10-QWEN36-FAST-001", "GB10-QWEN36-FAST-002")
+    assert qwen36.evidence == (
+        "GB10-QWEN36-FAST-001",
+        "GB10-QWEN36-FAST-002",
+        "GB10-QWEN36-MTP-003",
+    )
     assert qwen36.runtime_artifact is not None
     assert qwen36.runtime_artifact.repo_id == "oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW"
-    assert qwen36.runtime_artifact.revision == "fecab7acfd0590d2b268d8fb9ea1c88431471111"
+    assert qwen36.runtime_artifact.revision == "4826bc15c0f91ab9de7c57040bda36cfc57b3974"
+    assert qwen36.runtime_artifact.bytes == 22605468996
     assert qwen36.runtime_artifact.fingerprint == "bda7268c3e0afd7b"
     primary = select_recipes(load_catalog(), portfolio_role="primary")
     assert {(item.intended_tier, item.slug) for item in primary} == {

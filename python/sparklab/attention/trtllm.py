@@ -67,7 +67,7 @@ class TensorRTLLMBackend(BaseAttnBackend):
         self.kvcache.store_kv(k, v, batch.out_loc, layer_id)
         kv_cache = (self.kvcache.k_cache(layer_id), self.kvcache.v_cache(layer_id))
 
-        if batch.is_prefill:
+        if batch.uses_prefill_kernels:
             return trtllm_batch_context_with_kv_cache(
                 query=q,
                 kv_cache=kv_cache,

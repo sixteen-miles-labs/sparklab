@@ -822,7 +822,27 @@ class Scheduler(SchedulerIOMixin):
             self.cache_manager.free_swa_out_of_window_extend(batch.reqs)
         # Polymorphic page allocation: DSV4 allocates window pages + cmp/idx blocks into its
         # slot maps; the generic manager allocates KV pages into the page table.
-        self.cache_manager.allocate_paged(batch.reqs)
+        # Native MTP writes its own KV while proposing the next draft block,
+        # after this target forward has returned. Reserve those physical rows
+        # now; verification will fill the corresponding token_pool entries on
+        # the next scheduler iteration. This is required for page_size=1 and
+        # also removes page-boundary-dependent draft widths.
+        lookahead = (
+            int(getattr(self.config, "speculative_tokens", 0) or 0)
+            if getattr(self.config, "speculative_method", "none") == "mtp"
+            else 0
+        )
+        if lookahead:
+            actual_lens = [req.device_len for req in batch.reqs]
+            for req in batch.reqs:
+                req.device_len = min(req.max_device_len, req.device_len + lookahead)
+            try:
+                self.cache_manager.allocate_paged(batch.reqs)
+            finally:
+                for req, actual in zip(batch.reqs, actual_lens):
+                    req.device_len = actual
+        else:
+            self.cache_manager.allocate_paged(batch.reqs)
         if batch.is_prefill:
             self._gather_multimodal(batch)
         batch.positions = _make_positions(batch, self.device)
