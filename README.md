@@ -167,14 +167,6 @@ warm TTFT. Its Certified status remains tied to the target-only profile (67.79 t
 0.329 s warm TTFT); MTP is still awaiting the full certification suite. See
 [GB10-QWEN36-MTP-004](benchmarks/gb10/results/GB10-QWEN36-MTP-004.json).
 
-The Qwen3.8-Flash-Next row combines the latest hybrid throughput result (22.16 tok/s)
-with the most recent MTP warm-TTFT result (0.212 s), since the hybrid probe did not
-remeasure TTFT. Enable the selected opt-in profile with `-- --speculative-tokens 2` for
-batch-one greedy workloads. The default profile for concurrent or sampled traffic
-remains 16.84 single-stream tok/s. See
-[GB10-QWEN38-HYBRID-006](benchmarks/gb10/results/GB10-QWEN38-HYBRID-006.json) and
-[GB10-QWEN38-NVFP4-OPT-004](benchmarks/gb10/results/GB10-QWEN38-NVFP4-OPT-004.json).
-
 ## Documentation
 
 - [Installation](docs/install.md)
