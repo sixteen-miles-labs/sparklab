@@ -64,7 +64,7 @@ def test_models_human_table_groups_tiers_and_shows_performance_metrics(capsys):
     qwen38_row = next(
         line for line in output.splitlines() if line.startswith("Qwen3.8 Flash Next")
     )
-    assert qwen38_row.split()[-2:] == ["20.31", "0.212"]
+    assert qwen38_row.split()[-2:] == ["30.67", "0.258"]
     assert "No recipe is certified yet" not in output
 
 

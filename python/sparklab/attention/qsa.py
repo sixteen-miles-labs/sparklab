@@ -51,18 +51,23 @@ class QSACaptureData:
 
     @classmethod
     def create(
-        cls, dense_limit: int, device: torch.device, max_bs: int = 1,
+        cls,
+        dense_limit: int,
+        device: torch.device,
+        max_bs: int = 1,
+        max_queries_per_req: int = 1,
     ) -> QSACaptureData:
+        max_queries = max_bs * max_queries_per_req
         return cls(
-            dense_indptr=torch.zeros(max_bs + 1, dtype=torch.int32, device=device),
+            dense_indptr=torch.zeros(max_queries + 1, dtype=torch.int32, device=device),
             # Unused suffix rows must still be valid because the captured pooling
             # update speculatively gathers a four-row group on incomplete steps.
             dense_indices=torch.zeros(
-                max_bs * dense_limit, dtype=torch.int32, device=device
+                max_queries * dense_limit, dtype=torch.int32, device=device
             ),
-            dense_q_positions=torch.zeros(max_bs, dtype=torch.int64, device=device),
-            q_to_req=torch.arange(max_bs, dtype=torch.int32, device=device),
-            last_indices=torch.arange(max_bs, dtype=torch.int32, device=device),
+            dense_q_positions=torch.zeros(max_queries, dtype=torch.int64, device=device),
+            q_to_req=torch.arange(max_queries, dtype=torch.int32, device=device),
+            last_indices=torch.arange(max_queries, dtype=torch.int32, device=device),
         )
 
 
@@ -408,7 +413,13 @@ class QSAAttnBackend(BaseAttnBackend):
             self.args.index_block_topk * ratio + ratio - 1,
         )
         self.capture = QSACaptureData.create(
-            dense_limit, self.device, max_bs=max(bs_list)
+            dense_limit,
+            self.device,
+            max_bs=max(bs_list),
+            # Qwen MTP verification packs one target row and up to three
+            # draft rows into one request. Ordinary decode still consumes only
+            # the leading max_bs query slots from these same buffers.
+            max_queries_per_req=4,
         )
         self.capture_bs = sorted(bs_list)
         self.max_graph_bs = max(bs_list)
@@ -434,25 +445,30 @@ class QSAAttnBackend(BaseAttnBackend):
             raise RuntimeError("Sparse QSA batches are not CUDA-graph eligible")
 
         cap = self.capture
-        bs = batch.padded_size
+        query_rows = metadata.dense_q_positions.numel()
         total = metadata.dense_indices.numel()
         if total > cap.dense_indices.numel():
             raise RuntimeError(
                 f"Dense QSA capture capacity {cap.dense_indices.numel()} < {total} rows"
             )
-        cap.dense_indptr[: bs + 1].copy_(metadata.dense_indptr)
+        if query_rows > cap.dense_q_positions.numel():
+            raise RuntimeError(
+                "Dense QSA capture query capacity "
+                f"{cap.dense_q_positions.numel()} < {query_rows} rows"
+            )
+        cap.dense_indptr[: query_rows + 1].copy_(metadata.dense_indptr)
         cap.dense_indices[:total].copy_(metadata.dense_indices)
-        cap.dense_q_positions[:bs].copy_(metadata.dense_q_positions)
-        cap.last_indices[:bs].copy_(metadata.last_indices)
+        cap.dense_q_positions[:query_rows].copy_(metadata.dense_q_positions)
+        cap.last_indices[: metadata.last_indices.numel()].copy_(metadata.last_indices)
         batch.attn_metadata = QSAMetadata(
-            qo_indptr=tuple(range(bs + 1)),
-            last_indices=cap.last_indices[:bs],
-            q_to_req=cap.q_to_req[:bs],
-            dense_indptr=cap.dense_indptr[: bs + 1],
+            qo_indptr=tuple(range(query_rows + 1)),
+            last_indices=cap.last_indices[: metadata.last_indices.numel()],
+            q_to_req=cap.q_to_req[:query_rows],
+            dense_indptr=cap.dense_indptr[: query_rows + 1],
             # Keep the full fixed-size view: the graph must see the same tensor
             # address and shape at capture and every replay. indptr bounds reads.
             dense_indices=cap.dense_indices,
-            dense_q_positions=cap.dense_q_positions[:bs],
+            dense_q_positions=cap.dense_q_positions[:query_rows],
             capture_decode=True,
         )
 

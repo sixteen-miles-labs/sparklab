@@ -68,21 +68,21 @@ auto-allocation.
 
 SparkLab can use the upstream model's native MTP layer. It verifies draft tokens with the
 target model and transactionally commits or rolls back paged KV, GDN, PLE, and QSA state
-at the accepted boundary. Enable the measured two-token setting with:
+at the accepted boundary. Enable the measured three-token setting with:
 
 ```bash
-sparklab run qwen3.8-flash-next --root /path/to/models -- --speculative-tokens 2
+sparklab run qwen3.8-flash-next --root /path/to/models -- --speculative-tokens 3
 ```
 
-On GB10, a controlled 64-token greedy decode measured 20.31 tok/s versus 15.13 tok/s
-without speculative decoding, a 34.2% improvement. One and three draft tokens measured
-18.21 and 17.10 tok/s respectively, so more drafts are not automatically faster. All four
-settings reproduced the same output hash on fresh prompts and 64-token radix-prefix hits.
+On GB10, the selected three-draft profile measured a three-trial median 30.67 tok/s and
+0.258 s warm TTFT on a 128-token greedy decode. One and two draft tokens measured 25.19
+and 29.15 tok/s respectively. The three selected-profile trials reproduced the same
+output hash.
 
 MTP is intentionally opt-in. The current transactional path supports one running greedy
-request, runs eagerly with overlap scheduling disabled, and falls back to ordinary target
-decoding for non-greedy sampling. Keep the default recipe for concurrent traffic and use
-`--speculative-tokens 2` for single-stream deterministic chat or agent workloads.
+request and falls back to ordinary target decoding for non-greedy sampling. Dense-QSA
+verification uses a dedicated CUDA graph; longer sparse-QSA requests remain eager. Use
+`--speculative-tokens 3` for the measured single-stream greedy profile.
 
 Wait for the API to listen on `127.0.0.1:1919`, then verify it:
 

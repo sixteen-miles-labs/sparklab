@@ -103,10 +103,10 @@ a SparkLab support claim.
     <tr>
       <td><a href="https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW">Qwen3.8-Flash-Next</a></td>
       <td>125B LM + 55B auxiliary / 6B active</td>
-      <td>NVFP4 · FTW + MTP2</td>
+      <td>NVFP4 · FTW + MTP3</td>
       <td>Experimental</td>
-      <td align="right">22.16</td>
-      <td align="right">0.212</td>
+      <td align="right">30.67</td>
+      <td align="right">0.258</td>
       <td><a href="docs/models/qwen3.8-flash-next.md">Instructions</a></td>
     </tr>
     <tr>

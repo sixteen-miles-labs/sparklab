@@ -90,7 +90,8 @@ class _ResidentNvfp4MTPMoE(BaseOP):
             topk=self.top_k,
             renormalize=True,
         )
-        if get_global_ctx().batch.uses_prefill_kernels:
+        batch = get_global_ctx().batch
+        if batch.uses_prefill_kernels and not batch.is_verify:
             from sparklab.moe.fused_nvfp4 import fused_experts_nvfp4
 
             routed = fused_experts_nvfp4(
@@ -103,6 +104,11 @@ class _ResidentNvfp4MTPMoE(BaseOP):
         else:
             from sparklab.moe.fused_nvfp4 import fused_experts_decode_nvfp4_marlin
 
+            # Verification contains only the target token plus the short draft
+            # block (at most four rows). Attention still needs prefill semantics
+            # for those consecutive positions, but the token-local MoE does not:
+            # the grouped prefill kernel pads every selected expert to M=16.
+            # The decode kernel accepts M > 1 and computes only the routed rows.
             routed = fused_experts_decode_nvfp4_marlin(
                 hidden_states, *self._expert_banks, topk_weights, topk_ids
             )

@@ -19,7 +19,7 @@ from sparklab.moe.offload_cache import OffloadMoeCache, attach_offload_moe_cache
 from sparklab.utils import align_ceil, init_logger, is_sm90_family, is_sm100_family, mem_GB, torch_dtype
 
 from .config import EngineConfig
-from .graph import GraphRunner, get_free_memory
+from .graph import GraphRunner, MTPVerificationGraphRunner, get_free_memory
 from .sample import BatchSamplingArgs, Sampler
 from sparklab.runtime.kvcache import create_kv_pool, resolve_pool_class
 from sparklab.runtime.kvcache.base import CacheRebuildRejected
@@ -399,14 +399,21 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
         groups.append(group)
     if args is not None:
         object.__setattr__(model_config, "qwen4_exp_args", args)
+        graph_enabled = bool(getattr(model_config, "mtp_cuda_graph", False)) or not (
+            config.cuda_graph_bs == [] or config.cuda_graph_max_bs == 0
+        )
+        object.__setattr__(model_config, "mtp_cuda_graph", graph_enabled)
     object.__setattr__(model_config, "attention_groups", tuple(groups))
     object.__setattr__(model_config, "speculative_method", "mtp")
     object.__setattr__(model_config, "speculative_tokens", speculative_tokens)
     override("speculative_method", "mtp")
-    # Transactional verification is eager and currently batch-one. This is an
-    # explicit bring-up constraint, not a silent numerical compromise.
+    # Transactional bookkeeping remains eager and batch-one. Qwen4 captures the
+    # fixed-width target verification forward; Qwen3.5/3.6 keep their established
+    # eager path until their attention backends gain multi-row capture metadata.
     override("max_running_req", 1)
     override("cache_type", "radix")
+    # The verification runner owns a multi-row graph whose dimensions are not
+    # request batch sizes. Keep it separate from the ordinary decode runner.
     override("cuda_graph_bs", [])
     override("cuda_graph_max_bs", 0)
 
@@ -663,6 +670,20 @@ class Engine:
             vocab_size=config.model_config.vocab_size,
             dummy_req=self.dummy_req,
             moe_offload_cache=self.moe_offload_cache,
+        )
+        self.mtp_graph_runner = (
+            MTPVerificationGraphRunner(
+                stream=self.stream,
+                device=self.device,
+                model=self.model,
+                attn_backend=self.attn_backend,
+                speculative_tokens=config.speculative_tokens,
+                max_seq_len=aligned_max_seq_len,
+                vocab_size=config.model_config.vocab_size,
+                dummy_req=self.dummy_req,
+            )
+            if getattr(config.model_config, "mtp_cuda_graph", False)
+            else None
         )
         if (
             config.attention_backend.split(",")[0] in {"triton", "dsa"}
@@ -1175,6 +1196,8 @@ class Engine:
         # untouched (no rollback needed); after it, only a rebuild restores service.
         self.rebuild_teardown_started = True
         # 1. Tear down CUDA graphs + backend capture scratch (free-before-alloc).
+        if self.mtp_graph_runner is not None:
+            self.mtp_graph_runner.destroy_cuda_graphs()
         self.attn_backend.reset_capture()
         self.graph_runner.destroy_cuda_graphs()
         # 2. Resize caches in place (each frees its old GPU tensors before allocating).
@@ -1220,6 +1243,20 @@ class Engine:
             dummy_req=self.dummy_req,
             moe_offload_cache=self.moe_offload_cache,
         )
+        self.mtp_graph_runner = (
+            MTPVerificationGraphRunner(
+                stream=self.stream,
+                device=self.device,
+                model=self.model,
+                attn_backend=self.attn_backend,
+                speculative_tokens=config.speculative_tokens,
+                max_seq_len=aligned_max_seq_len,
+                vocab_size=config.model_config.vocab_size,
+                dummy_req=self.dummy_req,
+            )
+            if getattr(config.model_config, "mtp_cuda_graph", False)
+            else None
+        )
 
     def forward_batch(self, batch: Batch, args: BatchSamplingArgs) -> ForwardOutput:
         assert torch.cuda.current_stream() == self.stream
@@ -1260,7 +1297,13 @@ class Engine:
                     pool.copy_from(req.linear_slot_idx, scratch)
                     state_snapshots.append((req.linear_slot_idx, scratch))
         with self.ctx.forward_batch(batch):
-            if not batch.is_verify and self.graph_runner.can_use_cuda_graph(batch):
+            if (
+                batch.is_verify
+                and self.mtp_graph_runner is not None
+                and self.mtp_graph_runner.can_use_cuda_graph(batch)
+            ):
+                logits = self.mtp_graph_runner.replay(batch)
+            elif not batch.is_verify and self.graph_runner.can_use_cuda_graph(batch):
                 logits = self.graph_runner.replay(batch)
             else:
                 logits = self.model.forward()
@@ -1464,6 +1507,8 @@ class Engine:
         )
 
     def shutdown(self) -> None:
+        if self.mtp_graph_runner is not None:
+            self.mtp_graph_runner.destroy_cuda_graphs()
         self.graph_runner.destroy_cuda_graphs()
         torch.distributed.destroy_process_group()
         destroy_distributed()

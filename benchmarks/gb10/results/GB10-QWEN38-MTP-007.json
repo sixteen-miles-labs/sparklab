@@ -1,0 +1,149 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWEN38-MTP-007",
+  "status": "measured",
+  "date": "2026-09-02",
+  "recipe": {
+    "slug": "qwen3.8-flash-next",
+    "recipe_version": "0.8.0",
+    "revision": "103a7608316173ca6edd49929544244de7ffda70"
+  },
+  "engine": {
+    "name": "FreeToken",
+    "product_identity": "SparkLab",
+    "git_revision": "d4a8a773b95917bcfadb8df48320880637955bc9",
+    "git_tracked_dirty": true
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "machine": "aarch64",
+    "cuda": "13.0",
+    "torch": "2.11.0+cu130",
+    "triton": "3.6.0"
+  },
+  "checkpoint": {
+    "repository": "Inferact/Qwen3.8-Flash-Next-NVFP4",
+    "revision": "103a7608316173ca6edd49929544244de7ffda70",
+    "format": "ftw-nvfp4 + native MTP sidecar",
+    "quantization": "nvfp4",
+    "fingerprint": "47e11ddb878adf4c",
+    "ftw_bytes": 180433108992,
+    "mtp_sidecar_bytes": 1597441088
+  },
+  "workload": {
+    "single_stream": "greedy math reasoning, 96 prompt tokens, 128 completion tokens",
+    "client_path": "OpenAI-compatible streaming HTTP API",
+    "warmup_requests": 1,
+    "measured_trials": 3,
+    "prefix_reuse": "measured trials reused a validated 64-token hybrid-radix prefix"
+  },
+  "configuration": {
+    "moe_backend": "offload",
+    "expert_preload": "immutable-full",
+    "expert_cache_slots": 24576,
+    "attention_backend": "qsa",
+    "cache_type": "hybrid_radix",
+    "page_size": 16,
+    "kv_tokens": 131072,
+    "max_running_requests": 1,
+    "selected_speculative_tokens": 3,
+    "mtp_verification_cuda_graph": true,
+    "qwen_skinny_gemm": true
+  },
+  "metrics": {
+    "decode_tokens_per_second": 30.67455057137699,
+    "warm_ttft_seconds": 0.2582157750002807,
+    "target_only_decode_tokens_per_second": 19.74588417463281,
+    "target_only_warm_ttft_seconds": 0.2421086490030575,
+    "mtp1_decode_tokens_per_second": 25.188982018510814,
+    "mtp2_decode_tokens_per_second": 29.14647474154015,
+    "mtp3_decode_tokens_per_second": 30.67455057137699,
+    "mtp3_improvement_over_target_percent": 55.3466,
+    "mtp3_improvement_over_previous_published_percent": 51.058,
+    "mtp2_graph_kernel_off_control_tokens_per_second": 27.652113166802987,
+    "mtp2_skinny_gemm_improvement_percent": 5.4041,
+    "target_skinny_gemm_off_tokens_per_second": 17.21521224615549,
+    "long_context_control_tokens_per_second": 23.91390529824239,
+    "discarded_qsa_experiment_tokens_per_second": 23.281857113037265
+  },
+  "trials": {
+    "mtp2_tokens_per_second": [
+      29.335922846173638,
+      29.14647474154015,
+      29.066263901892306
+    ],
+    "mtp3_tokens_per_second": [
+      30.67455057137699,
+      30.61729237238865,
+      30.67477627724022
+    ],
+    "mtp3_warm_ttft_seconds": [
+      0.25978344499890227,
+      0.2582157750002807,
+      0.25412478399812244
+    ]
+  },
+  "speculative": {
+    "accepted_drafts": 83,
+    "drafted_tokens": 101,
+    "acceptance_rate": 0.822,
+    "outputs": 128,
+    "target_forwards": 45,
+    "outputs_per_target_forward": 2.84,
+    "replay_calls": 9,
+    "replay_tokens": 17
+  },
+  "validation": {
+    "checkpoint_checksum_verified": true,
+    "complete_checkpoint_loaded": true,
+    "native_mtp_weights_loaded": true,
+    "transactional_rejection_rollback": true,
+    "speculative_page_reclamation": true,
+    "mtp3_output_sha1": "6e5d26657cb6",
+    "all_mtp3_trials_deterministic": true,
+    "target_only_output_sha1": "6e494a88449b",
+    "exact_target_only_trace_parity": false,
+    "api_stream_completed": true,
+    "oom_count": 0,
+    "service_restarts": 0
+  },
+  "experiments": {
+    "retained": [
+      "Fixed-shape CUDA graph replay for dense-QSA MTP verification.",
+      "Decode MoE dispatch for small verification batches.",
+      "SM121-specialized BF16 skinny GEMM for measured Qwen3.8 projection shapes."
+    ],
+    "discarded": [
+      "Sparse-QSA index selection reuse was throughput-neutral at 4,193 prompt tokens.",
+      "Side-stream QSA index projection overlap reduced long-context throughput by 2.6%."
+    ]
+  },
+  "admission": {
+    "tier": "frontier",
+    "performance_gate_passed": true,
+    "passed": false,
+    "reasons": [
+      "Three native MTP draft tokens improved controlled batch-one greedy decode throughput by 55.35% over the current target-only path.",
+      "The optimized 128-token MTP trace was deterministic across all three trials.",
+      "A clean-revision 60-minute endurance run remains outstanding."
+    ]
+  },
+  "source": {
+    "target_artifact": "/tmp/qwen38-target-current-control.json",
+    "target_kernel_off_artifact": "/tmp/qwen38-target-no-skinny-control.json",
+    "mtp1_artifact": "/tmp/qwen38-mtp-width1-candidate.json",
+    "mtp2_artifacts": "/tmp/qwen38-mtp-skinny-candidate-{1,2,3}.json",
+    "mtp3_artifacts": "/tmp/qwen38-mtp-width3-candidate{,-2,-3}.json",
+    "long_context_control": "/tmp/qwen38-mtp-long-no-qsaopts-1.json",
+    "long_context_discarded_experiment": "/tmp/qwen38-mtp-long-all-1.json",
+    "prior_evidence": "GB10-QWEN38-NVFP4-OPT-004"
+  },
+  "limitations": [
+    "This is dirty-worktree optimization evidence, not a clean-revision certification result.",
+    "The throughput sweep covers batch-one greedy generation only.",
+    "The selected MTP3 trace is deterministic but differs from the target-only 128-token trace because shape-dependent BF16 reductions can change near-tied greedy choices.",
+    "The installed sparklab-kernel-cache reports 0.1.0+cu130 while the source runtime reports 0.1.1; the version guard was explicitly bypassed for this source-tree benchmark.",
+    "The 64K context, parser, coding-agent, broad quality, and endurance gates were not rerun for this optimization evidence."
+  ]
+}

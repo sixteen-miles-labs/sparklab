@@ -119,7 +119,15 @@ class GraphRunner:
         self.moe_offload_cache = moe_offload_cache
         self.stream = stream
         self.device = device
-        self._capture_graphs(max_seq_len, vocab_size, model)
+        prior_mtp_hidden = getattr(model, "_mtp_target_hidden", None)
+        try:
+            self._capture_graphs(max_seq_len, vocab_size, model)
+        finally:
+            # Qwen's Python-side MTP feedback pointer is an output of the live
+            # target forward, not graph configuration. Do not leave startup
+            # capture's dummy one-row tensor installed before the first prompt.
+            if hasattr(model, "_mtp_target_hidden"):
+                model._mtp_target_hidden = prior_mtp_hidden
 
     def _reset_moe_offload_cache(self) -> None:
         if self.moe_offload_cache is not None:
@@ -220,5 +228,141 @@ class GraphRunner:
         # free-before-alloc cannot reclaim this GPU memory. empty_cache() is left to the
         # caller / next capture (GraphRunner._capture_graphs already runs it).
         self.graph_map = {}
+        self.buffer = None
+        gc.collect()
+
+
+@dataclass
+class MTPVerificationCaptureBuffer:
+    """Fixed-address inputs for one fixed-width Qwen MTP verification graph."""
+
+    input_ids: torch.Tensor
+    out_loc: torch.Tensor
+    positions: torch.Tensor
+    logits: torch.Tensor
+    table_idx: torch.Tensor
+    fla_cu_seqlens: torch.Tensor
+    fla_has_initial_state: torch.Tensor
+
+    @classmethod
+    def init(
+        cls, rows: int, vocab_size: int, device: torch.device
+    ) -> MTPVerificationCaptureBuffer:
+        return cls(
+            input_ids=torch.zeros(rows, dtype=torch.int32, device=device),
+            out_loc=torch.zeros(rows, dtype=torch.int32, device=device),
+            positions=torch.arange(1, rows + 1, dtype=torch.int32, device=device),
+            logits=torch.empty(rows, vocab_size, dtype=torch.float32, device=device),
+            table_idx=torch.zeros(1, dtype=torch.int32, device=device),
+            fla_cu_seqlens=torch.tensor([0, rows], dtype=torch.int32, device=device),
+            fla_has_initial_state=torch.ones(1, dtype=torch.bool, device=device),
+        )
+
+    def set_batch(self, batch: Batch) -> None:
+        from sparklab.attention.linear import FLAMetadata
+
+        batch.input_ids = self.input_ids
+        batch.out_loc = self.out_loc
+        batch.positions = self.positions
+        batch.linear_table_idx = self.table_idx
+        batch.fla_metadata = FLAMetadata(
+            cu_seqlens=self.fla_cu_seqlens,
+            cache_indices=self.table_idx,
+            has_initial_state=self.fla_has_initial_state,
+        )
+
+    def copy_from(self, batch: Batch) -> None:
+        self.input_ids.copy_(batch.input_ids)
+        self.out_loc.copy_(batch.out_loc)
+        self.positions.copy_(batch.positions)
+        self.table_idx.copy_(batch.linear_table_idx)
+
+
+class MTPVerificationGraphRunner:
+    """Capture the fixed ``1 + speculative_tokens`` target verification shape.
+
+    Transactional state snapshots and rejection repair remain eager in the
+    engine. Only the deterministic target forward is replayed.
+    """
+
+    def __init__(
+        self,
+        *,
+        stream: torch.cuda.Stream,
+        device: torch.device,
+        model: BaseLLMModel,
+        attn_backend: BaseAttnBackend,
+        speculative_tokens: int,
+        max_seq_len: int,
+        vocab_size: int,
+        dummy_req: Req,
+    ) -> None:
+        self.stream = stream
+        self.device = device
+        self.model = model
+        self.attn_backend = attn_backend
+        self.rows = speculative_tokens + 1
+        if getattr(attn_backend, "capture", None) is None:
+            attn_backend.init_capture_graph(max_seq_len=max_seq_len, bs_list=[1])
+        self.buffer = MTPVerificationCaptureBuffer.init(
+            self.rows, vocab_size, device
+        )
+        self.graph = torch.cuda.CUDAGraph()
+
+        # A continuation-shaped dummy keeps the verify-only GDN/PLE branches in
+        # the captured graph. Its mutable state is redirected to the padding slot.
+        verify_dummy = Req(
+            input_ids=torch.zeros(self.rows + 1, dtype=torch.int32),
+            table_idx=dummy_req.table_idx,
+            cached_len=1,
+            output_len=1,
+            uid=dummy_req.uid,
+            sampling_params=dummy_req.sampling_params,
+            cache_handle=dummy_req.cache_handle,
+        )
+        verify_dummy.linear_slot_idx = dummy_req.linear_slot_idx
+        batch = Batch(reqs=[verify_dummy], phase="verify")
+        batch.padded_reqs = batch.reqs
+        batch.return_all_logits = True
+        batch.disable_state_tracking = True
+        self.attn_backend.prepare_for_capture(batch)
+        self.buffer.set_batch(batch)
+        self.buffer.table_idx.fill_(
+            verify_dummy.linear_slot_idx
+            if verify_dummy.linear_slot_idx is not None
+            else verify_dummy.table_idx
+        )
+        prior_mtp_hidden = getattr(self.model, "_mtp_target_hidden", None)
+        try:
+            with get_global_ctx().forward_batch(batch):
+                self.model.prepare_cuda_graph_inputs(batch)
+                self.buffer.logits.copy_(self.model.forward())
+                with torch.cuda.graph(self.graph, stream=self.stream):
+                    self.buffer.logits.copy_(self.model.forward())
+            self._target_hidden = getattr(self.model, "_mtp_target_hidden", None)
+        finally:
+            self.model._mtp_target_hidden = prior_mtp_hidden
+
+    def can_use_cuda_graph(self, batch: Batch) -> bool:
+        return (
+            batch.is_verify
+            and batch.size == 1
+            and batch.input_ids.numel() == self.rows
+            and self.attn_backend.supports_cuda_graph(batch)
+        )
+
+    def replay(self, batch: Batch) -> torch.Tensor:
+        assert self.can_use_cuda_graph(batch)
+        self.buffer.copy_from(batch)
+        self.attn_backend.prepare_for_replay(batch)
+        self.model.prepare_cuda_graph_inputs(batch)
+        self.graph.replay()
+        # Python assignments inside model.forward are not replayed by CUDA.
+        # Reinstall the captured target feedback tensor for the next draft pass.
+        self.model._mtp_target_hidden = self._target_hidden
+        return self.buffer.logits
+
+    def destroy_cuda_graphs(self) -> None:
+        self.graph = None
         self.buffer = None
         gc.collect()
