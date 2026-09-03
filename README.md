@@ -91,10 +91,10 @@ a SparkLab support claim.
     <tr>
       <td><a href="https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW">Qwen3.6-35B-A3B</a></td>
       <td>35B total / 3B active</td>
-      <td>NVFP4 · FTW + optional MTP3</td>
+      <td>NVFP4 · FTW + optional MTP2</td>
       <td>Certified</td>
-      <td align="right">67.79</td>
-      <td align="right">0.329</td>
+      <td align="right">74.42</td>
+      <td align="right">0.368</td>
       <td><a href="docs/models/qwen3.6-35b-a3b.md">Instructions</a></td>
     </tr>
     <tr>
@@ -105,7 +105,7 @@ a SparkLab support claim.
       <td>125B LM + 55B auxiliary / 6B active</td>
       <td>NVFP4 · FTW + MTP2</td>
       <td>Experimental</td>
-      <td align="right">20.31</td>
+      <td align="right">22.16</td>
       <td align="right">0.212</td>
       <td><a href="docs/models/qwen3.8-flash-next.md">Instructions</a></td>
     </tr>
@@ -129,15 +129,6 @@ a SparkLab support claim.
     </tr>
     <tr>
       <th colspan="7" align="left">Research — bounded execution outside the interactive envelope</th>
-    </tr>
-    <tr>
-      <td><a href="https://huggingface.co/nvidia/GLM-5.2-NVFP4">GLM-5.2</a></td>
-      <td>753B total / 40B active</td>
-      <td>NVFP4</td>
-      <td>Experimental</td>
-      <td align="right">0.80</td>
-      <td align="right">2.570</td>
-      <td><a href="docs/models/glm-5.2.md">Instructions</a></td>
     </tr>
     <tr>
       <td><a href="https://huggingface.co/oakmindai/GLM-5.3-NVFP4-FTW">GLM-5.3</a></td>
@@ -171,9 +162,18 @@ Status meanings:
 Run `sparklab models --json` for exact recipe versions, checkpoint revisions, artifact
 fingerprints, implementation state, evidence IDs, and known constraints.
 
-The Qwen3.8-Flash-Next row reports its selected opt-in two-draft MTP profile. Enable it
-with `-- --speculative-tokens 2` for batch-one greedy workloads. The default profile for
-concurrent or sampled traffic remains 16.84 single-stream tok/s.
+The Qwen3.6 row reports the latest opt-in two-draft MTP probe: 74.42 tok/s and 0.368 s
+warm TTFT. Its Certified status remains tied to the target-only profile (67.79 tok/s and
+0.329 s warm TTFT); MTP is still awaiting the full certification suite. See
+[GB10-QWEN36-MTP-004](benchmarks/gb10/results/GB10-QWEN36-MTP-004.json).
+
+The Qwen3.8-Flash-Next row combines the latest hybrid throughput result (22.16 tok/s)
+with the most recent MTP warm-TTFT result (0.212 s), since the hybrid probe did not
+remeasure TTFT. Enable the selected opt-in profile with `-- --speculative-tokens 2` for
+batch-one greedy workloads. The default profile for concurrent or sampled traffic
+remains 16.84 single-stream tok/s. See
+[GB10-QWEN38-HYBRID-006](benchmarks/gb10/results/GB10-QWEN38-HYBRID-006.json) and
+[GB10-QWEN38-NVFP4-OPT-004](benchmarks/gb10/results/GB10-QWEN38-NVFP4-OPT-004.json).
 
 ## Documentation
 
