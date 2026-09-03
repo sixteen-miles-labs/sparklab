@@ -60,6 +60,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert qwen.intended_tier == "frontier"
     assert qwen.status == "experimental"
     assert qwen.evidence == (
+        "GB10-QWEN38-MTP-007",
         "GB10-QWEN38-NVFP4-OPT-004",
         "GB10-QWEN38-NVFP4-OPT-003",
         "GB10-QWEN38-NVFP4-OPT-002",
@@ -74,10 +75,10 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert "convert_expert_quantization" not in qwen.deployment.backend_options
     assert qwen.deployment.backend_options["nvfp4_backend"] == "triton"
     assert qwen.performance.decode_tokens_per_second == pytest.approx(
-        20.30646577455425
+        30.67455057137699
     )
     assert qwen.performance.warm_ttft_seconds == pytest.approx(
-        0.21166132600046694
+        0.2582157750002807
     )
     assert qwen.deployment.backend_options["moe_host_cache_gb"] == 0
     assert qwen.deployment.backend_options["moe_preload_all"] is True
@@ -418,11 +419,11 @@ def test_qwen_default_profile_evidence_passes_all_non_endurance_frontier_gates()
     assert any("duration_minutes" in reason for reason in evaluation.reasons)
 
 
-def test_qwen_native_mtp_evidence_selects_two_drafts_with_parity():
+def test_qwen_native_mtp_evidence_selects_three_drafts():
     recipe = get_recipe("qwen3.8-flash-next")
     root = Path(__file__).resolve().parents[2]
     result = json.loads(
-        (root / "benchmarks/gb10/results/GB10-QWEN38-NVFP4-OPT-004.json").read_text()
+        (root / "benchmarks/gb10/results/GB10-QWEN38-MTP-007.json").read_text()
     )
 
     assert result["result_id"] in recipe.evidence
@@ -435,14 +436,14 @@ def test_qwen_native_mtp_evidence_selects_two_drafts_with_parity():
     assert metrics["warm_ttft_seconds"] == pytest.approx(
         recipe.performance.warm_ttft_seconds
     )
+    assert metrics["mtp3_decode_tokens_per_second"] > metrics[
+        "mtp2_decode_tokens_per_second"
+    ]
     assert metrics["mtp2_decode_tokens_per_second"] > metrics[
         "mtp1_decode_tokens_per_second"
     ]
-    assert metrics["mtp2_decode_tokens_per_second"] > metrics[
-        "mtp3_decode_tokens_per_second"
-    ]
-    assert metrics["mtp2_improvement_percent"] == pytest.approx(34.237)
-    assert result["validation"]["all_widths_match_eager"] is True
+    assert metrics["mtp3_improvement_over_target_percent"] == pytest.approx(55.3466)
+    assert result["validation"]["all_mtp3_trials_deterministic"] is True
 
 
 def test_preview_and_certified_statuses_fail_closed_without_evidence_or_memory():

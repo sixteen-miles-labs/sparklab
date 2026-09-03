@@ -472,6 +472,8 @@ class Qwen4PLE(BaseOP):
         self.state_len = (args.ple_conv_kernel_size - 1) * self.dilation
         self._capture_embed: torch.Tensor | None = None
         self._capture_host: torch.Tensor | None = None
+        self._eager_embed: torch.Tensor | None = None
+        self._eager_host: torch.Tensor | None = None
         self._pending_embed: Future[torch.Tensor] | None = None
 
     def bind(self, model_path: str, *, dummy: bool = False) -> None:
@@ -497,14 +499,43 @@ class Qwen4PLE(BaseOP):
             # This is an activation buffer, not a weight buffer. Resident FP8
             # projection weights still consume BF16 PLE rows through W8A16.
             self._capture_embed = torch.empty(
-                embed.shape, dtype=torch.bfloat16, device=weight.device
+                (max(4, embed.shape[0]), embed.shape[1]),
+                dtype=torch.bfloat16,
+                device=weight.device,
             )
             capture = self._capture_embed
-        if embed.shape[-1] != capture.shape[-1] or embed.shape[0] > capture.shape[0]:
+        if embed.shape[-1] != capture.shape[-1]:
             raise RuntimeError(
                 "Qwen4 PLE CUDA graph input exceeds its stable buffer: "
                 f"got={tuple(embed.shape)}, capacity={tuple(capture.shape)}"
             )
+
+        if embed.shape[0] > capture.shape[0]:
+            # Prompt prefill is eager and can exceed the decode/MTP graph shape.
+            # Keep it on separate growable buffers so replacing them cannot
+            # invalidate the addresses baked into an already-captured graph.
+            eager = getattr(self, "_eager_embed", None)
+            if eager is None or eager.shape[0] < embed.shape[0]:
+                self._eager_embed = torch.empty(
+                    embed.shape, dtype=torch.bfloat16, device=weight.device
+                )
+                eager = self._eager_embed
+                if eager.device.type == "cuda":
+                    self._eager_host = torch.empty(
+                        embed.shape,
+                        dtype=eager.dtype,
+                        device="cpu",
+                        pin_memory=True,
+                    )
+            if eager.device.type == "cuda":
+                host = self._eager_host
+                host[: embed.shape[0]].copy_(embed)
+                eager[: embed.shape[0]].copy_(
+                    host[: embed.shape[0]], non_blocking=True
+                )
+            else:
+                eager[: embed.shape[0]].copy_(embed)
+            return eager[: embed.shape[0]]
 
         if capture.device.type == "cuda":
             host = getattr(self, "_capture_host", None)
@@ -529,6 +560,23 @@ class Qwen4PLE(BaseOP):
             f"qwen4_ple_{self.layer_id}_conv", (self.width, self.state_len), x.dtype
         )
         reqs = batch.padded_reqs if hasattr(batch, "padded_reqs") else batch.reqs
+        if getattr(batch, "is_verify", False):
+            if len(reqs) != 1:
+                raise RuntimeError("Qwen4 PLE verification currently requires batch size one")
+            # Keep the state slot as a device tensor. A CUDA graph captured on
+            # the padding request can then replay against the live request's
+            # slot instead of baking the dummy Python index into the graph.
+            slots = batch.fla_metadata.cache_indices.to(torch.long)
+            prior = states.index_select(0, slots)[0]
+            history = torch.cat((prior, x.T.contiguous()), -1)
+            out = F.conv1d(
+                history.unsqueeze(0),
+                self.conv1d.weight,
+                groups=self.width,
+                dilation=self.dilation,
+            ).squeeze(0).T
+            states.index_copy_(0, slots, history[:, -self.state_len:].unsqueeze(0))
+            return F.silu(out)
         if not batch.uses_prefill_kernels:
             from sparklab.kernels.triton.qwen4 import ple_conv_decode
 

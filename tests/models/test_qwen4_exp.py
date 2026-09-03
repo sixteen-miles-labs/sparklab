@@ -86,7 +86,7 @@ def test_config_declares_qsa_separately_from_minimax_bsa():
     assert cfg.linear_state_snapshots is True
 
 
-def test_mtp_config_injects_one_qsa_slot_and_disables_graphs():
+def test_mtp_config_injects_one_qsa_slot_and_enables_fixed_width_graph():
     from sparklab.runtime.engine.engine import _adjust_speculative_config
 
     model_config = parse_config(_config())
@@ -114,6 +114,27 @@ def test_mtp_config_injects_one_qsa_slot_and_disables_graphs():
     assert model_config.speculative_tokens == 3
     assert config.max_running_req == 1
     assert config.cache_type == "radix"
+    assert model_config.mtp_cuda_graph is True
+    assert config.cuda_graph_bs == [] and config.cuda_graph_max_bs == 0
+
+
+def test_mtp_config_respects_explicit_graph_disable():
+    from sparklab.runtime.engine.engine import _adjust_speculative_config
+
+    model_config = parse_config(_config())
+    config = SimpleNamespace(
+        model_config=model_config,
+        speculative_tokens=2,
+        draft_sample_method="greedy",
+        max_running_req=1,
+        cache_type="radix",
+        cuda_graph_bs=[],
+        cuda_graph_max_bs=0,
+    )
+
+    _adjust_speculative_config(config, lambda name, value: setattr(config, name, value))
+
+    assert model_config.mtp_cuda_graph is False
     assert config.cuda_graph_bs == [] and config.cuda_graph_max_bs == 0
 
 
@@ -129,6 +150,58 @@ def test_mtp_acceptance_stops_at_first_mismatch(truth, drafts, expected):
     from sparklab.runtime.engine.engine import _longest_accepted_prefix
 
     assert _longest_accepted_prefix(torch.tensor(truth), torch.tensor(drafts)) == expected
+
+
+@pytest.mark.parametrize(
+    ("uses_prefill_kernels", "is_verify", "expected"),
+    [
+        (True, False, "prefill"),
+        (True, True, "decode"),
+        (False, False, "decode"),
+    ],
+)
+def test_qwen4_mtp_verification_uses_small_batch_decode_moe(
+    monkeypatch, uses_prefill_kernels, is_verify, expected
+):
+    from sparklab.models.qwen4_exp.mtp import _ResidentNvfp4MTPMoE
+
+    calls = []
+    hidden = torch.randn(3, 8)
+    topk_weights = torch.ones(3, 2)
+    topk_ids = torch.zeros(3, 2, dtype=torch.int32)
+    block = _ResidentNvfp4MTPMoE.__new__(_ResidentNvfp4MTPMoE)
+    block._expert_banks = tuple(object() for _ in range(6))
+    block.num_experts = 8
+    block.top_k = 2
+    block.gate = SimpleNamespace(forward=lambda value: torch.zeros(value.size(0), 8))
+    block.shared_expert = SimpleNamespace(forward=lambda value: torch.zeros_like(value))
+    block.shared_expert_gate = SimpleNamespace(
+        forward=lambda value: torch.zeros(value.size(0), 1)
+    )
+    monkeypatch.setattr(
+        "sparklab.models.qwen4_exp.mtp.get_global_ctx",
+        lambda: SimpleNamespace(
+            batch=SimpleNamespace(
+                uses_prefill_kernels=uses_prefill_kernels,
+                is_verify=is_verify,
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        "sparklab.models.qwen4_exp.mtp.fused_topk",
+        lambda **_kwargs: (topk_weights, topk_ids),
+    )
+    monkeypatch.setattr(
+        "sparklab.moe.fused_nvfp4.fused_experts_nvfp4",
+        lambda *args, **_kwargs: calls.append("prefill") or torch.ones_like(args[0]),
+    )
+    monkeypatch.setattr(
+        "sparklab.moe.fused_nvfp4.fused_experts_decode_nvfp4_marlin",
+        lambda *args, **_kwargs: calls.append("decode") or torch.ones_like(args[0]),
+    )
+
+    torch.testing.assert_close(block.forward(hidden), torch.ones_like(hidden))
+    assert calls == [expected]
 
 
 def test_zero_temperature_is_greedy_despite_model_top_p_default():
@@ -854,13 +927,14 @@ def test_ple_stages_disk_row_into_stable_graph_input():
 
     ple.prepare_cuda_graph_inputs(SimpleNamespace())
     pointer = ple._capture_embed.data_ptr()
-    torch.testing.assert_close(ple._capture_embed, rows)
+    assert ple._capture_embed.shape == (4, 8)
+    torch.testing.assert_close(ple._capture_embed[:1], rows)
 
     replacement = rows + 1
     ple.embedding = SimpleNamespace(forward=lambda _batch: replacement)
     ple.prepare_cuda_graph_inputs(SimpleNamespace())
     assert ple._capture_embed.data_ptr() == pointer
-    torch.testing.assert_close(ple._capture_embed, replacement)
+    torch.testing.assert_close(ple._capture_embed[:1], replacement)
 
 
 def test_ple_consumes_prelaunched_lookup_without_sync_fallback():
@@ -895,7 +969,7 @@ def test_ple_consumes_prelaunched_lookup_without_sync_fallback():
     ple.prepare_cuda_graph_inputs(batch)
 
     assert [kind for kind, _ in calls] == ["begin", "finish"]
-    torch.testing.assert_close(ple._capture_embed, rows)
+    torch.testing.assert_close(ple._capture_embed[:1], rows)
 
 
 def test_ple_stages_smaller_batch_into_stable_graph_input_prefix():
@@ -913,6 +987,60 @@ def test_ple_stages_smaller_batch_into_stable_graph_input_prefix():
 
     assert ple._capture_embed.data_ptr() == pointer
     torch.testing.assert_close(ple._capture_embed[:2], replacement)
+
+
+def test_ple_large_prefill_does_not_replace_graph_buffer():
+    ple = Qwen4PLE.__new__(Qwen4PLE)
+    ple.key_proj = SimpleNamespace(weight=torch.empty(4, 8, dtype=torch.bfloat16))
+    ple._capture_embed = torch.zeros(4, 8, dtype=torch.bfloat16)
+    graph_pointer = ple._capture_embed.data_ptr()
+    rows = torch.arange(48, dtype=torch.bfloat16).view(6, 8)
+
+    got = ple._copy_to_stable_device(rows)
+
+    assert ple._capture_embed.data_ptr() == graph_pointer
+    assert got.data_ptr() != graph_pointer
+    torch.testing.assert_close(got, rows)
+
+
+def test_ple_verification_updates_dynamic_state_slot(monkeypatch):
+    width, state_len = 2, 2
+    states = torch.arange(3 * width * state_len, dtype=torch.float32).view(
+        3, width, state_len
+    )
+    original = states.clone()
+    pool = SimpleNamespace(
+        ensure_aux_state=lambda *_args, **_kwargs: states,
+    )
+    monkeypatch.setattr(
+        "sparklab.models.qwen4_exp.ple.get_global_ctx",
+        lambda: SimpleNamespace(linear_state_pool=pool),
+    )
+    ple = Qwen4PLE.__new__(Qwen4PLE)
+    ple.layer_id = 0
+    ple.width = width
+    ple.state_len = state_len
+    ple.dilation = 1
+    ple.conv1d = SimpleNamespace(weight=torch.ones(width, 1, 3))
+    x = torch.tensor([[20.0, 30.0], [21.0, 31.0], [22.0, 32.0]])
+    batch = SimpleNamespace(
+        is_verify=True,
+        padded_reqs=[SimpleNamespace()],
+        fla_metadata=SimpleNamespace(cache_indices=torch.tensor([1], dtype=torch.int32)),
+    )
+
+    out = ple._conv(x, batch)
+
+    history = torch.cat((original[1], x.T), -1)
+    expected = torch.nn.functional.silu(
+        torch.nn.functional.conv1d(
+            history.unsqueeze(0), ple.conv1d.weight, groups=width
+        ).squeeze(0).T
+    )
+    torch.testing.assert_close(out, expected)
+    torch.testing.assert_close(states[1], history[:, -state_len:])
+    torch.testing.assert_close(states[0], original[0])
+    torch.testing.assert_close(states[2], original[2])
 
 
 def test_ple_prefill_checkpoint_includes_convolution_history(monkeypatch):
@@ -1159,6 +1287,32 @@ def test_qsa_capture_stages_multiple_request_segments():
     assert md.dense_indptr.tolist() == [0, 4, 7]
     assert md.dense_indices[:7].tolist() == [9, 3, 12, 1, 8, 6, 2]
     assert md.dense_q_positions.tolist() == [3, 2]
+
+
+def test_qsa_capture_stages_multiple_queries_for_one_request():
+    backend = QSAAttnBackend.__new__(QSAAttnBackend)
+    backend.capture = QSACaptureData.create(
+        7, torch.device("cpu"), max_queries_per_req=4
+    )
+    source = QSAMetadata(
+        qo_indptr=(0, 3),
+        last_indices=torch.tensor([2], dtype=torch.int32),
+        q_to_req=torch.tensor([0, 1, 2], dtype=torch.int32),
+        dense_indptr=torch.tensor([0, 4, 9, 15], dtype=torch.int32),
+        dense_indices=torch.arange(15, dtype=torch.int32),
+        dense_q_positions=torch.tensor([3, 4, 5], dtype=torch.int64),
+    )
+    batch = SimpleNamespace(padded_size=1, attn_metadata=source)
+
+    backend._point_to_capture(batch)
+
+    md = batch.attn_metadata
+    assert md.capture_decode
+    assert md.qo_indptr == (0, 1, 2, 3)
+    assert md.last_indices.tolist() == [2]
+    assert md.q_to_req.tolist() == [0, 1, 2]
+    assert md.dense_indptr.tolist() == [0, 4, 9, 15]
+    assert md.dense_q_positions.tolist() == [3, 4, 5]
 
 
 def test_qsa_capture_pool_update_matches_completed_group():

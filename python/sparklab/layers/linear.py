@@ -10,6 +10,16 @@ from sparklab.utils import div_even
 from .base import BaseOP
 
 
+def _linear_forward(
+    x: torch.Tensor, weight: torch.Tensor, bias: torch.Tensor | None = None
+) -> torch.Tensor:
+    if x.is_cuda and x.dtype == torch.bfloat16 and weight.dtype == torch.bfloat16:
+        from sparklab.kernels.triton.qwen4_skinny import qwen4_skinny_linear
+
+        return qwen4_skinny_linear(x, weight, bias)
+    return F.linear(x, weight, bias)
+
+
 class _LinearTPImpl(BaseOP):
     """Real implementation of a linear layer with tensor parallelism."""
 
@@ -29,7 +39,7 @@ class _LinearTPImpl(BaseOP):
         self.bias = torch.empty(local_osize) if has_bias else None
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return F.linear(x, self.weight, self.bias)
+        return _linear_forward(x, self.weight, self.bias)
 
 
 class LinearReplicated(_LinearTPImpl):
@@ -100,7 +110,7 @@ class LinearOProj(_LinearTPImpl):
         super().__init__(full_isize, full_osize, local_isize, local_osize, has_bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        y = F.linear(x, self.weight, self.bias)
+        y = _linear_forward(x, self.weight, self.bias)
         if self._tp_size > 1:
             y = self._comm.all_reduce(y)
         return y
@@ -121,7 +131,7 @@ class LinearRowParallel(_LinearTPImpl):
         super().__init__(input_size, output_size, local_input_size, local_output_size, has_bias)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        y = F.linear(x, self.weight, self.bias)
+        y = _linear_forward(x, self.weight, self.bias)
         if self._tp_size > 1:
             y = self._comm.all_reduce(y)
         return y

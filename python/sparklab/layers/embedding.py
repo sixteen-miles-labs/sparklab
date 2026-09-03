@@ -3,12 +3,12 @@ from __future__ import annotations
 from typing import Dict
 
 import torch
-import torch.nn.functional as F
 from sparklab.core import get_global_ctx
 from sparklab.runtime.distributed import DistributedCommunicator, get_tp_info
 from sparklab.utils import div_ceil, nvtx_annotate
 
 from .base import BaseOP
+from .linear import _linear_forward
 
 
 class VocabParallelEmbedding(BaseOP):
@@ -110,7 +110,7 @@ class ParallelLMHead(VocabParallelEmbedding):
             del indices
 
         module = self.tied_embedding or self
-        logits = F.linear(x, module.weight, self.bias)
+        logits = _linear_forward(x, module.weight, self.bias)
         if self.tp_size == 1:
             return logits
         input_shape = logits.shape

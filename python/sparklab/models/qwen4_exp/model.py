@@ -177,8 +177,8 @@ class Qwen4ExpForCausalLM(BaseLLMModel):
         """
         if self._mtp is None or self._mtp_target_hidden is None or batch.size != 1:
             return None
-        import torch.nn.functional as F
         from sparklab.core import Batch, Req
+        from sparklab.layers.linear import _linear_forward
 
         ctx = get_global_ctx()
         req = batch.reqs[0]
@@ -200,7 +200,9 @@ class Qwen4ExpForCausalLM(BaseLLMModel):
         sample_hidden = sample_hidden.index_select(0, last)
         feedback = feedback.index_select(0, last)
         head = self.lm_head.tied_embedding or self.lm_head
-        draft = torch.argmax(F.linear(sample_hidden, head.weight, self.lm_head.bias), -1)
+        draft = torch.argmax(
+            _linear_forward(sample_hidden, head.weight, self.lm_head.bias), -1
+        )
         drafts = [draft.squeeze(0).to(torch.int32)]
 
         # The scheduler reserves the configured lookahead before this forward,
@@ -236,7 +238,7 @@ class Qwen4ExpForCausalLM(BaseLLMModel):
                     self.model.embed_tokens.forward(draft_batch.input_ids), feedback
                 )
             draft = torch.argmax(
-                F.linear(sample_hidden, head.weight, self.lm_head.bias), -1
+                _linear_forward(sample_hidden, head.weight, self.lm_head.bias), -1
             )
             drafts.append(draft.squeeze(0).to(torch.int32))
         return torch.stack(drafts)

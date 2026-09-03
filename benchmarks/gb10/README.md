@@ -44,9 +44,10 @@ recipes. Raw logs and large result streams stay outside the source repository.
 - `results/GB10-QWEN38-NVFP4-OPT-003.json` records the current default concurrent
   profile: 16.84 single-stream decode tok/s, 0.306 s repeated-prompt TTFT, and
   61.79 aggregate tok/s at concurrency four.
-- `results/GB10-QWEN38-NVFP4-OPT-004.json` records the native MTP sweep. The selected
-  opt-in two-draft profile measured 20.31 decode tok/s and 0.212 s warm TTFT, a 34.2%
-  improvement over its controlled eager run with exact output parity.
+- `results/GB10-QWEN38-MTP-007.json` records the optimized native MTP sweep. The selected
+  three-draft profile measured 30.67 decode tok/s and 0.258 s warm TTFT, a 55.35%
+  improvement over its controlled target-only run; all three selected-profile trials
+  reproduced the same 128-token output hash.
 - `results/GB10-GLM53-NVFP4-001.json` records the GLM-5.3 Flash NVFP4
   complete-checkpoint probe: 4.46 decode tok/s and 5.760 s warm TTFT. Its corrected
   greedy probe reaches the reference answer; the broader quality gates remain outstanding.
