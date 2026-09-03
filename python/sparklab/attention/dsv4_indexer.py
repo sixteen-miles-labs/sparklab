@@ -29,9 +29,17 @@ class IndexerBackendMixin:
         """
         block_starts = torch.arange(0, n_blocks * ratio, ratio, device=self.device)
         rows = self.compress_rows_of(ti, block_starts, ratio)
-        return self.compress_pool(layer_id, "idx").index_select(0, rows).unsqueeze(0).expand(
-            bsz, -1, -1
-        )
+        pool = self.compress_pool(layer_id, "idx")
+        if pool.dtype == torch.uint8:
+            from sparklab.kernels.triton.dsv4.fp4_cache import unpack_fp4_rows
+
+            keys = unpack_fp4_rows(
+                pool, self.pool.idx_scale_pool[layer_id], rows,
+                self.pool.index_head_dim,
+            )
+        else:
+            keys = pool.index_select(0, rows)
+        return keys.unsqueeze(0).expand(bsz, -1, -1)
 
     def indexer_prefill_logits(
         self, q: torch.Tensor, keys: torch.Tensor, weights: torch.Tensor
@@ -50,9 +58,10 @@ class IndexerBackendMixin:
         memory (so a captured graph tracks the position, not the staged width)."""
         from sparklab.kernels.triton.dsv4.indexer import indexer_decode_logits
 
+        pool = self.compress_pool(layer_id, "idx")
         return indexer_decode_logits(
-            q, weights, self.compress_pool(layer_id, "idx"), self.snapshot(),
-            valid, n_stage, ratio,
+            q, weights, pool, self.snapshot(), valid, n_stage, ratio,
+            fp4_scales=self.pool.idx_scale_pool[layer_id],
         )
 
     def indexer_select_prefill(

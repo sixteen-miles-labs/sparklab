@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0", "result_id": "GB10-QWEN38-FP8-PLE-005",
+  "status": "measured", "date": "2026-09-02",
+  "platform": {"device": "NVIDIA GB10", "memory_gib": 128, "cuda": "13.0"},
+  "model": {"repository": "Inferact/Qwen3.8-Flash-Next-NVFP4", "routed_experts": "NVFP4", "ple_storage": "float8_e4m3fn"},
+  "workload": {"batch_size": 1, "sampling": "greedy", "completion_tokens": 128, "mtp_tokens": 2},
+  "metrics": {
+    "bf16_ple_sync_tok_s": 21.2654, "bf16_ple_async_tok_s": 21.2951,
+    "fp8_ple_sync_tok_s": 21.8234, "fp8_ple_async_tok_s": 21.7931,
+    "fp8_sync_speedup_percent": 2.62,
+    "bf16_ple_bytes": 102400491520, "fp8_ple_bytes": 51200245760,
+    "ple_storage_reduction_percent": 50.0
+  },
+  "validation": {"sampled_rows_match_bf16_to_fp8_to_bf16": true, "bf16_output_hash": "9ce352b0edd6", "fp8_output_hash": "37a7098d6fbc", "quality_gate_run": false},
+  "conclusion": "FP8 halves PLE storage and improves this matched probe by 2.62%. Async staging is neutral with the current single early PLE layer and remains opt-in.",
+  "source": {"raw_artifacts": "$HOME/results/qwen3.8-fp8-ple/"}
+}

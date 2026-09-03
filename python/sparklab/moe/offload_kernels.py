@@ -66,6 +66,7 @@ def layer_lru_ensure(cache, layer_id: int, expert_ids: torch.Tensor, *, stats=No
         cache.usage,
         cache.step,
         cache.layer_counts,
+        cache.layer_quotas,
         expert_ids,
         cache.src_indices,
         cache.evict_slots,
@@ -99,10 +100,7 @@ def _layer_lru_ensure_cpu(cache, layer_id: int, expert_ids: torch.Tensor, *, sta
         else:
             missing.append(expert)
     cache.num_indices.fill_(len(missing))
-    quotas = [
-        cache.cache_size // cache.num_layers + (lid < cache.cache_size % cache.num_layers)
-        for lid in range(cache.num_layers)
-    ]
+    quotas = cache.layer_quotas.tolist()
     for index, expert in enumerate(sorted(missing)):
         counts = cache.layer_counts.tolist()
         over = {lid for lid, count in enumerate(counts) if count > quotas[lid]}
@@ -143,6 +141,7 @@ def _layer_lru_ensure_kernel(
     usage_ptr,
     step_ptr,
     layer_counts_ptr,
+    layer_quotas_ptr,
     out_ptr,
     src_ptr,
     dst_ptr,
@@ -195,15 +194,13 @@ def _layer_lru_ensure_kernel(
         lids = tl.arange(0, BLOCK_L)
         lmask = lids < num_layers
         counts = tl.load(layer_counts_ptr + lids, mask=lmask, other=0)
-        quota_base: tl.constexpr = cache_size // num_layers
-        quota_extra: tl.constexpr = cache_size % num_layers
-        quotas = quota_base + (lids < quota_extra).to(tl.int32)
+        quotas = tl.load(layer_quotas_ptr + lids, mask=lmask, other=0)
 
         for i in tl.range(num_missing):
             owner = owners // num_experts
             owner_valid = cmask & (owners >= 0)
             owner_count = tl.load(layer_counts_ptr + owner, mask=owner_valid, other=0)
-            owner_quota = quota_base + (owner < quota_extra).to(tl.int32)
+            owner_quota = tl.load(layer_quotas_ptr + owner, mask=owner_valid, other=0)
             any_over = tl.sum((lmask & (counts > quotas)).to(tl.int32)) > 0
             eligible = (
                 cmask

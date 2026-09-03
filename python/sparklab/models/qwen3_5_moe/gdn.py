@@ -178,7 +178,40 @@ class Qwen3_5GatedDeltaNet(BaseOP):
         z = z.reshape(total, self.num_v_heads, self.head_v_dim)
         li = pool.local_index(self.layer_id)
 
-        if not batch.uses_prefill_kernels:
+        if batch.is_verify or batch.is_speculative_replay:
+            # Verification and rejection replay are short continuations (normally
+            # 1--4 tokens), not prompt chunks. Keep the varlen convolution so consecutive
+            # tokens update one request's convolution state, then use the fused
+            # recurrent update kernel's native target-verify mode. The generic
+            # chunk GDN path launches the full WY/chunk pipeline and dominates
+            # latency at these tiny sequence lengths.
+            mixed = self._conv_prefill(
+                conv_in,
+                pool,
+                fla.cu_seqlens,
+                fla.cache_indices,
+                fla.has_initial_state,
+            )
+            qf, kf, vf = torch.split(
+                mixed, [self.key_dim, self.key_dim, self.value_dim], dim=-1
+            )
+            q = qf.reshape(1, total, self.num_k_heads, self.head_k_dim).to(dtype)
+            k = kf.reshape(1, total, self.num_k_heads, self.head_k_dim).to(dtype)
+            v = vf.reshape(1, total, self.num_v_heads, self.head_v_dim).to(dtype)
+            core_out = gdn_decode_fla(
+                q,
+                k,
+                v,
+                a,
+                b,
+                A_log=self.A_log,
+                dt_bias=self.dt_bias,
+                state_source=pool.recurrent_states[li],
+                indices=fla.cache_indices,
+                cu_seqlens=fla.cu_seqlens,
+                scale=self.head_k_dim ** -0.5,
+            )
+        elif not batch.uses_prefill_kernels:
             # Fused fla decode kernel: gating + in-kernel l2norm + recurrent update +
             # per-request state read/write-by-index, all in one kernel (no gather/scatter,
             # no clone, no external l2norm). q/k stay at num_k_heads (kernel handles GQA).

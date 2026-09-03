@@ -6,13 +6,14 @@ import os
 import re
 import struct
 from collections import OrderedDict
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 
 import torch
 import torch.nn.functional as F
 from sparklab.core import get_global_ctx
-from sparklab.layers import BaseOP, LinearReplicated
+from sparklab.layers import BaseOP
+from sparklab.models.quant_linear import make_replicated_quant
 
 from .hyper import GroupedPlusOneRMSNorm
 
@@ -69,6 +70,11 @@ class _ZeroNGramStore:
 
     def lookup(self, ids: torch.Tensor) -> torch.Tensor:
         return torch.zeros((*ids.shape, self.dim), dtype=torch.bfloat16)
+
+    def lookup_async(self, ids: torch.Tensor) -> Future[torch.Tensor]:
+        future: Future[torch.Tensor] = Future()
+        future.set_result(self.lookup(ids))
+        return future
 
 
 class _CachedRowStore:
@@ -134,6 +140,10 @@ class _CachedRowStore:
             table = table.to(torch.bfloat16)
         return table.index_select(0, inverse).view(*ids.shape, self.dim)
 
+    def lookup_async(self, ids: torch.Tensor) -> Future[torch.Tensor]:
+        """Schedule one complete lookup while preserving per-store row parallelism."""
+        return self._async_executor.submit(self._lookup, ids)
+
 
 class SafetensorNGramStore(_CachedRowStore):
     """Random-row reader over the split n-gram tensors without mmap page retention."""
@@ -187,9 +197,11 @@ class SafetensorNGramStore(_CachedRowStore):
             total += rows
         self.total_rows = total
         self._executor = ThreadPoolExecutor(max_workers=min(16, expected_parts))
+        self._async_executor = ThreadPoolExecutor(max_workers=1)
         self._init_row_cache()
 
     def close(self) -> None:
+        self._async_executor.shutdown(wait=True)
         self._executor.shutdown(wait=True)
         for fd in self._fds:
             os.close(fd)
@@ -230,9 +242,11 @@ class RawNGramStore(_CachedRowStore):
             raise ValueError(f"invalid Qwen4 FTW n-gram manifest: {manifest}")
         self._fd = os.open(Path(model_path) / manifest["file"], os.O_RDONLY)
         self._executor = ThreadPoolExecutor(max_workers=16)
+        self._async_executor = ThreadPoolExecutor(max_workers=1)
         self._init_row_cache()
 
     def close(self) -> None:
+        self._async_executor.shutdown(wait=True)
         self._executor.shutdown(wait=True)
         os.close(self._fd)
         self._row_cache.clear()
@@ -403,7 +417,7 @@ class DiskNGramEmbedding(BaseOP):
             blocks.append(torch.remainder(mixed[:, None], sizes) + offsets)
         return torch.cat(blocks, -1)
 
-    def forward(self, batch) -> torch.Tensor:
+    def _row_ids(self, batch) -> torch.Tensor:
         if self._store is None:
             raise RuntimeError("Qwen4 disk n-gram embedding was not bound before weight load")
         all_ids, offset = [], 0
@@ -414,7 +428,18 @@ class DiskNGramEmbedding(BaseOP):
                 req.input_ids, req.cached_len, req.device_len, current
             ))
             offset += length
-        rows = self._store.lookup(torch.cat(all_ids, 0))
+        return torch.cat(all_ids, 0)
+
+    def begin(self, batch) -> Future[torch.Tensor]:
+        """Compute history hashes now and issue disk reads without waiting for them."""
+        return self._store.lookup_async(self._row_ids(batch))
+
+    @staticmethod
+    def finish(future: Future[torch.Tensor]) -> torch.Tensor:
+        return future.result().flatten(-2)
+
+    def forward(self, batch) -> torch.Tensor:
+        rows = self._store.lookup(self._row_ids(batch))
         return rows.flatten(-2)
 
 
@@ -432,8 +457,13 @@ class Qwen4PLE(BaseOP):
         self.hc_count = args.hc_count
         self.width = self.hidden_size * self.hc_count
         self.embedding = DiskNGramEmbedding(args, config.vocab_size, ple_index)
-        self.key_proj = LinearReplicated(args.ple_embed_dim, self.width, has_bias=False)
-        self.value_proj = LinearReplicated(args.ple_embed_dim, self.hidden_size, has_bias=False)
+        self.key_proj = make_replicated_quant(
+            "none", config.attn_quant, args.ple_embed_dim, self.width, has_bias=False
+        )
+        self.value_proj = make_replicated_quant(
+            "none", config.attn_quant, args.ple_embed_dim,
+            self.hidden_size, has_bias=False
+        )
         self.norm_key = GroupedPlusOneRMSNorm(self.width, self.hidden_size, config.rms_norm_eps)
         self.norm_query = GroupedPlusOneRMSNorm(self.width, self.hidden_size, config.rms_norm_eps)
         self.norm_conv = GroupedPlusOneRMSNorm(self.width, self.hidden_size, config.rms_norm_eps)
@@ -441,27 +471,57 @@ class Qwen4PLE(BaseOP):
         self.dilation = args.ngram_size
         self.state_len = (args.ple_conv_kernel_size - 1) * self.dilation
         self._capture_embed: torch.Tensor | None = None
+        self._capture_host: torch.Tensor | None = None
+        self._pending_embed: Future[torch.Tensor] | None = None
 
     def bind(self, model_path: str, *, dummy: bool = False) -> None:
         self.embedding.bind(model_path, dummy=dummy)
 
-    def prepare_cuda_graph_inputs(self, batch) -> None:
-        """Resolve disk-backed PLE rows before graph replay into a stable GPU buffer."""
-        embed = self.embedding.forward(batch)
+    def begin_external_input(self, batch) -> None:
+        if getattr(self, "_pending_embed", None) is not None:
+            raise RuntimeError("Qwen4 PLE external input was begun twice without consumption")
+        self._pending_embed = self.embedding.begin(batch)
+
+    def _finish_external_input(self, batch) -> torch.Tensor:
+        pending = getattr(self, "_pending_embed", None)
+        if pending is None:
+            return self.embedding.forward(batch)
+        self._pending_embed = None
+        return self.embedding.finish(pending)
+
+    def _copy_to_stable_device(self, embed: torch.Tensor) -> torch.Tensor:
+        """Copy a completed lookup through stable host/device graph buffers."""
         weight = self.key_proj.weight
-        if self._capture_embed is None:
+        capture = getattr(self, "_capture_embed", None)
+        if capture is None:
+            # This is an activation buffer, not a weight buffer. Resident FP8
+            # projection weights still consume BF16 PLE rows through W8A16.
             self._capture_embed = torch.empty(
-                embed.shape, dtype=weight.dtype, device=weight.device
+                embed.shape, dtype=torch.bfloat16, device=weight.device
             )
-        if (
-            embed.shape[-1] != self._capture_embed.shape[-1]
-            or embed.shape[0] > self._capture_embed.shape[0]
-        ):
+            capture = self._capture_embed
+        if embed.shape[-1] != capture.shape[-1] or embed.shape[0] > capture.shape[0]:
             raise RuntimeError(
                 "Qwen4 PLE CUDA graph input exceeds its stable buffer: "
-                f"got={tuple(embed.shape)}, capacity={tuple(self._capture_embed.shape)}"
+                f"got={tuple(embed.shape)}, capacity={tuple(capture.shape)}"
             )
-        self._capture_embed[: embed.shape[0]].copy_(embed)
+
+        if capture.device.type == "cuda":
+            host = getattr(self, "_capture_host", None)
+            if host is None:
+                self._capture_host = torch.empty(
+                    capture.shape, dtype=capture.dtype, device="cpu", pin_memory=True
+                )
+                host = self._capture_host
+            host[: embed.shape[0]].copy_(embed)
+            capture[: embed.shape[0]].copy_(host[: embed.shape[0]], non_blocking=True)
+        else:
+            capture[: embed.shape[0]].copy_(embed)
+        return capture[: embed.shape[0]]
+
+    def prepare_cuda_graph_inputs(self, batch) -> None:
+        """Resolve disk-backed PLE rows before graph replay into a stable GPU buffer."""
+        self._copy_to_stable_device(self._finish_external_input(batch))
 
     def _conv(self, x: torch.Tensor, batch) -> torch.Tensor:
         pool = get_global_ctx().linear_state_pool
@@ -521,7 +581,13 @@ class Qwen4PLE(BaseOP):
             # backing allocation.  Each graph reads only its static row prefix.
             embed = self._capture_embed[: hidden.shape[0]]
         else:
-            embed = self.embedding.forward(batch).to(hidden.device, dtype=hidden.dtype)
+            embed = self._finish_external_input(batch)
+            if hidden.device.type == "cuda":
+                # Stable pinned/device buffers also make eager host transfers
+                # non-blocking once the disk lookup completes.
+                embed = self._copy_to_stable_device(embed)
+            else:
+                embed = embed.to(hidden.device, dtype=hidden.dtype)
         key = self.norm_key.forward(self.key_proj.forward(embed)).view(
             -1, self.hc_count, self.hidden_size
         )

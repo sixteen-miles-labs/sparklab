@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0",
+  "paper": "arXiv:2608.16157v1",
+  "workload": "W1",
+  "model": "qwen3.8-flash-next-hybrid",
+  "served_model": "qwen3.8-flash-next-hybrid",
+  "weight_format": "NVFP4+FP8",
+  "mode": "smoke",
+  "base_url": "http://127.0.0.1:18081",
+  "provenance": {
+    "timestamp_utc": "2026-09-02T16:14:05.439971+00:00",
+    "git_revision": "08b959c302417d698a221967c1e521c23e6da445",
+    "python": "3.11.15",
+    "platform": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+    "server": {
+      "status": "ok",
+      "model": "qwen3.8-flash-next-hybrid",
+      "instance_id": "ad6093b2-85ec-4f6a-833b-256309e5cb69",
+      "uptime_s": 43,
+      "maintenance": "serving",
+      "version": "0.1.1"
+    },
+    "model_registry": null
+  },
+  "quality": {
+    "passed": false,
+    "correct": 0,
+    "total": 1,
+    "accuracy": 0,
+    "gate": "final extracted answer equals the AIME reference answer"
+  },
+  "metrics": {
+    "request_count": 1,
+    "mean_decode_tokens_per_second": 20.237321249289923,
+    "mean_ttft_seconds": 1.7841881469939835,
+    "max_ttft_seconds": 1.7841881469939835
+  },
+  "requests": [
+    {
+      "problem": 0,
+      "expected": "70",
+      "answer": null,
+      "correct": false,
+      "prompt_tokens": 91,
+      "completion_tokens": 512,
+      "ttft_seconds": 1.7841881469939835,
+      "duration_seconds": 27.03503084098338,
+      "decode_seconds": 25.250377443997422,
+      "decode_tokens_per_second": 20.237321249289923,
+      "finish_reason": "length",
+      "output_sha256": "8f62cad3399dc40a4b40da8fca5edd0af75b61899584ed470b31a614d182ff1e",
+      "reasoning_output": "We need solve problem. Need provide final boxed. Let's analyze thoroughly.\n\nProblem: Find sum of all integer bases b>9 for which 17_b is a divisor of 97_b.\n\nInterpretation: In base b, digits 1,7 and 9,7. Since b>9, digits valid. 17_b = b+7. 97_b = 9b+7. Need b+7 divides 9b+7. Integer bases b>9. Find sum of all such b.\n\nCompute divisibility: b+7 | 9b+7. Express 9b+7 = 9(b+7) - 56. Since 9(b+7)=9b+63, subtract 56 gives 9b+7. Thus b+7 divides 56. Since b>9, b+7 >16. Positive divisors of 56 greater than 16: 28,56? Also 56 divisors: 1,2,4,7,8,14,28,56. >16: 28,56. Then b=21,49. Sum=70. Check: b=21: 17_21=28, 97_21=196? 9*21+7=196, 196/28=7. b=49: 56 divides 448? 9*49+7=448, /56=8. Sum 70.\n\nNeed final answer with explanation. Ensure no missing negative? b>9 positive. Divisor positive. Good.\n\nNeed maybe consider base b integer >9, digits 9 and 7 valid. Yes.\n\nFinal boxed 70.\n",
+      "output": "\n\nIn base \\(b\\),\n\n\\[\n17_b = b+7\n\\]\n\nand\n\n\\[\n97_b = 9b+7.\n\\]\n\nWe need \\(b+7\\) to divide \\(9b+7\\). Rewrite:\n\n\\[\n9b+7 = 9(b+7)-56.\n\\]\n\nSo \\(b+7\\) must divide \\(56\\). Since \\(b>9\\), we have \\(b+7>16\\)."
+    }
+  ],
+  "configuration": {
+    "dataset": "math-ai/aime25/test.jsonl",
+    "problems": "0",
+    "max_tokens": 512,
+    "temperature": 0.0,
+    "top_p": null,
+    "seed": null
+  }
+}

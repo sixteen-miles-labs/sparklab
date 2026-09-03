@@ -4,6 +4,14 @@ This directory contains compact, reviewable summaries for SparkLab model
 recipes. Raw logs and large result streams stay outside the source repository.
 
 - `result.schema.json` defines the versioned summary contract.
+- `results/GB10-QWEN38-FP8-PLE-005.json` measures NVFP4 routed experts with a
+  50%-smaller FP8 external PLE table.
+- `results/GB10-QWEN38-HYBRID-006.json` adds physical FP8 resident projections:
+  22.16 tok/s, 3.36 GiB lower server VRAM, exact 128-token output parity, and a
+  passing 4096-token-cap W1 smoke gate.
+- `results/GB10-DSV4-ADAPTIVE-004.json` records confidence-adaptive DSpark,
+  replay-free first-draft rejection commits, residency profiling, true FP8
+  window/compressed KV, and packed FP4 Lightning-Indexer storage.
 - `results/GB10-BASELINE-001.json` records the measured DeepSeek V4 launch baseline.
 - `results/GB10-DSV4-SPARSE-001.json` records the optimized DeepSeek V4 route-first
   sparse-prefill probe: 10.28 decode tok/s and 0.604 s warm TTFT, with the baseline
@@ -19,7 +27,10 @@ recipes. Raw logs and large result streams stay outside the source repository.
   performance probe.
 - `results/GB10-QWEN36-MTP-003.json` records the native BF16 MTP sweep. Three drafts
   reproduced the target-only output hash and accepted 41/50 proposals, but measured only
-  8.57 tok/s versus the 52.63 tok/s control, so MTP remains experimental and opt-in.
+  8.57 tok/s versus the 52.63 tok/s control before short-batch kernel optimization.
+- `results/GB10-QWEN36-MTP-004.json` records the optimized native MTP path. Width two
+  reached 74.42 tok/s versus its matched 45.38 tok/s eager control on the 256-token
+  Triton-attention probe, a 64.0% gain and 10.60x the prior width-two implementation.
 - `results/GB10-QWEN38-27B-001.json` records the dense Qwen3.8-27B ModelOpt
   NVFP4 result: 8.83 decode tok/s, 0.144 s warm TTFT, exact 64K recall, and
   passing reasoning, tool-call, and coding-agent probes.

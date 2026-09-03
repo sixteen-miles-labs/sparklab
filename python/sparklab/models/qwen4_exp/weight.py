@@ -38,6 +38,12 @@ _EXPERT_LAYER = re.compile(
 )
 _SHARD_RE = re.compile(r"ngram_embedding\.shard_(\d+)\.weight$")
 _MTP_FILE = "nvfp4_experts_mtp.safetensors"
+_NGRAM_MANIFEST = "qwen4_ngram.json"
+_NGRAM_PAYLOAD = "qwen4_ngram.bin"
+_NGRAM_DTYPES = {
+    "bfloat16": (torch.bfloat16, 2),
+    "float8_e4m3fn": (torch.float8_e4m3fn, 1),
+}
 _SKIP = (
     "model.visual.", "visual.", "mtp.",
 )
@@ -50,6 +56,81 @@ _FUSIONS = {
         ".linear_attn.in_proj_b.weight", ".linear_attn.in_proj_a.weight",
     ),
 }
+_FP8_MAX = 448.0
+_FP8_PROJECTION_SUFFIXES = (
+    ".self_attn.qkv_proj.weight",
+    ".self_attn.o_proj.weight",
+    ".self_attn.index_qk_proj.weight",
+    ".linear_attn.in_proj_qkvz.weight",
+    ".linear_attn.out_proj.weight",
+    ".mlp.shared_expert.gate_up_proj.weight",
+    ".mlp.shared_expert.down_proj.weight",
+    ".ple.key_proj.weight",
+    ".ple.value_proj.weight",
+)
+
+
+def _quant_fp8_per_row(weight: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    """Stream one BF16 projection into the W8A16 resident representation."""
+    values = weight.float()
+    scale = (values.abs().amax(dim=1) / _FP8_MAX).clamp(min=1e-12)
+    quantized = (values / scale[:, None]).clamp(
+        -_FP8_MAX, _FP8_MAX
+    ).to(torch.float8_e4m3fn)
+    return quantized, scale.to(torch.float32)
+
+
+def _is_fp8_resident_projection(name: str, weight: torch.Tensor) -> bool:
+    if weight.ndim != 2 or not name.endswith(".weight"):
+        return False
+    return name.endswith(_FP8_PROJECTION_SUFFIXES) or "hyper_connection" in name
+
+
+def _transform_resident_weights(weights, config):
+    if getattr(config, "attn_quant", "none") != "fp8_pertensor":
+        yield from weights
+        return
+    linear = config.linear_attention_group()
+    qkvz_rows = None
+    if linear is not None:
+        key_dim = linear.num_key_heads * linear.key_head_dim
+        value_dim = linear.num_value_heads * linear.value_head_dim
+        qkvz_rows = 2 * key_dim + 2 * value_dim
+
+    for name, weight in weights:
+        if name.endswith(".linear_attn.in_proj.weight"):
+            if qkvz_rows is None or qkvz_rows >= weight.shape[0]:
+                raise ValueError(
+                    f"invalid Qwen4 GDN fusion {name}: shape={tuple(weight.shape)} "
+                    f"qkvz_rows={qkvz_rows}"
+                )
+            base = name.removesuffix("in_proj.weight")
+            qkvz, ba = weight[:qkvz_rows], weight[qkvz_rows:]
+            quantized, scale = _quant_fp8_per_row(qkvz)
+            yield base + "in_proj_qkvz.weight", quantized
+            yield base + "in_proj_qkvz.weight_scale", scale
+            yield base + "in_proj_ba.weight", ba
+            continue
+        if _is_fp8_resident_projection(name, weight):
+            if weight.dtype == torch.float8_e4m3fn:
+                # Idempotent for a future FTW conversion that stores native FP8.
+                yield name, weight
+            else:
+                quantized, scale = _quant_fp8_per_row(weight)
+                yield name, quantized
+                yield name.removesuffix(".weight") + ".weight_scale", scale
+            continue
+        yield name, weight
+
+
+def transform_runtime_weights(weights, config):
+    """Adapt legacy Qwen4 source/FTW tensors to the selected resident format."""
+    yield from _transform_resident_weights(weights, config)
+
+
+def transform_ftw_weights(weights, config):
+    """FTW counterpart used by the generic checkpoint replay path."""
+    yield from _transform_resident_weights(weights, config)
 
 
 def _rename(raw: str) -> str | None:
@@ -289,7 +370,140 @@ def _copy_file_atomic(source: str, destination: str) -> int:
     return size
 
 
-def copy_external_artifacts(model_path: str, out_dir: str, model_config) -> list[dict]:
+def _write_bf16_as_fp8(
+    src_fd: int,
+    dst_fd: int,
+    *,
+    source_offset: int,
+    rows: int,
+    dim: int,
+    chunk_rows: int,
+) -> int:
+    """Stream one contiguous BF16 matrix into an E4M3 payload."""
+    if chunk_rows <= 0:
+        raise ValueError("chunk_rows must be positive")
+    input_row_bytes = dim * 2
+    output_bytes = 0
+    for row_start in range(0, rows, chunk_rows):
+        count = min(chunk_rows, rows - row_start)
+        length = count * input_row_bytes
+        payload = os.pread(
+            src_fd,
+            length,
+            source_offset + row_start * input_row_bytes,
+        )
+        if len(payload) != length:
+            raise OSError(f"short Qwen4 n-gram read: {len(payload)}/{length}")
+        source = torch.frombuffer(bytearray(payload), dtype=torch.bfloat16)
+        quantized = source.to(torch.float8_e4m3fn).view(torch.uint8)
+        data = quantized.numpy().tobytes()
+        offset = 0
+        while offset < len(data):
+            written = os.write(dst_fd, data[offset:])
+            if written <= 0:
+                raise OSError(f"short Qwen4 n-gram write: {offset}/{len(data)}")
+            offset += written
+        output_bytes += offset
+        try:
+            os.posix_fadvise(
+                src_fd,
+                source_offset + row_start * input_row_bytes,
+                length,
+                os.POSIX_FADV_DONTNEED,
+            )
+        except OSError:
+            pass
+    return output_bytes
+
+
+def requantize_raw_ngram_artifact(
+    model_path: str,
+    out_dir: str,
+    *,
+    storage_dtype: str = "float8_e4m3fn",
+    chunk_rows: int = 65_536,
+) -> dict:
+    """Build a precision-reduced PLE overlay from an existing FTW side artifact.
+
+    The target directory contains only the replacement manifest and payload. It can
+    be copied over a hard-linked FTW clone without rewriting the model shards.
+    """
+    if storage_dtype not in _NGRAM_DTYPES:
+        raise ValueError(f"unsupported Qwen4 n-gram target dtype: {storage_dtype!r}")
+    source_dir = os.path.realpath(model_path)
+    destination = os.path.realpath(out_dir)
+    os.makedirs(destination, exist_ok=True)
+    manifest_path = os.path.join(source_dir, _NGRAM_MANIFEST)
+    with open(manifest_path, encoding="utf-8") as handle:
+        manifest = json.load(handle)
+    source_dtype = str(manifest.get("dtype", ""))
+    if source_dtype not in _NGRAM_DTYPES:
+        raise ValueError(f"unsupported Qwen4 n-gram source dtype: {source_dtype!r}")
+    rows, dim = int(manifest["rows"]), int(manifest["dim"])
+    source_item_size = _NGRAM_DTYPES[source_dtype][1]
+    expected = rows * dim * source_item_size
+    if int(manifest.get("nbytes", -1)) != expected:
+        raise ValueError(f"invalid Qwen4 n-gram manifest: {manifest}")
+    source_file = os.path.join(source_dir, str(manifest["file"]))
+    if os.path.getsize(source_file) != expected:
+        raise ValueError(
+            f"Qwen4 n-gram payload size mismatch: {os.path.getsize(source_file)}/{expected}"
+        )
+
+    final_path = os.path.join(destination, _NGRAM_PAYLOAD)
+    temporary = final_path + ".tmp"
+    if source_dtype == storage_dtype:
+        _copy_file_atomic(source_file, final_path)
+        output_bytes = expected
+    elif source_dtype == "bfloat16" and storage_dtype == "float8_e4m3fn":
+        src_fd = os.open(source_file, os.O_RDONLY)
+        try:
+            with open(temporary, "wb", buffering=0) as out:
+                output_bytes = _write_bf16_as_fp8(
+                    src_fd,
+                    out.fileno(),
+                    source_offset=0,
+                    rows=rows,
+                    dim=dim,
+                    chunk_rows=chunk_rows,
+                )
+                os.fsync(out.fileno())
+                try:
+                    os.posix_fadvise(
+                        out.fileno(), 0, output_bytes, os.POSIX_FADV_DONTNEED
+                    )
+                except OSError:
+                    pass
+        finally:
+            os.close(src_fd)
+        os.replace(temporary, final_path)
+    else:
+        raise ValueError(
+            f"unsupported Qwen4 n-gram conversion: {source_dtype} -> {storage_dtype}"
+        )
+
+    result = {
+        **manifest,
+        "file": _NGRAM_PAYLOAD,
+        "dtype": storage_dtype,
+        "nbytes": output_bytes,
+        "source_dtype": source_dtype,
+        "quantization": "cast_rne" if source_dtype != storage_dtype else "preserve",
+    }
+    temp_manifest = os.path.join(destination, _NGRAM_MANIFEST + ".tmp")
+    with open(temp_manifest, "w", encoding="utf-8") as handle:
+        json.dump(result, handle, sort_keys=True)
+    os.replace(temp_manifest, os.path.join(destination, _NGRAM_MANIFEST))
+    return result
+
+
+def copy_external_artifacts(
+    model_path: str,
+    out_dir: str,
+    model_config,
+    *,
+    ngram_dtype: str = "preserve",
+) -> list[dict]:
     """Extract the PLE table into one precision-preserving random-read file.
 
     This streams exact safetensors data ranges in kernel space: no tensor is
@@ -309,7 +523,9 @@ def copy_external_artifacts(model_path: str, out_dir: str, model_config) -> list
     if [p[0] for p in parts] != list(range(args.split_ngram_parts)):
         raise ValueError("Qwen4 external artifact is missing split n-gram tensors")
 
-    final_path = os.path.join(out_dir, "qwen4_ngram.bin")
+    if ngram_dtype not in {"preserve", "float8_e4m3fn"}:
+        raise ValueError(f"unsupported Qwen4 n-gram target dtype: {ngram_dtype!r}")
+    final_path = os.path.join(out_dir, _NGRAM_PAYLOAD)
     temporary = final_path + ".tmp"
     total_rows = total_bytes = 0
     storage_dtype = None
@@ -324,7 +540,11 @@ def copy_external_artifacts(model_path: str, out_dir: str, model_config) -> list
                 meta = header[name]
                 if meta["dtype"] not in dtype_bytes or len(meta["shape"]) != 2:
                     raise ValueError(f"unexpected Qwen4 n-gram tensor {name}: {meta}")
-                manifest_dtype, item_size = dtype_bytes[meta["dtype"]]
+                source_dtype, item_size = dtype_bytes[meta["dtype"]]
+                manifest_dtype = (
+                    "float8_e4m3fn" if ngram_dtype == "float8_e4m3fn"
+                    else source_dtype
+                )
                 if storage_dtype is None:
                     storage_dtype = manifest_dtype
                 elif storage_dtype != manifest_dtype:
@@ -334,19 +554,37 @@ def copy_external_artifacts(model_path: str, out_dir: str, model_config) -> list
                 expected = int(meta["shape"][0]) * int(meta["shape"][1]) * item_size
                 if length != expected:
                     raise ValueError(f"invalid Qwen4 n-gram byte length for {name}")
-                _copy_range(fd, out.fileno(), 8 + header_size + begin, length)
+                rows = int(meta["shape"][0])
+                dim = int(meta["shape"][1])
+                if source_dtype == manifest_dtype:
+                    _copy_range(fd, out.fileno(), 8 + header_size + begin, length)
+                    written = length
+                elif source_dtype == "bfloat16" and manifest_dtype == "float8_e4m3fn":
+                    written = _write_bf16_as_fp8(
+                        fd,
+                        out.fileno(),
+                        source_offset=8 + header_size + begin,
+                        rows=rows,
+                        dim=dim,
+                        chunk_rows=65_536,
+                    )
+                else:
+                    raise ValueError(
+                        f"unsupported Qwen4 n-gram conversion: "
+                        f"{source_dtype} -> {manifest_dtype}"
+                    )
                 # Keep the destination from becoming dirty page-cache pressure on unified
                 # memory. Commit and evict each part before copying the next one; source
                 # pages are evicted below.
                 os.fdatasync(out.fileno())
                 try:
                     os.posix_fadvise(
-                        out.fileno(), total_bytes, length, os.POSIX_FADV_DONTNEED
+                        out.fileno(), total_bytes, written, os.POSIX_FADV_DONTNEED
                     )
                 except OSError:
                     pass
-                total_rows += int(meta["shape"][0])
-                total_bytes += length
+                total_rows += rows
+                total_bytes += written
                 try:
                     os.posix_fadvise(fd, 8 + header_size + begin, length, os.POSIX_FADV_DONTNEED)
                 except OSError:
@@ -364,7 +602,7 @@ def copy_external_artifacts(model_path: str, out_dir: str, model_config) -> list
         "nbytes": total_bytes,
         "parts": args.split_ngram_parts,
     }
-    manifest_path = os.path.join(out_dir, "qwen4_ngram.json")
+    manifest_path = os.path.join(out_dir, _NGRAM_MANIFEST)
     temp_manifest = manifest_path + ".tmp"
     with open(temp_manifest, "w", encoding="utf-8") as handle:
         json.dump(manifest, handle, sort_keys=True)
@@ -389,5 +627,6 @@ __all__ = [
     "iter_weights",
     "load_nvfp4_expert_sources",
     "load_nvfp4_expert_sources_parallel",
+    "requantize_raw_ngram_artifact",
     "setup_offload_expert_banks",
 ]

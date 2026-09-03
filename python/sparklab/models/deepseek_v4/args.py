@@ -23,6 +23,10 @@ class DeepseekV4Args:
     scale_fmt: Literal[None, "ue8m0"] = "ue8m0"
     expert_dtype: Literal[None, "fp4"] = "fp4"
     scale_dtype: Literal["fp32", "fp8"] = "fp8"
+    # Runtime cache representation. FP8 is true one-byte storage; BF16 keeps
+    # the historical quantize-then-dequantize representation.
+    kv_storage_dtype: Literal["bf16", "fp8"] = "bf16"
+    index_storage_dtype: Literal["bf16", "fp4"] = "bf16"
 
     # ----- shape -----
     vocab_size: int = 129280

@@ -11,7 +11,10 @@ from sparklab.models.deepseek_v4.args import DeepseekV4Args
 from sparklab.models.deepseek_v4.config import parse_config
 from sparklab.models.deepseek_v4 import weight as dsv4_weight
 from sparklab.models.deepseek_v4.compress import Compressor
-from sparklab.models.deepseek_v4.dspark import draft_query_geometry
+from sparklab.models.deepseek_v4.dspark import (
+    confidence_prefix_length,
+    draft_query_geometry,
+)
 from sparklab.core import Context, SamplingParams
 from sparklab.runtime.distributed import set_tp_info, try_get_tp_info
 from sparklab.runtime.engine.engine import (
@@ -172,6 +175,14 @@ def test_dspark_query_block_starts_at_sampled_anchor_and_stays_in_page():
     assert draft_query_geometry(device_len=127, page_size=128, max_steps=7) == (126, 2)
     assert draft_query_geometry(device_len=128, page_size=128, max_steps=7) == (127, 1)
     assert draft_query_geometry(device_len=129, page_size=128, max_steps=7) == (128, 7)
+
+
+def test_dspark_confidence_truncates_to_contiguous_prefix_with_one_token_floor():
+    confidence = torch.tensor([0.91, 0.72, 0.19, 0.81])
+    assert confidence_prefix_length(confidence, 0.0) == 4
+    assert confidence_prefix_length(confidence, 0.5) == 2
+    assert confidence_prefix_length(confidence, 0.95) == 1
+    assert confidence_prefix_length(torch.empty(0), 0.5) == 0
 
 
 def test_speculative_verification_uses_unaligned_compressor_continuation(monkeypatch):

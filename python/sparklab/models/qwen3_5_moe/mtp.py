@@ -12,6 +12,7 @@ from dataclasses import replace
 
 import torch
 
+from sparklab.core import get_global_ctx
 from sparklab.layers import (
     BaseOP,
     GemmaRMSNorm,
@@ -65,17 +66,35 @@ class _ResidentBf16MTPMoE(BaseOP):
 
     def forward(self, hidden: torch.Tensor) -> torch.Tensor:
         router_logits = self.gate.forward(hidden)
-        # The resident grouped GEMM may reuse its input storage.
-        shared_input = hidden.clone()
-        shared = self.shared_expert.forward(shared_input)
-        shared.mul_(torch.sigmoid(self.shared_expert_gate.forward(shared_input)))
+        # The shared branch finishes on the same stream before routed expert
+        # computation can reuse the input storage, so it does not need a clone.
+        shared = self.shared_expert.forward(hidden)
+        shared.mul_(torch.sigmoid(self.shared_expert_gate.forward(hidden)))
         weights, ids = fused_topk(
             hidden_states=hidden,
             gating_output=router_logits,
             topk=self.top_k,
             renormalize=True,
         )
-        return self.experts.routed_forward(hidden, weights, ids) + shared
+        batch = get_global_ctx().batch
+        if batch.uses_prefill_kernels and not batch.is_verify:
+            routed = self.experts.routed_forward(hidden, weights, ids)
+        else:
+            # MTP proposal rows are normally M=1 (and verification feedback is
+            # at most four rows). The generic grouped kernel pads every selected
+            # expert to BLOCK_SIZE_M=16; the decode kernel computes just the
+            # routed rows and allocates its output instead of overwriting input.
+            from sparklab.moe.fused import fused_experts_decode_impl
+
+            routed = fused_experts_decode_impl(
+                hidden,
+                self.experts.gate_up_proj,
+                self.experts.down_proj,
+                weights,
+                ids,
+            )
+            routed = self.experts._maybe_all_reduce(routed)
+        return routed + shared
 
 
 class _MTPDecoderLayer(BaseOP):

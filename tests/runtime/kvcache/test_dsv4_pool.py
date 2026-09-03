@@ -64,6 +64,56 @@ def test_pool_tiers_present_per_ratio():
                 assert pool.idx_pool[L] is None
 
 
+def test_fp8_storage_is_physical_for_window_and_compressed_tiers():
+    bf16_args = _args()
+    fp8_args = _args(kv_storage_dtype="fp8")
+    bf16_sizes = dsv4_pool_sizes(8, bf16_args, 0.5, P=P)
+    fp8_sizes = dsv4_pool_sizes(8, fp8_args, 0.5, P=P)
+    pool = DSV4PagedKVCache(
+        sizes=fp8_sizes, args=fp8_args, device=DEVICE,
+        dtype=torch.bfloat16, P=P,
+    )
+    bf16_pool = DSV4PagedKVCache(
+        sizes=bf16_sizes, args=bf16_args, device=DEVICE,
+        dtype=torch.bfloat16, P=P,
+    )
+
+    assert all(t.dtype == torch.float8_e4m3fn for t in pool.window_pool)
+    assert all(
+        t is None or t.dtype == torch.float8_e4m3fn for t in pool.cmp_pool
+    )
+    # Index storage is independently selectable and defaults to BF16.
+    assert all(t is None or t.dtype == torch.bfloat16 for t in pool.idx_pool)
+    assert pool.total_bytes() < bf16_pool.total_bytes()
+
+
+def test_fp4_index_storage_is_packed_and_roundtrips_quantized_rows():
+    from sparklab.kernels.triton.dsv4.fp4_cache import (
+        pack_fp4_rows, unpack_fp4_rows,
+    )
+
+    args = _args(index_storage_dtype="fp4")
+    sizes = dsv4_pool_sizes(8, args, 0.5, P=P)
+    pool = DSV4PagedKVCache(
+        sizes=sizes, args=args, device=DEVICE,
+        dtype=torch.bfloat16, P=P,
+    )
+    layer = RATIOS.index(4)
+    packed = pool.idx_pool[layer]
+    scales = pool.idx_scale_pool[layer]
+    assert packed.dtype == torch.uint8
+    assert packed.shape[1] == args.index_head_dim // 2
+    assert scales.shape[1] == args.index_head_dim // 32
+
+    lut = torch.tensor([0, .5, 1, 1.5, 2, 3, 4, 6], dtype=torch.float32)
+    codes = torch.arange(args.index_head_dim) % 8
+    values = (lut[codes] * 2.0).to(torch.bfloat16).view(1, -1)
+    rows = torch.tensor([3])
+    pack_fp4_rows(values, rows, packed, scales)
+    restored = unpack_fp4_rows(packed, scales, rows, args.index_head_dim)
+    torch.testing.assert_close(restored, values, rtol=0, atol=0)
+
+
 def test_state_ring_layout_and_dtype():
     pool, sizes, _ = _pool()
     for L, ratio in enumerate(RATIOS):

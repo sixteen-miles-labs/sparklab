@@ -1,7 +1,7 @@
 # Run Qwen3.6-35B-A3B
 
 Qwen3.6-35B-A3B is SparkLab's Fast-tier NVFP4 recipe. It uses a pinned, prebuilt FTW
-artifact and runs resident on one NVIDIA DGX Spark. Recipe 0.3.0 is Fast-certified on
+artifact and runs resident on one NVIDIA DGX Spark. Recipe 0.4.0 is Fast-certified on
 one NVIDIA GB10: 67.79 decode tok/s, 0.329 s warm TTFT, exact 32K recall, and a stable
 60-minute zero-swap run. See the
 [versioned evidence](../../benchmarks/gb10/results/GB10-QWEN36-FAST-002.json).
@@ -44,25 +44,32 @@ the complete FTW repack locally from NVIDIA's pinned source checkpoint.
 sparklab run qwen3.6-35b-a3b --root /path/to/models
 ```
 
-## Experimental speculative decoding
+## Optional speculative decoding
 
 SparkLab can load Qwen3.6's native MTP layer, verify its draft tokens with the target,
 and commit or roll back paged KV and GDN recurrent state at the accepted boundary. The
-[upstream vLLM profile](https://recipes.vllm.ai/Qwen/Qwen3.6-35B-A3B) uses three drafts:
+[upstream vLLM profile](https://recipes.vllm.ai/Qwen/Qwen3.6-35B-A3B) uses three drafts.
+On GB10, SparkLab's measured optimum is currently two drafts with Triton attention:
 
 ```bash
 sparklab run qwen3.6-35b-a3b --root /path/to/models -- \
   --speculative-method mtp \
-  --speculative-tokens 3
+  --speculative-tokens 2 \
+  --attention-backend triton
 ```
 
-This path is available for experimentation, not recommended for production on GB10. In
-a controlled 64-token greedy sweep, target-only decode reached 52.63 tok/s. Draft widths
-one, two, and three reached 5.68, 7.02, and 8.57 tok/s respectively. Width three accepted
-41/50 drafts and reduced the run to 23 target forwards, but the resident BF16 draft layer
-cost more than the saved NVFP4 target work. It was also the only measured width that
-reproduced the target-only output hash. Keep the default target-only recipe for normal
-chat and agent use. See [GB10-QWEN36-MTP-003](../../benchmarks/gb10/results/GB10-QWEN36-MTP-003.json).
+The optimized path sends verification and short rejection repairs through decode-sized
+MoE and recurrent kernels instead of padded prompt kernels. In the controlled 64-token
+FlashInfer sweep, target-only decode reached 49.07 tok/s and widths one, two, and three
+reached 63.46, 66.31, and 53.64 tok/s. A longer matched Triton-attention probe reached
+74.42 tok/s with width two versus 45.38 tok/s target-only: a 64.0% gain, 88.4% draft
+acceptance, and 2.49 output tokens per target forward.
+
+Keep this profile opt-in for now. It covers one greedy request, and the multi-token
+numerical path selected a different close greedy continuation than single-token eager
+decode. The complete context, quality, agent, and endurance certification suite has not
+been rerun. See [the original sweep](../../benchmarks/gb10/results/GB10-QWEN36-MTP-003.json)
+and [the optimized result](../../benchmarks/gb10/results/GB10-QWEN36-MTP-004.json).
 
 MTP currently applies to one running greedy request. Sampled requests fall back to target
 decoding, and target verification runs eagerly.

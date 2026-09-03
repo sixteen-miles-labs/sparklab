@@ -229,7 +229,15 @@ class OffloadMoELayer(MoELayer):
         router_logits: torch.Tensor | None = None,
     ):
         ctx = get_global_ctx()
-        if ctx.batch.uses_prefill_kernels:
+        # Speculative verification advances several consecutive positions, so its
+        # attention and recurrent-state mixers need prefill semantics. Its MoE is
+        # still a tiny decode-sized matrix (normally 2--4 rows), however. Sending
+        # those rows through the grouped prefill kernel pads every active expert to
+        # a full M block and makes verification more expensive than the target
+        # forwards it replaces. The routed decode kernel accepts M > 1 and keeps
+        # exactly the same token-local MoE computation without that padding.
+        short_replay = getattr(ctx.batch, "is_speculative_replay", False)
+        if ctx.batch.uses_prefill_kernels and not (ctx.batch.is_verify or short_replay):
             final_hidden_states = self.prefill_forward(hidden_states, router_logits)
         else:
             final_hidden_states = self.decode_forward(hidden_states, router_logits)
@@ -249,7 +257,8 @@ class OffloadMoELayer(MoELayer):
         rewrites expert ids into cache slot ids); pass a fresh tensor or a clone.
         """
         ctx = get_global_ctx()
-        if ctx.batch.uses_prefill_kernels:
+        short_replay = getattr(ctx.batch, "is_speculative_replay", False)
+        if ctx.batch.uses_prefill_kernels and not (ctx.batch.is_verify or short_replay):
             out = self._prefill_routed(hidden_states, topk_weights, topk_ids)
         else:
             out = self._decode_routed(hidden_states, topk_weights, topk_ids)

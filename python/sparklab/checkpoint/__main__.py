@@ -45,6 +45,12 @@ def main(argv: list[str] | None = None, prog: str = "sparklab.checkpoint") -> in
         default=None,
         help="store supported KDA main projections in the selected FTW format",
     )
+    p.add_argument(
+        "--qwen4-ngram-dtype",
+        choices=("preserve", "float8_e4m3fn"),
+        default="preserve",
+        help="storage dtype for Qwen3.8 PLE rows (default: preserve source)",
+    )
     p.add_argument("--shard-gib", type=float, default=8.0, help="max shard size in GiB")
     p.add_argument("--device", default=None, help="CUDA device for repack (default cuda:0)")
     ns = p.parse_args(argv)
@@ -57,6 +63,7 @@ def main(argv: list[str] | None = None, prog: str = "sparklab.checkpoint") -> in
         moe_backend=ns.moe_backend, nvfp4_backend=ns.nvfp4_backend,
         expert_quantization=ns.expert_quantization,
         kda_quantization=ns.kda_quantization,
+        qwen4_ngram_dtype=ns.qwen4_ngram_dtype,
         shard_limit=shard_limit, device=ns.device,
     )
     dt = time.perf_counter() - t

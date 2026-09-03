@@ -43,16 +43,17 @@
     "decode_tokens_per_second": 67.7870954092827,
     "warm_ttft_seconds": 0.32882933877408504,
     "evidence": "GB10-QWEN36-FAST-002",
-    "note": "The target-only profile passed the Fast gate with exact 32K recall, complete capability probes, bounded resident memory, and a zero-swap 60-minute endurance run. The artifact also includes an experimental native BF16 MTP shard; its measured GB10 profile is opt-in and slower than target-only decode."
+    "note": "The target-only profile passed the Fast gate with exact 32K recall, complete capability probes, bounded resident memory, and a zero-swap 60-minute endurance run. The artifact also includes an opt-in native BF16 MTP shard; the optimized width-two GB10 profile measured 74.42 tok/s on a 256-token probe, but has not repeated the full certification suite."
   },
   "evidence": [
     "GB10-QWEN36-FAST-001",
     "GB10-QWEN36-FAST-002",
-    "GB10-QWEN36-MTP-003"
+    "GB10-QWEN36-MTP-003",
+    "GB10-QWEN36-MTP-004"
   ],
   "limitations": [
     "The fixed five-problem AIME sample scored 0/5 because all five sampled runs exhausted the 2,048-token reasoning budget before emitting a final answer; Fast certification establishes serving correctness and operational behavior, not benchmark-quality certification.",
     "Certification covers text inference at batch one on one NVIDIA GB10.",
-    "Native MTP is experimental: width three reproduced the controlled target-only output hash but measured 8.57 tok/s versus 52.63 tok/s without speculation; widths one and two did not reproduce that hash."
+    "Native MTP remains opt-in: optimized width two measured 74.42 tok/s versus its 45.38 tok/s eager control, but its multi-token numerical path did not reproduce the single-token greedy output hash and the full certification suite has not been rerun."
   ]
 }

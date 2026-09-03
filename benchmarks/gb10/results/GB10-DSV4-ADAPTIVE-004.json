@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0", "result_id": "GB10-DSV4-ADAPTIVE-004",
+  "status": "measured", "date": "2026-09-02",
+  "platform": {"device": "NVIDIA GB10", "memory_gib": 128, "cuda": "13.0"},
+  "model": {"repository": "deepseek-ai/DeepSeek-V4-Flash-0731", "checkpoint_format": "ftw-ds-fp4", "target_layers": 43, "draft_layers": 3},
+  "workload": {"name": "AIME-25 problem 0", "batch_size": 1, "sampling": "greedy", "expert_cache_slots": 5250, "cuda_graph": false},
+  "metrics": {
+    "target_256_tok_s": 7.8509, "dspark_n1_fast_commit_256_tok_s": 8.4993,
+    "dspark_n1_relative_to_target_percent": 8.26,
+    "dspark_n1_accepted": 87, "dspark_n1_drafted": 127,
+    "dspark_n1_fast_carry_commits": 40, "dspark_n1_replay_calls": 0,
+    "fixed_n5_128_tok_s": 7.3877, "adaptive_n5_threshold_0_5_128_tok_s": 8.6663,
+    "adaptive_n5_speedup_percent": 17.31, "adaptive_n5_acceptance": 0.713,
+    "fp8_kv_smoke_32_tok_s": 10.5587,
+    "fp4_index_smoke_32_tok_s": 10.4940,
+    "fp8_kv_fp4_index_smoke_32_tok_s": 10.5632,
+    "bf16_kv_2k_cache_gib": 0.29, "fp8_window_compressed_kv_2k_cache_gib": 0.23,
+    "packed_cache_savings_64k_gib": 0.4856,
+    "packed_cache_savings_256k_gib": 1.9332,
+    "packed_cache_savings_1m_gib": 7.5413
+  },
+  "validation": {"target_reasoning_answer": 70, "dspark_n1_reasoning_answer": 70, "fp8_kv_end_to_end_smoke": true, "packed_fp4_indexer_end_to_end_smoke": true, "packed_cache_output_hash": "16207e79597e", "quality_gate_run": false, "packed_fp4_indexer_implemented": true},
+  "conclusion": "N=1 crosses break-even after safe first-draft-rejection carry commits. Confidence threshold 0.5 is promising. Exact draft quotas reduce I/O but not throughput. True FP8 window/compressed KV and packed FP4 indexer storage preserve the short-run target hash and save progressively more cache memory at long context.",
+  "source": {"raw_artifacts": "$HOME/results/dsv4-dspark-adaptive/"}
+}

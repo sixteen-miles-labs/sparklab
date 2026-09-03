@@ -27,6 +27,15 @@ class BaseLLMModel(ABC, BaseOP):
         """Stage model-specific inputs that must remain outside graph capture/replay."""
         return None
 
+    def begin_external_inputs(self, batch) -> None:
+        """Start asynchronous model inputs whose values depend only on the batch.
+
+        Engines call this before target-state bookkeeping and transformer execution.
+        Models may finish the work lazily at the layer that consumes it, or from
+        ``prepare_cuda_graph_inputs`` immediately before graph replay.
+        """
+        return None
+
 
 class GatedMLP(BaseOP):
     def __init__(self, config: ModelConfig):

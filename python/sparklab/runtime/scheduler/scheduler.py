@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from typing import TYPE_CHECKING, List, NamedTuple, NoReturn, Set, Tuple, TypeAlias
 
 import torch
@@ -415,12 +417,20 @@ class Scheduler(SchedulerIOMixin):
             rate = stats["accepted"] / drafted if drafted else 0.0
             logger.info_rank0(
                 "MTP summary: steps=%d, accepted=%d/%d (%.1f%%), "
-                "outputs=%d, target_forwards=%d, outputs/target=%.2f",
+                "outputs=%d, target_forwards=%d, outputs/target=%.2f, "
+                "replays=%d/%d, fast_commits=%d",
                 speculative_tokens,
                 stats["accepted"], drafted, 100.0 * rate,
                 stats["outputs"], stats["target_forwards"],
                 stats["outputs"] / max(stats["target_forwards"], 1),
+                stats.get("replay_calls", 0), stats.get("replay_tokens", 0),
+                stats.get("fast_carry_commits", 0),
             )
+            speculative_stats = getattr(self.engine.model, "speculative_stats", None)
+            if speculative_stats is not None and (details := speculative_stats()):
+                logger.info_rank0(
+                    "DSpark stats: " + json.dumps(details, separators=(",", ":"))
+                )
         # Stamp each reply with the post-batch KV page occupancy so the frontend (shell
         # status bar) can show live KV usage without a separate query.
         used, total = self._kv_usage_pages()
@@ -436,6 +446,10 @@ class Scheduler(SchedulerIOMixin):
             moe_cache = getattr(engine, "moe_offload_cache", None)
             if moe_cache is not None and moe_cache.collect_stats and any(m.finished for m in reply):
                 moe_stats = moe_cache.decode_miss_stats()
+                moe_stats["per_layer"] = moe_cache.decode_miss_stats_per_layer()["per_layer"]
+                routing = moe_cache.decode_routing_stats()
+                if routing:
+                    moe_stats["routing"] = routing
                 if moe_cache.disk_source is not None:
                     moe_stats["disk"] = moe_cache.disk_source.stats()
             mamba_used, mamba_total = mamba_slots or (0, 0)

@@ -474,6 +474,30 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="draft sampling and target verification rule",
     )
     p.add_argument(
+        "--dspark-confidence-threshold", type=float, default=0.0,
+        help="DSpark confidence probability floor; 0 keeps fixed-width verification",
+    )
+    p.add_argument(
+        "--dspark-draft-cache-slots", type=int, default=0,
+        help="aggregate layer-LRU quota for the three DSpark draft layers",
+    )
+    p.add_argument(
+        "--dspark-draft-cache-quotas", default="",
+        help="comma-separated exact per-draft-layer layer-LRU quotas",
+    )
+    p.add_argument(
+        "--dsv4-kv-storage", choices=("bf16", "fp8"), default="bf16",
+        help="physical DSV4 window/compressed KV storage",
+    )
+    p.add_argument(
+        "--dsv4-index-storage", choices=("bf16", "fp4"), default="bf16",
+        help="physical DSV4 Lightning-Indexer key storage",
+    )
+    p.add_argument(
+        "--qwen4-dense-storage", choices=("bf16", "fp8"), default="bf16",
+        help="physical Qwen4-Exp resident projection storage",
+    )
+    p.add_argument(
         "--disable-prefill-overlap", action="store_true",
         help="disable the two-layer prefill staging reservation (permits a one-layer cache)",
     )
@@ -619,6 +643,12 @@ def serve_cmd(args: argparse.Namespace, backend: str, port: int) -> list[str]:
         "--speculative-method", args.speculative_method,
         "--speculative-tokens", str(args.speculative_tokens),
         "--draft-sample-method", args.draft_sample_method,
+        "--dspark-confidence-threshold", str(args.dspark_confidence_threshold),
+        "--dspark-draft-cache-slots", str(args.dspark_draft_cache_slots),
+        "--dspark-draft-cache-quotas", args.dspark_draft_cache_quotas,
+        "--dsv4-kv-storage", args.dsv4_kv_storage,
+        "--dsv4-index-storage", args.dsv4_index_storage,
+        "--qwen4-dense-storage", args.qwen4_dense_storage,
     ]
     if args.num_tokens > 0:
         cmd += ["--num-tokens", str(args.num_tokens)]
@@ -670,13 +700,15 @@ def parse_speculative_summary(log_text: str) -> dict | None:
     """Extract the final measured request's native speculative counters."""
     matches = re.findall(
         r"MTP summary: steps=(\d+), accepted=(\d+)/(\d+) \(([\d.]+)%\), "
-        r"outputs=(\d+), target_forwards=(\d+), outputs/target=([\d.]+)",
+        r"outputs=(\d+), target_forwards=(\d+), outputs/target=([\d.]+)"
+        r"(?:, replays=(\d+)/(\d+), fast_commits=(\d+))?",
         log_text,
     )
     if not matches:
         return None
-    steps, accepted, drafted, rate, outputs, forwards, efficiency = matches[-1]
-    return {
+    (steps, accepted, drafted, rate, outputs, forwards, efficiency,
+     replay_calls, replay_tokens, fast_commits) = matches[-1]
+    result = {
         "steps": int(steps),
         "accepted": int(accepted),
         "drafted": int(drafted),
@@ -685,6 +717,19 @@ def parse_speculative_summary(log_text: str) -> dict | None:
         "target_forwards": int(forwards),
         "outputs_per_target_forward": float(efficiency),
     }
+    if replay_calls:
+        result.update({
+            "replay_calls": int(replay_calls),
+            "replay_tokens": int(replay_tokens),
+            "fast_carry_commits": int(fast_commits),
+        })
+    stats_matches = re.findall(r"DSpark stats: (\{[^\n]+\})", log_text)
+    if stats_matches:
+        try:
+            result.update(json.loads(stats_matches[-1]))
+        except json.JSONDecodeError:
+            pass
+    return result
 
 
 def wait_ready(origin: str, proc: subprocess.Popen, log_path: str, timeout: float) -> None:
@@ -931,6 +976,12 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
             "speculative_method": args.speculative_method,
             "speculative_tokens": args.speculative_tokens,
             "draft_sample_method": args.draft_sample_method,
+            "dspark_confidence_threshold": args.dspark_confidence_threshold,
+            "dspark_draft_cache_slots": args.dspark_draft_cache_slots,
+            "dspark_draft_cache_quotas": args.dspark_draft_cache_quotas,
+            "dsv4_kv_storage": args.dsv4_kv_storage,
+            "dsv4_index_storage": args.dsv4_index_storage,
+            "qwen4_dense_storage": args.qwen4_dense_storage,
             "cpu_threads": args.cpu_threads,
             "hybrid_fetch": args.hybrid_fetch,
             "disk_read_workers": int(os.getenv("SPARKLAB_DISK_READ_WORKERS", "16")),
@@ -1005,6 +1056,31 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
             "fetched_per_layer": fetched / calls if calls else 0.0,
             "fetch_rate": fetched / missing if missing else 0.0,
         }
+        before_layers = {item["layer"]: item for item in before_moe.get("per_layer", [])}
+        per_layer = []
+        for item in after_moe.get("per_layer", []):
+            prior = before_layers.get(item["layer"], {})
+            steps = item.get("steps", 0) - prior.get("steps", 0)
+            active = item.get("active", 0) - prior.get("active", 0)
+            missing = item.get("missing", 0) - prior.get("missing", 0)
+            fetched_layer = item.get("fetched", 0) - prior.get("fetched", 0)
+            per_layer.append({
+                "layer": item["layer"],
+                "steps": steps,
+                "active": active,
+                "missing": missing,
+                "fetched": fetched_layer,
+                "active_per_step": active / steps if steps else 0.0,
+                "missing_per_step": missing / steps if steps else 0.0,
+                "miss_rate": missing / active if active else 0.0,
+                "fetched_per_step": fetched_layer / steps if steps else 0.0,
+            })
+        if per_layer:
+            row["moe"]["per_layer"] = per_layer
+        if after_moe.get("routing"):
+            # Routing concentration is a whole-session profile (warmup + measured
+            # request); label it rather than pretending the aggregate is subtractable.
+            row["moe"]["routing_session"] = after_moe["routing"]
         before_disk = before_moe.get("disk") or {}
         after_disk = after_moe.get("disk") or {}
         if after_disk:

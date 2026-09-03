@@ -23,6 +23,8 @@ import torch
 import triton
 import triton.language as tl
 
+from .fp4_cache import decode_e2m1
+
 
 @triton.jit
 def _indexer_logits_kernel(
@@ -117,17 +119,19 @@ def indexer_logits(
 
 @triton.jit
 def _indexer_decode_logits_kernel(
-    q_ptr, w_ptr, pool_ptr, snap_ptr, valid_ptr, out_ptr,
+    q_ptr, w_ptr, pool_ptr, scale_ptr, snap_ptr, valid_ptr, out_ptr,
     N_STAGE, RATIO,
     stride_qb, stride_qh, stride_qd,
     stride_wb, stride_wh,
     stride_pr, stride_pd,
+    stride_sr, stride_ss,
     stride_sb, stride_sw,
     stride_ob, stride_ot,
     H: tl.constexpr,
     D: tl.constexpr,
     BLOCK_H: tl.constexpr,
     BLOCK_T: tl.constexpr,
+    FP4: tl.constexpr,
 ):
     """One decode query per row, gathering its own compressed keys.
 
@@ -161,8 +165,20 @@ def _indexer_decode_logits_kernel(
                    mask=t_mask, other=0)
     rows = tl.maximum(snap, 0) // RATIO
 
-    k = tl.load(pool_ptr + rows[:, None] * stride_pr + offs_d[None, :] * stride_pd,
-                mask=t_mask[:, None], other=0.0)
+    if FP4:
+        byte = tl.load(
+            pool_ptr + rows[:, None] * stride_pr + (offs_d[None, :] // 2) * stride_pd,
+            mask=t_mask[:, None], other=0,
+        )
+        code = tl.where((offs_d[None, :] & 1) == 0, byte & 15, byte >> 4)
+        scale = tl.load(
+            scale_ptr + rows[:, None] * stride_sr + (offs_d[None, :] // 32) * stride_ss,
+            mask=t_mask[:, None], other=0.0,
+        )
+        k = (decode_e2m1(code) * scale).to(tl.bfloat16)
+    else:
+        k = tl.load(pool_ptr + rows[:, None] * stride_pr + offs_d[None, :] * stride_pd,
+                    mask=t_mask[:, None], other=0.0)
     q = tl.load(q_ptr + pid_b * stride_qb + offs_h[:, None] * stride_qh + offs_d[None, :] * stride_qd,
                 mask=h_mask[:, None], other=0.0)
     w = tl.load(w_ptr + pid_b * stride_wb + offs_h * stride_wh, mask=h_mask, other=0.0).to(tl.float32)
@@ -184,6 +200,7 @@ def indexer_decode_logits(
     n_stage: int,             # static staged width (the buffer the top-k scans)
     ratio: int,
     out: torch.Tensor | None = None,
+    fp4_scales: torch.Tensor | None = None,
 ) -> torch.Tensor:
     """Head-reduced Lightning-Indexer logits ``[B, n_stage]`` for a decode step.
 
@@ -199,25 +216,34 @@ def indexer_decode_logits(
     """
     B, H, D = q.shape
     assert weights.shape == (B, H), (weights.shape, (B, H))
-    assert idx_pool.shape[1] == D, (idx_pool.shape, D)
+    packed_fp4 = fp4_scales is not None
+    assert idx_pool.shape[1] == D // (2 if packed_fp4 else 1), (idx_pool.shape, D)
+    if packed_fp4:
+        assert idx_pool.dtype == torch.uint8
+        assert fp4_scales.dtype == torch.float32
+        assert fp4_scales.shape == (idx_pool.shape[0], D // 32)
     assert D == triton.next_power_of_2(D), f"index_head_dim must be pow2, got {D}"
 
     if out is None:
-        out = torch.empty((B, n_stage), dtype=idx_pool.dtype, device=q.device)
+        out = torch.empty((B, n_stage), dtype=torch.bfloat16, device=q.device)
     if n_stage == 0:
         return out
 
     BLOCK_T = 64
     _indexer_decode_logits_kernel[(B, triton.cdiv(n_stage, BLOCK_T))](
-        q, weights, idx_pool, full_snap, valid, out,
+        q, weights, idx_pool, fp4_scales if packed_fp4 else idx_pool,
+        full_snap, valid, out,
         n_stage, ratio,
         q.stride(0), q.stride(1), q.stride(2),
         weights.stride(0), weights.stride(1),
         idx_pool.stride(0), idx_pool.stride(1),
+        (fp4_scales.stride(0) if packed_fp4 else 0),
+        (fp4_scales.stride(1) if packed_fp4 else 0),
         full_snap.stride(0), full_snap.stride(1),
         out.stride(0), out.stride(1),
         H=H, D=D,
         BLOCK_H=triton.next_power_of_2(H), BLOCK_T=BLOCK_T,
+        FP4=packed_fp4,
         num_warps=4, num_stages=2,
     )
     return out

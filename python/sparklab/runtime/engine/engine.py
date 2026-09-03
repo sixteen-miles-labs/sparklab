@@ -310,6 +310,35 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
             "greedy", "probabilistic"
         }:
             raise ValueError("unsupported --draft-sample-method")
+        confidence_threshold = float(
+            getattr(config, "dspark_confidence_threshold", 0.0) or 0.0
+        )
+        if not 0.0 <= confidence_threshold < 1.0:
+            raise ValueError("--dspark-confidence-threshold must be in [0, 1)")
+        draft_cache_slots = int(
+            getattr(config, "dspark_draft_cache_slots", 0) or 0
+        )
+        draft_cache_quotas = str(
+            getattr(config, "dspark_draft_cache_quotas", "") or ""
+        ).strip()
+        if draft_cache_slots < 0:
+            raise ValueError("--dspark-draft-cache-slots must be non-negative")
+        if (draft_cache_slots or draft_cache_quotas) and config.moe_cache_policy != "layer_lru":
+            raise ValueError(
+                "DSpark draft cache reservations require --moe-cache-policy layer_lru"
+            )
+        if draft_cache_quotas:
+            try:
+                quotas = tuple(int(value) for value in draft_cache_quotas.split(","))
+            except ValueError as exc:
+                raise ValueError(
+                    "--dspark-draft-cache-quotas must be comma-separated integers"
+                ) from exc
+            if len(quotas) != dsv4_args.n_mtp_layers or any(value < 0 for value in quotas):
+                raise ValueError(
+                    "--dspark-draft-cache-quotas must contain one non-negative quota "
+                    f"per draft layer ({dsv4_args.n_mtp_layers} values)"
+                )
         from sparklab.models.config import DSV4AttentionGroupConfig
 
         args = replace(dsv4_args, dspark_enabled=True)
@@ -327,6 +356,9 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
         object.__setattr__(model_config, "speculative_tokens", speculative_tokens)
         object.__setattr__(
             model_config, "draft_sample_method", config.draft_sample_method
+        )
+        object.__setattr__(
+            model_config, "dspark_confidence_threshold", confidence_threshold
         )
         override("speculative_method", "dspark")
         # Correctness-first verification is eager and batch one. The DSpark
@@ -504,7 +536,8 @@ class Engine:
         self.config = config  # retained for runtime cache rebuild (rebuild_runtime_cache)
         self.mtp_stats = {
             "target_forwards": 0, "drafted": 0, "accepted": 0,
-            "outputs": 0,
+            "outputs": 0, "replay_calls": 0, "replay_tokens": 0,
+            "fast_carry_commits": 0,
         }
         # KV pool family fixed at construction from the model config: its classmethods own the
         # page-token geometry and cost arithmetic the engine needs BEFORE the pool exists
@@ -685,6 +718,7 @@ class Engine:
                 config.model_path,
                 self.device,
                 include_moe_experts=not is_offload_moe_backend(config.moe_backend),
+                model_config=config.model_config,
             ),
             device=self.device,
         )
@@ -876,6 +910,19 @@ class Engine:
             cache.set_bank_sources(banks.sources, layer_residency=banks.layer_residency)
             cache.set_alphas(banks.gate_up_alpha, banks.down_alpha)
             cache.disk_source = disk_source
+            if config.speculative_method == "dspark" and (
+                config.dspark_draft_cache_slots > 0 or config.dspark_draft_cache_quotas
+            ):
+                first = config.model_config.num_layers
+                count = config.model_config.dsv4_args.n_mtp_layers
+                draft_ids = tuple(range(first, first + count))
+                if config.dspark_draft_cache_quotas:
+                    values = tuple(
+                        int(value) for value in config.dspark_draft_cache_quotas.split(",")
+                    )
+                    cache.reserve_layer_quotas(dict(zip(draft_ids, values)))
+                else:
+                    cache.reserve_layer_slots(draft_ids, config.dspark_draft_cache_slots)
             if config.moe_preload_all:
                 cache.preload_all_from_disk()
         else:
@@ -888,6 +935,10 @@ class Engine:
         # Must be set before CUDA graph capture so the (device-side) accumulation ops are
         # captured and re-run on every decode replay.
         cache.collect_stats = config.moe_collect_stats
+        cache.collect_decode_freq = bool(
+            config.moe_collect_stats
+            and os.getenv("SPARKLAB_MOE_ROUTING_STATS", "0") == "1"
+        )
         # attach_offload_moe_cache walks for OffloadMoELayers, or defers to a model's
         # _iter_offload_moe_layers() hook when its MoE blocks are bespoke nn.Modules (DSV4).
         layers = attach_offload_moe_cache(self.model, cache)
@@ -1172,11 +1223,19 @@ class Engine:
 
     def forward_batch(self, batch: Batch, args: BatchSamplingArgs) -> ForwardOutput:
         assert torch.cuda.current_stream() == self.stream
+        # Launch history-only external inputs as early as possible. Qwen4 uses
+        # this window to read all PLE layers concurrently while target-state
+        # snapshots and the first transformer layers execute.
+        self.model.begin_external_inputs(batch)
         if self.config.speculative_tokens and batch.is_prefill:
             self.mtp_stats = {
                 "target_forwards": 0, "drafted": 0, "accepted": 0,
-                "outputs": 0,
+                "outputs": 0, "replay_calls": 0, "replay_tokens": 0,
+                "fast_carry_commits": 0,
             }
+            reset_speculative_stats = getattr(self.model, "reset_speculative_stats", None)
+            if reset_speculative_stats is not None:
+                reset_speculative_stats()
         if self.config.speculative_tokens:
             self.mtp_stats["target_forwards"] += 1
         state_snapshots: list[tuple[int, int]] = []
@@ -1189,6 +1248,7 @@ class Engine:
                 kv_snapshot = self.kv_cache.snapshot_speculative(
                     batch.reqs[0].table_idx, start, start + batch.input_ids.numel()
                 )
+                self.kv_cache.begin_speculative_carry_capture()
             else:
                 pool = self.linear_state_pool
                 if pool is None:
@@ -1225,11 +1285,18 @@ class Engine:
             self.mtp_stats["accepted"] += accepted
             if accepted < drafts.numel():
                 if self.config.speculative_method == "dspark":
-                    self.kv_cache.restore_speculative(kv_snapshot)
+                    if accepted == 0:
+                        self.kv_cache.commit_first_speculative_carry(kv_snapshot)
+                        self.mtp_stats["fast_carry_commits"] += 1
+                    else:
+                        self.kv_cache.restore_speculative(kv_snapshot)
                 else:
                     live, scratch = state_snapshots[0]
                     self.linear_state_pool.copy_from(scratch, live)
-                self._replay_verified_prefix(batch, accepted + 1, start)
+                if self.config.speculative_method != "dspark" or accepted > 0:
+                    self._replay_verified_prefix(batch, accepted + 1, start)
+                    self.mtp_stats["replay_calls"] += 1
+                    self.mtp_stats["replay_tokens"] += accepted + 1
                 req.speculative_drafts = None
                 req.speculative_draft_probs = None
             else:
@@ -1319,6 +1386,7 @@ class Engine:
         replay = Batch(reqs=[replay_req], phase="prefill")
         replay.padded_reqs = replay.reqs
         replay.disable_state_tracking = True
+        replay.is_speculative_replay = True
         replay.input_ids = query
         replay.positions = batch.positions[:length]
         replay.out_loc = batch.out_loc[:length]
@@ -1553,10 +1621,43 @@ def _adjust_config(config: EngineConfig):
     model_config = config.model_config
     single_stream_only = getattr(model_config, "single_stream_only", False)
     is_dsv4 = getattr(model_config, "dsv4_args", None) is not None
+    is_qwen4 = getattr(model_config, "qwen4_exp_args", None) is not None
     has_swa_attention = getattr(model_config, "has_swa_attention", False)
     has_linear_attention = getattr(model_config, "has_linear_attention", False)
     is_moe = getattr(model_config, "is_moe", False)
     expert_quant = getattr(model_config, "expert_quant", "none")
+
+    if is_dsv4:
+        storage = str(getattr(config, "dsv4_kv_storage", "bf16"))
+        index_storage = str(getattr(config, "dsv4_index_storage", "bf16"))
+        if storage not in {"bf16", "fp8"}:
+            raise ValueError("--dsv4-kv-storage must be bf16 or fp8")
+        if index_storage not in {"bf16", "fp4"}:
+            raise ValueError("--dsv4-index-storage must be bf16 or fp4")
+        dsv4_args = model_config.dsv4_args
+        if hasattr(dsv4_args, "__dataclass_fields__"):
+            dsv4_args = replace(
+                dsv4_args,
+                kv_storage_dtype=storage,
+                index_storage_dtype=index_storage,
+            )
+            object.__setattr__(model_config, "dsv4_args", dsv4_args)
+        else:
+            # Lightweight config doubles in engine tests intentionally use a
+            # SimpleNamespace rather than the checkpoint dataclass.
+            setattr(dsv4_args, "kv_storage_dtype", storage)
+            setattr(dsv4_args, "index_storage_dtype", index_storage)
+
+    if is_qwen4:
+        dense_storage = str(getattr(config, "qwen4_dense_storage", "bf16"))
+        if dense_storage not in {"bf16", "fp8"}:
+            raise ValueError("--qwen4-dense-storage must be bf16 or fp8")
+        if dense_storage == "fp8":
+            # Select physical W8A16 modules. The runtime loader streams legacy
+            # BF16 FTW tensors into matching FP8 weights plus row scales.
+            object.__setattr__(model_config, "attn_quant", "fp8_pertensor")
+            object.__setattr__(model_config, "dense_quant", "fp8_pertensor")
+            object.__setattr__(model_config, "shared_expert_quant", "fp8_pertensor")
 
     _adjust_speculative_config(config, override)
 
