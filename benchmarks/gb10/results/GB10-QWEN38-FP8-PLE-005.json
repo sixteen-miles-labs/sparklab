@@ -13,5 +13,5 @@
   },
   "validation": {"sampled_rows_match_bf16_to_fp8_to_bf16": true, "bf16_output_hash": "9ce352b0edd6", "fp8_output_hash": "37a7098d6fbc", "quality_gate_run": false},
   "conclusion": "FP8 halves PLE storage and improves this matched probe by 2.62%. Async staging is neutral with the current single early PLE layer and remains opt-in.",
-  "source": {"raw_artifacts": "/home/lidaiqing/results/qwen3.8-fp8-ple/"}
+  "source": {"raw_artifacts": "$HOME/results/qwen3.8-fp8-ple/"}
 }
