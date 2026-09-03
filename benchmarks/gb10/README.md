@@ -12,6 +12,10 @@ recipes. Raw logs and large result streams stay outside the source repository.
 - `results/GB10-DSV4-ADAPTIVE-004.json` records confidence-adaptive DSpark,
   replay-free first-draft rejection commits, residency profiling, true FP8
   window/compressed KV, and packed FP4 Lightning-Indexer storage.
+- `results/GB10-DSV4-SMALLM-005.json` records the SM121 small-row FP8/BF16 kernels,
+  the 6,550-slot residency and confidence-threshold sweeps, and the selected
+  three-trial DSpark5 burst median of 13.15 tok/s. Its 256-token control records
+  why target-only remains the sustained/default profile.
 - `results/GB10-BASELINE-001.json` records the measured DeepSeek V4 launch baseline.
 - `results/GB10-DSV4-SPARSE-001.json` records the optimized DeepSeek V4 route-first
   sparse-prefill probe: 10.28 decode tok/s and 0.604 s warm TTFT, with the baseline

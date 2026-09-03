@@ -112,10 +112,10 @@ a SparkLab support claim.
     <tr>
       <td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731">DeepSeek V4 Flash</a></td>
       <td>284B total / 13B active</td>
-      <td>DS-FP4</td>
+      <td>DS-FP4 · FTW + optional DSpark5</td>
       <td>Preview</td>
-      <td align="right">10.28</td>
-      <td align="right">0.604</td>
+      <td align="right">13.15</td>
+      <td align="right">0.518</td>
       <td><a href="docs/models/deepseek-v4.md">Instructions</a></td>
     </tr>
     <tr>

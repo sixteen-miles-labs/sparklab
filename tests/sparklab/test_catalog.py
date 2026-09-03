@@ -117,13 +117,13 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert glm52.performance.decode_tokens_per_second == pytest.approx(0.802)
     assert glm52.performance.warm_ttft_seconds == pytest.approx(2.57)
     deepseek = get_recipe("deepseek-v4")
-    assert deepseek.recipe_version == "0.3.1"
+    assert deepseek.recipe_version == "0.4.0"
     assert deepseek.revision == "7872f01b1d1fe23eabc4c98b48bffcef5a386062"
     assert deepseek.performance.decode_tokens_per_second == pytest.approx(
-        8.673403327989714
+        13.147538086548575
     )
     assert deepseek.performance.warm_ttft_seconds == pytest.approx(
-        1.7943157120025717
+        0.5180109490029281
     )
     assert deepseek.deployment.backend_options["moe_prefill_sparse_max_tokens"] == 512
     assert deepseek.deployment.backend_options["moe_cache_auto"] is True
@@ -225,34 +225,36 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     assert deepseek.minimum_free_bytes > deepseek.source_bytes + deepseek.prepared_bytes
 
 
-def test_deepseek_recipe_points_to_checked_in_residency_evidence():
+def test_deepseek_recipe_points_to_checked_in_small_m_evidence():
     recipe = get_recipe("deepseek-v4")
     assert recipe.evidence == (
+        "GB10-DSV4-SMALLM-005",
         "GB10-DSV4-RESIDENCY-003",
+        "GB10-DSV4-ADAPTIVE-004",
         "GB10-DSV4-DSPARK-002",
     )
     root = Path(__file__).resolve().parents[2]
     result = json.loads(
-        (root / "benchmarks/gb10/results/GB10-DSV4-RESIDENCY-003.json").read_text()
+        (root / "benchmarks/gb10/results/GB10-DSV4-SMALLM-005.json").read_text()
     )
     assert result["result_id"] == recipe.evidence[0]
     assert result["status"] == "measured"
-    assert result["model"]["revision"] == recipe.revision
-    assert result["model"]["checkpoint_bytes"] == recipe.prepared_bytes
-    assert result["metrics"]["target_only"]["decode_tokens_per_second"] == pytest.approx(
-        8.673403327989714
+    assert result["recipe"]["revision"] == recipe.revision
+    assert result["checkpoint"]["ftw_bytes"] == recipe.prepared_bytes
+    assert result["metrics"]["decode_tokens_per_second"] == pytest.approx(
+        13.147538086548575
     )
-    assert result["metrics"]["target_only"]["warm_ttft_seconds"] == pytest.approx(
-        1.7943157120025717
+    assert result["metrics"]["warm_ttft_seconds"] == pytest.approx(
+        0.5180109490029281
     )
-    assert result["metrics"]["target_only"]["speedup_percent"] == pytest.approx(
-        17.087012508833933
+    assert result["metrics"]["kernel_improvement_percent"] == pytest.approx(
+        3.691234974661861
     )
-    assert result["metrics"]["dspark_n1"]["decode_tokens_per_second"] < result[
+    assert result["metrics"]["adaptive_n5_256_tokens_per_second"] < result[
         "metrics"
-    ]["target_only"]["decode_tokens_per_second"]
-    assert result["validation"]["target_output_hash_preserved"] is True
-    assert result["validation"]["all_runs_oom_count"] == 0
+    ]["target_only_256_tokens_per_second"]
+    assert result["validation"]["all_selected_trials_deterministic"] is True
+    assert result["validation"]["oom_count"] == 0
 
 
 def test_glm53_recipe_points_to_checked_in_fused_mhc_evidence():

@@ -15,6 +15,10 @@ from torch import nn
 
 from sparklab.core import get_global_ctx
 from sparklab.kernels.triton.dsv4.hc import hc_pre_combine
+from sparklab.kernels.triton.dsv4.skinny import (
+    dsv4_head_linear,
+    dsv4_markov_argmax,
+)
 
 from .args import DeepseekV4Args
 from .layers import Linear, RMSNorm
@@ -245,7 +249,7 @@ class DSparkDraft(nn.Module):
                 context_start=context_start,
             )
         head_hidden = self.hc_head(hidden)
-        base_logits = F.linear(self.norm(head_hidden)[0], head_weight)
+        base_logits = dsv4_head_linear(self.norm(head_hidden)[0], head_weight)
 
         previous = anchor
         drafts = []
@@ -254,12 +258,14 @@ class DSparkDraft(nn.Module):
         for row in range(n_query):
             markov = F.embedding(previous, self.markov_w1)
             markov_embeds.append(markov.squeeze(0))
-            logits = base_logits[row : row + 1] + F.linear(markov, self.markov_w2)
             if req.sampling_params.is_greedy:
-                token = torch.argmax(logits, dim=-1)
+                token = dsv4_markov_argmax(
+                    base_logits[row : row + 1], markov, self.markov_w2
+                )
             else:
                 from sparklab.runtime.engine.sample import sampling_distribution
 
+                logits = base_logits[row : row + 1] + F.linear(markov, self.markov_w2)
                 probs = sampling_distribution(logits, req.sampling_params)
                 token = torch.multinomial(probs, 1).squeeze(-1)
                 draft_probs.append(probs.squeeze(0))

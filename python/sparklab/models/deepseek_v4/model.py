@@ -27,6 +27,7 @@ from torch import nn
 
 from sparklab.core import get_global_ctx
 from sparklab.kernels.triton.dsv4.hc import hc_post_combine, hc_pre_combine
+from sparklab.kernels.triton.dsv4.skinny import dsv4_head_linear
 from sparklab.kernels.triton.dsv4.sinkhorn import hc_split_sinkhorn
 from sparklab.models.blocks import BaseLLMModel
 
@@ -208,7 +209,7 @@ class Transformer(nn.Module):
         h = self.hc_head(h)
         h = self.norm(h)
         rows = h[0] if return_all_logits else h[0, last_indices]
-        logits = F.linear(rows, self.head)
+        logits = dsv4_head_linear(rows, self.head)
         return (logits, aux) if aux_layer_ids else logits
 
     def decode(
@@ -242,7 +243,7 @@ class Transformer(nn.Module):
                 aux.append(h.mean(dim=2))
         h = self.hc_head(h)
         h = self.norm(h)
-        logits = F.linear(h[:, -1], self.head)
+        logits = dsv4_head_linear(h[:, -1], self.head)
         return (logits, aux) if aux_layer_ids else logits
 
 

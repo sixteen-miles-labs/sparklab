@@ -22,6 +22,9 @@ Assumes ``K % 128 == 0`` and ``N % 128 == 0`` (true for every DeepSeek-V4 projec
 
 from __future__ import annotations
 
+import functools
+import os
+
 import torch
 import triton
 import triton.language as tl
@@ -315,6 +318,25 @@ _DECODE_FP8_CFG = {
     (8192, 1024): (16, 2, 4),    # indexer wq_b
 }
 
+# DSpark and target verification present only 2--6 rows to these projections.  A
+# 32-row tile spends most of its work on masked lanes, so use the swept-best
+# SM121 configurations for the exact DSV4 matrix shapes.  Larger prefill batches
+# retain the established general GEMM configuration.
+_SM121_SMALL_M_FP8_CFG = {
+    (1024, 4096): (4, 4),
+    (32768, 1024): (4, 4),
+    (512, 4096): (4, 4),
+    (4096, 8192): (8, 4),
+    (2048, 4096): (8, 3),
+    (4096, 2048): (4, 2),
+    (4096, 12288): (8, 4),
+}
+
+
+@functools.cache
+def _is_sm121(device_index: int) -> bool:
+    return torch.cuda.get_device_capability(device_index) == (12, 1)
+
 
 def _decode_cfg(N: int, K: int) -> tuple[int, int, int]:
     cfg = _DECODE_FP8_CFG.get((N, K))
@@ -380,9 +402,18 @@ def block_fp8_linear(
         return out
 
     out = torch.empty((M, N), dtype=compute_dtype, device=x.device)
-    BLOCK_M = 32
+    small_m_cfg = _SM121_SMALL_M_FP8_CFG.get((N, K))
+    use_small_m = (
+        2 <= M <= 6
+        and small_m_cfg is not None
+        and _is_sm121(x.device.index or 0)
+        and os.getenv("SPARKLAB_DISABLE_DSV4_SMALL_M", "0").strip().lower()
+        not in {"1", "true", "yes", "on"}
+    )
+    BLOCK_M = 16 if use_small_m else 32
     BLOCK_N = 128
     BLOCK_K = 128
+    num_warps, num_stages = small_m_cfg if use_small_m else (4, 3)
     grid = (triton.cdiv(M, BLOCK_M), triton.cdiv(N, BLOCK_N))
     _fp8_act_gemm_kernel[grid](
         a_fp8, w, sa, sb, out,
@@ -391,7 +422,7 @@ def block_fp8_linear(
         sa.stride(0), sa.stride(1), sb.stride(0), sb.stride(1),
         out.stride(0), out.stride(1),
         BLOCK_M=BLOCK_M, BLOCK_N=BLOCK_N, BLOCK_K=BLOCK_K,
-        compute_type=_TL_DTYPE[compute_dtype], num_warps=4, num_stages=3,
+        compute_type=_TL_DTYPE[compute_dtype], num_warps=num_warps, num_stages=num_stages,
     )
     out = out.reshape(*lead, N)
     if bias is not None:

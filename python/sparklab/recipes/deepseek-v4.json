@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "recipe_version": "0.3.1",
+  "recipe_version": "0.4.0",
   "slug": "deepseek-v4",
   "name": "DeepSeek V4 Flash",
   "model": "deepseek-ai/DeepSeek-V4-Flash-0731",
@@ -38,17 +38,17 @@
     "total_bytes": 107374182400
   },
   "performance": {
-    "decode_tokens_per_second": 8.673403327989714,
-    "warm_ttft_seconds": 1.7943157120025717,
-    "evidence": "GB10-DSV4-RESIDENCY-003",
-    "note": "A zero-entry host LRU leaves GB10 unified memory available for 6,304 GPU expert slots. The fixed 256-token target-only probe improved 17.1% over the prior 4 GiB host-LRU recipe while preserving its exact greedy hash. DSpark N=1 improved to 8.27 tok/s but remains slower than target-only."
+    "decode_tokens_per_second": 13.147538086548575,
+    "warm_ttft_seconds": 0.5180109490029281,
+    "evidence": "GB10-DSV4-SMALLM-005",
+    "note": "The selected opt-in DSpark5 batch-one greedy profile measured a three-trial median 13.15 tok/s and 0.518 s warm TTFT over 128 tokens with 6,550 expert slots and a 0.45 confidence threshold. Target-only remains the default and measured 10.52 tok/s over the sustained 256-token control."
   },
-  "description": "Fused DS-FP4 Frontier recipe with GPU-first expert residency, optional native DSpark speculative decoding, and route-first sparse prefill on one NVIDIA GB10.",
-  "evidence": ["GB10-DSV4-RESIDENCY-003", "GB10-DSV4-DSPARK-002"],
+  "description": "Fused DS-FP4 Frontier recipe with GPU-first expert residency, SM121 small-row kernels, optional confidence-adaptive DSpark speculative decoding, and route-first sparse prefill on one NVIDIA GB10.",
+  "evidence": ["GB10-DSV4-SMALLM-005", "GB10-DSV4-RESIDENCY-003", "GB10-DSV4-ADAPTIVE-004", "GB10-DSV4-DSPARK-002"],
   "limitations": [
     "The 64K context and 60-minute agent gates have not passed.",
     "Capability, quality, parser, and agent gates remain incomplete.",
-    "DSpark is opt-in: N=1 measured 8.27 tok/s versus an 8.67 tok/s target-only control after the residency optimization; longer draft widths need a fresh matrix under this policy.",
+    "The selected DSpark5 profile is opt-in and tuned for batch-one greedy bursts: it reached 13.15 tok/s over 128 tokens, while target-only remained faster over the 256-token sustained probe (10.52 versus 9.31 tok/s).",
     "The zero-entry host LRU is tuned for GB10 unified memory, where host and GPU allocations compete for the same physical capacity; discrete-GPU systems may benefit from a host LRU.",
     "The 512-token sparse-prefill threshold is optimized for short interactive prompts; longer prefills retain the bounded full-layer streaming path."
   ]

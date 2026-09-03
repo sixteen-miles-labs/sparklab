@@ -1,0 +1,156 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-DSV4-SMALLM-005",
+  "status": "measured",
+  "date": "2026-09-03",
+  "recipe": {
+    "slug": "deepseek-v4",
+    "recipe_version": "0.4.0",
+    "revision": "7872f01b1d1fe23eabc4c98b48bffcef5a386062"
+  },
+  "engine": {
+    "name": "FreeToken",
+    "product_identity": "SparkLab",
+    "git_revision": "dda9be1cd89c06eddac74df43ba042320e18bb53",
+    "git_tracked_dirty": true
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "machine": "aarch64",
+    "cuda": "13.0",
+    "torch": "2.11.0+cu130",
+    "triton": "3.6.0"
+  },
+  "checkpoint": {
+    "repository": "deepseek-ai/DeepSeek-V4-Flash-0731",
+    "revision": "7872f01b1d1fe23eabc4c98b48bffcef5a386062",
+    "format": "ftw-ds-fp4",
+    "quantization": "ds-fp4",
+    "fingerprint": "aeb9734fe8747554",
+    "ftw_bytes": 168424579072,
+    "target_layers": 43,
+    "draft_layers": 3
+  },
+  "workload": {
+    "single_stream": "AIME-25 problem 0, greedy, 48 prompt tokens, 128 completion tokens",
+    "client_path": "OpenAI-compatible streaming HTTP API",
+    "warmup_requests": 1,
+    "measured_trials": 3,
+    "sustained_control_completion_tokens": 256
+  },
+  "configuration": {
+    "moe_backend": "offload",
+    "moe_storage": "disk",
+    "expert_cache_slots": 6550,
+    "host_expert_cache_gib": 0,
+    "attention_backend": "dsv4_sparse",
+    "cache_type": "swa_radix",
+    "kv_tokens": 2048,
+    "max_running_requests": 1,
+    "selected_speculative_tokens": 5,
+    "dspark_confidence_threshold": 0.45,
+    "cuda_graph": false,
+    "small_m_fp8": true,
+    "skinny_bf16_head": true,
+    "fused_markov_argmax": true
+  },
+  "metrics": {
+    "decode_tokens_per_second": 13.147538086548575,
+    "warm_ttft_seconds": 0.5180109490029281,
+    "improvement_over_5250_slot_control_percent": 57.98967712169685,
+    "improvement_over_previous_homepage_result_percent": 27.866153204684085,
+    "kernel_improvement_percent": 3.691234974661861,
+    "target_only_128_tokens_per_second": 10.731684175383169,
+    "target_only_256_tokens_per_second": 10.515454285367987,
+    "target_only_256_warm_ttft_seconds": 0.6067378919979092,
+    "dspark_n1_256_tokens_per_second": 9.66932423182299,
+    "adaptive_n5_256_tokens_per_second": 9.312696881108959,
+    "adaptive_n5_256_warm_ttft_seconds": 1.5459657100000186,
+    "selected_device_allocation_gib": 92.15625,
+    "selected_free_memory_after_init_gib": 13.37
+  },
+  "trials": {
+    "selected_tokens_per_second": [
+      13.213165706067072,
+      13.147538086548575,
+      13.107955448735508
+    ],
+    "selected_warm_ttft_seconds": [
+      0.517095994000556,
+      0.5212577430065721,
+      0.5180109490029281
+    ],
+    "residency_sweep_tokens_per_second": {
+      "5250": 8.321770337198197,
+      "6304": 11.816098342148774,
+      "6550": 12.080325772943393
+    },
+    "confidence_threshold_sweep_tokens_per_second": {
+      "0.35": 12.011964384516189,
+      "0.40": 12.653360106908407,
+      "0.45": 13.147538086548575,
+      "0.47": 12.769929451541474,
+      "0.50": 12.12502939987536
+    },
+    "kernel_ablation_tokens_per_second": {
+      "all_disabled": 12.679507665003051,
+      "markov_only": 12.737322754104817,
+      "small_m_only": 13.002361199406996,
+      "all_enabled_median": 13.147538086548575
+    }
+  },
+  "speculative": {
+    "accepted_drafts": 66,
+    "drafted_tokens": 97,
+    "acceptance_rate": 0.68,
+    "outputs": 128,
+    "target_forwards": 62,
+    "outputs_per_target_forward": 2.06,
+    "replay_calls": 10,
+    "replay_tokens": 26,
+    "fast_carry_commits": 9
+  },
+  "validation": {
+    "checkpoint_checksum_verified": true,
+    "complete_checkpoint_loaded": true,
+    "native_dspark_weights_loaded": true,
+    "selected_output_sha1": "1a3ff31fdb3c",
+    "all_selected_trials_deterministic": true,
+    "all_selected_trials_same_speculative_counters": true,
+    "target_only_256_output_sha1": "461810a57c7c",
+    "target_only_256_preserved_prior_hash": true,
+    "api_stream_completed": true,
+    "oom_count": 0,
+    "swap_growth_bytes": 0,
+    "kernel_tests_passed": 17
+  },
+  "experiments": {
+    "retained": [
+      "SM121 small-row FP8 GEMM plans for the DSV4 decode projection shapes.",
+      "SM121 BF16 skinny vocabulary projection for one to six rows.",
+      "Fused BF16 Markov projection, base-logit addition, and greedy argmax.",
+      "A 6550-slot high-residency profile with a 0.45 adaptive DSpark threshold."
+    ],
+    "rejected": [
+      "Memory ratio 0.93 auto-sized 6958 expert slots but left only 8.15 GiB free after initialization.",
+      "Thresholds 0.35, 0.40, 0.47, and 0.50 all trailed the selected 0.45 profile.",
+      "DSpark N=1 and adaptive N=5 both trailed target-only decoding over the 256-token sustained probe."
+    ]
+  },
+  "source": {
+    "selected_artifacts": "/tmp/dsv4-smallm-adaptive-n5-t045-cache6550-{1,2,3}.json",
+    "disabled_control": "/tmp/dsv4-disabled-adaptive-n5-t045-cache6550-1.json",
+    "residency_artifacts": "/tmp/dsv4-current-adaptive-n5-{baseline,cache6304,cache6550}-1.json",
+    "sustained_target": "/tmp/dsv4-smallm-target-cache6550-256-1.json",
+    "sustained_dspark": "/tmp/dsv4-smallm-adaptive-n5-t045-cache6550-256-1.json",
+    "prior_evidence": "GB10-DSV4-ADAPTIVE-004"
+  },
+  "limitations": [
+    "This is dirty-worktree optimization evidence, not a clean-revision certification result.",
+    "The selected throughput profile covers batch-one greedy 128-token generation only and requires explicit DSpark and cache-size flags.",
+    "Over 256 generated tokens, target-only decoding remained faster than both tested DSpark profiles as later routes increased expert-cache churn.",
+    "The installed sparklab-kernel-cache reports 0.1.0+cu130 while the source runtime reports 0.1.1; the version guard was explicitly bypassed for this source-tree benchmark.",
+    "The 64K context, parser, coding-agent, broad quality, and endurance gates were not rerun for this optimization evidence."
+  ]
+}
