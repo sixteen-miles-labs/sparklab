@@ -35,7 +35,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |  |
 | [Qwen3.8-27B](https://huggingface.co/Inferact/Qwen3.8-27B-NVFP4) | 27B dense | NVFP4 · FTW | `qwen3.8-27b` | Experimental | 8.83 | 0.144 |
 | [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW + MTP3 | `qwen3.8-flash-next` | Experimental | 30.67 | 0.258 |
-| [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 | `deepseek-v4` | Preview | 8.67 | 1.794 |
+| [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 · FTW + optional DSpark5 | `deepseek-v4` | Preview | 13.15 | 0.518 |
 | [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 + KDA FP8 · FTW | `glm-5.3-flash` | Experimental | 6.27 | 5.681 |
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
 | [GLM-5.3](https://huggingface.co/oakmindai/GLM-5.3-NVFP4-FTW) | 753B total / 40B active | NVFP4 + resident FP8 · FTW | `glm-5.3` | Experimental fallback | 0.81 | 2.530 |
@@ -59,7 +59,7 @@ it remains opt-in pending the full certification suite.
 | Qwen3.6-35B-A3B | Fast-certified target-only profile, including exact 32K recall and a 60-minute zero-swap run. Optimized native MTP2 reached 74.42 tok/s versus its 45.38 tok/s eager control; it remains opt-in pending full certification. | [GB10-QWEN36-FAST-002](../benchmarks/gb10/results/GB10-QWEN36-FAST-002.json), [original MTP sweep](../benchmarks/gb10/results/GB10-QWEN36-MTP-003.json), [optimized MTP](../benchmarks/gb10/results/GB10-QWEN36-MTP-004.json) |
 | Qwen3.8-27B | Passes Frontier speed, exact 64K recall, reasoning/tool parsing, and the coding-agent probe; the clean-revision 60-minute endurance gate remains outstanding. | [GB10-QWEN38-27B-001](../benchmarks/gb10/results/GB10-QWEN38-27B-001.json) |
 | Qwen3.8-Flash-Next | The selected MTP3 profile measured a three-trial median 30.67 tok/s at 0.258 s warm TTFT. The clean-revision endurance gate remains outstanding. | [GB10-QWEN38-MTP-007](../benchmarks/gb10/results/GB10-QWEN38-MTP-007.json) |
-| DeepSeek V4 Flash | GPU-first expert residency reaches 8.67 tok/s. Native DSpark remains opt-in because N=1 still trails target-only decoding with disk-backed experts on one GB10. | [GB10-DSV4-RESIDENCY-003](../benchmarks/gb10/results/GB10-DSV4-RESIDENCY-003.json) |
+| DeepSeek V4 Flash | The selected three-trial DSpark5 burst profile reaches 13.15 tok/s. Target-only remains the default and wins the 256-token sustained control, 10.52 versus 9.31 tok/s. | [GB10-DSV4-SMALLM-005](../benchmarks/gb10/results/GB10-DSV4-SMALLM-005.json) |
 | GLM-5.3 Flash | Passes Frontier speed; NVMe-sensitive TTFT and remaining certification gates keep it Experimental. | [GB10-GLM53-MHC-003](../benchmarks/gb10/results/GB10-GLM53-MHC-003.json) |
 | GLM-5.2 | Below Frontier speed and recorded swap growth, so it remains Experimental. | [Experiment](../exps/exp_glm5_2_gb10.md) |
 | GLM-5.3 | Correctness is not established; the measured output reached its length cap before answering. | [GB10-GLM53-RESEARCH-001](../benchmarks/gb10/results/GB10-GLM53-RESEARCH-001.json) |
