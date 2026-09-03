@@ -40,6 +40,21 @@ def test_hybrid_attention_routes_verification_through_multitoken_backend():
     assert decode.calls == []
 
 
+def test_hybrid_attention_keeps_speculative_replay_on_sequential_backend():
+    prefill = _RecordingBackend("prefill")
+    decode = _RecordingBackend("decode")
+    backend = HybridBackend(prefill, decode)
+    batch = _batch("prefill")
+    batch.is_speculative_replay = True
+
+    assert backend.prepare_metadata(batch) == "prefill"
+    assert backend.forward(
+        torch.empty(0), torch.empty(0), torch.empty(0), 0, batch
+    ) == "prefill"
+    assert [call[0] for call in prefill.calls] == ["prepare", "forward"]
+    assert decode.calls == []
+
+
 def test_hybrid_attention_keeps_single_token_decode_on_decode_backend():
     prefill = _RecordingBackend("prefill")
     decode = _RecordingBackend("decode")

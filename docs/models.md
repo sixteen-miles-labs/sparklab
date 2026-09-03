@@ -31,7 +31,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | Model | Parameter | Quantization | Recipe | Status | tok/s | TTFT(s) |
 |---|---|---|---|---|---:|---:|
 | **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |  |
-| [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW + optional MTP3 | `qwen3.6-35b-a3b` | Certified | 67.79 | 0.329 |
+| [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW + optional MTP2 | `qwen3.6-35b-a3b` | Certified | 67.79 | 0.329 |
 | **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |  |
 | [Qwen3.8-27B](https://huggingface.co/Inferact/Qwen3.8-27B-NVFP4) | 27B dense | NVFP4 · FTW | `qwen3.8-27b` | Experimental | 8.83 | 0.144 |
 | [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW + MTP2 | `qwen3.8-flash-next` | Experimental | 20.31 | 0.212 |
@@ -53,14 +53,15 @@ The Qwen3.8-Flash-Next row reports its selected two-draft MTP profile. It is opt
 the default profile remains available for concurrent or sampled traffic.
 
 Qwen3.6's published FTW artifact includes its native BF16 MTP weights, but the portfolio
-row continues to report the certified target-only profile. The measured three-draft path
-was 83.7% slower on GB10 and remains experimental.
+row continues to report the certified target-only profile. The optimized two-draft path
+measured 74.42 tok/s on a matched 256-token GB10 probe versus 45.38 tok/s target-only;
+it remains opt-in pending the full certification suite.
 
 ## Evidence and caveats
 
 | Model | Current result | Evidence |
 |---|---|---|
-| Qwen3.6-35B-A3B | Fast-certified target-only profile, including exact 32K recall and a 60-minute zero-swap run. Native MTP3 is available but measured 8.57 tok/s versus its 52.63 tok/s control, so it remains opt-in. | [GB10-QWEN36-FAST-002](../benchmarks/gb10/results/GB10-QWEN36-FAST-002.json), [MTP sweep](../benchmarks/gb10/results/GB10-QWEN36-MTP-003.json) |
+| Qwen3.6-35B-A3B | Fast-certified target-only profile, including exact 32K recall and a 60-minute zero-swap run. Optimized native MTP2 reached 74.42 tok/s versus its 45.38 tok/s eager control; it remains opt-in pending full certification. | [GB10-QWEN36-FAST-002](../benchmarks/gb10/results/GB10-QWEN36-FAST-002.json), [original MTP sweep](../benchmarks/gb10/results/GB10-QWEN36-MTP-003.json), [optimized MTP](../benchmarks/gb10/results/GB10-QWEN36-MTP-004.json) |
 | Qwen3.8-27B | Passes Frontier speed, exact 64K recall, reasoning/tool parsing, and the coding-agent probe; the clean-revision 60-minute endurance gate remains outstanding. | [GB10-QWEN38-27B-001](../benchmarks/gb10/results/GB10-QWEN38-27B-001.json) |
 | Qwen3.8-Flash-Next | The opt-in two-draft MTP profile measured 20.31 tok/s with exact eager-output parity; the default concurrent profile remains 16.84 single-stream tok/s. The clean-revision endurance gate remains outstanding. | [GB10-QWEN38-NVFP4-OPT-004](../benchmarks/gb10/results/GB10-QWEN38-NVFP4-OPT-004.json) |
 | DeepSeek V4 Flash | GPU-first expert residency reaches 8.67 tok/s. Native DSpark remains opt-in because N=1 still trails target-only decoding with disk-backed experts on one GB10. | [GB10-DSV4-RESIDENCY-003](../benchmarks/gb10/results/GB10-DSV4-RESIDENCY-003.json) |

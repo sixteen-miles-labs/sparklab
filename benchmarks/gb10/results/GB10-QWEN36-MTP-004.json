@@ -1,0 +1,113 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWEN36-MTP-004",
+  "status": "measured",
+  "recipe": {
+    "slug": "qwen3.6-35b-a3b",
+    "recipe_version": "0.4.0",
+    "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce"
+  },
+  "engine": {
+    "name": "FreeToken",
+    "product_identity": "SparkLab",
+    "git_revision": "08b959c302417d698a221967c1e521c23e6da445",
+    "git_tracked_dirty": true
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "machine": "aarch64",
+    "cuda": "13.0",
+    "torch": "2.11.0+cu130",
+    "triton": "3.6.0"
+  },
+  "checkpoint": {
+    "repository": "nvidia/Qwen3.6-35B-A3B-NVFP4",
+    "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce",
+    "format": "ftw-nvfp4 + native BF16 MTP shard",
+    "quantization": "nvfp4 target + bf16 MTP",
+    "fingerprint": "bda7268c3e0afd7b",
+    "ftw_bytes": 22580867072,
+    "mtp_shard_bytes": 1689288704,
+    "mtp_payload_bytes": 1689281536
+  },
+  "workload": {
+    "single_stream": "greedy AIME25 problem 0, 54 prompt tokens",
+    "client_path": "OpenAI-compatible streaming HTTP API",
+    "warmup_requests": 1,
+    "measured_trials": 1,
+    "short_sweep_completion_tokens": 64,
+    "confirmation_completion_tokens": 256,
+    "prefix_reuse": "fresh prompt per measured server process"
+  },
+  "configuration": {
+    "moe_backend": "offload",
+    "expert_storage": "ram",
+    "expert_cache": "all 40 x 256 routed experts resident",
+    "attention_backend": "triton",
+    "cache_type": "hybrid_radix",
+    "page_size": 1,
+    "kv_tokens": 4096,
+    "max_running_requests": 1,
+    "cuda_graphs": false,
+    "selected_speculative_tokens": 2
+  },
+  "metrics": {
+    "matched_fi_64_target_only_decode_tokens_per_second": 49.067,
+    "matched_fi_64_mtp1_decode_tokens_per_second": 63.45830546461273,
+    "matched_fi_64_mtp2_decode_tokens_per_second": 66.31211075806793,
+    "matched_fi_64_mtp3_decode_tokens_per_second": 53.64,
+    "matched_fi_mtp2_relative_percent": 35.146,
+    "triton_64_mtp2_decode_tokens_per_second": 68.89,
+    "triton_256_target_only_decode_tokens_per_second": 45.382597260123,
+    "triton_256_mtp2_decode_tokens_per_second": 74.42385418992012,
+    "triton_256_mtp2_relative_percent": 63.992,
+    "triton_256_target_only_warm_ttft_seconds": 0.38921682399814017,
+    "triton_256_mtp2_warm_ttft_seconds": 0.36765717799426056,
+    "triton_256_target_only_vram_gib": 20.171875,
+    "triton_256_mtp2_vram_gib": 21.75390625,
+    "triton_256_mtp2_accepted_drafts": "153/173 (88.4%)",
+    "triton_256_mtp2_outputs_per_target_forward": 2.49,
+    "triton_256_mtp2_replay_calls": 15,
+    "triton_256_mtp2_replay_tokens": 25,
+    "prior_mtp2_decode_tokens_per_second": 7.019028706134907,
+    "mtp2_speedup_over_prior": 10.603
+  },
+  "validation": {
+    "checkpoint_checksum_verified": true,
+    "complete_checkpoint_loaded": true,
+    "native_mtp_weights_loaded": true,
+    "transactional_rejection_rollback": true,
+    "short_replay_uses_verification_gdn_and_decode_moe_kernels": true,
+    "speculative_page_reclamation": true,
+    "triton_256_target_only_output_sha1": "dc94b09666a6",
+    "triton_256_mtp2_output_sha1": "ec3dcb059017",
+    "selected_width_matches_target_only": false,
+    "api_stream_completed": true,
+    "oom_count": 0,
+    "service_restarts": 0,
+    "focused_unit_tests": "41 passed"
+  },
+  "admission": {
+    "tier": "fast",
+    "performance_gate_passed": true,
+    "passed": false,
+    "reasons": [
+      "Width-two MTP reached 74.42 tok/s versus its matched 45.38 tok/s eager control on the 256-token Triton-attention probe.",
+      "The optimized path is 10.60x faster than the prior 7.02 tok/s width-two implementation because verification and rejection replay no longer use padded prompt MoE and chunk-GDN kernels.",
+      "This dirty-worktree performance result does not replace the clean-revision capability, context, quality, and endurance certification of the target-only recipe."
+    ]
+  },
+  "source": {
+    "target_only_artifact": "/tmp/qwen36-target-triton-attn-256.jsonl",
+    "mtp2_artifact": "/tmp/qwen36-mtp2-triton-attn-256.jsonl",
+    "short_sweep_artifacts": "/tmp/qwen36-mtp{0,1,2,3}-optimized.jsonl",
+    "prior_evidence": "GB10-QWEN36-MTP-003"
+  },
+  "limitations": [
+    "This is dirty-worktree optimization evidence, not a clean-revision certification result.",
+    "Each configuration has one measured trial and covers batch-one greedy generation only.",
+    "The multi-token verification path selected a different close greedy continuation than single-token eager decoding; sampled distribution and broader quality gates were not evaluated.",
+    "The existing 32K context, capability, coding-agent, and endurance gates were not rerun for this optional path."
+  ]
+}

@@ -138,6 +138,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
         "GB10-QWEN36-FAST-001",
         "GB10-QWEN36-FAST-002",
         "GB10-QWEN36-MTP-003",
+        "GB10-QWEN36-MTP-004",
     )
     assert qwen36.runtime_artifact is not None
     assert qwen36.runtime_artifact.repo_id == "oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW"

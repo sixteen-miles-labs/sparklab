@@ -42,22 +42,24 @@ def gdn_prefill_chunk_fla(
 
 
 def gdn_decode_fla(
-    q: torch.Tensor,        # [1, B, num_k_heads, head_k_dim] bf16 (NOT GQA-expanded)
-    k: torch.Tensor,        # [1, B, num_k_heads, head_k_dim] bf16
-    v: torch.Tensor,        # [1, B, num_v_heads, head_v_dim] bf16
-    a: torch.Tensor,        # [B, num_v_heads] raw
-    b: torch.Tensor,        # [B, num_v_heads] raw
+    q: torch.Tensor,        # [1, total, num_k_heads, head_k_dim] bf16 (NOT GQA-expanded)
+    k: torch.Tensor,        # [1, total, num_k_heads, head_k_dim] bf16
+    v: torch.Tensor,        # [1, total, num_v_heads, head_v_dim] bf16
+    a: torch.Tensor,        # [total, num_v_heads] raw
+    b: torch.Tensor,        # [total, num_v_heads] raw
     *,
     A_log: torch.Tensor,        # [num_v_heads]
     dt_bias: torch.Tensor,      # [num_v_heads]
     state_source: torch.Tensor,  # [num_slots, num_v_heads, head_k_dim, head_v_dim] fp32 (in place)
-    indices: torch.Tensor,      # [B] int32 slot id per request
-    cu_seqlens: torch.Tensor,   # [B+1] query indptr (arange) from FLAMetadata
+    indices: torch.Tensor,      # [num_seqs] int32 slot id per request
+    cu_seqlens: torch.Tensor,   # [num_seqs+1] query indptr from FLAMetadata
     scale: float,
 ) -> torch.Tensor:
     """Fused sigmoid-gating gated-delta-rule decode (vendored fla triton kernel): gating +
     in-kernel l2norm + recurrent update + state read/write-by-index in one kernel, with no
-    external gating or gather/scatter/clone glue. Returns [B, num_v, V]."""
+    external gating or gather/scatter/clone glue. Supports one token per
+    sequence for ordinary decode and a short multi-token sequence for target
+    verification. Returns [total, num_v, V]."""
     from sparklab.kernels.fla import fused_sigmoid_gating_delta_rule_update
 
     o = fused_sigmoid_gating_delta_rule_update(
@@ -68,8 +70,8 @@ def gdn_decode_fla(
         initial_state_indices=indices,  # already int32 (built int32 in the scheduler)
         scale=scale, use_qk_l2norm_in_kernel=True, cu_seqlens=cu_seqlens,
     )
-    # kernel returns o = [NK, *v.shape] then squeeze(NK) -> [1, B, num_v, V].
-    # o[0] -> [B, num_v, V] (all B decode tokens; o[0,0] would drop B>1).
+    # kernel returns o = [NK, *v.shape] then squeeze(NK) ->
+    # [1, total, num_v, V]. o[0] retains every packed token.
     return o[0]
 
 
