@@ -1,0 +1,132 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWEN38-CONC-009",
+  "status": "measured",
+  "date": "2026-09-04",
+  "recipe": {
+    "slug": "qwen3.8-flash-next",
+    "recipe_version": "0.8.0",
+    "revision": "103a7608316173ca6edd49929544244de7ffda70"
+  },
+  "engine": {
+    "name": "SparkLab",
+    "git_revision": "eda9d00b0c9591ad45bc2dcac3b14ae9f8d2ae9d",
+    "git_tracked_dirty": true
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "machine": "aarch64",
+    "cuda": "13.0",
+    "torch": "2.11.0+cu130",
+    "triton": "3.6.0"
+  },
+  "checkpoint": {
+    "repository": "Inferact/Qwen3.8-Flash-Next-NVFP4",
+    "revision": "103a7608316173ca6edd49929544244de7ffda70",
+    "full_model": true,
+    "format": "ftw-nvfp4",
+    "quantization": "nvfp4",
+    "fingerprint": "47e11ddb878adf4c",
+    "bytes": 180433108992
+  },
+  "workload": {
+    "prompt": "fixed 44-token maritime-navigation prose prompt with a per-request and per-trial nonce",
+    "completion_tokens_per_request": 128,
+    "client_path": "OpenAI-compatible streaming HTTP API",
+    "sampling": "greedy, thinking disabled, EOS ignored",
+    "trials_per_concurrency": 3,
+    "concurrency_levels": [1, 4, 8]
+  },
+  "configuration": {
+    "common": {
+      "moe_backend": "offload",
+      "expert_preload": "immutable-full",
+      "expert_cache_slots": 24576,
+      "attention_backend": "qsa",
+      "cache_type": "hybrid_radix",
+      "page_size": 16,
+      "kv_tokens": 131072
+    },
+    "baseline": {
+      "max_running_requests": 4,
+      "cuda_graph_batch_sizes": [1, 2, 4],
+      "linear_state_slots": 24,
+      "free_memory_after_graph_capture_gib": 24.57
+    },
+    "optimized": {
+      "max_running_requests": 8,
+      "cuda_graph_batch_sizes": [1, 2, 4, 8],
+      "linear_state_slots": 48,
+      "free_memory_after_graph_capture_gib": 21.75
+    }
+  },
+  "metrics": {
+    "baseline": {
+      "concurrency_one_aggregate_tokens_per_second": 19.233753577633188,
+      "concurrency_four_aggregate_tokens_per_second": 53.428753870982426,
+      "concurrency_eight_aggregate_tokens_per_second": 55.640762201405856,
+      "concurrency_eight_ttft_p95_seconds": 9.708980472349504,
+      "concurrency_eight_e2e_p95_seconds": 18.40282532905112,
+      "concurrency_eight_trials_tokens_per_second": [
+        55.640762201405856,
+        57.21858436510247,
+        54.66624516233629
+      ]
+    },
+    "optimized": {
+      "concurrency_one_aggregate_tokens_per_second": 18.57759429274781,
+      "concurrency_four_aggregate_tokens_per_second": 52.25596304208576,
+      "concurrency_eight_aggregate_tokens_per_second": 85.72303350100191,
+      "concurrency_eight_ttft_p95_seconds": 0.8668274605966871,
+      "concurrency_eight_e2e_p95_seconds": 11.944946660885762,
+      "concurrency_eight_trials_tokens_per_second": [
+        83.12257548842331,
+        85.72303350100191,
+        86.25543461482663
+      ]
+    },
+    "batch_eight_eager_control": {
+      "concurrency_eight_aggregate_tokens_per_second": 80.20777960035947,
+      "concurrency_eight_ttft_p95_seconds": 0.8528703100368148,
+      "concurrency_eight_e2e_p95_seconds": 12.766305630639545,
+      "concurrency_eight_trials_tokens_per_second": [
+        79.59406328777172,
+        81.09517403029152,
+        80.20777960035947
+      ]
+    },
+    "change_percent": {
+      "concurrency_one_aggregate_throughput": -3.4115,
+      "concurrency_four_aggregate_throughput": -2.1951,
+      "concurrency_eight_aggregate_throughput": 54.0652,
+      "concurrency_eight_ttft_p95": -91.0719,
+      "concurrency_eight_e2e_p95": -35.0918,
+      "batch_eight_graph_over_eager_throughput": 6.8762
+    }
+  },
+  "validation": {
+    "complete_checkpoint_loaded": true,
+    "all_measured_requests_completed_128_tokens": true,
+    "concurrency_eight_256_token_trace_hashes_equal": true,
+    "longer_math_probe_answer": 70,
+    "longer_math_probe_exact_trace_parity": false,
+    "oom_count": 0,
+    "service_restarts": 0
+  },
+  "source": {
+    "summary": "benchmarks/gb10/results/GB10-QWEN38-CONC-009.json",
+    "baseline_raw_artifact": "$HOME/results/sparklab-qwen38-batch8-20260904/baseline-b4-g4.json",
+    "optimized_raw_artifact": "$HOME/results/sparklab-qwen38-batch8-20260904/optimized-b8-g8.json",
+    "eager_control_raw_artifact": "$HOME/results/sparklab-qwen38-batch8-20260904/control-b8-g4.json",
+    "benchmark": "benchmarks/bench_openai_concurrency.py"
+  },
+  "limitations": [
+    "This is dirty-worktree optimization evidence, not a clean-revision certification result.",
+    "The source-tree benchmark explicitly disabled the kernel-cache version check because the installed 0.1.0+cu130 cache package predates SparkLab 0.1.2.",
+    "The external vLLM FP8-KV scale hoist is not applicable to SparkLab's BF16 QSA K/V cache; only the wider admission and graph-capture profile was ported.",
+    "The optimization improves burst concurrency; matched C1 and C4 medians regressed by 3.4% and 2.2%, within the observed run-to-run range.",
+    "The end-to-end sweep covers one short-prompt, fixed-length prose workload and does not replace broad quality, sparse-context, or endurance validation.",
+    "The longer concurrency-eight math probe reached the correct answer, but exact traces were not identical across all requests after the shared correct derivation."
+  ]
+}

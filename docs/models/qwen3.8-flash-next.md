@@ -48,21 +48,23 @@ Startup includes a one-time full-expert preload (about 35 seconds in the measure
 Steady-state decode then performs no routed-expert disk staging or LRU bookkeeping. On
 GB10, SparkLab first advises Linux to release clean download page cache so a freshly
 pulled artifact does not hide reclaimable unified memory from the cache planner.
-QSA decode replays CUDA graphs at batch sizes 1, 2, and 4 while every request remains
-inside the exact dense budget (up to 2,051 visible tokens). SparkLab pads a three-request
-batch to the batch-four graph and automatically returns to eager sparse QSA for longer
-contexts; no command-line switch is required. The recipe admits up to four concurrent
-requests. On the measured GB10, aggregate decode throughput was 16.94, 36.78, and 61.79
-tok/s at concurrency 1, 2, and 4 respectively.
+QSA decode replays CUDA graphs at batch sizes 1, 2, 4, and 8 while every request remains
+inside the exact dense budget (up to 2,051 visible tokens). SparkLab pads intermediate
+batches to the next captured size and automatically returns to eager sparse QSA for
+longer contexts; no command-line switch is required. The recipe admits up to eight
+concurrent requests.
 
-For a separate vLLM deployment of the Mia-AiLab NVFP4 checkpoint, a QSA scale-hoist
-and scheduler optimization measured 90.52 aggregate tok/s at concurrency eight, with
-1.699 s p95 TTFT. Its matched baseline measured 60.16 tok/s and 13.874 s p95 TTFT.
-Because the engine, checkpoint packaging, scheduler, and concurrent workload differ,
-this is a portfolio reference rather than a replacement for SparkLab's 30.67 tok/s
-single-stream MTP3 result. See
-[`GB10-QWEN38-VLLM-008`](../../benchmarks/gb10/results/GB10-QWEN38-VLLM-008.json)
-and the [upstream implementation PR](https://github.com/MiaAI-Lab/Qwen3.8-Flash-Next-Single-DGX-Spark/pull/2).
+In a matched three-trial, 128-token HTTP benchmark, raising admission and graph capture
+from batch four to eight increased concurrency-eight aggregate throughput from 55.64 to
+85.72 tok/s (+54.1%). It reduced p95 TTFT from 9.709 to 0.867 seconds (-91.1%) and p95
+end-to-end latency from 18.403 to 11.945 seconds (-35.1%). Batch-eight eager serving
+reached 80.21 tok/s, so the batch-eight graph contributed a further 6.9% throughput.
+The C1 and C4 medians changed by -3.4% and -2.2%; this is a burst-concurrency
+optimization, not a single-stream speedup. See
+[`GB10-QWEN38-CONC-009`](../../benchmarks/gb10/results/GB10-QWEN38-CONC-009.json).
+The vLLM FP8-KV scale hoist does not transfer to this path: SparkLab's QSA K/V
+cache is BF16 and has no per-tensor K/V scales. The portable optimization is the
+wider request-admission and CUDA-graph profile.
 
 The default hybrid radix cache also snapshots the complete recurrent state: GDN state,
 PLE convolution history, paged QSA K/V, and pooled index keys. In a controlled repeated

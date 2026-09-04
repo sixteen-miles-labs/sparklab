@@ -62,6 +62,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert qwen.status == "experimental"
     assert qwen.evidence == (
         "GB10-QWEN38-MTP-007",
+        "GB10-QWEN38-CONC-009",
         "GB10-QWEN38-NVFP4-OPT-004",
         "GB10-QWEN38-NVFP4-OPT-003",
         "GB10-QWEN38-NVFP4-OPT-002",
@@ -84,6 +85,8 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert qwen.deployment.backend_options["moe_host_cache_gb"] == 0
     assert qwen.deployment.backend_options["moe_preload_all"] is True
     assert qwen.deployment.backend_options["num_tokens"] == 131_072
+    assert qwen.deployment.backend_options["max_running_req"] == 8
+    assert qwen.deployment.backend_options["cuda_graph_max_bs"] == 8
     assert "moe_prefill_sparse_max_tokens" not in qwen.deployment.backend_options
     assert "moe_prefill_hit_d2d" not in qwen.deployment.backend_options
     assert qwen.runtime_memory == {"total_bytes": 107374182400}
