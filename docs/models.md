@@ -36,7 +36,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | [Qwen3.8-27B](https://huggingface.co/Inferact/Qwen3.8-27B-NVFP4) | 27B dense | NVFP4 · FTW | `qwen3.8-27b` | Experimental | 8.83 | 0.144 |
 | [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW + MTP3 | `qwen3.8-flash-next` | Experimental | 30.67 | 0.258 |
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 · FTW + optional DSpark5 | `deepseek-v4` | Preview | 13.15 | 0.518 |
-| [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 + KDA FP8 · FTW | `glm-5.3-flash` | Experimental | 6.27 | 5.681 |
+| [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 + KDA FP8 · FTW + optional MTP3 | `glm-5.3-flash` | Experimental | 6.27 target / 7.44 MTP3 | 5.681 target / 6.330 MTP3 |
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
 | [GLM-5.3](https://huggingface.co/oakmindai/GLM-5.3-NVFP4-FTW) | 753B total / 40B active | NVFP4 + resident FP8 · FTW | `glm-5.3` | Experimental fallback | 0.81 | 2.530 |
 | [Kimi K3](https://huggingface.co/oakmindai/Kimi-K3-NVFP4-FTW) | 2.8T total / 16 of 896 experts | ModelOpt NVFP4/FP8 · FTW | `kimi-k3` | Experimental | 0.16 | 395.405 |
@@ -52,6 +52,11 @@ row continues to report the certified target-only profile. The optimized two-dra
 measured 74.42 tok/s on a matched 256-token GB10 probe versus 45.38 tok/s target-only;
 it remains opt-in pending the full certification suite.
 
+GLM-5.3 Flash similarly keeps its 6.27 tok/s, 5.681 s target-only result visible while
+also reporting the opt-in MTP3 probe. The optimized MTP3 path averaged 7.436 tok/s and
+6.330 s warm TTFT across two trials, with 87.9% draft acceptance and exact target-only
+output parity. It remains optimization evidence rather than certification.
+
 ## Evidence and caveats
 
 | Model | Current result | Evidence |
@@ -60,7 +65,7 @@ it remains opt-in pending the full certification suite.
 | Qwen3.8-27B | Passes Frontier speed, exact 64K recall, reasoning/tool parsing, and the coding-agent probe; the clean-revision 60-minute endurance gate remains outstanding. | [GB10-QWEN38-27B-001](../benchmarks/gb10/results/GB10-QWEN38-27B-001.json) |
 | Qwen3.8-Flash-Next | The selected MTP3 profile measured a three-trial median 30.67 tok/s at 0.258 s warm TTFT. The clean-revision endurance gate remains outstanding. | [GB10-QWEN38-MTP-007](../benchmarks/gb10/results/GB10-QWEN38-MTP-007.json) |
 | DeepSeek V4 Flash | The selected three-trial DSpark5 burst profile reaches 13.15 tok/s. Target-only remains the default and wins the 256-token sustained control, 10.52 versus 9.31 tok/s. | [GB10-DSV4-SMALLM-005](../benchmarks/gb10/results/GB10-DSV4-SMALLM-005.json) |
-| GLM-5.3 Flash | Passes Frontier speed; NVMe-sensitive TTFT and remaining certification gates keep it Experimental. | [GB10-GLM53-MHC-003](../benchmarks/gb10/results/GB10-GLM53-MHC-003.json) |
+| GLM-5.3 Flash | Target-only reaches 6.27 tok/s. The opt-in optimized MTP3 path averaged 7.436 tok/s with 87.9% acceptance and exact target-only output parity; NVMe sensitivity and the remaining certification gates keep it Experimental. | [target-only](../benchmarks/gb10/results/GB10-GLM53-MHC-003.json), [MTP sweep](../benchmarks/gb10/results/GB10-GLM53-MTP-004.json), [optimized MTP3](../benchmarks/gb10/results/GB10-GLM53-OPT-005.json) |
 | GLM-5.2 | Below Frontier speed and recorded swap growth, so it remains Experimental. | [Experiment](../exps/exp_glm5_2_gb10.md) |
 | GLM-5.3 | Correctness is not established; the measured output reached its length cap before answering. | [GB10-GLM53-RESEARCH-001](../benchmarks/gb10/results/GB10-GLM53-RESEARCH-001.json) |
 | Kimi K3 | Complete-checkpoint serving was measured, but correctness and cross-run determinism are not established. | [GB10-KIMI-001](../benchmarks/gb10/results/GB10-KIMI-001.json) |
