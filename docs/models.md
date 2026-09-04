@@ -34,7 +34,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW + optional MTP2 | `qwen3.6-35b-a3b` | Certified | 67.79 | 0.329 |
 | [Qwen3.8-27B](https://huggingface.co/Inferact/Qwen3.8-27B-NVFP4) | 27B dense | NVFP4 · FTW + optional DFlash2-8 | `qwen3.8-27b` | Experimental | 8.83 target<br>35.48 DFlash2-8 | 0.144 target<br>0.153 DFlash2-8 |
 | **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |  |
-| [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW + MTP3 | `qwen3.8-flash-next` | Experimental | 30.67 single<br>85.72 C8 | 0.258 warm<br>0.867 p95 C8 |
+| [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW + MTP3 | `qwen3.8-flash-next` | Experimental | 30.67 | 0.258 |
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 · FTW + optional DSpark5 | `deepseek-v4` | Preview | 13.15 | 0.518 |
 | [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 + KDA FP8 · FTW + optional MTP3 | `glm-5.3-flash` | Experimental | 6.27 target<br>7.44 MTP3 | 5.681 target<br>6.330 MTP3 |
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
@@ -45,7 +45,8 @@ Model links point to the selected source or published FTW checkpoint. Qwen3.6, G
 and Kimi K3 use pinned prebuilt artifacts with reproducible source-conversion paths.
 Parameter counts come from model publishers, and performance values come from the
 evidence attached to each recipe. Certification applies only to that exact checkpoint
-and recipe version.
+and recipe version. Portfolio performance and warm-TTFT columns use the selected
+single-stream profile; concurrent-serving results remain in model-specific evidence.
 
 Qwen3.6's published FTW artifact includes its native BF16 MTP weights, but the portfolio
 row continues to report the certified target-only profile. The optimized two-draft path
