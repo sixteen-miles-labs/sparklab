@@ -34,7 +34,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW + optional MTP2 | `qwen3.6-35b-a3b` | Certified | 67.79 | 0.329 |
 | [Qwen3.8-27B](https://huggingface.co/Inferact/Qwen3.8-27B-NVFP4) | 27B dense | NVFP4 · FTW + optional DFlash2-8 | `qwen3.8-27b` | Experimental | 8.83 target<br>35.48 DFlash2-8 | 0.144 target<br>0.153 DFlash2-8 |
 | **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |  |
-| [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW + MTP3 | `qwen3.8-flash-next` | Experimental | 30.67 | 0.258 |
+| [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW + MTP3 | `qwen3.8-flash-next` | Experimental | 30.67 single<br>90.52 C8 vLLM | 0.258 warm<br>1.699 p95 C8 |
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 · FTW + optional DSpark5 | `deepseek-v4` | Preview | 13.15 | 0.518 |
 | [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 + KDA FP8 · FTW + optional MTP3 | `glm-5.3-flash` | Experimental | 6.27 target<br>7.44 MTP3 | 5.681 target<br>6.330 MTP3 |
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
@@ -44,8 +44,13 @@ coding-agent task, and versioned benchmark evidence. Status means:
 Model links point to the selected source or published FTW checkpoint. Qwen3.6, GLM-5.3,
 and Kimi K3 use pinned prebuilt artifacts with reproducible source-conversion paths.
 Parameter counts come from model publishers, and performance values come from the
-evidence attached to each recipe. Certification applies only to that exact checkpoint
-and recipe version.
+evidence attached to each recipe unless the profile is explicitly labeled as an external
+reference. Certification applies only to that exact checkpoint and recipe version.
+
+Qwen3.8-Flash-Next keeps its 30.67 tok/s SparkLab single-stream MTP3 result as the
+comparable recipe metric. A separately measured vLLM profile reached 90.52 aggregate
+tok/s at concurrency eight and 1.699 s p95 TTFT; the engine, checkpoint packaging,
+scheduler, and workload differ, so that number is labeled rather than substituted.
 
 Qwen3.6's published FTW artifact includes its native BF16 MTP weights, but the portfolio
 row continues to report the certified target-only profile. The optimized two-draft path
@@ -63,7 +68,7 @@ output parity. It remains optimization evidence rather than certification.
 |---|---|---|
 | Qwen3.6-35B-A3B | Fast-certified target-only profile, including exact 32K recall and a 60-minute zero-swap run. Optimized native MTP2 reached 74.42 tok/s versus its 45.38 tok/s eager control; it remains opt-in pending full certification. | [GB10-QWEN36-FAST-002](../benchmarks/gb10/results/GB10-QWEN36-FAST-002.json), [original MTP sweep](../benchmarks/gb10/results/GB10-QWEN36-MTP-003.json), [optimized MTP](../benchmarks/gb10/results/GB10-QWEN36-MTP-004.json) |
 | Qwen3.8-27B | The opt-in DFlash2-8 profile reached 35.48 tok/s with exact target-output parity and clears the Fast performance thresholds; full Fast certification remains pending. | [target-only](../benchmarks/gb10/results/GB10-QWEN38-27B-001.json), [DFlash2](../benchmarks/gb10/results/GB10-QWEN38-DFLASH-003.json) |
-| Qwen3.8-Flash-Next | The selected MTP3 profile measured a three-trial median 30.67 tok/s at 0.258 s warm TTFT. The clean-revision endurance gate remains outstanding. | [GB10-QWEN38-MTP-007](../benchmarks/gb10/results/GB10-QWEN38-MTP-007.json) |
+| Qwen3.8-Flash-Next | The selected SparkLab MTP3 profile measured a three-trial median 30.67 tok/s at 0.258 s warm TTFT. The optimized external vLLM QSA profile measured 90.52 aggregate tok/s and 1.699 s p95 TTFT at concurrency eight, up 50.5% and down 87.8% respectively versus its matched baseline. | [SparkLab MTP3](../benchmarks/gb10/results/GB10-QWEN38-MTP-007.json), [vLLM QSA C8](../benchmarks/gb10/results/GB10-QWEN38-VLLM-008.json) |
 | DeepSeek V4 Flash | The selected three-trial DSpark5 burst profile reaches 13.15 tok/s. Target-only remains the default and wins the 256-token sustained control, 10.52 versus 9.31 tok/s. | [GB10-DSV4-SMALLM-005](../benchmarks/gb10/results/GB10-DSV4-SMALLM-005.json) |
 | GLM-5.3 Flash | Target-only reaches 6.27 tok/s. The opt-in optimized MTP3 path averaged 7.436 tok/s with 87.9% acceptance and exact target-only output parity; NVMe sensitivity and the remaining certification gates keep it Experimental. | [target-only](../benchmarks/gb10/results/GB10-GLM53-MHC-003.json), [MTP sweep](../benchmarks/gb10/results/GB10-GLM53-MTP-004.json), [optimized MTP3](../benchmarks/gb10/results/GB10-GLM53-OPT-005.json) |
 | GLM-5.2 | Below Frontier speed and recorded swap growth, so it remains Experimental. | [Experiment](../exps/exp_glm5_2_gb10.md) |
