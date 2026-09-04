@@ -281,10 +281,15 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
     model_config = config.model_config
     requested = str(getattr(config, "speculative_method", "auto") or "auto")
     qwen4_mtp = getattr(model_config, "qwen4_exp_args", None) is not None
-    qwen35_mtp = int(
-        getattr(model_config, "mtp_num_hidden_layers", 0) or 0
-    ) > 0
+    qwen35_mtp = bool(
+        getattr(model_config, "glm5_next_args", None) is None
+        and int(getattr(model_config, "mtp_num_hidden_layers", 0) or 0) > 0
+    )
     qwen_mtp = qwen4_mtp or qwen35_mtp
+    glm5_mtp = bool(
+        getattr(model_config, "glm5_next_args", None) is not None
+        and int(getattr(model_config, "mtp_num_hidden_layers", 0) or 0) > 0
+    )
     dsv4_args = getattr(model_config, "dsv4_args", None)
     dsv4_dspark = bool(
         dsv4_args is not None
@@ -293,7 +298,7 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
         and int(getattr(dsv4_args, "dspark_markov_rank", 0) or 0) > 0
     )
     if requested == "auto":
-        method = "dspark" if dsv4_dspark else "mtp" if qwen_mtp else "none"
+        method = "dspark" if dsv4_dspark else "mtp" if (qwen_mtp or glm5_mtp) else "none"
     else:
         method = requested
     if method == "none":
@@ -369,14 +374,16 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
         override("cuda_graph_max_bs", 0)
         return
 
-    if method != "mtp" or not qwen_mtp:
+    if method != "mtp" or not (qwen_mtp or glm5_mtp):
         raise ValueError(
-            "--speculative-method mtp requires a supported Qwen checkpoint-native MTP head"
+            "--speculative-method mtp requires a supported checkpoint-native MTP head"
         )
-    if speculative_tokens > 3:
-        raise ValueError("Qwen MTP supports at most 3 speculative tokens")
+    max_tokens = 4 if glm5_mtp else 3
+    if speculative_tokens > max_tokens:
+        family = "GLM-5.3 Flash" if glm5_mtp else "Qwen"
+        raise ValueError(f"{family} MTP supports at most {max_tokens} speculative tokens")
     if getattr(config, "draft_sample_method", "greedy") != "greedy":
-        raise ValueError("Qwen4 MTP currently supports greedy draft sampling only")
+        raise ValueError("MTP currently supports greedy draft sampling only")
     # The draft layer owns an independent QSA KV/index slot at the first layer
     # id beyond the target tower. Inject it without changing num_layers, which
     # still constructs exactly the target blocks. Do this before hybrid-cache
@@ -385,15 +392,23 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
 
     mtp_layer_id = model_config.num_layers
     args = model_config.qwen4_exp_args
+    glm_args = model_config.glm5_next_args
+    if glm_args is not None and mtp_layer_id not in glm_args.dsa_layer_ids:
+        glm_args = replace(
+            glm_args, dsa_layer_ids=(*glm_args.dsa_layer_ids, mtp_layer_id)
+        )
     if args is not None and mtp_layer_id not in args.qsa_layer_ids:
         args = replace(args, qsa_layer_ids=(*args.qsa_layer_ids, mtp_layer_id))
     groups = []
     for group in model_config.attention_groups:
-        if isinstance(group, FullAttentionGroupConfig) and mtp_layer_id not in group.layer_ids:
+        if (
+            isinstance(group, FullAttentionGroupConfig)
+            and mtp_layer_id not in group.layer_ids
+        ):
             changes = {"layer_ids": (*group.layer_ids, mtp_layer_id)}
             # Qwen4's draft is QSA and owns an index slot. Qwen3.5/3.6 uses
             # ordinary full attention, so only its KV layer is added.
-            if args is not None:
+            if args is not None or glm_args is not None:
                 changes["num_index_layers"] = group.num_index_layers + 1
             group = replace(group, **changes)
         groups.append(group)
@@ -403,6 +418,8 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
             config.cuda_graph_bs == [] or config.cuda_graph_max_bs == 0
         )
         object.__setattr__(model_config, "mtp_cuda_graph", graph_enabled)
+    if glm_args is not None:
+        object.__setattr__(model_config, "glm5_next_args", glm_args)
     object.__setattr__(model_config, "attention_groups", tuple(groups))
     object.__setattr__(model_config, "speculative_method", "mtp")
     object.__setattr__(model_config, "speculative_tokens", speculative_tokens)
@@ -411,7 +428,10 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
     # fixed-width target verification forward; Qwen3.5/3.6 keep their established
     # eager path until their attention backends gain multi-row capture metadata.
     override("max_running_req", 1)
-    override("cache_type", "radix")
+    # GLM-5.3 intentionally keeps naive prefix caching because its KDA chunk
+    # snapshots are not implemented. Its verifier uses one dedicated rollback
+    # slot instead of enabling cross-request recurrent-state reuse.
+    override("cache_type", "naive" if glm5_mtp else "radix")
     # The verification runner owns a multi-row graph whose dimensions are not
     # request batch sizes. Keep it separate from the ordinary decode runner.
     override("cuda_graph_bs", [])
@@ -568,7 +588,11 @@ class Engine:
                 config.model_path, dummy=config.use_dummy_weight
             )
         self.model.load_state_dict(self._load_weight_state_dict(config))
-        if hasattr(self.model, "speculative_state_dict"):
+        if hasattr(self.model, "load_speculative_weights"):
+            self.model.load_speculative_weights(
+                config.model_path, self.device, dummy=config.use_dummy_weight
+            )
+        elif hasattr(self.model, "speculative_state_dict"):
             speculative = self.model.speculative_state_dict()
             if speculative:
                 self.model.load_speculative_state_dict(
@@ -1291,11 +1315,17 @@ class Engine:
                 if pool is None:
                     raise RuntimeError("MTP verification requires a recurrent-state pool")
                 for req in batch.reqs:
-                    if req.linear_slot_idx is None or req.mamba_ping_pong is None:
-                        raise RuntimeError("MTP verification requires hybrid-radix state slots")
-                    scratch = req.mamba_ping_pong[req.mamba_next_track_idx]
-                    pool.copy_from(req.linear_slot_idx, scratch)
-                    state_snapshots.append((req.linear_slot_idx, scratch))
+                    if req.linear_slot_idx is not None and req.mamba_ping_pong is not None:
+                        live = req.linear_slot_idx
+                        scratch = req.mamba_ping_pong[req.mamba_next_track_idx]
+                    else:
+                        # Naive hybrid-attention models key live state directly by
+                        # table_idx. _linear_pool_num_slots reserves the last row
+                        # exclusively for speculative rollback.
+                        live = req.table_idx
+                        scratch = pool.num_slots - 1
+                    pool.copy_from(live, scratch)
+                    state_snapshots.append((live, scratch))
         with self.ctx.forward_batch(batch):
             if (
                 batch.is_verify
@@ -1436,8 +1466,13 @@ class Engine:
         if self.linear_state_pool is not None:
             from sparklab.attention.linear import build_fla_metadata
 
+            live_slot = (
+                original.linear_slot_idx
+                if original.linear_slot_idx is not None
+                else original.table_idx
+            )
             replay.linear_table_idx = torch.tensor(
-                [original.linear_slot_idx], dtype=torch.int32, device=self.device
+                [live_slot], dtype=torch.int32, device=self.device
             )
             replay.fla_metadata = build_fla_metadata(replay, self.device)
         self.attn_backend.prepare_metadata(replay)

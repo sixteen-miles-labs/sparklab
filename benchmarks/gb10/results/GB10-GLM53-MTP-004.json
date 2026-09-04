@@ -1,0 +1,163 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-GLM53-MTP-004",
+  "status": "measured",
+  "date": "2026-09-03",
+  "recipe": {
+    "slug": "glm-5.3-flash",
+    "recipe_version": "0.3.2",
+    "revision": "9eaeadaf026871a90640e32c0604f6ab0b2d641d"
+  },
+  "engine": {
+    "name": "FreeToken",
+    "product_identity": "SparkLab",
+    "git_revision": "e66fd0ede48b9b99fd1533370db8874e5d4ec2b6",
+    "git_tracked_dirty": true
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "machine": "aarch64",
+    "os": "Linux 6.17.0-1014-nvidia",
+    "driver": "580.126.09",
+    "cuda": "13.0",
+    "torch": "2.11.0+cu130",
+    "triton": "3.6.0"
+  },
+  "checkpoint": {
+    "target_repository": "oakmindai/GLM-5.3-Flash-NVFP4-FTW",
+    "target_revision": "f296cec0baceb2276121efe76f14d61b62c1e47d",
+    "target_source_repository": "RedHatAI/GLM-5.3-Flash-NVFP4",
+    "target_source_revision": "9eaeadaf026871a90640e32c0604f6ab0b2d641d",
+    "mtp_repository": "RedHatAI/GLM-5.3-Flash-NVFP4",
+    "mtp_revision": "36c184c6cda000a481711306df5adde42f63321a",
+    "format": "ftw-nvfp4-kda-fp8 + native block-FP8 MTP sidecar",
+    "fingerprint": "4c021651a1e61802",
+    "target_bytes": 184716947456,
+    "mtp_sidecar_bytes": 7618560424
+  },
+  "workload": {
+    "name": "AIME-25 problem 0 fixed decode probe",
+    "batch_size": 1,
+    "sampling": "greedy",
+    "prompt_tokens": 54,
+    "requested_completion_tokens": 256,
+    "returned_completion_tokens": 256,
+    "warmup_requests": 1,
+    "measured_width_sweep_trials": 1,
+    "selected_profile_confirmation_trials": 1,
+    "client_path": "OpenAI-compatible streaming HTTP API"
+  },
+  "configuration": {
+    "moe_backend": "offload",
+    "expert_storage": "disk",
+    "expert_cache_slots": 6149,
+    "host_cache_gib": 0.0,
+    "memory_ratio": 0.96,
+    "disk_read_workers": 16,
+    "nvfp4_backend": "triton",
+    "attention_backend": "dsa",
+    "cuda_graph": false,
+    "kv_tokens": 8691,
+    "page_size": 1,
+    "cache_type": "naive",
+    "sparse_prefill_max_tokens": 512,
+    "prefill_overlap": false,
+    "prefill_hit_d2d": true,
+    "selected_speculative_tokens": 3,
+    "draft_sample_method": "greedy",
+    "max_running_requests": 1,
+    "cache_selection": "fixed identically for target-only and every MTP width"
+  },
+  "metrics": {
+    "decode_tokens_per_second": 7.232163486318814,
+    "decode_milliseconds_per_token": 138.27121052942377,
+    "warm_ttft_seconds": 6.35418865000247,
+    "cold_ttft_seconds": 10.6965050130093,
+    "target_only_decode_tokens_per_second": 5.515925334392649,
+    "target_only_warm_ttft_seconds": 6.539440016989829,
+    "mtp1_decode_tokens_per_second": 6.624414297614111,
+    "mtp2_decode_tokens_per_second": 6.925768188974994,
+    "mtp3_decode_tokens_per_second": 7.232163486318814,
+    "mtp4_decode_tokens_per_second": 6.37130701778905,
+    "mtp3_improvement_over_matched_target_percent": 31.11423828065898,
+    "mtp3_improvement_over_published_target_percent": 15.319605724290408,
+    "confirmation_decode_tokens_per_second": 7.326788713314543,
+    "confirmation_delta_percent": 1.308394468332108,
+    "selected_profile_two_trial_mean_tokens_per_second": 7.279476099816678,
+    "device_allocation_gib": 101.408203125,
+    "minimum_mem_available_gib": 7.317588806152344,
+    "expert_cache_miss_rate_percent": 11.447956234023748,
+    "expert_disk_read_operations": 76494,
+    "physical_io_gib": 168.2721710205078,
+    "power_watts_average": 28.031,
+    "power_watts_peak": 34.86,
+    "estimated_request_energy_joules": 1166.5182497995693
+  },
+  "trials": {
+    "mtp3_tokens_per_second": [
+      7.232163486318814,
+      7.326788713314543
+    ],
+    "mtp3_warm_ttft_seconds": [
+      6.35418865000247,
+      6.324655018994235
+    ],
+    "mtp3_output_sha1": [
+      "d3523265958c",
+      "d3523265958c"
+    ]
+  },
+  "speculative": {
+    "draft_tokens_per_step": 3,
+    "accepted_drafts": 174,
+    "drafted_tokens": 198,
+    "acceptance_rate": 0.879,
+    "outputs": 256,
+    "target_forwards": 82,
+    "outputs_per_target_forward": 3.12,
+    "replay_calls": 15,
+    "replay_tokens": 36
+  },
+  "validation": {
+    "complete_target_checkpoint_loaded": true,
+    "native_mtp_weights_loaded": true,
+    "released_sidecar_tensor_layout_validated": true,
+    "transactional_rejection_rollback": true,
+    "forced_rejection_smoke_test": true,
+    "api_stream_completed": true,
+    "target_only_output_sha1": "d3523265958c",
+    "mtp2_output_sha1": "d3523265958c",
+    "mtp3_output_sha1": "d3523265958c",
+    "mtp3_exact_target_only_trace_parity": true,
+    "mtp3_confirmation_deterministic": true,
+    "focused_tests_passed": 219,
+    "oom_count": 0,
+    "service_restarts": 0,
+    "swap_growth_bytes": 0
+  },
+  "admission": {
+    "tier": "frontier",
+    "performance_gate_passed": true,
+    "passed": false,
+    "reasons": [
+      "Three native MTP draft tokens improved matched batch-one greedy decode throughput by 31.11% and the published target-only result by 15.32%.",
+      "The selected MTP-3 trace and exact target-only output hash reproduced in a confirmation run.",
+      "The 64K context, parser, coding-agent, broad quality, concurrent traffic, sampled traffic, and endurance gates remain outstanding."
+    ]
+  },
+  "source": {
+    "width_sweep_artifact": "$HOME/results/glm5.3-gb10/glm53_mtp_sweep_decode256.jsonl",
+    "confirmation_artifact": "$HOME/results/glm5.3-gb10/glm53_mtp3_confirm_decode256.jsonl",
+    "prior_target_evidence": "GB10-GLM53-MHC-003"
+  },
+  "limitations": [
+    "This is dirty-worktree optimization evidence, not a clean-revision certification result.",
+    "The sweep covers one batch-one greedy math workload with one measured request per width; only the selected MTP-3 profile received a confirmation trial.",
+    "The resident MTP block raises device allocation by about 7.25 GiB. The matched target control therefore fixed the expert cache at 6,149 slots, below the 6,711-slot cache used by the published target-only result.",
+    "MTP-1 and MTP-4 differ from the target-only greedy output hash because verification batch shapes can change BF16 reduction order; MTP-2 and both MTP-3 trials exactly match the target-only hash.",
+    "The pinned prebuilt FTW predates native-MTP packaging and requires SPARKLAB_GLM5_MTP_PATH; new source conversions copy the sidecar into the prepared artifact.",
+    "The installed sparklab-kernel-cache reports 0.1.0+cu130 while the source runtime reports 0.1.1; the version guard was explicitly bypassed for this source-tree benchmark.",
+    "The exact 64K context, parser, coding-agent, broad quality, concurrent, sampled, and endurance gates were not rerun for this optimization evidence."
+  ]
+}

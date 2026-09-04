@@ -1,4 +1,4 @@
-"""Small-M BF16 linear kernel for Qwen3.8 on GB10 (SM121)."""
+"""Small-M BF16 linear kernel for measured GB10 (SM121) model shapes."""
 
 from __future__ import annotations
 
@@ -59,7 +59,7 @@ def bf16_skinny_linear(x: torch.Tensor, weight: torch.Tensor) -> torch.Tensor:
     m = x.numel() // k
     n = weight.shape[0]
     if not (1 <= m <= 3):
-        raise ValueError(f"Qwen4 skinny linear requires 1 <= M <= 3, got {m}")
+        raise ValueError(f"skinny linear requires 1 <= M <= 3, got {m}")
     x2 = x.reshape(m, k).contiguous()
     out = torch.empty((m, n), dtype=x.dtype, device=x.device)
     block_n = 2 if m == 1 else 1
@@ -80,7 +80,7 @@ def bf16_skinny_linear(x: torch.Tensor, weight: torch.Tensor) -> torch.Tensor:
     return out.reshape(*lead, n)
 
 
-# Native TP=1 Qwen3.8 shapes that beat F.linear in a controlled GB10 sweep.
+# Native TP=1 shapes that beat F.linear in controlled GB10 sweeps.
 # Small projections (notably 320x10240 and 640x2560) deliberately stay on
 # cuBLAS because launch/under-occupancy costs erase their apparent specialization.
 _SM121_PLANS = {
@@ -88,6 +88,7 @@ _SM121_PLANS = {
     (16480, 2560),  # GDN fused q/k/v/z/b/a
     (2560, 6144),   # QSA/GDN output projection
     (248320, 2560),  # full-vocabulary LM head
+    (154880, 4096),  # GLM-5.3 Flash full-vocabulary LM head
 }
 
 

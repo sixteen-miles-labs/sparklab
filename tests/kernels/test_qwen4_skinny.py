@@ -28,3 +28,9 @@ def test_qwen4_skinny_linear_falls_back_on_cpu() -> None:
     torch.testing.assert_close(
         qwen4_skinny_linear(x, weight, bias), F.linear(x, weight, bias)
     )
+
+
+def test_glm53_lm_head_shape_uses_measured_sm121_plan() -> None:
+    from sparklab.kernels.triton.qwen4_skinny import _SM121_PLANS
+
+    assert (154_880, 4_096) in _SM121_PLANS

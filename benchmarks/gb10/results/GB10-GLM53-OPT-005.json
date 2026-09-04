@@ -1,0 +1,182 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-GLM53-OPT-005",
+  "status": "measured",
+  "date": "2026-09-03",
+  "recipe": {
+    "slug": "glm-5.3-flash",
+    "recipe_version": "0.3.2",
+    "revision": "9eaeadaf026871a90640e32c0604f6ab0b2d641d"
+  },
+  "engine": {
+    "name": "FreeToken",
+    "product_identity": "SparkLab",
+    "git_revision": "e66fd0ede48b9b99fd1533370db8874e5d4ec2b6",
+    "git_tracked_dirty": true
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "machine": "aarch64",
+    "os": "Linux 6.17.0-1014-nvidia",
+    "driver": "580.126.09",
+    "cuda": "13.0",
+    "torch": "2.11.0+cu130",
+    "triton": "3.6.0"
+  },
+  "checkpoint": {
+    "target_repository": "oakmindai/GLM-5.3-Flash-NVFP4-FTW",
+    "target_revision": "f296cec0baceb2276121efe76f14d61b62c1e47d",
+    "mtp_repository": "RedHatAI/GLM-5.3-Flash-NVFP4",
+    "mtp_revision": "36c184c6cda000a481711306df5adde42f63321a",
+    "format": "ftw-nvfp4-kda-fp8 + native block-FP8 MTP sidecar",
+    "fingerprint": "4c021651a1e61802"
+  },
+  "workload": {
+    "name": "AIME-25 problem 0 fixed decode probe",
+    "batch_size": 1,
+    "sampling": "greedy",
+    "prompt_tokens": 54,
+    "requested_completion_tokens": 256,
+    "returned_completion_tokens": 256,
+    "warmup_requests": 1,
+    "measured_requests_per_profile": 1,
+    "selected_profile_trials": 2,
+    "client_path": "OpenAI-compatible streaming HTTP API"
+  },
+  "configuration": {
+    "moe_backend": "offload",
+    "expert_storage": "disk",
+    "expert_cache_slots": 6149,
+    "host_cache_gib": 0.0,
+    "memory_ratio": 0.96,
+    "disk_read_workers": 16,
+    "nvfp4_backend": "triton",
+    "attention_backend": "dsa",
+    "cuda_graph": false,
+    "kv_tokens": 8691,
+    "page_size": 1,
+    "cache_type": "naive",
+    "sparse_prefill_max_tokens": 512,
+    "prefill_overlap": false,
+    "prefill_hit_d2d": true,
+    "shared_expert_overlap": true,
+    "speculative_tokens": 3,
+    "draft_sample_method": "greedy",
+    "max_running_requests": 1
+  },
+  "optimization": {
+    "lm_head": "Add the measured (154880, 4096) BF16 LM-head shape to the SM121 skinny-linear dispatch plan.",
+    "moe": "Enable shared-expert compute overlap with routed-expert fetches.",
+    "kernel_microbenchmark": {
+      "shape": [1, 4096, 154880],
+      "dtype": "bfloat16",
+      "cublas_median_milliseconds": 7.259,
+      "skinny_kernel_median_milliseconds": 5.189,
+      "kernel_speedup_percent": 39.89207939872807
+    }
+  },
+  "metrics": {
+    "decode_tokens_per_second_trials": [
+      7.434312587204139,
+      7.438127464997259
+    ],
+    "decode_tokens_per_second_mean": 7.436220026100699,
+    "decode_milliseconds_per_token_mean": 134.477,
+    "warm_ttft_seconds_trials": [
+      6.338262710007257,
+      6.322526349991676
+    ],
+    "prior_mtp3_tokens_per_second": 7.232163486318814,
+    "improvement_over_prior_mtp3_percent": 2.8215144772086864,
+    "device_allocation_gib": 101.4296875,
+    "minimum_mem_available_gib": 7.349803924560547,
+    "expert_cache_miss_rate_percent": 11.447956234023748,
+    "expert_disk_read_operations": 76494,
+    "physical_io_gib": 168.2721710205078,
+    "shared_expert_overlap_calls": 4074,
+    "power_watts_average_trials": [
+      28.44325,
+      28.472249999999995
+    ],
+    "output_sha1": "d3523265958c"
+  },
+  "matched_target_only_probe": {
+    "note": "Supportive one-trial A/B with the same optimized LM-head dispatch; it is not used as the headline result.",
+    "cache_slots": 6711,
+    "without_shared_overlap_tokens_per_second": 6.00923206154776,
+    "with_shared_overlap_tokens_per_second": 6.179847285746255,
+    "shared_overlap_improvement_percent": 2.8392184300925605,
+    "without_shared_overlap_warm_ttft_seconds": 5.650309573989944,
+    "with_shared_overlap_warm_ttft_seconds": 5.722599658998661,
+    "identical_output_sha1": "d3523265958c",
+    "identical_expert_disk_reads": 59604,
+    "identical_physical_io_gib": 131.1171875
+  },
+  "speculative": {
+    "draft_tokens_per_step": 3,
+    "accepted_drafts": 174,
+    "drafted_tokens": 198,
+    "acceptance_rate": 0.879,
+    "outputs": 256,
+    "target_forwards": 82,
+    "outputs_per_target_forward": 3.12,
+    "replay_calls": 15,
+    "replay_tokens": 36
+  },
+  "tested_not_selected": [
+    {
+      "change": "Increase disk readers from 16 to 20",
+      "decode_tokens_per_second": 7.329066073383206,
+      "reason": "No measurable benefit over the 16-reader 7.3316799344508405 tok/s trial."
+    },
+    {
+      "change": "Use layer_lru instead of lru expert-cache policy",
+      "decode_tokens_per_second": 6.932931152812196,
+      "expert_cache_miss_rate_percent": 12.72725100934088,
+      "physical_io_gib": 206.77322578430176,
+      "reason": "Throughput fell 5.44% while cache misses and physical I/O increased."
+    },
+    {
+      "change": "Convert one real resident MTP expert from FP8 to NVFP4",
+      "fp8_median_milliseconds": 0.201,
+      "nvfp4_median_milliseconds": 0.336,
+      "storage_reduction_percent": 43.691,
+      "cosine_similarity": 0.98774493,
+      "relative_l2_error": 0.156581,
+      "reason": "The current NVFP4 kernel was 67% slower for this shape and introduced excessive error."
+    }
+  ],
+  "validation": {
+    "api_stream_completed": true,
+    "two_trial_output_hash_match": true,
+    "exact_prior_target_only_output_hash": true,
+    "identical_acceptance_and_route_counts_across_trials": true,
+    "focused_tests_passed": 52,
+    "oom_count": 0,
+    "service_restarts": 0,
+    "swap_growth_bytes": 0
+  },
+  "admission": {
+    "tier": "frontier",
+    "performance_gate_passed": true,
+    "passed": false,
+    "reasons": [
+      "The optimized MTP-3 profile reproduced at 7.434 and 7.438 tok/s with exact output parity.",
+      "This is a focused dirty-worktree optimization probe; quality, long-context, concurrent, sampled, and endurance gates remain outstanding."
+    ]
+  },
+  "source": {
+    "prior_mtp_evidence": "GB10-GLM53-MTP-004",
+    "selected_trial_artifacts": [
+      "/tmp/glm53-combined-opt.jsonl",
+      "/tmp/glm53-combined-confirm.jsonl"
+    ]
+  },
+  "limitations": [
+    "This is dirty-worktree optimization evidence, not a clean-revision certification result.",
+    "The end-to-end comparison covers one batch-one greedy math workload.",
+    "The target-only overlap comparison contains one measured request per profile and exhibits host-level run-to-run variability.",
+    "The exact 64K context, parser, coding-agent, broad quality, concurrent, sampled, and endurance gates were not rerun."
+  ]
+}

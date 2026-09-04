@@ -219,6 +219,7 @@ def parse_config(hf_config: Any) -> ModelConfig:
         vision_config=None,
         image_token_id=_get(hf_config, "image_token_id"),
         glm5_next_args=args,
+        mtp_num_hidden_layers=int(_get(text, "num_nextn_predict_layers", 0) or 0),
         single_stream_only=True,
     )
 

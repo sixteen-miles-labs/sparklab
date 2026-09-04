@@ -38,6 +38,7 @@
       "moe_prefill_sparse_max_tokens": 512,
       "moe_prefill_overlap": false,
       "moe_prefill_hit_d2d": true,
+      "moe_shared_expert_overlap": true,
       "cuda_graph_max_bs": 0,
       "cache_type": "naive",
       "page_size": 1,
@@ -57,7 +58,9 @@
   "evidence": [
     "GB10-GLM53-NVFP4-001",
     "GB10-GLM53-KDA-FP8-002",
-    "GB10-GLM53-MHC-003"
+    "GB10-GLM53-MHC-003",
+    "GB10-GLM53-MTP-004",
+    "GB10-GLM53-OPT-005"
   ],
   "description": "Text-only GLM-5.3-Flash Frontier candidate using Red Hat AI's NVFP4 experts, SparkLab's FP8 KDA projection format, native NoPE MLA/KPool, mHC, and NVMe-MoE serving.",
   "limitations": [
@@ -67,6 +70,7 @@
     "Prompt-selected expert rows must still be read from NVMe when absent from the GPU cache; these compulsory reads dominate TTFT.",
     "FlashInfer 0.6.15's SM12x route packer exceeds Triton's tensor-size limit at 288 experts, so this recipe uses SparkLab's native Triton NVFP4 backend.",
     "KPool sparse selection is currently eager and CUDA graph capture is disabled.",
+    "Native MTP is opt-in for batch-one greedy serving. An optimized three-draft probe averaged 7.436 tok/s with 87.9% acceptance and exact target-only output hash, but the broader certification suite has not been rerun.",
     "Multimodal certification is a separate later gate."
   ]
 }

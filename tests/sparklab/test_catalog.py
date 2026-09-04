@@ -198,6 +198,7 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     assert glm.deployment.backend_options["moe_host_cache_gb"] == 0
     assert glm.deployment.backend_options["memory_ratio"] == 0.96
     assert glm.deployment.backend_options["moe_prefill_overlap"] is False
+    assert glm.deployment.backend_options["moe_shared_expert_overlap"] is True
     assert glm.runtime_artifact is not None
     assert glm.runtime_artifact.repo_id == "oakmindai/GLM-5.3-Flash-NVFP4-FTW"
     assert glm.runtime_artifact.revision == "f296cec0baceb2276121efe76f14d61b62c1e47d"
