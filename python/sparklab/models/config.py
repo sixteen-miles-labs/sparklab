@@ -318,9 +318,10 @@ class ModelConfig:
     glm5_next_args: Any | None = None
     # Qwen4-Exp text-tower payload: QSA, Hyper-Connection and PLE geometry.
     qwen4_exp_args: Any | None = None
-    # Number of checkpoint-native Qwen3.5/3.6 MTP decoder layers. These draft
-    # weights are opt-in at runtime and stored separately in FTW so target-only
-    # serving does not allocate them.
+    # Number of checkpoint-native next-token-prediction decoder layers. These
+    # draft weights are opt-in at runtime and stored separately so target-only
+    # serving does not allocate them. Qwen3.5/3.6 and GLM-5.3 Flash currently
+    # use this common capability flag.
     mtp_num_hidden_layers: int = 0
     # Runtime speculative-decoding selection injected after parsing.
     speculative_method: str = "none"

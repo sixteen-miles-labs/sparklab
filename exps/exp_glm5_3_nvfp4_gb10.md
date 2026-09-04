@@ -1,6 +1,6 @@
 # GLM-5.3 Flash NVFP4 on NVIDIA GB10
 
-Last updated: 2026-08-30
+Last updated: 2026-09-03
 
 ## Result
 
@@ -17,6 +17,67 @@ host had pre-existing swap use, and the context, capability, quality, and endura
 remain outstanding. A second optimized run reproduced the same greedy output hash at
 6.284 tok/s. Compact evidence:
 [`GB10-GLM53-MHC-003`](../benchmarks/gb10/results/GB10-GLM53-MHC-003.json).
+
+An opt-in native-MTP follow-up selected three draft tokens at **7.232 tok/s**, 31.1%
+above a matched 5.516 tok/s target-only control and 15.3% above the published optimized
+target-only result. The MTP-3 trace accepted 87.9% of drafts, produced 3.12 output tokens
+per target forward, and exactly matched the target-only output hash. This remains a
+single-workload optimization probe rather than certification evidence. Compact evidence:
+[`GB10-GLM53-MTP-004`](../benchmarks/gb10/results/GB10-GLM53-MTP-004.json).
+
+The next optimization pass specialized the 154,880-by-4,096 BF16 LM head for
+SM121 and enabled shared-expert overlap. Two otherwise identical MTP-3 trials
+measured **7.434 and 7.438 tok/s** (**7.436 tok/s mean**), 2.82% above the
+earlier 7.232 tok/s result. Both runs retained 87.9% draft acceptance, 3.12
+outputs per target forward, identical expert routes and disk I/O, and the exact
+`d3523265958c` target-only hash. Compact evidence:
+[`GB10-GLM53-OPT-005`](../benchmarks/gb10/results/GB10-GLM53-OPT-005.json).
+
+## Native MTP speculative decoding
+
+The released checkpoint stores its single next-token prediction block in a standalone
+`model_mtp.safetensors`. SparkLab now loads that block as a resident block-FP8 MoE,
+extends the DSA/KPool cache geometry for layer 45, and transactionally snapshots and
+replays the KDA recurrent state when target verification rejects a draft. Source FTW
+conversion copies the sidecar beside the prepared model; the older pinned prebuilt used
+for this probe requires `SPARKLAB_GLM5_MTP_PATH`.
+
+The controlled sweep fixed the expert cache at 6,149 slots for every profile and kept
+all other workload and serving settings identical: AIME-25 problem 0, batch one, greedy
+sampling, 54 prompt tokens, 256 requested completion tokens, one warm request, DSA,
+8,691 KV tokens, disk-backed routed experts, sparse prefill through 512 tokens, and no
+CUDA graph.
+
+| Profile | Decode tok/s | Warm TTFT | Acceptance | Outputs / target forward | Hash |
+|---|---:|---:|---:|---:|---|
+| Target only | 5.516 | 6.539 s | — | 1.00 | `d3523265958c` |
+| MTP-1 | 6.624 | 6.232 s | 96.9% | 1.92 | `75078f6e1f98` |
+| MTP-2 | 6.926 | 6.373 s | 89.1% | 2.53 | `d3523265958c` |
+| **MTP-3** | **7.232** | **6.354 s** | **87.9%** | **3.12** | `d3523265958c` |
+| MTP-4 | 6.371 | 6.358 s | 73.7% | 2.91 | `1d5492568beb` |
+| **MTP-3 optimized (mean of 2)** | **7.436** | **6.330 s** | **87.9%** | **3.12** | `d3523265958c` |
+
+```bash
+CUDA_VISIBLE_DEVICES=0 SPARKLAB_DISABLE_KERNEL_CACHE=1 \
+SPARKLAB_GLM5_MTP_PATH=/path/to/model_mtp.safetensors \
+SPARKLAB_DISK_READ_WORKERS=16 PYTHONPATH=python:. \
+  .venv/bin/python benchmarks/bench_decode_moe.py \
+  --model /path/to/glm-5.3-flash/prepared/0.3.2 \
+  --recipe glm-5.3-flash --backend offload --storage disk \
+  --attention-backend dsa --nvfp4-backend triton --host-cache-gb 0 \
+  --cache 6149 --mem-ratio 0.96 --num-tokens 8691 \
+  --speculative-method mtp --speculative-tokens 3 \
+  --disable-prefill-overlap --prefill-hit-d2d \
+  --shared-expert-overlap \
+  --prefill-sparse-max-tokens 512 --page-size 1 --cache-type naive \
+  --no-graph --collect-moe-stats --include-output --greedy --decode 256
+```
+
+MTP-4 loses despite drafting farther: acceptance drops to 73.7%, rejection replay rises
+to 85 tokens, and physical expert I/O rises to 181.68 GiB. MTP-3 is the local optimum:
+it reduces target forwards from 255 to 82 while keeping rejection and extra I/O bounded.
+The resident MTP block adds about 7.25 GiB of device allocation, so this paired comparison
+uses fewer expert-cache slots than the earlier 6,711-slot published target-only result.
 
 ## Artifact and system
 

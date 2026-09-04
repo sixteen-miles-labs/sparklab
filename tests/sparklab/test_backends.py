@@ -161,6 +161,7 @@ def test_native_backend_compiles_glm_residency_options(tmp_path):
     assert "--memory-ratio" in plan.arguments
     assert plan.arguments[plan.arguments.index("--memory-ratio") + 1] == "0.96"
     assert "--disable-moe-prefill-overlap" in plan.arguments
+    assert "--moe-shared-expert-overlap" in plan.arguments
 
 
 def test_native_backend_compiles_kimi_bounded_gb10_options(tmp_path):

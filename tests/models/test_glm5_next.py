@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 import torch
+from safetensors.torch import save_file
 
 from sparklab.attention.base import AttnType
 from sparklab.models.glm5_next.config import parse_config
@@ -13,6 +14,7 @@ from sparklab.models.glm5_next.weight import (
     _CT_NVFP4_SOURCE_SPEC,
     _is_kda_main_weight,
     _quant_fp8_per_row,
+    copy_external_artifacts,
     load_nvfp4_expert_sources,
     map_weight_name,
 )
@@ -29,6 +31,7 @@ def _config(layers: int = 8):
         hidden_size=256,
         vocab_size=1024,
         num_hidden_layers=layers,
+        num_nextn_predict_layers=1,
         num_attention_heads=4,
         max_position_embeddings=4096,
         rms_norm_eps=1e-5,
@@ -143,6 +146,137 @@ def test_parse_config_builds_glm53_hybrid_geometry():
     assert spec.num_index_layers == 2
     assert cfg.num_moe_layers == 5
     assert cfg.linear_state_snapshots is False
+    assert cfg.mtp_num_hidden_layers == 1
+
+
+def test_glm53_mtp_adds_draft_mla_and_keeps_naive_state_cache():
+    from sparklab.runtime.engine.engine import _adjust_speculative_config
+
+    model_config = parse_config(_config())
+    config = SimpleNamespace(
+        model_config=model_config,
+        speculative_method="auto",
+        speculative_tokens=4,
+        draft_sample_method="greedy",
+        max_running_req=8,
+        cache_type="radix",
+        cuda_graph_bs=[1, 2, 4],
+        cuda_graph_max_bs=4,
+    )
+
+    _adjust_speculative_config(
+        config, lambda name, value: setattr(config, name, value)
+    )
+    _adjust_speculative_config(
+        config, lambda name, value: setattr(config, name, value)
+    )
+
+    assert model_config.speculative_method == "mtp"
+    assert model_config.speculative_tokens == 4
+    assert model_config.glm5_next_args.dsa_layer_ids == (3, 7, 8)
+    full = next(group for group in model_config.attention_groups if group.name == "full")
+    assert full.layer_ids == (3, 7, 8)
+    assert full.num_index_layers == 3
+    assert config.max_running_req == 1
+    assert config.cache_type == "naive"
+    assert config.cuda_graph_bs == []
+    assert config.cuda_graph_max_bs == 0
+
+    from sparklab.runtime.kvcache.linear_state_pool import (
+        _linear_pool_min_slots,
+        _linear_pool_num_slots,
+    )
+
+    config.tp_info = SimpleNamespace(size=1)
+    config.dtype = torch.bfloat16
+    assert _linear_pool_num_slots(config) == 3
+    assert _linear_pool_min_slots(config) == 3
+
+
+def test_glm53_mtp_sidecar_loads_released_tensor_layout(tmp_path):
+    from sparklab.models.glm5_next.mtp import Glm5NextMultiTokenPredictor
+    from sparklab.runtime.distributed import set_tp_info, try_get_tp_info
+    from sparklab.utils.torch_utils import torch_dtype
+
+    if try_get_tp_info() is None:
+        set_tp_info(rank=0, size=1)
+    config = parse_config(_config())
+    with torch_dtype(torch.bfloat16):
+        mtp = Glm5NextMultiTokenPredictor(config)
+
+    prefix = f"model.language_model.layers.{config.num_layers}."
+    source = {}
+    for name, target in mtp.state_dict().items():
+        if name.startswith("layer.mlp.experts."):
+            continue
+        if name == "norm.weight":
+            suffix = "shared_head.norm.weight"
+        elif name.startswith(("enorm.", "hnorm.", "eh_proj.")):
+            suffix = name
+        else:
+            suffix = name.removeprefix("layer.")
+        source[prefix + suffix] = torch.ones(
+            tuple(target.shape), dtype=target.dtype
+        )
+
+    experts = mtp.layer.mlp.experts
+    for expert in range(config.num_experts):
+        base = f"{prefix}mlp.experts.{expert}."
+        width = experts.gate_up_proj.shape[1] // 2
+        scale_width = experts.gate_up_scale_inv.shape[1] // 2
+        for role in ("gate_proj", "up_proj"):
+            source[base + role + ".weight"] = torch.zeros(
+                (width, config.hidden_size), dtype=torch.float8_e4m3fn
+            )
+            source[base + role + ".weight_scale"] = torch.ones(
+                (scale_width, config.hidden_size // 128), dtype=torch.bfloat16
+            )
+        source[base + "down_proj.weight"] = torch.zeros(
+            (config.hidden_size, config.moe_intermediate_size),
+            dtype=torch.float8_e4m3fn,
+        )
+        source[base + "down_proj.weight_scale"] = torch.ones(
+            (config.hidden_size // 128, config.moe_intermediate_size // 128),
+            dtype=torch.bfloat16,
+        )
+
+    sidecar = tmp_path / "model_mtp.safetensors"
+    save_file(source, sidecar)
+    mtp.load_sidecar(str(sidecar), torch.device("cpu"))
+
+    assert mtp.eh_proj.weight.dtype == torch.bfloat16
+    assert mtp.layer.mlp.experts.gate_up_proj.dtype == torch.float8_e4m3fn
+    assert mtp.layer.mlp.experts.gate_up_scale_inv.dtype == torch.float32
+    assert torch.all(mtp.eh_proj.weight == 1)
+    assert torch.all(mtp.layer.mlp.experts.gate_up_scale_inv == 1)
+
+
+def test_glm53_conversion_copies_optional_mtp_sidecar(tmp_path):
+    source, out = tmp_path / "source", tmp_path / "out"
+    source.mkdir()
+    out.mkdir()
+    payload = b"publisher MTP sidecar"
+    (source / "model_mtp.safetensors").write_bytes(payload)
+
+    artifacts = copy_external_artifacts(str(source), str(out), object())
+
+    assert (out / "model_mtp.safetensors").read_bytes() == payload
+    assert artifacts == [
+        {
+            "kind": "glm5_mtp",
+            "file": "model_mtp.safetensors",
+            "format": "safetensors-fp8-block",
+            "nbytes": len(payload),
+        }
+    ]
+
+
+def test_glm53_conversion_keeps_target_only_artifacts_valid(tmp_path):
+    source, out = tmp_path / "source", tmp_path / "out"
+    source.mkdir()
+    out.mkdir()
+
+    assert copy_external_artifacts(str(source), str(out), object()) == []
 
 
 def test_parse_config_builds_opt_in_kda_fp8_projections():

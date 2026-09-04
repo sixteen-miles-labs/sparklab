@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import re
+import shutil
 from typing import Iterator
 
 import safetensors
@@ -79,6 +81,60 @@ def map_weight_name(raw_name: str) -> str | None:
         site = "attn_hc" if match["site"] == "attn" else "ffn_hc"
         return f"{match['prefix']}.{site}.{match['part']}"
     return name
+
+
+def find_mtp_sidecar(model_path: str) -> str | None:
+    """Resolve the opt-in layer-45 payload for source or prepared checkpoints."""
+    override = os.environ.get("SPARKLAB_GLM5_MTP_PATH")
+    candidates = [override] if override else []
+    candidates.extend(
+        [
+            os.path.join(model_path, "model_mtp.safetensors"),
+            os.path.join(model_path, "mtp", "model_mtp.safetensors"),
+        ]
+    )
+    return next((path for path in candidates if path and os.path.isfile(path)), None)
+
+
+def copy_external_artifacts(
+    model_path: str,
+    out_dir: str,
+    model_config,
+    *,
+    ngram_dtype: str = "preserve",
+) -> list[dict]:
+    """Copy the optional publisher MTP payload beside a prepared FTW artifact."""
+    del model_config, ngram_dtype  # shared converter-hook arguments
+    source = find_mtp_sidecar(model_path)
+    if source is None:
+        return []
+
+    filename = "model_mtp.safetensors"
+    destination = os.path.join(out_dir, filename)
+    temporary = destination + ".tmp"
+    os.makedirs(out_dir, exist_ok=True)
+    try:
+        with open(source, "rb", buffering=0) as src, open(
+            temporary, "wb", buffering=0
+        ) as dst:
+            shutil.copyfileobj(src, dst, length=16 << 20)
+            os.fsync(dst.fileno())
+        os.replace(temporary, destination)
+    except BaseException:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+        raise
+
+    return [
+        {
+            "kind": "glm5_mtp",
+            "file": filename,
+            "format": "safetensors-fp8-block",
+            "nbytes": os.path.getsize(destination),
+        }
+    ]
 
 
 def iter_weights(
@@ -176,9 +232,11 @@ def load_nvfp4_expert_sources(model_path: str, config, *, layer_sink=None):
 
 
 __all__ = [
+    "copy_external_artifacts",
     "iter_weights",
     "load_nvfp4_expert_sources",
     "map_weight_name",
+    "find_mtp_sidecar",
     "setup_offload_expert_banks",
     "_quant_fp8_per_row",
     "_is_kda_main_weight",

@@ -157,7 +157,11 @@ class Glm5NextDeltaAttention(BaseOP):
             ],
             dim=-1,
         )
-        mixed = self._conv(raw, fla, pool, batch.is_decode)
+        # Verification is a decode lifecycle event but contains a contiguous
+        # candidate sequence. Run it through the varlen path so convolution and
+        # recurrent state advance in token order instead of treating every row
+        # as an independent one-token request.
+        mixed = self._conv(raw, fla, pool, not batch.uses_prefill_kernels)
         q, k, v = mixed.split([self.projection_size] * 3, dim=-1)
         total = hidden_states.shape[0]
         q = q.view(1, total, self.num_heads, self.head_dim)
