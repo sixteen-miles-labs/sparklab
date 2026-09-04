@@ -35,6 +35,7 @@ _VALUE_OPTIONS: dict[str, tuple[str, type | tuple[type, ...]]] = {
     "num_tokens": ("--num-tokens", int),
     "speculative_method": ("--speculative-method", str),
     "speculative_tokens": ("--speculative-tokens", int),
+    "speculative_draft_model": ("--speculative-draft-model", str),
     "draft_sample_method": ("--draft-sample-method", str),
 }
 _FLAG_OPTIONS: dict[str, str] = {
@@ -72,6 +73,7 @@ _OPTION_ORDER = (
     "num_tokens",
     "speculative_method",
     "speculative_tokens",
+    "speculative_draft_model",
     "draft_sample_method",
     "kimi_mlp_fp8",
     "disable_startup_prefill_warmup",

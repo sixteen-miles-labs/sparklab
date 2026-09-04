@@ -322,16 +322,24 @@ def parse_args(
 
     parser.add_argument(
         "--speculative-method",
-        choices=("auto", "mtp", "dspark"),
+        choices=("auto", "mtp", "dspark", "dflash2"),
         default=ServerArgs.speculative_method,
         help="Speculative decoder (auto selects the checkpoint-native method).",
     )
     parser.add_argument(
         "--speculative-tokens",
         type=int,
-        choices=range(0, 8),
+        choices=range(0, 17),
         default=ServerArgs.speculative_tokens,
-        help="Draft length (0 disables; Qwen MTP supports 1-3, DSV4 DSpark 1-7).",
+        help=(
+            "Draft block size (0 disables; Qwen MTP supports 1-3, DSV4 DSpark "
+            "1-7, Qwen3.8 DFlash2 2-16)."
+        ),
+    )
+    parser.add_argument(
+        "--speculative-draft-model",
+        default=ServerArgs.speculative_draft_model,
+        help="Local path or Hugging Face id for an external DFlash2 draft checkpoint.",
     )
     parser.add_argument(
         "--draft-sample-method",

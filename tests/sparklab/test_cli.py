@@ -36,9 +36,9 @@ def test_models_can_select_primary_portfolio(capsys):
     payload = json.loads(capsys.readouterr().out)
     assert [recipe["slug"] for recipe in payload["recipes"]] == [
         "qwen3.6-35b-a3b",
+        "qwen3.8-27b",
         "deepseek-v4",
         "glm-5.3-flash",
-        "qwen3.8-27b",
         "qwen3.8-flash-next",
         "kimi-k3",
     ]

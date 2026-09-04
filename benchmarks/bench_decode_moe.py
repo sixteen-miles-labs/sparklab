@@ -456,16 +456,21 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     p.add_argument(
         "--speculative-method",
-        choices=("auto", "mtp", "dspark"),
+        choices=("auto", "mtp", "dspark", "dflash2"),
         default="auto",
         help="checkpoint-native speculative decoder",
     )
     p.add_argument(
         "--speculative-tokens",
         type=int,
-        choices=range(8),
+        choices=range(17),
         default=0,
-        help="draft length (0 disables, DSpark supports up to 7)",
+        help="draft/block length (0 disables, DSpark up to 7, DFlash2 up to 16)",
+    )
+    p.add_argument(
+        "--speculative-draft-model",
+        default=None,
+        help="local path or Hugging Face id for an external DFlash2 draft",
     )
     p.add_argument(
         "--draft-sample-method",
@@ -650,6 +655,8 @@ def serve_cmd(args: argparse.Namespace, backend: str, port: int) -> list[str]:
         "--dsv4-index-storage", args.dsv4_index_storage,
         "--qwen4-dense-storage", args.qwen4_dense_storage,
     ]
+    if args.speculative_draft_model:
+        cmd += ["--speculative-draft-model", args.speculative_draft_model]
     if args.num_tokens > 0:
         cmd += ["--num-tokens", str(args.num_tokens)]
     if args.cpu_threads > 0:
@@ -975,6 +982,7 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
             "requested_num_tokens": args.num_tokens,
             "speculative_method": args.speculative_method,
             "speculative_tokens": args.speculative_tokens,
+            "speculative_draft_model": args.speculative_draft_model,
             "draft_sample_method": args.draft_sample_method,
             "dspark_confidence_threshold": args.dspark_confidence_threshold,
             "dspark_draft_cache_slots": args.dspark_draft_cache_slots,

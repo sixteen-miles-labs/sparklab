@@ -258,6 +258,12 @@ def test_linear_state_pool_prices_itself():
     per_req = linear_state_bytes_per_req(group, config.tp_info.size, config.dtype)
     assert state_pool_bytes(config) == per_req * _linear_pool_num_slots(config)
     assert state_pool_bytes(config, num_slots=7) == per_req * 7
+    config.speculative_method = "dflash2"
+    config.speculative_tokens = 4
+    expected_verify = 2 * 4 * (
+        4 * 16 * 16 * 4 + (2 * 2 * 16 + 4 * 16) * 2
+    )
+    assert state_pool_bytes(config, num_slots=7) == per_req * 7 + expected_verify
     # models without a linear group price to zero
     config.model_config.linear_attention_group = lambda: None
     assert state_pool_bytes(config) == 0

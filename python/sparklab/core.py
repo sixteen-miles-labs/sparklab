@@ -171,6 +171,9 @@ class Batch:
     # is a multi-token continuation and therefore uses the varlen kernels.
     return_all_logits: bool = field(default=False, init=False)
     disable_state_tracking: bool = field(default=False, init=False)
+    # DFlash2 target verification caches the recurrent state after every input
+    # token, then commits only the accepted prefix without replaying the target.
+    cache_verify_states: bool = field(default=False, init=False)
     # A short sequential repair after speculative rejection. Attention still needs
     # prefill/varlen semantics, while token-local MoE and recurrent mixers should use
     # their low-latency verification kernels instead of padded prompt kernels.

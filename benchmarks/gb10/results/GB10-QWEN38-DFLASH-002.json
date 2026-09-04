@@ -1,0 +1,147 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWEN38-DFLASH-002",
+  "status": "measured",
+  "date": "2026-09-03",
+  "recipe": {
+    "slug": "qwen3.8-27b",
+    "recipe_version_at_run": "0.1.0",
+    "published_recipe_version": "0.2.0",
+    "revision": "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+  },
+  "engine": {
+    "name": "FreeToken",
+    "product_identity": "SparkLab",
+    "git_revision": "3013c191fa420423a0db93b7096d4bb665a25455",
+    "git_tracked_dirty": true
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "machine": "aarch64",
+    "os": "Linux 6.17.0-1014-nvidia",
+    "driver": "580.126.09",
+    "cuda": "13.0",
+    "torch": "2.11.0+cu130",
+    "triton": "3.6.0"
+  },
+  "checkpoint": {
+    "target_repository": "Inferact/Qwen3.8-27B-NVFP4",
+    "target_revision": "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462",
+    "target_format": "ftw-nvfp4",
+    "target_fingerprint": "af78f7411817bb73",
+    "draft_repository": "maurienne-ai/Qwen3.8-27B-DFlash2-NVFP4-RTNcal",
+    "draft_revision": "bd7a934213c47a9e7ef69eef36bb3325f47fd1f1",
+    "draft_format": "ModelOpt NVFP4",
+    "draft_bytes": 1550153248,
+    "draft_sha256": "2228b9b22e93a88d84556419c879448ab6c490ae65c4c0b166f4962190ddbf26"
+  },
+  "workload": {
+    "name": "AIME-25 problem 0 fixed decode probe",
+    "batch_size": 1,
+    "sampling": "greedy",
+    "prompt_tokens": 96,
+    "requested_completion_tokens": 128,
+    "returned_completion_tokens": 128,
+    "warmup_requests_per_process": 1,
+    "selected_profile_trials": 3,
+    "matched_target_only_trials": 1,
+    "client_path": "OpenAI-compatible streaming HTTP API"
+  },
+  "configuration": {
+    "execution_policy": "resident",
+    "nvfp4_backend": "triton",
+    "attention_backend": "triton",
+    "cache_type": "hybrid_radix",
+    "page_size": 16,
+    "kv_tokens": 8192,
+    "cuda_graphs": false,
+    "speculative_method": "dflash2",
+    "selected_block_size": 8,
+    "draft_sample_method": "greedy",
+    "max_running_requests": 1
+  },
+  "metrics": {
+    "target_only_decode_tokens_per_second": 9.178463227565516,
+    "target_only_warm_ttft_seconds": 0.158438461003243,
+    "dflash2_decode_tokens_per_second_trials": [
+      27.276591252792162,
+      27.27875936015706,
+      27.25780603359104
+    ],
+    "dflash2_decode_tokens_per_second_median": 27.276591252792162,
+    "dflash2_warm_ttft_seconds_trials": [
+      0.16291127700242215,
+      0.16200832700997125,
+      0.1609775079996325
+    ],
+    "dflash2_warm_ttft_seconds_median": 0.16200832700997125,
+    "dflash2_speedup_over_matched_target": 2.9718037297216444,
+    "dflash2_improvement_over_matched_target_percent": 197.18037297216443,
+    "target_only_vram_gib": 24.982421875,
+    "dflash2_vram_gib": 26.806640625,
+    "output_sha1": "fa04d7fa1fad"
+  },
+  "speculative": {
+    "block_size": 8,
+    "accepted_drafts": 98,
+    "drafted_tokens": 136,
+    "acceptance_rate": 0.721,
+    "outputs": 128,
+    "target_forwards": 30,
+    "outputs_per_target_forward": 4.27,
+    "replay_calls": 9,
+    "replay_tokens": 34
+  },
+  "tested_not_selected": [
+    {
+      "block_size": 16,
+      "decode_tokens_per_second_trials": [
+        24.46607511382484,
+        24.407302136376728,
+        24.39941973836552
+      ],
+      "decode_tokens_per_second_median": 24.407302136376728,
+      "warm_ttft_seconds_median": 0.1629613760014763,
+      "acceptance_rate": 0.441,
+      "output_sha1": "fa04d7fa1fad",
+      "reason": "Block size eight was 11.76% faster on the matched workload."
+    }
+  ],
+  "validation": {
+    "complete_target_checkpoint_loaded": true,
+    "complete_draft_checkpoint_loaded": true,
+    "draft_tensor_schema_verified": "106/106 tensors",
+    "api_stream_completed": true,
+    "all_selected_trials_match_target_output_hash": true,
+    "all_width_16_trials_match_target_output_hash": true,
+    "identical_acceptance_counts_across_selected_trials": true,
+    "oom_count": 0,
+    "service_restarts": 0,
+    "swap_growth_bytes": 0
+  },
+  "admission": {
+    "tier": "frontier",
+    "performance_gate_passed": true,
+    "passed": false,
+    "reasons": [
+      "The selected DFlash2-8 profile measured a three-trial median 27.28 tok/s, 2.97x the matched 9.18 tok/s target-only control.",
+      "Every DFlash2-8 and DFlash2-16 trial reproduced the target-only greedy output hash.",
+      "This focused dirty-worktree optimization probe does not replace the existing context and capability evidence or satisfy the remaining endurance gate."
+    ]
+  },
+  "source": {
+    "target_only_artifact": "/tmp/qwen38-target-bench.json",
+    "selected_trial_artifact": "/tmp/qwen38-dflash8-bench.json",
+    "width_16_trial_artifact": "/tmp/qwen38-dflash-bench.json",
+    "prior_evidence": "GB10-QWEN38-27B-001",
+    "reference_implementation": "https://github.com/pangoleen/qwen3.8-27b-dgx-spark-dflash2@2c7c38216cea410497ae222dc58030c021b74bd7"
+  },
+  "limitations": [
+    "This is dirty-worktree optimization evidence, not a clean-revision certification result.",
+    "The matched target-only control contains one measured request; the selected DFlash2-8 profile contains three independently launched measured trials.",
+    "The probe covers one batch-one greedy 128-token math workload; sampled, concurrent, long-context, capability, and endurance suites were not rerun.",
+    "The host had 610,304 bytes of pre-existing swap resident, with zero growth during the measured requests.",
+    "The installed SparkLab kernel-cache wheel reported version 0.1.0+cu130 against the 0.1.1 source tree; the version guard was explicitly disabled for this source-tree benchmark."
+  ]
+}

@@ -64,6 +64,39 @@ def test_copy_from_snapshot():
     assert torch.equal(pool.recurrent_states[:, dst], pool.recurrent_states[:, src])
 
 
+@pytest.mark.parametrize("length", [1, 2, 3, 4])
+def test_commit_verify_prefix(length):
+    pool = _pool(num_slots=6)
+    snapshot, live = pool.alloc(2)
+    pool.enable_verify_transactions(4)
+    pool.conv_states[:, snapshot] = torch.arange(
+        pool.conv_states[:, snapshot].numel(), dtype=torch.bfloat16
+    ).reshape_as(pool.conv_states[:, snapshot])
+    pool.verify_conv_inputs.copy_(
+        torch.arange(pool.verify_conv_inputs.numel(), dtype=torch.bfloat16).reshape_as(
+            pool.verify_conv_inputs
+        )
+        + 1000
+    )
+    pool.verify_recurrent_states.copy_(
+        torch.arange(
+            pool.verify_recurrent_states.numel(), dtype=pool.recurrent_states.dtype
+        ).reshape_as(pool.verify_recurrent_states)
+    )
+
+    old = pool.conv_states[:, snapshot].clone()
+    inputs = pool.verify_conv_inputs.clone()
+    expected_conv = torch.cat((old.transpose(1, 2), inputs), dim=1)[
+        :, length : length + old.shape[-1]
+    ].transpose(1, 2)
+    pool.commit_verify_prefix(snapshot, live, length)
+
+    assert torch.equal(pool.conv_states[:, live], expected_conv)
+    assert torch.equal(
+        pool.recurrent_states[:, live], pool.verify_recurrent_states[:, 0, length - 1]
+    )
+
+
 if __name__ == "__main__":
     test_alloc_free_roundtrip()
     test_alloc_exhaustion_raises()

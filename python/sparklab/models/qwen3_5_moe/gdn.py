@@ -198,6 +198,20 @@ class Qwen3_5GatedDeltaNet(BaseOP):
             q = qf.reshape(1, total, self.num_k_heads, self.head_k_dim).to(dtype)
             k = kf.reshape(1, total, self.num_k_heads, self.head_k_dim).to(dtype)
             v = vf.reshape(1, total, self.num_v_heads, self.head_v_dim).to(dtype)
+            cache_verify = batch.is_verify and batch.cache_verify_states
+            intermediate = None
+            intermediate_indices = None
+            if cache_verify:
+                if (
+                    pool.verify_recurrent_states is None
+                    or pool.verify_conv_inputs is None
+                    or pool.verify_state_indices is None
+                    or total > pool.verify_steps
+                ):
+                    raise RuntimeError("DFlash2 GDN verify buffers are not initialized")
+                pool.verify_conv_inputs[li, :total].copy_(conv_in)
+                intermediate = pool.verify_recurrent_states[li]
+                intermediate_indices = pool.verify_state_indices
             core_out = gdn_decode_fla(
                 q,
                 k,
@@ -210,6 +224,9 @@ class Qwen3_5GatedDeltaNet(BaseOP):
                 indices=fla.cache_indices,
                 cu_seqlens=fla.cu_seqlens,
                 scale=self.head_k_dim ** -0.5,
+                disable_state_update=cache_verify,
+                intermediate_states_buffer=intermediate,
+                intermediate_state_indices=intermediate_indices,
             )
         elif not batch.uses_prefill_kernels:
             # Fused fla decode kernel: gating + in-kernel l2norm + recurrent update +

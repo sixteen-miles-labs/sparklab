@@ -78,12 +78,21 @@ class Qwen3_5Model(BaseOP):
             [Qwen3_5DecoderLayer(config, layer_id) for layer_id in range(config.num_layers)]
         )
         self.norm = GemmaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        dflash_args = getattr(config, "dflash2_args", None)
+        self._dflash_capture_ids = (
+            frozenset(dflash_args.target_layer_ids) if dflash_args is not None else frozenset()
+        )
+        self._dflash_captures: list[torch.Tensor] = []
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
         x = self.embed_tokens.forward(input_ids)
         residual: torch.Tensor | None = None
-        for layer in self.layers.op_list:
+        captures: list[torch.Tensor] = []
+        for layer_id, layer in enumerate(self.layers.op_list):
             x, residual = layer.forward(x, residual)
+            if layer_id in self._dflash_capture_ids:
+                captures.append(x + residual)
+        self._dflash_captures = captures
         x, _ = self.norm.forward_add_residual(x, residual)
         return x
 
@@ -108,24 +117,56 @@ class Qwen3_5MoEForCausalLM(BaseLLMModel):
                 tied_embedding=self.model.embed_tokens if config.tie_word_embeddings else None,
             )
         self._mtp = None
+        self._dflash = None
         self._mtp_steps = int(getattr(config, "speculative_tokens", 0) or 0)
-        if self._mtp_steps:
+        if getattr(config, "speculative_method", "none") == "dflash2":
+            from .dflash2 import Qwen38DFlash2
+
+            self._dflash = Qwen38DFlash2(
+                config.dflash2_args, config.num_layers, self._mtp_steps
+            )
+        elif self._mtp_steps:
             from .mtp import Qwen3_5MultiTokenPredictor
 
             self._mtp = Qwen3_5MultiTokenPredictor(config)
         self._mtp_target_hidden: torch.Tensor | None = None
         super().__init__()
 
+    def prepare_for_runtime(self) -> None:
+        if self._dflash is not None:
+            self._dflash.prepare_for_runtime(self.lm_head)
+
     def forward(self) -> torch.Tensor:
-        output = self.model.forward(get_global_ctx().batch.input_ids)
+        batch = get_global_ctx().batch
+        output = self.model.forward(batch.input_ids)
+        if self._dflash is not None:
+            self._dflash.materialize_target_hidden(
+                self.model._dflash_captures, batch.positions, batch.out_loc
+            )
         if self._mtp is not None:
             self._mtp_target_hidden = output
         return self.lm_head.forward(output)
 
+    def replay_speculative_state(self) -> None:
+        """Rebuild target and DFlash caches without the unused vocabulary projection."""
+        if self._dflash is None:
+            self.model.forward(get_global_ctx().batch.input_ids)
+            return
+        batch = get_global_ctx().batch
+        self.model.forward(batch.input_ids)
+        self._dflash.materialize_target_hidden(
+            self.model._dflash_captures, batch.positions, batch.out_loc
+        )
+
     def speculative_state_dict(self):
+        if self._dflash is not None:
+            return self._dflash.state_dict()
         return {} if self._mtp is None else self._mtp.state_dict()
 
     def load_speculative_state_dict(self, state_dict) -> None:
+        if self._dflash is not None:
+            self._dflash.load_state_dict(state_dict)
+            return
         if self._mtp is None:
             if state_dict:
                 raise RuntimeError("received Qwen MTP weights while MTP is disabled")
@@ -133,6 +174,8 @@ class Qwen3_5MoEForCausalLM(BaseLLMModel):
         self._mtp.load_state_dict(state_dict)
 
     def propose_mtp(self, batch, next_token: torch.Tensor) -> torch.Tensor | None:
+        if self._dflash is not None:
+            return self._dflash.propose(self, batch, next_token)
         if self._mtp is None or self._mtp_target_hidden is None or batch.size != 1:
             return None
         from sparklab.core import Batch, Req
