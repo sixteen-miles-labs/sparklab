@@ -843,7 +843,7 @@ class Scheduler(SchedulerIOMixin):
         # also removes page-boundary-dependent draft widths.
         lookahead = (
             int(getattr(self.config, "speculative_tokens", 0) or 0)
-            if getattr(self.config, "speculative_method", "none") == "mtp"
+            if getattr(self.config, "speculative_method", "none") in {"mtp", "dflash2"}
             else 0
         )
         if lookahead:

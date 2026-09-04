@@ -99,6 +99,8 @@ class EngineConfig:
     # DSpark head from checkpoint metadata. Zero tokens disables the path.
     speculative_method: str = "auto"
     speculative_tokens: int = 0
+    # Separate DFlash2 draft checkpoint (local path or Hugging Face repository id).
+    speculative_draft_model: str | None = None
     draft_sample_method: str = "greedy"
     # DSpark confidence-head probability floor. Zero keeps fixed-width verification.
     dspark_confidence_threshold: float = 0.0

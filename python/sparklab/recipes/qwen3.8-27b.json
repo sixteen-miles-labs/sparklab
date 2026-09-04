@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "recipe_version": "0.1.0",
+  "recipe_version": "0.3.0",
   "slug": "qwen3.8-27b",
   "name": "Qwen3.8 27B",
   "model": "Inferact/Qwen3.8-27B-NVFP4",
@@ -9,7 +9,7 @@
   "source_bytes": 26404418018,
   "prepared_bytes": 24640689529,
   "minimum_free_bytes": 80000000000,
-  "intended_tier": "frontier",
+  "intended_tier": "fast",
   "status": "experimental",
   "implementation": "available",
   "portfolio_role": "primary",
@@ -34,21 +34,24 @@
   "runtime_memory": {
     "total_bytes": 51539607552
   },
-  "description": "Resident text-only ModelOpt NVFP4 recipe for dense Qwen3.8 on one NVIDIA GB10.",
+  "description": "Experimental Fast-tier text-only ModelOpt NVFP4 recipe for dense Qwen3.8 on one NVIDIA GB10.",
   "performance": {
     "decode_tokens_per_second": 8.832997654771269,
     "warm_ttft_seconds": 0.14434478300245246,
     "context_tokens": 65536,
     "evidence": "GB10-QWEN38-27B-001",
-    "note": "The complete pinned checkpoint passed a three-trial greedy performance probe, exact 64K recall, and reasoning/tool/coding capability probes. The 60-minute endurance gate remains outstanding."
+    "note": "The complete pinned checkpoint passed a three-trial greedy performance probe, exact 64K recall, and reasoning/tool/coding capability probes. Opt-in DFlash2-8 reached 35.48 tok/s with exact target-output parity in a separate three-trial probe."
   },
   "evidence": [
-    "GB10-QWEN38-27B-001"
+    "GB10-QWEN38-27B-001",
+    "GB10-QWEN38-DFLASH-002",
+    "GB10-QWEN38-DFLASH-003"
   ],
   "limitations": [
     "The published checkpoint includes a vision tower; SparkLab serves its language model text-only.",
     "The exact 65,536-token recall gate passed; the checkpoint's declared 262,144-token maximum has not been validated on GB10.",
-    "The measured 8.833 tok/s clears Frontier but not Fast admission, and the 60-minute endurance gate remains outstanding.",
-    "The evidence host had about 209 MiB of pre-existing swap resident, although the 64K request produced zero swap growth, swap-in, or swap-out."
+    "The opt-in DFlash2-8 profile clears the Fast throughput and latency thresholds; full Fast certification remains outstanding, including a clean-revision 60-minute endurance run.",
+    "The evidence host had about 209 MiB of pre-existing swap resident, although the 64K request produced zero swap growth, swap-in, or swap-out.",
+    "Native DFlash2 is opt-in and limited to batch-one greedy serving. Its three-trial 128-token probe selected block size eight and did not rerun long-context, capability, sampled, concurrent, or endurance gates."
   ]
 }

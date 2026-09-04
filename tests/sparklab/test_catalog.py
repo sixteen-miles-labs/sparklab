@@ -54,6 +54,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert get_recipe("kimi-k3").status == "experimental"
     assert {item.slug for item in select_recipes(load_catalog(), tier="fast")} == {
         "qwen3.6-35b-a3b",
+        "qwen3.8-27b",
     }
     qwen = get_recipe("qwen3.8-flash-next")
     assert qwen.recipe_version == "0.8.0"
@@ -149,7 +150,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     primary = select_recipes(load_catalog(), portfolio_role="primary")
     assert {(item.intended_tier, item.slug) for item in primary} == {
         ("fast", "qwen3.6-35b-a3b"),
-        ("frontier", "qwen3.8-27b"),
+        ("fast", "qwen3.8-27b"),
         ("frontier", "deepseek-v4"),
         ("frontier", "glm-5.3-flash"),
         ("frontier", "qwen3.8-flash-next"),
@@ -172,11 +173,15 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     assert qwen27.revision == "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
     assert qwen27.source_bytes == 26404418018
     assert qwen27.prepared_bytes == 24640689529
-    assert qwen27.intended_tier == "frontier"
+    assert qwen27.intended_tier == "fast"
     assert qwen27.performance.decode_tokens_per_second == pytest.approx(8.832997654771269)
     assert qwen27.performance.warm_ttft_seconds == pytest.approx(0.14434478300245246)
     assert qwen27.performance.context_tokens == 65_536
-    assert qwen27.evidence == ("GB10-QWEN38-27B-001",)
+    assert qwen27.evidence == (
+        "GB10-QWEN38-27B-001",
+        "GB10-QWEN38-DFLASH-002",
+        "GB10-QWEN38-DFLASH-003",
+    )
     assert qwen27.deployment.execution_policy == "resident"
     assert qwen27.deployment.backend_options["num_tokens"] == 65_536
     assert qwen27.deployment.backend_options["max_seq_len_override"] == 65_536

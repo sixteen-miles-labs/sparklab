@@ -560,7 +560,7 @@ def test_mhc_fused_cuda_path_matches_eager_reference():
 
 def test_mhc_runtime_prepares_mapping_once_in_fp32():
     hc = Glm5NextHyperConnection(8, 4, 1e-6, 20, 1e-5)
-    hc.fn = hc.fn.to(torch.bfloat16)
+    hc.fn = torch.randn_like(hc.fn).to(torch.bfloat16)
     expected = hc.fn.float()
     hc.prepare_for_runtime()
     assert hc.fn.dtype == torch.float32

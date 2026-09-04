@@ -326,6 +326,9 @@ class ModelConfig:
     # Runtime speculative-decoding selection injected after parsing.
     speculative_method: str = "none"
     speculative_tokens: int = 0
+    # External DFlash2 draft geometry, resolved by the engine before model creation.
+    # Kept opaque here so model-independent cache sizing can read its injected KV group.
+    dflash2_args: Any | None = None
     draft_sample_method: str = "greedy"
     dspark_confidence_threshold: float = 0.0
     # Generic execution-path capability flags (set by a model's parse_config) so the engine and

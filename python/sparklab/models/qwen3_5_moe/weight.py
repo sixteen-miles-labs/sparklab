@@ -230,6 +230,85 @@ def iter_speculative_weights(
         reader.close()
 
 
+_DFLASH2_FUSIONS: dict[str, tuple[str, ...]] = {
+    ".self_attn.qkv_proj": (
+        ".self_attn.q_proj",
+        ".self_attn.k_proj",
+        ".self_attn.v_proj",
+    ),
+    ".mlp.gate_up_proj": (".mlp.gate_proj", ".mlp.up_proj"),
+}
+
+
+def iter_dflash2_weights(
+    model_path: str, device: torch.device
+) -> Iterator[tuple[str, torch.Tensor]]:
+    """Stream a standalone ModelOpt-NVFP4 DFlash2 checkpoint.
+
+    Q/K/V and gate/up are fused along the output dimension exactly as in the
+    native target.  ModelOpt's scalar ``weight_scale_2`` is expanded per output
+    row for SparkLab's W4A16 kernels; the remaining draft/selector tensors stay
+    BF16 and retain their checkpoint names.
+    """
+    if not model_path:
+        raise ValueError("DFlash2 draft model path is required")
+    reader = ShardReader(model_path, device)
+    pending: dict[str, dict[int, tuple[torch.Tensor, torch.Tensor, torch.Tensor]]] = {}
+    consumed_suffixes = (".weight_scale", ".weight_scale_2", ".input_scale")
+    try:
+        names = set(reader.names())
+        for name in sorted(names):
+            if name.endswith(consumed_suffixes):
+                continue
+            if name.endswith(".weight"):
+                base = name[: -len(".weight")]
+                if base + ".weight_scale_2" in names:
+                    weight = reader.get_tensor(name)
+                    scale = reader.get_tensor(base + ".weight_scale")
+                    scale_2 = reader.get_tensor(base + ".weight_scale_2")
+                    global_scale = (
+                        scale_2.reshape(1)
+                        .to(torch.float16)
+                        .expand(weight.shape[0])
+                        .contiguous()
+                    )
+                    fused = False
+                    for out_suffix, parts in _DFLASH2_FUSIONS.items():
+                        for index, suffix in enumerate(parts):
+                            if not base.endswith(suffix):
+                                continue
+                            out = base[: -len(suffix)] + out_suffix
+                            slots = pending.setdefault(out, {})
+                            slots[index] = (weight, scale, global_scale)
+                            if len(slots) == len(parts):
+                                ordered = [slots[i] for i in range(len(parts))]
+                                del pending[out]
+                                yield out + ".weight", torch.cat(
+                                    [part[0] for part in ordered], 0
+                                )
+                                yield out + ".weight_scale", torch.cat(
+                                    [part[1] for part in ordered], 0
+                                )
+                                yield out + ".weight_global", torch.cat(
+                                    [part[2] for part in ordered], 0
+                                )
+                            fused = True
+                            break
+                        if fused:
+                            break
+                    if fused:
+                        continue
+                    yield base + ".weight", weight
+                    yield base + ".weight_scale", scale
+                    yield base + ".weight_global", global_scale
+                    continue
+            yield name, reader.get_tensor(name)
+        if pending:
+            raise ValueError(f"incomplete DFlash2 projection groups: {sorted(pending)}")
+    finally:
+        reader.close()
+
+
 def _try_fuse(
     name: str, tensor: torch.Tensor, buf: dict[str, dict[int, torch.Tensor]]
 ) -> tuple[str, torch.Tensor] | tuple[()] | None:

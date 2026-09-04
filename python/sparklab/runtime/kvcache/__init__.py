@@ -61,6 +61,12 @@ def resolve_pool_class(model_config: ModelConfig) -> type[BaseKVCachePool]:
         from .bsa_pool import BSAKVCache
 
         return BSAKVCache
+    paged_specs = [spec for spec in specs_fn() if spec.attn_type is AttnType.FULL]
+    geometries = {(spec.num_kv_heads, spec.head_dim) for spec in paged_specs}
+    if len(geometries) > 1:
+        from .grouped_mha_pool import GroupedMHAKVCache
+
+        return GroupedMHAKVCache
     from .mha_pool import MHAKVCache
 
     return MHAKVCache
@@ -141,7 +147,21 @@ def create_kvcache_pool(
     head_dim = model_config.head_dim
     if model_config.has_linear_attention:
         specs = [s for s in model_config.kv_cache_group_specs() if s.num_layers > 0]
-        assert len(specs) == 1, f"expected one paged-KV group, got {[s.name for s in specs]}"
+        if len({(s.num_kv_heads, s.head_dim) for s in specs}) > 1:
+            from .grouped_mha_pool import GroupedMHAKVCache
+
+            return GroupedMHAKVCache(
+                groups=specs,
+                num_layers=max(
+                    model_config.num_layers,
+                    max((layer for spec in specs for layer in spec.layer_ids), default=-1) + 1,
+                ),
+                num_pages=num_pages,
+                page_size=page_size,
+                dtype=dtype,
+                device=device,
+            )
+        assert len(specs) == 1, f"expected one paged-KV geometry, got {[s.name for s in specs]}"
         spec = specs[0]
         layer_ids = spec.layer_ids
         num_kv_heads = spec.num_kv_heads

@@ -938,6 +938,41 @@ class Nvfp4LMHead(BaseOP):
         return nvfp4_dense_linear(x, self.weight, self.weight_scale, self.weight_global)
 
 
+def quantize_nvfp4_lm_head(weight: torch.Tensor) -> Nvfp4LMHead:
+    """Build a proposal-only W4A16 head from a resident BF16 vocabulary matrix."""
+    if weight.ndim != 2 or weight.dtype != torch.bfloat16 or weight.shape[1] % 16:
+        raise ValueError(
+            "DFlash2 selector quantization requires a BF16 [vocab, hidden] matrix "
+            "with hidden size divisible by 16"
+        )
+    import flashinfer
+    from flashinfer.quantization import SfLayout
+
+    maximum = weight.float().abs().nan_to_num().max()
+    quant_scale = torch.where(
+        maximum > 0,
+        maximum.new_tensor(448.0 * 6.0) / maximum,
+        maximum.new_tensor(1.0),
+    ).reshape(1)
+    packed, block_scales = flashinfer.nvfp4_quantize(
+        weight, quant_scale, sfLayout=SfLayout.layout_linear
+    )
+    packed = packed.view(torch.uint8).reshape(weight.shape[0], weight.shape[1] // 2)
+    block_scales = block_scales.view(FP8).reshape(
+        weight.shape[0], weight.shape[1] // 16
+    )
+    packed_t, scales_t = nvfp4_transpose_resident(packed, block_scales)
+    with torch.device("meta"):
+        head = Nvfp4LMHead(weight.shape[0], weight.shape[1])
+    head.weight = packed_t
+    head.weight_scale = scales_t
+    head.weight_global = quant_scale.reciprocal().to(torch.float16).expand(
+        weight.shape[0]
+    ).contiguous()
+    head._transposed = True
+    return head
+
+
 __all__ = [
     "FP8",
     "nvfp4_dense_linear",
@@ -946,4 +981,5 @@ __all__ = [
     "Nvfp4DenseLinear",
     "Nvfp4DenseColMerged",
     "Nvfp4LMHead",
+    "quantize_nvfp4_lm_head",
 ]

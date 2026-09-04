@@ -54,6 +54,10 @@ class LinearStatePool:
         self._conv_dtype = dtype
         self._aux_states: dict[str, torch.Tensor] = {}
         self._aux_specs: dict[str, tuple[tuple[int, ...], torch.dtype, float]] = {}
+        self._verify_steps = 0
+        self.verify_recurrent_states: torch.Tensor | None = None
+        self.verify_conv_inputs: torch.Tensor | None = None
+        self.verify_state_indices: torch.Tensor | None = None
 
         n_layers, local_conv_dim, local_v_heads = _linear_local_dims(group, tp_size)
 
@@ -79,9 +83,62 @@ class LinearStatePool:
         self.padding_slot = 0
         self._free_slots: list[int] = list(range(1, num_slots))
 
+    def enable_verify_transactions(self, steps: int) -> None:
+        """Allocate one batch-one intermediate-state lane for DFlash2 verification."""
+        steps = int(steps)
+        if steps <= 0 or steps == self._verify_steps:
+            return
+        if self._verify_steps:
+            raise ValueError(
+                f"verify transaction width is already {self._verify_steps}, got {steps}"
+            )
+        n_layers, _, conv_dim, _ = self.conv_states.shape
+        _, _, value_heads, key_dim, value_dim = self.recurrent_states.shape
+        self.verify_recurrent_states = torch.empty(
+            (n_layers, 1, steps, value_heads, key_dim, value_dim),
+            dtype=self.recurrent_states.dtype,
+            device=self._device,
+        )
+        self.verify_conv_inputs = torch.empty(
+            (n_layers, steps, conv_dim),
+            dtype=self._conv_dtype,
+            device=self._device,
+        )
+        self.verify_state_indices = torch.zeros(
+            1, dtype=torch.int32, device=self._device
+        )
+        self._verify_steps = steps
+
+    def commit_verify_prefix(self, snapshot_slot: int, live_slot: int, length: int) -> None:
+        """Commit GDN state after ``length`` verified inputs from cached intermediates."""
+        if (
+            self.verify_recurrent_states is None
+            or self.verify_conv_inputs is None
+            or not 1 <= length <= self._verify_steps
+        ):
+            raise RuntimeError("GDN verify transaction is not initialized for this length")
+        self.recurrent_states[:, live_slot].copy_(
+            self.verify_recurrent_states[:, 0, length - 1]
+        )
+        history = self.conv_states.shape[-1]
+        if length >= history:
+            conv = self.verify_conv_inputs[:, length - history : length].transpose(1, 2)
+            self.conv_states[:, live_slot].copy_(conv)
+        else:
+            self.conv_states[:, live_slot, :, : history - length].copy_(
+                self.conv_states[:, snapshot_slot, :, length:]
+            )
+            self.conv_states[:, live_slot, :, history - length :].copy_(
+                self.verify_conv_inputs[:, :length].transpose(1, 2)
+            )
+
     @property
     def num_free_slots(self) -> int:
         return len(self._free_slots)
+
+    @property
+    def verify_steps(self) -> int:
+        return self._verify_steps
 
     def alloc(self, n: int = 1) -> list[int]:
         """Pop ``n`` free slot ids (LIFO). Raises if the pool is exhausted."""
@@ -232,7 +289,24 @@ def linear_state_bytes_per_req(
     return int(n_layers * (conv_bytes + rec_bytes))
 
 
-__all__ = ["LinearStatePool", "linear_state_bytes_per_req"]
+def verify_transaction_bytes(
+    group: LinearGatedDeltaGroupConfig,
+    tp_size: int,
+    dtype: torch.dtype,
+    steps: int,
+) -> int:
+    """Batch-one DFlash2 per-token recurrent states plus raw convolution inputs."""
+    n_layers, local_conv_dim, local_v_heads = _linear_local_dims(group, tp_size)
+    recurrent = local_v_heads * group.key_head_dim * group.value_head_dim
+    per_step = recurrent * ssm_state_dtype().itemsize + local_conv_dim * dtype.itemsize
+    return int(n_layers * steps * per_step)
+
+
+__all__ = [
+    "LinearStatePool",
+    "linear_state_bytes_per_req",
+    "verify_transaction_bytes",
+]
 
 
 def state_pool_bytes(config, num_slots: int | None = None) -> int:
@@ -255,7 +329,15 @@ def state_pool_bytes(config, num_slots: int | None = None) -> int:
             * state_len
             * config.dtype.itemsize
         )
-    return per_slot * slots
+    total = per_slot * slots
+    if getattr(config, "speculative_method", "none") == "dflash2":
+        total += verify_transaction_bytes(
+            linear_group,
+            config.tp_info.size,
+            config.dtype,
+            int(getattr(config, "speculative_tokens", 0) or 0),
+        )
+    return total
 
 
 def _linear_pool_num_slots(config) -> int:

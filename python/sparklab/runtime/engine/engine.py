@@ -16,7 +16,15 @@ from sparklab.models import create_model, load_weight
 from sparklab.moe import create_moe_backend, is_offload_moe_backend
 from sparklab.moe.expert_banks import load_expert_banks
 from sparklab.moe.offload_cache import OffloadMoeCache, attach_offload_moe_cache
-from sparklab.utils import align_ceil, init_logger, is_sm90_family, is_sm100_family, mem_GB, torch_dtype
+from sparklab.utils import (
+    align_ceil,
+    cached_load_hf_config,
+    init_logger,
+    is_sm90_family,
+    is_sm100_family,
+    mem_GB,
+    torch_dtype,
+)
 
 from .config import EngineConfig
 from .graph import GraphRunner, MTPVerificationGraphRunner, get_free_memory
@@ -273,8 +281,8 @@ def _validate_attention_backend_choice(config, override, required: frozenset[Att
 def _adjust_speculative_config(config: EngineConfig, override) -> None:
     """Resolve and inject checkpoint-native speculation before cache sizing."""
     speculative_tokens = int(getattr(config, "speculative_tokens", 0) or 0)
-    if speculative_tokens < 0 or speculative_tokens > 7:
-        raise ValueError("--speculative-tokens must be between 0 and 7")
+    if speculative_tokens < 0 or speculative_tokens > 16:
+        raise ValueError("--speculative-tokens must be between 0 and 16")
     if not speculative_tokens:
         return
 
@@ -297,8 +305,19 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
         and tuple(getattr(dsv4_args, "dspark_target_layer_ids", ()) or ())
         and int(getattr(dsv4_args, "dspark_markov_rank", 0) or 0) > 0
     )
+    draft_model = getattr(config, "speculative_draft_model", None) or os.getenv(
+        "SPARKLAB_DFLASH2_PATH"
+    )
     if requested == "auto":
-        method = "dspark" if dsv4_dspark else "mtp" if (qwen_mtp or glm5_mtp) else "none"
+        method = (
+            "dflash2"
+            if draft_model
+            else "dspark"
+            if dsv4_dspark
+            else "mtp"
+            if (qwen_mtp or glm5_mtp)
+            else "none"
+        )
     else:
         method = requested
     if method == "none":
@@ -311,6 +330,8 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
             raise ValueError(
                 "--speculative-method dspark requires a fused DeepSeek-V4 DSpark checkpoint"
             )
+        if speculative_tokens > 7:
+            raise ValueError("DeepSeek-V4 DSpark supports at most 7 speculative tokens")
         if getattr(config, "draft_sample_method", "greedy") not in {
             "greedy", "probabilistic"
         }:
@@ -368,6 +389,54 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
         override("speculative_method", "dspark")
         # Correctness-first verification is eager and batch one. The DSpark
         # query block itself is still parallel inside one model forward.
+        override("max_running_req", 1)
+        override("cache_type", "radix")
+        override("cuda_graph_bs", [])
+        override("cuda_graph_max_bs", 0)
+        return
+
+    if method == "dflash2":
+        if not draft_model:
+            raise ValueError(
+                "--speculative-method dflash2 requires --speculative-draft-model "
+                "or SPARKLAB_DFLASH2_PATH"
+            )
+        if not 2 <= speculative_tokens <= 16:
+            raise ValueError("Qwen3.8 DFlash2 block size must be between 2 and 16")
+        if getattr(config, "draft_sample_method", "greedy") != "greedy":
+            raise ValueError("native DFlash2 currently supports greedy decoding only")
+        if model_config.moe_enabled or model_config.num_layers != 64:
+            raise ValueError("native DFlash2 currently requires dense 64-layer Qwen3.8")
+        from sparklab.models.config import FullAttentionGroupConfig
+        from sparklab.models.qwen3_5_moe.dflash2 import parse_dflash2_args
+
+        draft_hf = cached_load_hf_config(draft_model)
+        args = parse_dflash2_args(draft_hf, draft_model)
+        if (
+            args.hidden_size != model_config.hidden_size
+            or args.vocab_size != model_config.vocab_size
+        ):
+            raise ValueError(
+                "DFlash2 draft hidden/vocabulary geometry does not match the target"
+            )
+        first = model_config.num_layers
+        draft_ids = tuple(range(first, first + args.num_layers))
+        draft_group = FullAttentionGroupConfig(
+            name="dflash2",
+            layer_ids=draft_ids,
+            num_kv_heads=args.num_key_value_heads,
+            head_dim=args.head_dim,
+            rotary_config=model_config.rotary_config,
+        )
+        groups = tuple(
+            group for group in model_config.attention_groups if group.name != "dflash2"
+        ) + (draft_group,)
+        object.__setattr__(model_config, "attention_groups", groups)
+        object.__setattr__(model_config, "dflash2_args", args)
+        object.__setattr__(model_config, "speculative_method", "dflash2")
+        object.__setattr__(model_config, "speculative_tokens", speculative_tokens)
+        override("speculative_method", "dflash2")
+        override("speculative_draft_model", draft_model)
         override("max_running_req", 1)
         override("cache_type", "radix")
         override("cuda_graph_bs", [])
@@ -610,8 +679,11 @@ class Engine:
         self.cpu_moe_executor = None
         if is_offload_moe_backend(config.moe_backend):
             self._init_offload_moe_cache(config)
+        pre_runtime_free = self._sync_get_memory()[0]
         if hasattr(self.model, "prepare_for_runtime"):
             self.model.prepare_for_runtime()
+        post_runtime_free = self._sync_get_memory()[0]
+        self._weights_bytes += max(0, pre_runtime_free - post_runtime_free)
 
         # ======================= KV cache initialization ========================
         new_free = self._sync_get_memory()[1]
@@ -638,6 +710,10 @@ class Engine:
                 tp_size=config.tp_info.size,
             )
             self.ctx.linear_state_pool = self.linear_state_pool
+            if config.speculative_method == "dflash2":
+                self.linear_state_pool.enable_verify_transactions(
+                    config.speculative_tokens
+                )
         else:
             self.linear_state_pool = None
 
@@ -775,7 +851,13 @@ class Engine:
             return _make_dummy_weight_state_dict(model_state, device=self.device)
         from sparklab.checkpoint.ftw import is_ftw_checkpoint, iter_ftw_weights
 
-        if is_ftw_checkpoint(config.model_path):
+        if config.speculative_method == "dflash2":
+            from sparklab.models.register import _load_attr, get_model_spec
+
+            spec = get_model_spec(config.model_config.architectures[0])
+            loader = _load_attr(spec.module, "iter_dflash2_weights")
+            weights = loader(config.speculative_draft_model, torch.device("cpu"))
+        elif is_ftw_checkpoint(config.model_path):
             weights = iter_ftw_weights(
                 config.model_path, kinds=("speculative_weight",)
             )
@@ -1326,6 +1408,8 @@ class Engine:
                         scratch = pool.num_slots - 1
                     pool.copy_from(live, scratch)
                     state_snapshots.append((live, scratch))
+                if self.config.speculative_method == "dflash2":
+                    batch.cache_verify_states = True
         with self.ctx.forward_batch(batch):
             if (
                 batch.is_verify
@@ -1356,6 +1440,11 @@ class Engine:
             )
             self.mtp_stats["drafted"] += int(drafts.numel())
             self.mtp_stats["accepted"] += accepted
+            if self.config.speculative_method == "dflash2":
+                live, scratch = state_snapshots[0]
+                self.linear_state_pool.commit_verify_prefix(
+                    scratch, live, accepted + 1
+                )
             if accepted < drafts.numel():
                 if self.config.speculative_method == "dspark":
                     if accepted == 0:
@@ -1363,10 +1452,12 @@ class Engine:
                         self.mtp_stats["fast_carry_commits"] += 1
                     else:
                         self.kv_cache.restore_speculative(kv_snapshot)
-                else:
+                elif self.config.speculative_method != "dflash2":
                     live, scratch = state_snapshots[0]
                     self.linear_state_pool.copy_from(scratch, live)
-                if self.config.speculative_method != "dspark" or accepted > 0:
+                if self.config.speculative_method not in {"dspark", "dflash2"} or (
+                    self.config.speculative_method == "dspark" and accepted > 0
+                ):
                     self._replay_verified_prefix(batch, accepted + 1, start)
                     self.mtp_stats["replay_calls"] += 1
                     self.mtp_stats["replay_tokens"] += accepted + 1
@@ -1477,7 +1568,13 @@ class Engine:
             replay.fla_metadata = build_fla_metadata(replay, self.device)
         self.attn_backend.prepare_metadata(replay)
         with self.ctx.forward_batch(replay):
-            if self.config.speculative_method == "dspark":
+            if self.config.speculative_method == "dflash2":
+                replay_state = getattr(self.model, "replay_speculative_state", None)
+                if replay_state is None:
+                    self.model.forward()
+                else:
+                    replay_state()
+            elif self.config.speculative_method == "dspark":
                 self.model.forward()
             else:
                 self.model.model.forward(replay.input_ids)

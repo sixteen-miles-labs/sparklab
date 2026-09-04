@@ -1,6 +1,7 @@
 from .config import parse_config
 from .model import Qwen3_5MoEForCausalLM
 from .weight import (
+    iter_dflash2_weights,
     iter_weights,
     iter_weights_parallel,
     iter_speculative_weights,
@@ -12,6 +13,7 @@ from .weight import (
 __all__ = [
     "Qwen3_5MoEForCausalLM",
     "parse_config",
+    "iter_dflash2_weights",
     "iter_weights",
     "iter_weights_parallel",
     "iter_speculative_weights",

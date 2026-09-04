@@ -38,6 +38,13 @@ recipes. Raw logs and large result streams stay outside the source repository.
 - `results/GB10-QWEN38-27B-001.json` records the dense Qwen3.8-27B ModelOpt
   NVFP4 result: 8.83 decode tok/s, 0.144 s warm TTFT, exact 64K recall, and
   passing reasoning, tool-call, and coding-agent probes.
+- `results/GB10-QWEN38-DFLASH-002.json` records the native DFlash2-8 profile:
+  27.28 decode tok/s and 0.162 s warm TTFT across three matched trials, with
+  exact target-only output parity.
+- `results/GB10-QWEN38-DFLASH-003.json` records the optimized DFlash2-8 profile:
+  35.48 decode tok/s and 0.153 s warm TTFT across three trials, with exact
+  target-only output parity and zero rejection replays. The profile clears the
+  Fast performance thresholds; the remaining certification gates are outstanding.
 - `results/GB10-QWEN38-FRONTIER-001.json` records the certified text-only
   Qwen3.8-Flash-Next result for the superseded NVFP4 recipe.
 - `results/GB10-QWEN38-FP8-001.json` records the official FP8 recipe's measured
