@@ -121,10 +121,10 @@ a SparkLab support claim.
     <tr>
       <td><a href="https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW">GLM-5.3 Flash</a></td>
       <td>320B total / 18B active</td>
-      <td>NVFP4 + KDA FP8 · FTW</td>
+      <td>NVFP4 + KDA FP8 · FTW + optional MTP3</td>
       <td>Experimental</td>
-      <td align="right">6.27</td>
-      <td align="right">5.681</td>
+      <td align="right">6.27 target<br>7.44 MTP3</td>
+      <td align="right">5.681 target<br>6.330 MTP3</td>
       <td><a href="docs/models/glm-5.3-flash.md">Instructions</a></td>
     </tr>
     <tr>
@@ -166,6 +166,11 @@ The Qwen3.6 row reports the latest opt-in two-draft MTP probe: 74.42 tok/s and 0
 warm TTFT. Its Certified status remains tied to the target-only profile (67.79 tok/s and
 0.329 s warm TTFT); MTP is still awaiting the full certification suite. See
 [GB10-QWEN36-MTP-004](benchmarks/gb10/results/GB10-QWEN36-MTP-004.json).
+
+The GLM-5.3 Flash row separates the default target-only profile from the opt-in MTP3
+probe. MTP3 averaged 7.436 tok/s with 6.330 s warm TTFT and exact target-only output
+parity, but remains Experimental pending the broader certification suite. See
+[GB10-GLM53-OPT-005](benchmarks/gb10/results/GB10-GLM53-OPT-005.json).
 
 ## Documentation
 
