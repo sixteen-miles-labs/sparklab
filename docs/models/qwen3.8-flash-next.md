@@ -55,6 +55,15 @@ contexts; no command-line switch is required. The recipe admits up to four concu
 requests. On the measured GB10, aggregate decode throughput was 16.94, 36.78, and 61.79
 tok/s at concurrency 1, 2, and 4 respectively.
 
+For a separate vLLM deployment of the Mia-AiLab NVFP4 checkpoint, a QSA scale-hoist
+and scheduler optimization measured 90.52 aggregate tok/s at concurrency eight, with
+1.699 s p95 TTFT. Its matched baseline measured 60.16 tok/s and 13.874 s p95 TTFT.
+Because the engine, checkpoint packaging, scheduler, and concurrent workload differ,
+this is a portfolio reference rather than a replacement for SparkLab's 30.67 tok/s
+single-stream MTP3 result. See
+[`GB10-QWEN38-VLLM-008`](../../benchmarks/gb10/results/GB10-QWEN38-VLLM-008.json)
+and the [upstream implementation PR](https://github.com/MiaAI-Lab/Qwen3.8-Flash-Next-Single-DGX-Spark/pull/2).
+
 The default hybrid radix cache also snapshots the complete recurrent state: GDN state,
 PLE convolution history, paged QSA K/V, and pooled index keys. In a controlled repeated
 96-token prompt, it reused 64 tokens and lowered warm TTFT from 404 ms to 306 ms without

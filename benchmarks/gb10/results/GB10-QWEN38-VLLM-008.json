@@ -1,0 +1,97 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWEN38-VLLM-008",
+  "status": "measured",
+  "date": "2026-09-04",
+  "engine": {
+    "name": "vLLM Qwen3.8 Flash Next DGX Spark image",
+    "version": "0.1.dev20073+g8e685d198",
+    "implementation_repository": "MiaAI-Lab/Qwen3.8-Flash-Next-Single-DGX-Spark",
+    "baseline_revision": "5af8abd",
+    "optimized_revision": "5218435",
+    "pull_request": "https://github.com/MiaAI-Lab/Qwen3.8-Flash-Next-Single-DGX-Spark/pull/2"
+  },
+  "hardware": {
+    "platform": "NVIDIA DGX Spark",
+    "device": "NVIDIA GB10",
+    "compute_capability": "12.1",
+    "unified_memory_gib": 121.69
+  },
+  "checkpoint": {
+    "repository": "Mia-AiLab/Qwen3.8-Flash-Next-NVFP4",
+    "revision": "925d7be6c14c6c9442ef83e8f05b5a3c39304f69",
+    "format": "safetensors-nvfp4",
+    "complete_checkpoint_loaded": true
+  },
+  "workload": {
+    "client_path": "OpenAI-compatible streaming HTTP API",
+    "thinking": false,
+    "completion_tokens_per_request": 192,
+    "requests_at_concurrency_eight": 16,
+    "prefix_cache_hits": "prevented with salted prompts",
+    "prefill_prompt_tokens": 32781
+  },
+  "configuration": {
+    "attention_backend": "qsa",
+    "kv_cache_dtype": "fp8",
+    "speculative_tokens": 3,
+    "baseline_max_num_batched_tokens": 2048,
+    "baseline_max_num_seqs": 4,
+    "optimized_max_num_batched_tokens": 8192,
+    "optimized_max_num_seqs": 8
+  },
+  "metrics": {
+    "baseline": {
+      "prefill_tokens_per_second": 1827.0077634468157,
+      "concurrency_one_aggregate_tokens_per_second": 24.064385748536793,
+      "concurrency_four_aggregate_tokens_per_second": 56.44462876321519,
+      "concurrency_eight_aggregate_tokens_per_second": 60.16381135345002,
+      "concurrency_eight_ttft_p95_seconds": 13.874419236009999,
+      "concurrency_eight_e2e_p95_seconds": 26.083667622500798,
+      "kv_cache_tokens": 1323445
+    },
+    "optimized": {
+      "prefill_tokens_per_second": 2166.7669454354455,
+      "concurrency_one_aggregate_tokens_per_second": 24.29474845759242,
+      "concurrency_four_aggregate_tokens_per_second": 57.42096288757168,
+      "concurrency_eight_aggregate_tokens_per_second": 90.52231643376244,
+      "concurrency_eight_ttft_p95_seconds": 1.699271208504797,
+      "concurrency_eight_e2e_p95_seconds": 18.252524474264646,
+      "kv_cache_tokens": 1249637
+    },
+    "change_percent": {
+      "prefill_throughput": 18.5987,
+      "concurrency_eight_aggregate_throughput": 50.4565,
+      "concurrency_eight_ttft_p95": -87.7525,
+      "concurrency_eight_e2e_p95": -30.0232,
+      "kv_cache_tokens": -5.5769
+    }
+  },
+  "kernel_microbenchmark": {
+    "shape": "512 query rows, top-k 2048",
+    "baseline_sparse_qsa_milliseconds": 2.984,
+    "optimized_sparse_qsa_milliseconds": 1.772,
+    "latency_change_percent": -40.6166,
+    "baseline_selector_milliseconds": 0.1392,
+    "optimized_selector_milliseconds": 0.1008,
+    "selector_latency_change_percent": -27.5862
+  },
+  "validation": {
+    "bf16_path_bit_identical": true,
+    "maximum_sparse_attention_absolute_difference": 0.0000152587890625,
+    "maximum_difference_interpretation": "one BF16 ULP",
+    "checkpoint_index_completeness_checked": true,
+    "oom_count": 0
+  },
+  "source": {
+    "summary": "Matched baseline and optimized GB10 sweep using the committed benchmark harness.",
+    "raw_artifact": "$HOME/results/qwen38-vllm-opt-20260904",
+    "implementation": "https://github.com/lidaiqing/Qwen3.8-Flash-Next-Single-DGX-Spark/commit/5218435"
+  },
+  "limitations": [
+    "This result uses a separate vLLM engine and checkpoint package and is not directly comparable to SparkLab's single-stream MTP3 result.",
+    "The end-to-end values are one-run workload measurements; generated content changes MTP acceptance and decode speed.",
+    "Repeated identical requests did not reproduce exact text hashes on the unchanged baseline server, so tensor-level numerical comparison is reported instead.",
+    "The one-ULP tensor comparison does not replace a long-reasoning quality evaluation."
+  ]
+}

@@ -59,6 +59,10 @@ recipes. Raw logs and large result streams stay outside the source repository.
   three-draft profile measured 30.67 decode tok/s and 0.258 s warm TTFT, a 55.35%
   improvement over its controlled target-only run; all three selected-profile trials
   reproduced the same 128-token output hash.
+- `results/GB10-QWEN38-VLLM-008.json` records a separate vLLM QSA optimization on the
+  Mia-AiLab NVFP4 checkpoint. Scale-hoisted FP8 KV dequantization and an 8-sequence
+  scheduler raised concurrency-eight aggregate decode from 60.16 to 90.52 tok/s and
+  reduced p95 TTFT from 13.874 to 1.699 seconds.
 - `results/GB10-GLM53-NVFP4-001.json` records the GLM-5.3 Flash NVFP4
   complete-checkpoint probe: 4.46 decode tok/s and 5.760 s warm TTFT. Its corrected
   greedy probe reaches the reference answer; the broader quality gates remain outstanding.
