@@ -102,8 +102,8 @@ a SparkLab support claim.
       <td>27B dense</td>
       <td>NVFP4 · FTW + optional DFlash2-8</td>
       <td>Experimental</td>
-      <td align="right">8.83 target / 35.48 DFlash2-8</td>
-      <td align="right">0.144 target / 0.153 DFlash2-8</td>
+      <td align="right">8.83 target<br>35.48 DFlash2-8</td>
+      <td align="right">0.144 target<br>0.153 DFlash2-8</td>
       <td><a href="docs/models/qwen3.8-27b.md">Instructions</a></td>
     </tr>
     <tr>
@@ -132,8 +132,8 @@ a SparkLab support claim.
       <td>320B total / 18B active</td>
       <td>NVFP4 + KDA FP8 · FTW + optional MTP3</td>
       <td>Experimental</td>
-      <td align="right">6.27 target / 7.44 MTP3</td>
-      <td align="right">5.681 target / 6.330 MTP3</td>
+      <td align="right">6.27 target<br>7.44 MTP3</td>
+      <td align="right">5.681 target<br>6.330 MTP3</td>
       <td><a href="docs/models/glm-5.3-flash.md">Instructions</a></td>
     </tr>
     <tr>
