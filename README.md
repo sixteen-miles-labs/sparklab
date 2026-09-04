@@ -114,8 +114,8 @@ a SparkLab support claim.
       <td>125B LM + 55B auxiliary / 6B active</td>
       <td>NVFP4 · FTW + MTP3</td>
       <td>Experimental</td>
-      <td align="right">30.67 single<br>90.52 C8 vLLM</td>
-      <td align="right">0.258 warm<br>1.699 p95 C8</td>
+      <td align="right">30.67 single<br>85.72 C8</td>
+      <td align="right">0.258 warm<br>0.867 p95 C8</td>
       <td><a href="docs/models/qwen3.8-flash-next.md">Instructions</a></td>
     </tr>
     <tr>
@@ -168,9 +168,8 @@ Status meanings:
 - **Certified:** the exact recipe, revision, artifact, and release environment passed all
   required correctness, parser, agent, context, latency, memory, NVMe, and endurance gates.
 
-Qwen3.8-Flash-Next's 90.52 tok/s entry is a separately measured concurrency-eight
-vLLM reference profile; 30.67 tok/s remains SparkLab's comparable single-stream result.
-The [model notes](docs/models/qwen3.8-flash-next.md) link both evidence records.
+Qwen3.8-Flash-Next's C8 line is a native SparkLab target-only profile; its selected
+single-stream result continues to use MTP3. The two workloads are labeled separately.
 
 Run `sparklab models --json` for exact recipe versions, checkpoint revisions, artifact
 fingerprints, implementation state, evidence IDs, and known constraints.

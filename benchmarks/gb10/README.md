@@ -59,6 +59,10 @@ recipes. Raw logs and large result streams stay outside the source repository.
   three-draft profile measured 30.67 decode tok/s and 0.258 s warm TTFT, a 55.35%
   improvement over its controlled target-only run; all three selected-profile trials
   reproduced the same 128-token output hash.
+- `results/GB10-QWEN38-CONC-009.json` records the native SparkLab batch-eight profile.
+  Raising request admission and dense-QSA graph capture from four to eight increased
+  concurrency-eight aggregate throughput from 55.64 to 85.72 tok/s and reduced p95
+  TTFT from 9.709 to 0.867 seconds.
 - `results/GB10-QWEN38-VLLM-008.json` records a separate vLLM QSA optimization on the
   Mia-AiLab NVFP4 checkpoint. Scale-hoisted FP8 KV dequantization and an 8-sequence
   scheduler raised concurrency-eight aggregate decode from 60.16 to 90.52 tok/s and
