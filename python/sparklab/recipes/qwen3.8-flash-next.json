@@ -51,7 +51,7 @@
     "warm_ttft_seconds": 0.2582157750002807,
     "context_tokens": 65536,
     "evidence": "GB10-QWEN38-MTP-007",
-    "note": "The selected three-draft native MTP profile measured a three-trial median 30.67 tok/s and 0.258 s warm TTFT in a controlled 128-token batch-one greedy GB10 run. The separate target-only batch-eight profile measured 85.72 aggregate tok/s. The clean-revision 60-minute endurance gate remains outstanding."
+    "note": "The selected three-draft native MTP profile measured a three-trial median 30.67 tok/s and 0.258 s warm TTFT in a controlled 128-token batch-one greedy GB10 run. The clean-revision 60-minute endurance gate remains outstanding."
   },
   "evidence": [
     "GB10-QWEN38-MTP-007",
