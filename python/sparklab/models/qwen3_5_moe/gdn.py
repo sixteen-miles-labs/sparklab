@@ -208,7 +208,7 @@ class Qwen3_5GatedDeltaNet(BaseOP):
                     or pool.verify_state_indices is None
                     or total > pool.verify_steps
                 ):
-                    raise RuntimeError("DFlash2 GDN verify buffers are not initialized")
+                    raise RuntimeError("GDN verify transaction buffers are not initialized")
                 pool.verify_conv_inputs[li, :total].copy_(conv_in)
                 intermediate = pool.verify_recurrent_states[li]
                 intermediate_indices = pool.verify_state_indices

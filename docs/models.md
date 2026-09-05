@@ -50,8 +50,9 @@ single-stream profile; concurrent-serving results remain in model-specific evide
 
 Qwen3.6's published FTW artifact includes its native BF16 MTP weights, but the portfolio
 row continues to report the certified target-only profile. The optimized two-draft path
-measured 74.42 tok/s on a matched 256-token GB10 probe versus 45.38 tok/s target-only;
-it remains opt-in pending the full certification suite.
+measured 80.55 tok/s with 0.367 s warm TTFT on a 256-token GB10 probe and matched the
+fresh eager target-only output on that prompt; it remains opt-in pending the full
+certification suite.
 
 GLM-5.3 Flash similarly keeps its 6.27 tok/s, 5.681 s target-only result visible while
 also reporting the opt-in MTP3 probe. The optimized MTP3 path averaged 7.436 tok/s and
@@ -67,7 +68,7 @@ number because MTP is intentionally batch-one.
 
 | Model | Current result | Evidence |
 |---|---|---|
-| Qwen3.6-35B-A3B | Fast-certified target-only profile, including exact 32K recall and a 60-minute zero-swap run. Optimized native MTP2 reached 74.42 tok/s versus its 45.38 tok/s eager control; it remains opt-in pending full certification. | [GB10-QWEN36-FAST-002](../benchmarks/gb10/results/GB10-QWEN36-FAST-002.json), [original MTP sweep](../benchmarks/gb10/results/GB10-QWEN36-MTP-003.json), [optimized MTP](../benchmarks/gb10/results/GB10-QWEN36-MTP-004.json) |
+| Qwen3.6-35B-A3B | Fast-certified target-only profile, including exact 32K recall and a 60-minute zero-swap run. Replay-free native MTP2 reached 80.55 tok/s and matched the eager target-only output on the focused prompt; it remains opt-in pending full certification. | [GB10-QWEN36-FAST-002](../benchmarks/gb10/results/GB10-QWEN36-FAST-002.json), [original MTP sweep](../benchmarks/gb10/results/GB10-QWEN36-MTP-003.json), [optimized MTP](../benchmarks/gb10/results/GB10-QWEN36-MTP-004.json), [replay-free MTP](../benchmarks/gb10/results/GB10-QWEN36-MTP-005.json) |
 | Qwen3.8-27B | The opt-in DFlash2-8 profile reached 35.48 tok/s with exact target-output parity and clears the Fast performance thresholds; full Fast certification remains pending. | [target-only](../benchmarks/gb10/results/GB10-QWEN38-27B-001.json), [DFlash2](../benchmarks/gb10/results/GB10-QWEN38-DFLASH-003.json) |
 | Qwen3.8-Flash-Next | The selected MTP3 profile measured 30.67 tok/s at 0.258 s warm TTFT. Separately, native batch-eight target-only serving reached 85.72 aggregate tok/s and 0.867 s p95 TTFT at C8. | [MTP3](../benchmarks/gb10/results/GB10-QWEN38-MTP-007.json), [batch eight](../benchmarks/gb10/results/GB10-QWEN38-CONC-009.json) |
 | DeepSeek V4 Flash | The selected three-trial DSpark5 burst profile reaches 13.15 tok/s. Target-only remains the default and wins the 256-token sustained control, 10.52 versus 9.31 tok/s. | [GB10-DSV4-SMALLM-005](../benchmarks/gb10/results/GB10-DSV4-SMALLM-005.json) |

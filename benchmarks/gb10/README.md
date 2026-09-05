@@ -35,6 +35,10 @@ recipes. Raw logs and large result streams stay outside the source repository.
 - `results/GB10-QWEN36-MTP-004.json` records the optimized native MTP path. Width two
   reached 74.42 tok/s versus its matched 45.38 tok/s eager control on the 256-token
   Triton-attention probe, a 64.0% gain and 10.60x the prior width-two implementation.
+- `results/GB10-QWEN36-MTP-005.json` records replay-free Qwen3.6 MTP2: a three-trial
+  median of 80.55 tok/s and 0.367 s warm TTFT, with exact output-hash parity against
+  the fresh eager target-only control on the measured prompt. Broader MTP
+  certification remains outstanding.
 - `results/GB10-QWEN38-27B-001.json` records the dense Qwen3.8-27B ModelOpt
   NVFP4 result: 8.83 decode tok/s, 0.144 s warm TTFT, exact 64K recall, and
   passing reasoning, tool-call, and coding-agent probes.

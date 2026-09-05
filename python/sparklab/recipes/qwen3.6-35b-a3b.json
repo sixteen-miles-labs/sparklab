@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "recipe_version": "0.4.0",
+  "recipe_version": "0.5.0",
   "slug": "qwen3.6-35b-a3b",
   "name": "Qwen3.6 35B A3B",
   "model": "nvidia/Qwen3.6-35B-A3B-NVFP4",
@@ -43,17 +43,18 @@
     "decode_tokens_per_second": 67.7870954092827,
     "warm_ttft_seconds": 0.32882933877408504,
     "evidence": "GB10-QWEN36-FAST-002",
-    "note": "The target-only profile passed the Fast gate with exact 32K recall, complete capability probes, bounded resident memory, and a zero-swap 60-minute endurance run. The artifact also includes an opt-in native BF16 MTP shard; the optimized width-two GB10 profile measured 74.42 tok/s on a 256-token probe, but has not repeated the full certification suite."
+    "note": "The target-only profile passed the Fast gate with exact 32K recall, complete capability probes, bounded resident memory, and a zero-swap 60-minute endurance run. The artifact also includes an opt-in native BF16 MTP shard; the replay-free width-two GB10 profile measured 80.55 tok/s with 0.367 s warm TTFT on a 256-token probe, but has not repeated the full certification suite."
   },
   "evidence": [
     "GB10-QWEN36-FAST-001",
     "GB10-QWEN36-FAST-002",
     "GB10-QWEN36-MTP-003",
-    "GB10-QWEN36-MTP-004"
+    "GB10-QWEN36-MTP-004",
+    "GB10-QWEN36-MTP-005"
   ],
   "limitations": [
     "The fixed five-problem AIME sample scored 0/5 because all five sampled runs exhausted the 2,048-token reasoning budget before emitting a final answer; Fast certification establishes serving correctness and operational behavior, not benchmark-quality certification.",
     "Certification covers text inference at batch one on one NVIDIA GB10.",
-    "Native MTP remains opt-in: optimized width two measured 74.42 tok/s versus its 45.38 tok/s eager control, but its multi-token numerical path did not reproduce the single-token greedy output hash and the full certification suite has not been rerun."
+    "Native MTP remains opt-in: replay-free width two measured 80.55 tok/s and reproduced the fresh eager target-only output hash on the focused prompt, but the full certification suite has not been rerun."
   ]
 }

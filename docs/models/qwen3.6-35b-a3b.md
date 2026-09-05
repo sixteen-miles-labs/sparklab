@@ -1,7 +1,8 @@
 # Run Qwen3.6-35B-A3B
 
 Qwen3.6-35B-A3B is SparkLab's Fast-tier NVFP4 recipe. It uses a pinned, prebuilt FTW
-artifact and runs resident on one NVIDIA DGX Spark. Recipe 0.4.0 is Fast-certified on
+artifact and runs resident on one NVIDIA DGX Spark. Recipe 0.5.0 retains the Fast
+certification established by its target-only profile on
 one NVIDIA GB10: 67.79 decode tok/s, 0.329 s warm TTFT, exact 32K recall, and a stable
 60-minute zero-swap run. See the
 [versioned evidence](../../benchmarks/gb10/results/GB10-QWEN36-FAST-002.json).
@@ -70,6 +71,15 @@ numerical path selected a different close greedy continuation than single-token 
 decode. The complete context, quality, agent, and endurance certification suite has not
 been rerun. See [the original sweep](../../benchmarks/gb10/results/GB10-QWEN36-MTP-003.json)
 and [the optimized result](../../benchmarks/gb10/results/GB10-QWEN36-MTP-004.json).
+
+The latest source-tree optimization saves the GDN state at each verified token and
+commits the accepted prefix directly, eliminating rejection replay. Three 256-token
+trials measured a median **80.55 tok/s** and **0.367 s warm TTFT**, versus a fresh
+75.43 tok/s MTP2 control. All three matched the fresh eager target-only output hash
+on this prompt; the old MTP control selected a different continuation. Reported
+server memory increased from 21.75 to 21.93 GiB. This focused result does not extend
+the target-only certification to MTP or establish general output parity. See
+[the replay-free evidence](../../benchmarks/gb10/results/GB10-QWEN36-MTP-005.json).
 
 MTP currently applies to one running greedy request. Sampled requests fall back to target
 decoding, and target verification runs eagerly.

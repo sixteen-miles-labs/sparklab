@@ -33,7 +33,10 @@ from sparklab.runtime.kvcache import create_kv_pool, resolve_pool_class
 from sparklab.runtime.kvcache.base import CacheRebuildRejected
 from sparklab.runtime.kvcache.cache_status import _supports_swa_ratio
 from sparklab.runtime.kvcache.linear_state_pool import (
-    _linear_pool_min_slots, _linear_pool_num_slots, state_pool_bytes,
+    _linear_pool_min_slots,
+    _linear_pool_num_slots,
+    state_pool_bytes,
+    verify_transaction_steps,
 )
 
 logger = init_logger(__name__)
@@ -710,9 +713,10 @@ class Engine:
                 tp_size=config.tp_info.size,
             )
             self.ctx.linear_state_pool = self.linear_state_pool
-            if config.speculative_method == "dflash2":
+            transaction_steps = verify_transaction_steps(config)
+            if transaction_steps:
                 self.linear_state_pool.enable_verify_transactions(
-                    config.speculative_tokens
+                    transaction_steps
                 )
         else:
             self.linear_state_pool = None
@@ -1408,7 +1412,7 @@ class Engine:
                         scratch = pool.num_slots - 1
                     pool.copy_from(live, scratch)
                     state_snapshots.append((live, scratch))
-                if self.config.speculative_method == "dflash2":
+                if getattr(pool, "verify_steps", 0):
                     batch.cache_verify_states = True
         with self.ctx.forward_batch(batch):
             if (
@@ -1440,7 +1444,7 @@ class Engine:
             )
             self.mtp_stats["drafted"] += int(drafts.numel())
             self.mtp_stats["accepted"] += accepted
-            if self.config.speculative_method == "dflash2":
+            if batch.cache_verify_states:
                 live, scratch = state_snapshots[0]
                 self.linear_state_pool.commit_verify_prefix(
                     scratch, live, accepted + 1
@@ -1452,10 +1456,13 @@ class Engine:
                         self.mtp_stats["fast_carry_commits"] += 1
                     else:
                         self.kv_cache.restore_speculative(kv_snapshot)
-                elif self.config.speculative_method != "dflash2":
+                elif not batch.cache_verify_states:
                     live, scratch = state_snapshots[0]
                     self.linear_state_pool.copy_from(scratch, live)
-                if self.config.speculative_method not in {"dspark", "dflash2"} or (
+                if (
+                    self.config.speculative_method != "dspark"
+                    and not batch.cache_verify_states
+                ) or (
                     self.config.speculative_method == "dspark" and accepted > 0
                 ):
                     self._replay_verified_prefix(batch, accepted + 1, start)

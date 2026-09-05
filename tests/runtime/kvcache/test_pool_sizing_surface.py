@@ -264,6 +264,18 @@ def test_linear_state_pool_prices_itself():
         4 * 16 * 16 * 4 + (2 * 2 * 16 + 4 * 16) * 2
     )
     assert state_pool_bytes(config, num_slots=7) == per_req * 7 + expected_verify
+    # MTP uses an anchor plus N drafts; reserve all N+1 intermediate states.
+    config.speculative_method = "mtp"
+    config.speculative_tokens = 3
+    config.model_config.model_type = "qwen3_5_moe"
+    assert state_pool_bytes(config, num_slots=7) == per_req * 7 + expected_verify
+    # Other MTP families retain their existing rollback paths and memory costs.
+    for model_type in ("qwen4_exp", "glm5_next"):
+        config.model_config.model_type = model_type
+        assert state_pool_bytes(config, num_slots=7) == per_req * 7
+    config.model_config.model_type = "qwen3_5_moe"
+    config.speculative_tokens = 0
+    assert state_pool_bytes(config, num_slots=7) == per_req * 7
     # models without a linear group price to zero
     config.model_config.linear_attention_group = lambda: None
     assert state_pool_bytes(config) == 0
