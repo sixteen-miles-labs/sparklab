@@ -93,8 +93,8 @@ a SparkLab support claim.
       <td>35B total / 3B active</td>
       <td>NVFP4 · FTW + optional MTP2</td>
       <td>Certified</td>
-      <td align="right">74.42</td>
-      <td align="right">0.368</td>
+      <td align="right">80.55</td>
+      <td align="right">0.367</td>
       <td><a href="docs/models/qwen3.6-35b-a3b.md">Instructions</a></td>
     </tr>
     <tr>

@@ -84,7 +84,7 @@ class LinearStatePool:
         self._free_slots: list[int] = list(range(1, num_slots))
 
     def enable_verify_transactions(self, steps: int) -> None:
-        """Allocate one batch-one intermediate-state lane for DFlash2 verification."""
+        """Allocate one batch-one intermediate-state lane for GDN verification."""
         steps = int(steps)
         if steps <= 0 or steps == self._verify_steps:
             return
@@ -295,7 +295,7 @@ def verify_transaction_bytes(
     dtype: torch.dtype,
     steps: int,
 ) -> int:
-    """Batch-one DFlash2 per-token recurrent states plus raw convolution inputs."""
+    """Batch-one per-token recurrent states plus raw convolution inputs."""
     n_layers, local_conv_dim, local_v_heads = _linear_local_dims(group, tp_size)
     recurrent = local_v_heads * group.key_head_dim * group.value_head_dim
     per_step = recurrent * ssm_state_dtype().itemsize + local_conv_dim * dtype.itemsize
@@ -307,6 +307,21 @@ __all__ = [
     "linear_state_bytes_per_req",
     "verify_transaction_bytes",
 ]
+
+
+def verify_transaction_steps(config) -> int:
+    """Width of the batch-one GDN transaction for supported speculative paths."""
+    steps = int(getattr(config, "speculative_tokens", 0) or 0)
+    method = getattr(config, "speculative_method", "none")
+    if method == "dflash2":
+        return steps
+    if (
+        steps > 0
+        and method == "mtp"
+        and getattr(config.model_config, "model_type", "") in {"qwen3_5", "qwen3_5_moe"}
+    ):
+        return steps + 1  # anchor plus the proposed tokens
+    return 0
 
 
 def state_pool_bytes(config, num_slots: int | None = None) -> int:
@@ -330,12 +345,13 @@ def state_pool_bytes(config, num_slots: int | None = None) -> int:
             * config.dtype.itemsize
         )
     total = per_slot * slots
-    if getattr(config, "speculative_method", "none") == "dflash2":
+    steps = verify_transaction_steps(config)
+    if steps:
         total += verify_transaction_bytes(
             linear_group,
             config.tp_info.size,
             config.dtype,
-            int(getattr(config, "speculative_tokens", 0) or 0),
+            steps,
         )
     return total
 

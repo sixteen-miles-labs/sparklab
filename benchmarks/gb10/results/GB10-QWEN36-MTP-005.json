@@ -1,0 +1,177 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWEN36-MTP-005",
+  "status": "measured",
+  "date": "2026-09-04",
+  "recipe": {
+    "slug": "qwen3.6-35b-a3b",
+    "recipe_version_at_run": "0.4.0",
+    "published_recipe_version": "0.5.0",
+    "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce"
+  },
+  "engine": {
+    "name": "SparkLab",
+    "git_revision": "22b3981ce022fc8a5ad0ddb32b4d3b1ac76ec432",
+    "git_tracked_dirty": true
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "os": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+    "unified_memory_gib": 128,
+    "python": "3.11.15",
+    "packages": {
+      "torch": "2.11.0+cu130",
+      "triton": "3.6.0",
+      "flashinfer-python": "0.6.15.post1",
+      "sglang-kernel": "0.4.5",
+      "transformers": "5.16.1"
+    },
+    "gpu_driver": "NVIDIA GB10, 580.126.09"
+  },
+  "checkpoint": {
+    "path": "$HOME/.sparklab/models/qwen3.6-35b-a3b/prepared/0.3.0-mtp",
+    "format": "ftw",
+    "bytes": 22580867072,
+    "fingerprint": "bda7268c3e0afd7b",
+    "quant_format": "nvfp4",
+    "source_model_path": "nvidia/Qwen3.6-35B-A3B-NVFP4@491c2f1ea524c639598bf8fa787a93fed5a6fbce",
+    "external_artifacts": []
+  },
+  "workload": {
+    "name": "AIME25 problem 0",
+    "prompt_tokens": 54,
+    "completion_tokens": 256,
+    "sampling": "greedy",
+    "batch_size": 1,
+    "selected_trials": 3,
+    "old_mtp_control_trials": 1,
+    "target_only_control_trials": 1,
+    "warmup_requests_per_process": 1,
+    "client_path": "OpenAI-compatible streaming HTTP API"
+  },
+  "configuration": {
+    "storage": "ram",
+    "attention_backend": "triton",
+    "qsa_fused_selection": true,
+    "page_size": 1,
+    "cache_type": "radix",
+    "max_seq_len": 8448,
+    "nvfp4_backend": "triton",
+    "host_cache_gb": 0,
+    "requested_cache_size": 0,
+    "requested_cache_rate": 1,
+    "memory_ratio": 0.9,
+    "requested_num_tokens": 4096,
+    "speculative_method": "mtp",
+    "speculative_tokens": 2,
+    "speculative_draft_model": null,
+    "draft_sample_method": "greedy",
+    "dspark_confidence_threshold": 0,
+    "dspark_draft_cache_slots": 0,
+    "dspark_draft_cache_quotas": "",
+    "dsv4_kv_storage": "bf16",
+    "dsv4_index_storage": "bf16",
+    "qwen4_dense_storage": "bf16",
+    "cpu_threads": 0,
+    "hybrid_fetch": -1,
+    "disk_read_workers": 16,
+    "cache_policy": "lru",
+    "prefill_overlap": true,
+    "preload_all": false,
+    "prefill_hit_d2d": false,
+    "prefill_sparse_max_tokens": 0,
+    "shared_expert_overlap": false,
+    "startup_prefill_warmup": true,
+    "cuda_graph": false,
+    "request_timeout_s": 1800,
+    "prompt_padding_repeats": 0
+  },
+  "metrics": {
+    "decode_tokens_per_second_trials": [
+      81.36023840724415,
+      79.45766483095389,
+      80.54783159065867
+    ],
+    "decode_tokens_per_second_median": 80.54783159065867,
+    "warm_ttft_seconds_trials": [
+      0.3647906919941306,
+      0.3671433530107606,
+      0.371177394001279
+    ],
+    "warm_ttft_seconds_median": 0.3671433530107606,
+    "old_mtp_decode_tokens_per_second": 75.4328609566243,
+    "target_only_decode_tokens_per_second": 45.89344968573072,
+    "improvement_over_old_mtp_percent": 6.7808254508278765,
+    "improvement_over_eager_target_percent": 75.51051869544413,
+    "old_mtp_vram_gib": 21.75390625,
+    "selected_vram_gib": 21.9296875,
+    "selected_output_sha1": "dc94b09666a6",
+    "old_mtp_output_sha1": "ec3dcb059017",
+    "target_only_output_sha1": "dc94b09666a6"
+  },
+  "speculative": {
+    "selected": {
+      "steps": 2,
+      "accepted": 150,
+      "drafted": 174,
+      "acceptance_rate": 0.862,
+      "outputs": 256,
+      "target_forwards": 106,
+      "outputs_per_target_forward": 2.42,
+      "replay_calls": 0,
+      "replay_tokens": 0,
+      "fast_carry_commits": 0
+    },
+    "old": {
+      "steps": 2,
+      "accepted": 153,
+      "drafted": 173,
+      "acceptance_rate": 0.884,
+      "outputs": 256,
+      "target_forwards": 103,
+      "outputs_per_target_forward": 2.49,
+      "replay_calls": 15,
+      "replay_tokens": 25,
+      "fast_carry_commits": 0
+    }
+  },
+  "validation": {
+    "all_selected_trials_match_fresh_target_output_hash": true,
+    "all_selected_trials_complete": true,
+    "zero_selected_rejection_replays": true,
+    "selected_telemetry": [
+      {
+        "swap_growth_bytes": 0,
+        "swap_in_pages_delta": 0,
+        "swap_out_pages_delta": 0,
+        "oom_kill_delta": 0
+      },
+      {
+        "swap_growth_bytes": 0,
+        "swap_in_pages_delta": 0,
+        "swap_out_pages_delta": 0,
+        "oom_kill_delta": 0
+      },
+      {
+        "swap_growth_bytes": 0,
+        "swap_in_pages_delta": 0,
+        "swap_out_pages_delta": 0,
+        "oom_kill_delta": 0
+      }
+    ]
+  },
+  "source": {
+    "selected_trial_artifact": "/tmp/fast-mtp-transaction.jsonl",
+    "old_mtp_control_artifact": "/tmp/fast-mtp-baseline.jsonl",
+    "target_control_artifact": "/tmp/fast-mtp-target.jsonl",
+    "prior_evidence": "GB10-QWEN36-MTP-004"
+  },
+  "limitations": [
+    "Focused source-tree optimization evidence, not a clean-release certification result.",
+    "One greedy 54-token prompt and 256-token completion; long-context, sampled, concurrent, capability and endurance suites were not repeated.",
+    "The previous MTP path produces a different continuation. The improvement comparison uses the same prompt and output length, not identical old/new generated tokens.",
+    "The target-only control is eager; this does not measure improvement over the graph-enabled certified target-only recipe.",
+    "The installed kernel-cache wheel does not match the source release; SPARKLAB_DISABLE_KERNEL_CACHE_VERSION_CHECK=1 was used for these experiments.",
+    "The two Qwen3.8-27B DFlash kernel experiments yielded less than 1% end-to-end change and were reverted."
+  ]
+}
