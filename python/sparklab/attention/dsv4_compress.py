@@ -21,7 +21,6 @@ import os
 
 import torch
 
-from sparklab.core import get_global_ctx
 
 
 class CompressorBackendMixin:
@@ -126,9 +125,6 @@ class CompressorBackendMixin:
     ) -> None:
         ring = self.compress_state_ring(layer_id, tier)
         page_base = self.ring_page_base(window_slots, ring_size)
-        batch = getattr(get_global_ctx(), "batch", None)
-        if batch is not None and batch.is_verify:
-            self.pool.capture_first_speculative_carry(ring, page_base, blocks)
         ring.set_blocks(page_base, blocks)
 
     def write_boundary_carries(

@@ -124,10 +124,10 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert deepseek.recipe_version == "0.4.0"
     assert deepseek.revision == "7872f01b1d1fe23eabc4c98b48bffcef5a386062"
     assert deepseek.performance.decode_tokens_per_second == pytest.approx(
-        13.147538086548575
+        14.020594683037848
     )
     assert deepseek.performance.warm_ttft_seconds == pytest.approx(
-        0.5180109490029281
+        0.5152079400140792
     )
     assert deepseek.deployment.backend_options["moe_prefill_sparse_max_tokens"] == 512
     assert deepseek.deployment.backend_options["moe_cache_auto"] is True
@@ -236,9 +236,10 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     assert deepseek.minimum_free_bytes > deepseek.source_bytes + deepseek.prepared_bytes
 
 
-def test_deepseek_recipe_points_to_checked_in_small_m_evidence():
+def test_deepseek_recipe_points_to_checked_in_prefix_evidence():
     recipe = get_recipe("deepseek-v4")
     assert recipe.evidence == (
+        "GB10-DSV4-PREFIX-006",
         "GB10-DSV4-SMALLM-005",
         "GB10-DSV4-RESIDENCY-003",
         "GB10-DSV4-ADAPTIVE-004",
@@ -246,25 +247,22 @@ def test_deepseek_recipe_points_to_checked_in_small_m_evidence():
     )
     root = Path(__file__).resolve().parents[2]
     result = json.loads(
-        (root / "benchmarks/gb10/results/GB10-DSV4-SMALLM-005.json").read_text()
+        (root / "benchmarks/gb10/results/GB10-DSV4-PREFIX-006.json").read_text()
     )
     assert result["result_id"] == recipe.evidence[0]
     assert result["status"] == "measured"
     assert result["recipe"]["revision"] == recipe.revision
     assert result["checkpoint"]["ftw_bytes"] == recipe.prepared_bytes
     assert result["metrics"]["decode_tokens_per_second"] == pytest.approx(
-        13.147538086548575
+        recipe.performance.decode_tokens_per_second
     )
     assert result["metrics"]["warm_ttft_seconds"] == pytest.approx(
-        0.5180109490029281
+        recipe.performance.warm_ttft_seconds
     )
-    assert result["metrics"]["kernel_improvement_percent"] == pytest.approx(
-        3.691234974661861
-    )
-    assert result["metrics"]["adaptive_n5_256_tokens_per_second"] < result[
-        "metrics"
-    ]["target_only_256_tokens_per_second"]
-    assert result["validation"]["all_selected_trials_deterministic"] is True
+    assert result["metrics"]["improvement_over_corrected_replay_128_percent"] > 20
+    assert result["speculative"]["all_selected_benchmark_runs_replay_free"] is True
+    assert result["validation"]["all_selected_math_trials_deterministic"] is True
+    assert result["validation"]["selected_swap_growth_bytes"] == 0
     assert result["validation"]["oom_count"] == 0
 
 

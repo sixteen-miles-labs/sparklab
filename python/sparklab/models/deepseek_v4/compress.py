@@ -210,7 +210,7 @@ class Compressor(nn.Module):
         # [start_pos-128, start_pos)). The producing request wrote this boundary carry by value.
         self._seed_carry_from_ring(tail_window_slot)
 
-        if start_pos % self.P:
+        if start_pos % self.P or self.attn.pool.capture_speculative_prefixes:
             return self._extend_unaligned(x, start_pos, window_slots, ti)
 
         x = x.float()
@@ -318,6 +318,8 @@ class Compressor(nn.Module):
         ks, ss = self._kv_state, self._score_state
         completed: list[torch.Tensor] = []
         block_starts: list[int] = []
+        capture = self.attn.pool.capture_speculative_prefixes
+        capture_slots = self.attn.pool.speculative_window_slots(window_slots) if capture else None
 
         for i in range(seqlen):
             pos = start_pos + i
@@ -342,6 +344,12 @@ class Compressor(nn.Module):
                 if idx == ratio - 1:
                     completed.append(gated_pool(ks, ss, dtype))
                     block_starts.append(pos + 1 - ratio)
+
+            if capture:
+                self.attn.pool.capture_speculative_prefix(
+                    self.state_ring, capture_slots[i], i + 1,
+                    torch.cat([ks[0], ss[0]], dim=-1),
+                )
 
             # Preserve the boundary carry in the physical page which just closed. The register
             # itself continues into the next page; the final write below seeds that page.

@@ -19,6 +19,49 @@ P = 128
 RATIOS = (0, 0, 4, 128, 4, 128, 4, 0)
 
 
+@pytest.mark.parametrize("prefix", [1, 2, 3, 4])
+def test_speculative_prefix_commit_restores_rejected_pages(prefix):
+    pool = DSV4PagedKVCache.__new__(DSV4PagedKVCache)
+    pool.P, pool._device = 128, DEVICE
+    pool._speculative_prefix_carries = []
+    pool._speculative_prefix_rows = {}
+    ring = CompressStateRing(24, 8, True, 2, DEVICE)
+    rows = torch.arange(16)
+    original = ring.buffer[rows].clone()
+    snapshots = [(ring, rows, original)]
+    pool.begin_speculative_carry_capture(all_prefixes=True)
+    for index, slot in enumerate([126, 127, 128, 129], 1):
+        values = torch.full((8, 8), float(index))
+        pool.capture_speculative_prefix(ring, slot, index, values)
+        values.fill_(99)  # capture owns its values
+    assert pool._speculative_prefix_carries[0][3].data_ptr() == pool._speculative_prefix_carries[1][3].data_ptr()
+    assert pool._speculative_prefix_carries[2][3].data_ptr() == pool._speculative_prefix_carries[3][3].data_ptr()
+    ring.buffer[:16].fill_(99)
+    pool.commit_speculative_prefix(snapshots, prefix)
+    assert torch.equal(ring.buffer[:8], torch.full((8, 8), float(min(prefix, 2))))
+    expected_second = torch.full((8, 8), float(prefix)) if prefix > 2 else original[8:]
+    assert torch.equal(ring.buffer[8:16], expected_second)
+    assert not pool.capture_speculative_prefixes
+    assert not pool._speculative_prefix_carries
+
+
+def test_speculative_metadata_resets_and_missing_prefix_fails_closed():
+    pool, _, _ = _pool()
+    pool.begin_speculative_carry_capture(all_prefixes=True)
+    slots = torch.tensor([126, 127, 128])
+    assert pool.speculative_window_slots(slots) == [126, 127, 128]
+    assert pool.speculative_window_slots(slots) is pool._speculative_window_slots
+    with pytest.raises(RuntimeError, match="Missing"):
+        pool.commit_speculative_prefix([], 1)
+    ring = pool.state_ring[2]
+    pool.capture_speculative_prefix(ring, 126, 1, torch.zeros(8, 2048))
+    with pytest.raises(RuntimeError, match="Incomplete"):
+        pool.commit_speculative_prefix([(ring, torch.arange(8), ring.buffer[:8].clone())], 2)
+    pool.end_speculative_carry_capture()
+    pool.begin_speculative_carry_capture(all_prefixes=True)
+    assert pool.speculative_window_slots(torch.tensor([9])) == [9]
+
+
 def _args(**over):
     base = dict(
         n_layers=8,

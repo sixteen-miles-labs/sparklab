@@ -187,11 +187,13 @@ class DSV4PagedKVCache(BaseKVCachePool):
         # write), so the masked per-row scatter is graph-safe (no host sync, no -1 index, no
         # cross-row collision). One per running request row.
         self.n_scratch = int(n_scratch)
-        # The verified anchor's carry can be committed directly on a first-draft
-        # rejection, avoiding a full transformer replay.
-        self._speculative_first_carries: list[
-            tuple[CompressStateRing, torch.Tensor, torch.Tensor]
+        # Verification saves the post-token compressor state for each prefix.
+        self.capture_speculative_prefixes = False
+        self._speculative_prefix_carries: list[
+            tuple[int, CompressStateRing, int, torch.Tensor, torch.Tensor]
         ] = []
+        self._speculative_prefix_rows = {}
+        self._speculative_window_slots = None
 
         # Logical full-loc currency: ONE mapping from the virtual full-token index space to window
         # slots; cmp/idx rows derive arithmetically (full_loc // ratio), the state ring off the
@@ -651,30 +653,57 @@ class DSV4PagedKVCache(BaseKVCachePool):
                 )
         return snapshots
 
-    def begin_speculative_carry_capture(self) -> None:
-        self._speculative_first_carries.clear()
+    def begin_speculative_carry_capture(self, *, all_prefixes: bool = False) -> None:
+        self._speculative_prefix_carries.clear()
+        self._speculative_prefix_rows.clear()
+        self._speculative_window_slots = None
+        self.capture_speculative_prefixes = all_prefixes
 
-    def capture_first_speculative_carry(
-        self,
-        ring: CompressStateRing,
-        page_base: torch.Tensor,
-        block: torch.Tensor,
+    def speculative_window_slots(self, slots: torch.Tensor) -> list[int]:
+        # Batch-one verification uses the same physical slots at every layer.
+        # Resolve them once, not once per attention/indexer compressor.
+        if self._speculative_window_slots is None:
+            self._speculative_window_slots = slots.tolist()
+        return self._speculative_window_slots
+
+    def capture_speculative_prefix(
+        self, ring: CompressStateRing, window_slot: int, prefix_len: int,
+        values: torch.Tensor,
     ) -> None:
-        if page_base.numel() and block.numel():
-            rows = page_base[:1, None] + torch.arange(
-                ring.ring_size, device=self._device
-            )[None, :]
-            self._speculative_first_carries.append(
-                (ring, rows.flatten(), block[0].clone())
-            )
+        """Keep the post-token ring state, including both sides of a page crossing."""
+        base = (window_slot // self.P) * ring.ring_size
+        key = (id(ring), base)
+        rows = self._speculative_prefix_rows.get(key)
+        if rows is None:
+            rows = torch.arange(base, base + ring.ring_size, device=self._device)
+            self._speculative_prefix_rows[key] = rows
+        self._speculative_prefix_carries.append(
+            (prefix_len, ring, base, rows, values.clone())
+        )
 
-    def commit_first_speculative_carry(self, snapshots) -> None:
-        """Restore old rings, then commit the already-computed anchor carry."""
+    def commit_speculative_prefix(self, snapshots, prefix_len: int) -> None:
+        if prefix_len < 1 or not self._speculative_prefix_carries:
+            raise RuntimeError("Missing DSpark prefix carry capture")
+        captured = {id(ring) for length, ring, *_ in self._speculative_prefix_carries
+                    if length == prefix_len}
+        if any(id(ring) not in captured for ring, _, _ in snapshots):
+            raise RuntimeError("Incomplete DSpark prefix carry capture")
+        # Retain only the final accepted state for each physical page of each ring.
+        latest = {}
+        for length, ring, base, rows, values in self._speculative_prefix_carries:
+            if length <= prefix_len:
+                latest[(id(ring), base)] = (ring, rows, values)
         self.restore_speculative(snapshots)
-        for ring, rows, values in self._speculative_first_carries:
+        for ring, rows, values in latest.values():
             ring.buffer.index_copy_(0, rows, values)
             ring._clear_scratch()
-        self._speculative_first_carries.clear()
+        self.end_speculative_carry_capture()
+
+    def end_speculative_carry_capture(self) -> None:
+        self._speculative_prefix_carries.clear()
+        self._speculative_prefix_rows.clear()
+        self._speculative_window_slots = None
+        self.capture_speculative_prefixes = False
 
     @staticmethod
     def restore_speculative(snapshots) -> None:

@@ -123,8 +123,8 @@ a SparkLab support claim.
       <td>284B total / 13B active</td>
       <td>DS-FP4 · FTW + optional DSpark5</td>
       <td>Preview</td>
-      <td align="right">13.15</td>
-      <td align="right">0.518</td>
+      <td align="right">14.02</td>
+      <td align="right">0.515</td>
       <td><a href="docs/models/deepseek-v4.md">Instructions</a></td>
     </tr>
     <tr>
