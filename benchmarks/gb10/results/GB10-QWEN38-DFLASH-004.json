@@ -1,0 +1,563 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWEN38-DFLASH-004",
+  "status": "measured",
+  "date": "2026-09-04",
+  "recipe": {
+    "slug": "qwen3.8-27b",
+    "recipe_version": "0.3.0",
+    "revision": "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
+  },
+  "engine": {
+    "name": "SparkLab",
+    "git_revision": "eab73f7aa48edc7a747297f5f05795a40e5ea7f3",
+    "git_tracked_dirty": true
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "machine": "aarch64",
+    "cuda": "13.0",
+    "torch": "2.11.0+cu130",
+    "triton": "3.6.0"
+  },
+  "checkpoint": {
+    "target_repository": "Inferact/Qwen3.8-27B-NVFP4",
+    "target_revision": "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462",
+    "target_format": "ftw-nvfp4",
+    "target_fingerprint": "af78f7411817bb73",
+    "target_ftw_bytes": 24617562112,
+    "draft_repository": "maurienne-ai/Qwen3.8-27B-DFlash2-NVFP4-RTNcal",
+    "draft_revision": "bd7a934213c47a9e7ef69eef36bb3325f47fd1f1"
+  },
+  "configuration": {
+    "common": {
+      "execution_policy": "resident",
+      "nvfp4_backend": "triton",
+      "attention_backend": "triton",
+      "cache_type": "hybrid_radix",
+      "page_size": 16,
+      "kv_tokens": 16384,
+      "max_running_requests": 1,
+      "sampling": "greedy",
+      "target_weight_precision": "unchanged; original BF16 lm_head",
+      "draft_execution": "eager"
+    },
+    "baseline": {
+      "block_size": 8,
+      "verify_cuda_graph": false,
+      "draft_after_rejection": false
+    },
+    "optimized": {
+      "block_size": 12,
+      "verify_cuda_graph": true,
+      "draft_after_rejection": true
+    }
+  },
+  "workload": {
+    "portfolio_probe": "AIME-25 problem 0, 96 prompt tokens, 128 output tokens, thinking enabled, one warmup followed by three measured trials",
+    "broader_probe": "Fixed math, coding, and prose prompts, 512 output tokens, thinking disabled, one warmup followed by three measured trials per workload",
+    "metric": "(completion_tokens - 1) / (last content event - first content event), measured over streaming HTTP"
+  },
+  "metrics": {
+    "decode_tokens_per_second": 45.878599543535536,
+    "warm_ttft_seconds": 0.15192310701240785,
+    "fresh_baseline_decode_tokens_per_second": 37.69253799538103,
+    "improvement_over_fresh_baseline_percent": 21.717989776007272,
+    "previous_published_decode_tokens_per_second": 35.480651510782415,
+    "improvement_over_previous_published_percent": 29.30596702710837
+  },
+  "portfolio_probe": {
+    "baseline": {
+      "trials": [
+        {
+          "decode_tokens_per_second": 37.48384883298671,
+          "ttft_seconds": 0.15248358499957249,
+          "elapsed_seconds": 3.5408683750138152,
+          "usage": {
+            "prompt_tokens": 96,
+            "completion_tokens": 128,
+            "total_tokens": 224
+          },
+          "output_sha256": "825f201fac304dfa4f89524aac98b99b1d882b68574846f861c21025abb02f09"
+        },
+        {
+          "decode_tokens_per_second": 37.69253799538103,
+          "ttft_seconds": 0.15068101699580438,
+          "elapsed_seconds": 3.5203005539951846,
+          "usage": {
+            "prompt_tokens": 96,
+            "completion_tokens": 128,
+            "total_tokens": 224
+          },
+          "output_sha256": "825f201fac304dfa4f89524aac98b99b1d882b68574846f861c21025abb02f09"
+        },
+        {
+          "decode_tokens_per_second": 37.744840773820044,
+          "ttft_seconds": 0.15086864901240915,
+          "elapsed_seconds": 3.5158563640143257,
+          "usage": {
+            "prompt_tokens": 96,
+            "completion_tokens": 128,
+            "total_tokens": 224
+          },
+          "output_sha256": "825f201fac304dfa4f89524aac98b99b1d882b68574846f861c21025abb02f09"
+        }
+      ],
+      "decode_tokens_per_second_median": 37.69253799538103,
+      "ttft_seconds_median": 0.15086864901240915
+    },
+    "optimized": {
+      "trials": [
+        {
+          "decode_tokens_per_second": 45.92244764653988,
+          "ttft_seconds": 0.15192310701240785,
+          "elapsed_seconds": 2.918405224016169,
+          "usage": {
+            "prompt_tokens": 96,
+            "completion_tokens": 128,
+            "total_tokens": 224
+          },
+          "output_sha256": "825f201fac304dfa4f89524aac98b99b1d882b68574846f861c21025abb02f09"
+        },
+        {
+          "decode_tokens_per_second": 45.86220812226731,
+          "ttft_seconds": 0.15337588000693358,
+          "elapsed_seconds": 2.922842108004261,
+          "usage": {
+            "prompt_tokens": 96,
+            "completion_tokens": 128,
+            "total_tokens": 224
+          },
+          "output_sha256": "825f201fac304dfa4f89524aac98b99b1d882b68574846f861c21025abb02f09"
+        },
+        {
+          "decode_tokens_per_second": 45.878599543535536,
+          "ttft_seconds": 0.15040465097990818,
+          "elapsed_seconds": 2.9191896459960844,
+          "usage": {
+            "prompt_tokens": 96,
+            "completion_tokens": 128,
+            "total_tokens": 224
+          },
+          "output_sha256": "825f201fac304dfa4f89524aac98b99b1d882b68574846f861c21025abb02f09"
+        }
+      ],
+      "decode_tokens_per_second_median": 45.878599543535536,
+      "ttft_seconds_median": 0.15192310701240785
+    },
+    "output_sha1": "fa04d7fa1fad"
+  },
+  "broader_probe": {
+    "baseline": {
+      "math": {
+        "decode_tokens_per_second_median": 35.6678059537944,
+        "ttft_seconds_median": 0.17159508998156525,
+        "trials": [
+          {
+            "decode_tokens_per_second": 35.711242216931,
+            "ttft_seconds": 0.17093534400919452,
+            "elapsed_seconds": 14.480916011001682,
+            "usage": {
+              "prompt_tokens": 50,
+              "completion_tokens": 512,
+              "total_tokens": 562
+            },
+            "output_sha256": "2a5805c257de64316502e8973ea4436a6bb897cf7c645f30eed4767257ce9b7f"
+          },
+          {
+            "decode_tokens_per_second": 35.6678059537944,
+            "ttft_seconds": 0.17159508998156525,
+            "elapsed_seconds": 14.499173336982494,
+            "usage": {
+              "prompt_tokens": 50,
+              "completion_tokens": 512,
+              "total_tokens": 562
+            },
+            "output_sha256": "2a5805c257de64316502e8973ea4436a6bb897cf7c645f30eed4767257ce9b7f"
+          },
+          {
+            "decode_tokens_per_second": 35.642654008861925,
+            "ttft_seconds": 0.17260043599526398,
+            "elapsed_seconds": 14.51025069199386,
+            "usage": {
+              "prompt_tokens": 50,
+              "completion_tokens": 512,
+              "total_tokens": 562
+            },
+            "output_sha256": "2a5805c257de64316502e8973ea4436a6bb897cf7c645f30eed4767257ce9b7f"
+          }
+        ]
+      },
+      "code": {
+        "decode_tokens_per_second_median": 27.48804335756605,
+        "ttft_seconds_median": 0.1718690110137686,
+        "trials": [
+          {
+            "decode_tokens_per_second": 27.61275004653931,
+            "ttft_seconds": 0.1710183050017804,
+            "elapsed_seconds": 18.677719800005434,
+            "usage": {
+              "prompt_tokens": 53,
+              "completion_tokens": 512,
+              "total_tokens": 565
+            },
+            "output_sha256": "dff9184eb10f09ae900e31221de8815be19dfa6ac22c3a06a7a0a07d74d1a265"
+          },
+          {
+            "decode_tokens_per_second": 27.48804335756605,
+            "ttft_seconds": 0.1718690110137686,
+            "elapsed_seconds": 18.762374081998132,
+            "usage": {
+              "prompt_tokens": 53,
+              "completion_tokens": 512,
+              "total_tokens": 565
+            },
+            "output_sha256": "dff9184eb10f09ae900e31221de8815be19dfa6ac22c3a06a7a0a07d74d1a265"
+          },
+          {
+            "decode_tokens_per_second": 27.377337938610392,
+            "ttft_seconds": 0.1726066920091398,
+            "elapsed_seconds": 18.83828301401809,
+            "usage": {
+              "prompt_tokens": 53,
+              "completion_tokens": 512,
+              "total_tokens": 565
+            },
+            "output_sha256": "dff9184eb10f09ae900e31221de8815be19dfa6ac22c3a06a7a0a07d74d1a265"
+          }
+        ]
+      },
+      "prose": {
+        "decode_tokens_per_second_median": 15.2652031188218,
+        "ttft_seconds_median": 0.16602875699754804,
+        "trials": [
+          {
+            "decode_tokens_per_second": 15.296197116470497,
+            "ttft_seconds": 0.1649683389987331,
+            "elapsed_seconds": 33.57225345700863,
+            "usage": {
+              "prompt_tokens": 42,
+              "completion_tokens": 512,
+              "total_tokens": 554
+            },
+            "output_sha256": "ae36b6f5d242119e8a30fc3ae813272cb5748c18cbd36c3c63adf5cb76fb06f1"
+          },
+          {
+            "decode_tokens_per_second": 15.2652031188218,
+            "ttft_seconds": 0.16602875699754804,
+            "elapsed_seconds": 33.641178505989956,
+            "usage": {
+              "prompt_tokens": 42,
+              "completion_tokens": 512,
+              "total_tokens": 554
+            },
+            "output_sha256": "ae36b6f5d242119e8a30fc3ae813272cb5748c18cbd36c3c63adf5cb76fb06f1"
+          },
+          {
+            "decode_tokens_per_second": 15.247949464224563,
+            "ttft_seconds": 0.16740218398626894,
+            "elapsed_seconds": 33.68102969499887,
+            "usage": {
+              "prompt_tokens": 42,
+              "completion_tokens": 512,
+              "total_tokens": 554
+            },
+            "output_sha256": "ae36b6f5d242119e8a30fc3ae813272cb5748c18cbd36c3c63adf5cb76fb06f1"
+          }
+        ]
+      }
+    },
+    "optimized": {
+      "math": {
+        "decode_tokens_per_second_median": 59.57599275118301,
+        "ttft_seconds_median": 0.16905519997817464,
+        "trials": [
+          {
+            "decode_tokens_per_second": 59.57599275118301,
+            "ttft_seconds": 0.16905519997817464,
+            "elapsed_seconds": 8.746628501976375,
+            "usage": {
+              "prompt_tokens": 50,
+              "completion_tokens": 512,
+              "total_tokens": 562
+            },
+            "output_sha256": "900eed64f7730b4824a56efb3857de007f9f77119254bcf2ba55987cfa14a2b8"
+          },
+          {
+            "decode_tokens_per_second": 59.58581881716098,
+            "ttft_seconds": 0.16935676499269903,
+            "elapsed_seconds": 8.745506004983326,
+            "usage": {
+              "prompt_tokens": 50,
+              "completion_tokens": 512,
+              "total_tokens": 562
+            },
+            "output_sha256": "900eed64f7730b4824a56efb3857de007f9f77119254bcf2ba55987cfa14a2b8"
+          },
+          {
+            "decode_tokens_per_second": 59.529940203508396,
+            "ttft_seconds": 0.16863048600498587,
+            "elapsed_seconds": 8.752846750983736,
+            "usage": {
+              "prompt_tokens": 50,
+              "completion_tokens": 512,
+              "total_tokens": 562
+            },
+            "output_sha256": "900eed64f7730b4824a56efb3857de007f9f77119254bcf2ba55987cfa14a2b8"
+          }
+        ]
+      },
+      "code": {
+        "decode_tokens_per_second_median": 37.51089241893914,
+        "ttft_seconds_median": 0.17287224999745376,
+        "trials": [
+          {
+            "decode_tokens_per_second": 37.54648408016999,
+            "ttft_seconds": 0.17335358599666506,
+            "elapsed_seconds": 13.783457228011684,
+            "usage": {
+              "prompt_tokens": 53,
+              "completion_tokens": 512,
+              "total_tokens": 565
+            },
+            "output_sha256": "d6efbbd3a80f321abfc18d77363c68d5ea221db49dc38630edf8ac88fc7dfdf3"
+          },
+          {
+            "decode_tokens_per_second": 37.51089241893914,
+            "ttft_seconds": 0.17287224999745376,
+            "elapsed_seconds": 13.795875797019107,
+            "usage": {
+              "prompt_tokens": 53,
+              "completion_tokens": 512,
+              "total_tokens": 565
+            },
+            "output_sha256": "d6efbbd3a80f321abfc18d77363c68d5ea221db49dc38630edf8ac88fc7dfdf3"
+          },
+          {
+            "decode_tokens_per_second": 37.49683910360881,
+            "ttft_seconds": 0.1712961409939453,
+            "elapsed_seconds": 13.799463600997115,
+            "usage": {
+              "prompt_tokens": 53,
+              "completion_tokens": 512,
+              "total_tokens": 565
+            },
+            "output_sha256": "d6efbbd3a80f321abfc18d77363c68d5ea221db49dc38630edf8ac88fc7dfdf3"
+          }
+        ]
+      },
+      "prose": {
+        "decode_tokens_per_second_median": 19.262661615363523,
+        "ttft_seconds_median": 0.16649963898817077,
+        "trials": [
+          {
+            "decode_tokens_per_second": 19.18870899243926,
+            "ttft_seconds": 0.16649963898817077,
+            "elapsed_seconds": 26.797140773007413,
+            "usage": {
+              "prompt_tokens": 42,
+              "completion_tokens": 512,
+              "total_tokens": 554
+            },
+            "output_sha256": "52f4ad9ec7220e411e499b714802db3b9834063b5dc515f55891159c0e1ed154"
+          },
+          {
+            "decode_tokens_per_second": 19.306883710560392,
+            "ttft_seconds": 0.16644911802723072,
+            "elapsed_seconds": 26.634013333008625,
+            "usage": {
+              "prompt_tokens": 42,
+              "completion_tokens": 512,
+              "total_tokens": 554
+            },
+            "output_sha256": "52f4ad9ec7220e411e499b714802db3b9834063b5dc515f55891159c0e1ed154"
+          },
+          {
+            "decode_tokens_per_second": 19.262661615363523,
+            "ttft_seconds": 0.1665256539999973,
+            "elapsed_seconds": 26.69481921600527,
+            "usage": {
+              "prompt_tokens": 42,
+              "completion_tokens": 512,
+              "total_tokens": 554
+            },
+            "output_sha256": "52f4ad9ec7220e411e499b714802db3b9834063b5dc515f55891159c0e1ed154"
+          }
+        ]
+      }
+    },
+    "throughput_change_percent": {
+      "math": 67.03015831240164,
+      "code": 36.462577314053604,
+      "prose": 26.186736366533548
+    }
+  },
+  "width_sweep": {
+    "4": {
+      "trials_per_workload": 1,
+      "throughput": {
+        "math": 29.69156649471182,
+        "code": 26.56100354455694,
+        "prose": 18.184228801059486
+      }
+    },
+    "8": {
+      "trials_per_workload": 1,
+      "throughput": {
+        "math": 47.23710015831215,
+        "code": 34.78753354483443,
+        "prose": 20.36330328877424
+      }
+    },
+    "12": {
+      "trials_per_workload": 1,
+      "throughput": {
+        "math": 59.212598327419016,
+        "code": 37.41707172837095,
+        "prose": 19.234684154967457
+      }
+    },
+    "16": {
+      "trials_per_workload": 1,
+      "throughput": {
+        "math": 56.803369620807295,
+        "code": 38.53531597149313,
+        "prose": 18.703353929778512
+      }
+    }
+  },
+  "experiments": {
+    "graph_only_math_tokens_per_second": 36.01643844040927,
+    "profile": "Ten generation steps profiled with torch.profiler. Packed NVFP4 and BF16 matrix operations dominated GPU time. Rejected drafts caused additional single-token target forwards.",
+    "retained": [
+      "DFlash2 proposal immediately after rejection using only the verified feature prefix and the correction token.",
+      "Fixed-width target verification graphs with multi-query Triton attention and transactional recurrent-state outputs.",
+      "Width twelve selected from 4/8/12/16 workload sweep."
+    ],
+    "not_selected": {
+      "split_k_one_down_projection": {
+        "shape": [
+          5120,
+          17408
+        ],
+        "microbenchmark_stock_ms": 0.2395797985942424,
+        "microbenchmark_candidate_ms": 0.2229567459394347,
+        "full_model": {
+          "math": {
+            "decode_tokens_per_second_median": 64.26857728869544,
+            "ttft_seconds_median": 0.16880298097385094,
+            "trials": [
+              {
+                "decode_tokens_per_second": 64.26857728869544,
+                "ttft_seconds": 0.16880298097385094,
+                "elapsed_seconds": 8.120197590993484,
+                "usage": {
+                  "prompt_tokens": 50,
+                  "completion_tokens": 512,
+                  "total_tokens": 562
+                },
+                "output_sha256": "566bf35f01bd4535ad4da05f2658a8710da904aefa6fcce7cd67f90585f5b301"
+              }
+            ]
+          },
+          "code": {
+            "decode_tokens_per_second_median": 38.171771424821756,
+            "ttft_seconds_median": 0.1714893240132369,
+            "trials": [
+              {
+                "decode_tokens_per_second": 38.171771424821756,
+                "ttft_seconds": 0.1714893240132369,
+                "elapsed_seconds": 13.558669149002526,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "dcb1a1c04f7b0512c59e261fb3d62bceb36c29539719a926a66607e4f488aa3b"
+              }
+            ]
+          },
+          "prose": {
+            "decode_tokens_per_second_median": 19.032569640961206,
+            "ttft_seconds_median": 0.1670179679931607,
+            "trials": [
+              {
+                "decode_tokens_per_second": 19.032569640961206,
+                "ttft_seconds": 0.1670179679931607,
+                "elapsed_seconds": 27.0164291819965,
+                "usage": {
+                  "prompt_tokens": 42,
+                  "completion_tokens": 512,
+                  "total_tokens": 554
+                },
+                "output_sha256": "52f4ad9ec7220e411e499b714802db3b9834063b5dc515f55891159c0e1ed154"
+              }
+            ]
+          }
+        },
+        "reason": "Small direct kernel improvement; full-model gains varied with changed floating-point traces and acceptance. Prose regressed slightly versus the selected untuned profile. Original kernel settings retained."
+      }
+    }
+  },
+  "validation": {
+    "complete_target_and_draft_loaded": true,
+    "portfolio_all_three_trials_equal_target_hash": true,
+    "full_512_token_trace_parity": false,
+    "graph_eager_logits_and_recurrent_states_exact": true,
+    "graph_comparisons": {
+      "selected_untuned_blocks": 4,
+      "kernel_experiment_blocks": 16,
+      "included_rejected_prefixes_in_kernel_experiment": true
+    },
+    "behavioral_probes": {
+      "multiply_37_43": {
+        "passed": true
+      },
+      "multiply_123_17": {
+        "passed": true
+      },
+      "multiply_89_97": {
+        "passed": true
+      },
+      "base_problem": {
+        "passed": true
+      },
+      "coding": {
+        "passed": true,
+        "detail": "all clamp cases passed"
+      },
+      "reasoning": {
+        "passed": true
+      },
+      "tool": {
+        "passed": true
+      },
+      "long_prefix": {
+        "passed": true
+      }
+    },
+    "oom_count": 0
+  },
+  "source": {
+    "benchmark": "benchmarks/bench_single_stream.py",
+    "kernel_sweep": "benchmarks/bench_qwen27_nvfp4.py",
+    "raw_directory": "$HOME/results/qwen27-opt",
+    "baseline": "baseline-b8.json",
+    "optimized": "selected12.json",
+    "portfolio_baseline": "fresh-baseline8-legacy128.json",
+    "portfolio_optimized": "selected12-legacy128.json",
+    "quality": "selected12-quality.json",
+    "profile": "graph8-profile-trace.json",
+    "kernel_trials": "kernel-sweep.jsonl"
+  },
+  "limitations": [
+    "Dirty-worktree optimization evidence, not clean-release certification.",
+    "The benchmark explicitly disabled the kernel-cache version guard for the source tree and installed 0.1.0+cu130 cache package.",
+    "The original 128-token probe retains target output parity. Longer complete traces differ when verification grouping changes floating-point rounding; target weights and verification precision remain unchanged.",
+    "The 512-token sweep comprises three fixed prompts, not broad benchmark-suite averages. Width sweeps and kernel ablations used one measured trial after warmup.",
+    "Selected-profile graph/eager state diagnostics ran during warmup only.",
+    "The roughly 7K recall probe does not establish 64K speculative context support. Sampled, concurrent, and 60-minute endurance gates remain outstanding.",
+    "Timing comparisons include normal host variability; the fresh baseline is reported separately from the older published baseline."
+  ]
+}

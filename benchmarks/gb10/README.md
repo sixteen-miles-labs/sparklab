@@ -49,6 +49,11 @@ recipes. Raw logs and large result streams stay outside the source repository.
   35.48 decode tok/s and 0.153 s warm TTFT across three trials, with exact
   target-only output parity and zero rejection replays. The profile clears the
   Fast performance thresholds; the remaining certification gates are outstanding.
+- `results/GB10-QWEN38-DFLASH-004.json` records immediate drafting after rejection,
+  fixed-width verification graphs, and the 4/8/12/16 width sweep. DFlash2-12 reached
+  45.88 tok/s on the original 128-token probe; matched 512-token math/coding/prose
+  medians reached 59.58/37.51/19.26 tok/s. The short probe preserved target parity;
+  complete longer traces can differ with verification grouping.
 - `results/GB10-QWEN38-FRONTIER-001.json` records the certified text-only
   Qwen3.8-Flash-Next result for the superseded NVFP4 recipe.
 - `results/GB10-QWEN38-FP8-001.json` records the official FP8 recipe's measured

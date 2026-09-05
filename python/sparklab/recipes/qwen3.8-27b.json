@@ -40,18 +40,20 @@
     "warm_ttft_seconds": 0.14434478300245246,
     "context_tokens": 65536,
     "evidence": "GB10-QWEN38-27B-001",
-    "note": "The complete pinned checkpoint passed a three-trial greedy performance probe, exact 64K recall, and reasoning/tool/coding capability probes. Opt-in DFlash2-8 reached 35.48 tok/s with exact target-output parity in a separate three-trial probe."
+    "note": "The complete pinned checkpoint passed a three-trial greedy performance probe, exact 64K recall, and reasoning/tool/coding capability probes. Opt-in DFlash2-12 reached 45.88 tok/s with exact target-output parity on the original 128-token probe; longer math/coding/prose medians reached 59.58/37.51/19.26 tok/s."
   },
   "evidence": [
     "GB10-QWEN38-27B-001",
     "GB10-QWEN38-DFLASH-002",
-    "GB10-QWEN38-DFLASH-003"
+    "GB10-QWEN38-DFLASH-003",
+    "GB10-QWEN38-DFLASH-004"
   ],
   "limitations": [
     "The published checkpoint includes a vision tower; SparkLab serves its language model text-only.",
     "The exact 65,536-token recall gate passed; the checkpoint's declared 262,144-token maximum has not been validated on GB10.",
-    "The opt-in DFlash2-8 profile clears the Fast throughput and latency thresholds; full Fast certification remains outstanding, including a clean-revision 60-minute endurance run.",
+    "The opt-in DFlash2-12 profile clears the Fast throughput and latency thresholds; full Fast certification remains outstanding, including a clean-revision 60-minute endurance run.",
     "The evidence host had about 209 MiB of pre-existing swap resident, although the 64K request produced zero swap growth, swap-in, or swap-out.",
-    "Native DFlash2 is opt-in and limited to batch-one greedy serving. Its three-trial 128-token probe selected block size eight and did not rerun long-context, capability, sampled, concurrent, or endurance gates."
+    "Native DFlash2 is opt-in and limited to batch-one greedy serving. The optimized width-twelve profile passed arithmetic, reasoning, tool, coding, and roughly 7K recall probes; 64K speculative context, sampled, concurrent, and endurance gates remain outstanding.",
+    "The 128-token optimized DFlash2 probe matches target-only output; complete longer traces can differ because verification grouping changes floating-point rounding."
   ]
 }

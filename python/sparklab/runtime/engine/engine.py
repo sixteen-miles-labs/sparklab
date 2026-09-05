@@ -440,6 +440,13 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
         object.__setattr__(model_config, "speculative_tokens", speculative_tokens)
         override("speculative_method", "dflash2")
         override("speculative_draft_model", draft_model)
+        object.__setattr__(model_config, "mtp_cuda_graph", (
+            getattr(config, "attention_backend", None) == "triton"
+            and os.getenv(
+                "SPARKLAB_DFLASH2_VERIFY_GRAPH",
+                "0" if getattr(config, "cuda_graph_max_bs", None) == 0 else "1",
+            ) == "1"
+        ))
         override("max_running_req", 1)
         override("cache_type", "radix")
         override("cuda_graph_bs", [])
@@ -1470,6 +1477,17 @@ class Engine:
                     self.mtp_stats["replay_tokens"] += accepted + 1
                 req.speculative_drafts = None
                 req.speculative_draft_probs = None
+                if (
+                    self.config.speculative_method == "dflash2"
+                    and batch.cache_verify_states
+                    and os.getenv("SPARKLAB_DFLASH2_REJECT_DRAFT", "1") == "1"
+                ):
+                    # DFlash consumes cached target features for the accepted
+                    # prefix and embeds the correction as its next block anchor.
+                    # Rejected suffix features are excluded by the prefix length.
+                    req.speculative_drafts = self._propose_from_verified_prefix(
+                        batch, chosen[-1:], start + accepted + 1
+                    )
             else:
                 req.speculative_drafts = self._propose_speculative(
                     batch, chosen[-1:]
@@ -1512,6 +1530,18 @@ class Engine:
             next_tokens_gpu, next_tokens_cpu, copy_done_event,
             token_counts, managed_writes,
         )
+
+    def _propose_from_verified_prefix(
+        self, batch: Batch, correction: torch.Tensor, prefix_len: int
+    ) -> torch.Tensor | None:
+        """Anchor DFlash on a correction while hiding the rejected target suffix."""
+        req = batch.reqs[0]
+        original_len = req.device_len
+        try:
+            req.device_len = prefix_len
+            return self._propose_speculative(batch, correction)
+        finally:
+            req.device_len = original_len
 
     def _propose_speculative(
         self, batch: Batch, next_tokens: torch.Tensor

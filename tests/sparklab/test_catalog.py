@@ -185,6 +185,7 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
         "GB10-QWEN38-27B-001",
         "GB10-QWEN38-DFLASH-002",
         "GB10-QWEN38-DFLASH-003",
+        "GB10-QWEN38-DFLASH-004",
     )
     assert qwen27.deployment.execution_policy == "resident"
     assert qwen27.deployment.backend_options["num_tokens"] == 65_536
