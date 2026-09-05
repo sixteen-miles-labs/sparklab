@@ -1,0 +1,656 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-DSV4-PREFIX-006",
+  "status": "measured",
+  "date": "2026-09-05",
+  "recipe": {
+    "slug": "deepseek-v4",
+    "recipe_version": "0.4.0",
+    "revision": "7872f01b1d1fe23eabc4c98b48bffcef5a386062"
+  },
+  "engine": {
+    "name": "SparkLab",
+    "git_revision": "7a46ec6f1ddeb7a6945c899cf4068cadbe7910a8",
+    "git_tracked_dirty": true
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "machine": "aarch64",
+    "cuda": "13.0",
+    "torch": "2.11.0+cu130",
+    "triton": "3.6.0"
+  },
+  "checkpoint": {
+    "repository": "deepseek-ai/DeepSeek-V4-Flash-0731",
+    "revision": "7872f01b1d1fe23eabc4c98b48bffcef5a386062",
+    "format": "ftw-ds-fp4",
+    "quantization": "ds-fp4",
+    "fingerprint": "aeb9734fe8747554",
+    "ftw_bytes": 168424579072,
+    "target_layers": 43,
+    "draft_layers": 3
+  },
+  "workload": {
+    "single_stream": true,
+    "portfolio": "AIME-25 problem 0; 48 prompt tokens, 128 generated tokens, thinking enabled, greedy",
+    "sustained": "Same AIME prompt with 256 generated tokens",
+    "broader": "512-token coding and prose prompts, thinking disabled, greedy",
+    "warmup_requests_per_workload": 1,
+    "selected_math_trials": 3,
+    "selected_coding_prose_trials": 1,
+    "client": "OpenAI-compatible streaming HTTP API",
+    "timing": "(completion_tokens - 1) / (last content event time - first content event time)",
+    "context_limit": 8704,
+    "kv_tokens": 2048
+  },
+  "configuration": {
+    "moe_backend": "offload",
+    "moe_storage": "disk",
+    "expert_cache_slots": 6304,
+    "host_expert_cache_gib": 0,
+    "attention_backend": "dsv4_sparse",
+    "cache_type": "swa_radix",
+    "max_running_requests": 1,
+    "speculative_tokens": 5,
+    "dspark_confidence_threshold": 0.45,
+    "cuda_graph": false,
+    "prefix_commit": true,
+    "cost_aware_policy": false,
+    "immediate_rejection_draft": false,
+    "minimum_system_available_memory_guard_gib": 10
+  },
+  "metrics": {
+    "decode_tokens_per_second": 14.020594683037848,
+    "warm_ttft_seconds": 0.5152079400140792,
+    "improvement_over_published_percent": 6.640456872929756,
+    "previous_published_tokens_per_second": 13.147538086548575,
+    "corrected_replay_128_tokens_per_second": 11.497003182758025,
+    "improvement_over_corrected_replay_128_percent": 21.949993925933974,
+    "sustained_256_tokens_per_second": 9.964997149140318,
+    "corrected_replay_256_tokens_per_second": 8.272597510426804,
+    "improvement_over_corrected_replay_256_percent": 20.45789894383727,
+    "target_only_256_tokens_per_second": 8.788761247437053,
+    "coding_512_tokens_per_second": 9.034067289349988,
+    "prose_512_tokens_per_second": 7.769179900964645,
+    "target_only_prose_512_tokens_per_second": 8.686454551112604
+  },
+  "comparisons": {
+    "baseline": {
+      "expert_cache_slots": 6304,
+      "speculative_tokens": 5,
+      "workloads": {
+        "aime128": {
+          "measured_trials": 3,
+          "decode_tokens_per_second_median": 13.002379914661283,
+          "warm_ttft_seconds_median": 0.5220090330112725,
+          "trials": [
+            {
+              "decode_tokens_per_second": 13.002379914661283,
+              "warm_ttft_seconds": 0.5252484449883923,
+              "prompt_tokens": 48,
+              "completion_tokens": 128,
+              "output_sha256": "3d21fd4496dd6f2419c11c9cc352dcc98855609dd45d5eeb64169cf9e1c52e81",
+              "physical_read_gib": 0
+            },
+            {
+              "decode_tokens_per_second": 12.95826995941247,
+              "warm_ttft_seconds": 0.520206885994412,
+              "prompt_tokens": 48,
+              "completion_tokens": 128,
+              "output_sha256": "3d21fd4496dd6f2419c11c9cc352dcc98855609dd45d5eeb64169cf9e1c52e81",
+              "physical_read_gib": 0.59765625
+            },
+            {
+              "decode_tokens_per_second": 13.320228696562417,
+              "warm_ttft_seconds": 0.5220090330112725,
+              "prompt_tokens": 48,
+              "completion_tokens": 128,
+              "output_sha256": "3d21fd4496dd6f2419c11c9cc352dcc98855609dd45d5eeb64169cf9e1c52e81",
+              "physical_read_gib": 0
+            }
+          ]
+        },
+        "aime256": {
+          "measured_trials": 3,
+          "decode_tokens_per_second_median": 9.067718661303724,
+          "warm_ttft_seconds_median": 1.741389087983407,
+          "trials": [
+            {
+              "decode_tokens_per_second": 9.067718661303724,
+              "warm_ttft_seconds": 1.741389087983407,
+              "prompt_tokens": 48,
+              "completion_tokens": 256,
+              "output_sha256": "0faa3e5dd2bbd37a552923a865504c557e8262ff043dd9beecbcf48939495d76",
+              "physical_read_gib": 39.76904296875
+            },
+            {
+              "decode_tokens_per_second": 9.2104377713619,
+              "warm_ttft_seconds": 1.7878497210040223,
+              "prompt_tokens": 48,
+              "completion_tokens": 256,
+              "output_sha256": "5c38128b686922b6dcb637e10fb9255412d9064f5db3ab7b1f30492784076bcb",
+              "physical_read_gib": 43.25537109375
+            },
+            {
+              "decode_tokens_per_second": 8.969590170297858,
+              "warm_ttft_seconds": 1.695498418994248,
+              "prompt_tokens": 48,
+              "completion_tokens": 256,
+              "output_sha256": "0faa3e5dd2bbd37a552923a865504c557e8262ff043dd9beecbcf48939495d76",
+              "physical_read_gib": 40.852294921875
+            }
+          ]
+        },
+        "code512": {
+          "measured_trials": 3,
+          "decode_tokens_per_second_median": 8.42683722412332,
+          "warm_ttft_seconds_median": 2.2970149269967806,
+          "trials": [
+            {
+              "decode_tokens_per_second": 8.42683722412332,
+              "warm_ttft_seconds": 2.2970149269967806,
+              "prompt_tokens": 46,
+              "completion_tokens": 512,
+              "output_sha256": "1da3634e13baf64741cddf46cab4795abc2dfe2ed33b56a6ece7014257abde79",
+              "physical_read_gib": 91.453857421875
+            },
+            {
+              "decode_tokens_per_second": 8.344037920264107,
+              "warm_ttft_seconds": 2.283068724995246,
+              "prompt_tokens": 46,
+              "completion_tokens": 512,
+              "output_sha256": "1da3634e13baf64741cddf46cab4795abc2dfe2ed33b56a6ece7014257abde79",
+              "physical_read_gib": 91.44140625
+            },
+            {
+              "decode_tokens_per_second": 8.46172868880596,
+              "warm_ttft_seconds": 2.300321337999776,
+              "prompt_tokens": 46,
+              "completion_tokens": 512,
+              "output_sha256": "1da3634e13baf64741cddf46cab4795abc2dfe2ed33b56a6ece7014257abde79",
+              "physical_read_gib": 91.453857421875
+            }
+          ]
+        },
+        "prose512": {
+          "measured_trials": 3,
+          "decode_tokens_per_second_median": 6.422759362074814,
+          "warm_ttft_seconds_median": 1.8483585010108072,
+          "trials": [
+            {
+              "decode_tokens_per_second": 7.721451572247005,
+              "warm_ttft_seconds": 1.7679061899834778,
+              "prompt_tokens": 33,
+              "completion_tokens": 512,
+              "output_sha256": "9d7817ef90e9aa09ac7f7af7e89a0cd16a3e1ca05d355321cbdbe77dd4c6bf59",
+              "physical_read_gib": 68.444091796875
+            },
+            {
+              "decode_tokens_per_second": 6.422759362074814,
+              "warm_ttft_seconds": 1.8483585010108072,
+              "prompt_tokens": 33,
+              "completion_tokens": 512,
+              "output_sha256": "9d7817ef90e9aa09ac7f7af7e89a0cd16a3e1ca05d355321cbdbe77dd4c6bf59",
+              "physical_read_gib": 68.444091796875
+            },
+            {
+              "decode_tokens_per_second": 6.290966733665502,
+              "warm_ttft_seconds": 2.395425742986845,
+              "prompt_tokens": 33,
+              "completion_tokens": 512,
+              "output_sha256": "9d7817ef90e9aa09ac7f7af7e89a0cd16a3e1ca05d355321cbdbe77dd4c6bf59",
+              "physical_read_gib": 68.419189453125
+            }
+          ]
+        }
+      },
+      "telemetry": {
+        "min_available_memory_gib": 13.586429595947266,
+        "swap_growth_bytes": 589885440,
+        "memory_guard_triggered": false,
+        "oom_kill_delta": 0
+      }
+    },
+    "corrected-control": {
+      "expert_cache_slots": 6304,
+      "speculative_tokens": 5,
+      "workloads": {
+        "aime128": {
+          "measured_trials": 3,
+          "decode_tokens_per_second_median": 11.497003182758025,
+          "warm_ttft_seconds_median": 0.5167402160004713,
+          "trials": [
+            {
+              "decode_tokens_per_second": 11.497003182758025,
+              "warm_ttft_seconds": 0.5186662519990932,
+              "prompt_tokens": 48,
+              "completion_tokens": 128,
+              "output_sha256": "d6a41bfd28fa938a975307e3c0d0be572901ac0cfac4181430d47e91f9b883bd",
+              "physical_read_gib": 0
+            },
+            {
+              "decode_tokens_per_second": 11.503997538291426,
+              "warm_ttft_seconds": 0.5143843560072128,
+              "prompt_tokens": 48,
+              "completion_tokens": 128,
+              "output_sha256": "d6a41bfd28fa938a975307e3c0d0be572901ac0cfac4181430d47e91f9b883bd",
+              "physical_read_gib": 0
+            },
+            {
+              "decode_tokens_per_second": 11.483866877476348,
+              "warm_ttft_seconds": 0.5167402160004713,
+              "prompt_tokens": 48,
+              "completion_tokens": 128,
+              "output_sha256": "d6a41bfd28fa938a975307e3c0d0be572901ac0cfac4181430d47e91f9b883bd",
+              "physical_read_gib": 0
+            }
+          ]
+        },
+        "aime256": {
+          "measured_trials": 3,
+          "decode_tokens_per_second_median": 8.272597510426804,
+          "warm_ttft_seconds_median": 1.7830358279752545,
+          "trials": [
+            {
+              "decode_tokens_per_second": 8.272597510426804,
+              "warm_ttft_seconds": 1.7236095539992675,
+              "prompt_tokens": 48,
+              "completion_tokens": 256,
+              "output_sha256": "516209d23d9c26af86700df7d3fd16ac0b660af41449d76b9502e048b1f55e9b",
+              "physical_read_gib": 39.744140625
+            },
+            {
+              "decode_tokens_per_second": 8.311456399918091,
+              "warm_ttft_seconds": 1.8449502020084765,
+              "prompt_tokens": 48,
+              "completion_tokens": 256,
+              "output_sha256": "516209d23d9c26af86700df7d3fd16ac0b660af41449d76b9502e048b1f55e9b",
+              "physical_read_gib": 39.744140625
+            },
+            {
+              "decode_tokens_per_second": 8.250524799548153,
+              "warm_ttft_seconds": 1.7830358279752545,
+              "prompt_tokens": 48,
+              "completion_tokens": 256,
+              "output_sha256": "516209d23d9c26af86700df7d3fd16ac0b660af41449d76b9502e048b1f55e9b",
+              "physical_read_gib": 39.71923828125
+            }
+          ]
+        }
+      },
+      "telemetry": {
+        "min_available_memory_gib": 19.795486450195312,
+        "swap_growth_bytes": 0,
+        "memory_guard_triggered": false,
+        "oom_kill_delta": 0
+      }
+    },
+    "target": {
+      "expert_cache_slots": 6304,
+      "speculative_tokens": 0,
+      "workloads": {
+        "aime128": {
+          "measured_trials": 1,
+          "decode_tokens_per_second_median": 11.021425979360172,
+          "warm_ttft_seconds_median": 0.5934206000238191,
+          "trials": [
+            {
+              "decode_tokens_per_second": 11.021425979360172,
+              "warm_ttft_seconds": 0.5934206000238191,
+              "prompt_tokens": 48,
+              "completion_tokens": 128,
+              "output_sha256": "19cd3303f146e5ff98aec0d0961786745ae4c78af46e1627fe5cbcdc57ad8101",
+              "physical_read_gib": 0
+            }
+          ]
+        },
+        "aime256": {
+          "measured_trials": 1,
+          "decode_tokens_per_second_median": 8.788761247437053,
+          "warm_ttft_seconds_median": 1.8879233280022163,
+          "trials": [
+            {
+              "decode_tokens_per_second": 8.788761247437053,
+              "warm_ttft_seconds": 1.8879233280022163,
+              "prompt_tokens": 48,
+              "completion_tokens": 256,
+              "output_sha256": "4d2050756868067f41f4c8b9906411e7772f8c708ebf6bf43125498323d723fb",
+              "physical_read_gib": 25.6494140625
+            }
+          ]
+        },
+        "prose512": {
+          "measured_trials": 1,
+          "decode_tokens_per_second_median": 8.686454551112604,
+          "warm_ttft_seconds_median": 1.6885935559985228,
+          "trials": [
+            {
+              "decode_tokens_per_second": 8.686454551112604,
+              "warm_ttft_seconds": 1.6885935559985228,
+              "prompt_tokens": 33,
+              "completion_tokens": 512,
+              "output_sha256": "34e998256b4be04dc1cf6f9825949cac32730820085e0a3586bf181564dc361e",
+              "physical_read_gib": 47.04052734375
+            }
+          ]
+        }
+      },
+      "telemetry": {
+        "min_available_memory_gib": 21.293983459472656,
+        "swap_growth_bytes": 0,
+        "memory_guard_triggered": false,
+        "oom_kill_delta": 0
+      }
+    },
+    "prefix": {
+      "expert_cache_slots": 6304,
+      "speculative_tokens": 5,
+      "workloads": {
+        "aime128": {
+          "measured_trials": 1,
+          "decode_tokens_per_second_median": 13.580313497640631,
+          "warm_ttft_seconds_median": 0.5244444799900521,
+          "trials": [
+            {
+              "decode_tokens_per_second": 13.580313497640631,
+              "warm_ttft_seconds": 0.5244444799900521,
+              "prompt_tokens": 48,
+              "completion_tokens": 128,
+              "output_sha256": "3d21fd4496dd6f2419c11c9cc352dcc98855609dd45d5eeb64169cf9e1c52e81",
+              "physical_read_gib": 0
+            }
+          ]
+        },
+        "aime256": {
+          "measured_trials": 1,
+          "decode_tokens_per_second_median": 8.230872998680168,
+          "warm_ttft_seconds_median": 2.358292501012329,
+          "trials": [
+            {
+              "decode_tokens_per_second": 8.230872998680168,
+              "warm_ttft_seconds": 2.358292501012329,
+              "prompt_tokens": 48,
+              "completion_tokens": 256,
+              "output_sha256": "8cb18e5736b3bbdda5698d2458af0c07b3c57a106faf7d6bb15266fde894eedd",
+              "physical_read_gib": 37.57763671875
+            }
+          ]
+        }
+      },
+      "telemetry": {
+        "min_available_memory_gib": 19.508956909179688,
+        "swap_growth_bytes": 135499776,
+        "memory_guard_triggered": false,
+        "oom_kill_delta": 0
+      }
+    },
+    "direct": {
+      "expert_cache_slots": 6304,
+      "speculative_tokens": 5,
+      "workloads": {
+        "aime128": {
+          "measured_trials": 1,
+          "decode_tokens_per_second_median": 12.251386188204544,
+          "warm_ttft_seconds_median": 0.5238809589936864,
+          "trials": [
+            {
+              "decode_tokens_per_second": 12.251386188204544,
+              "warm_ttft_seconds": 0.5238809589936864,
+              "prompt_tokens": 48,
+              "completion_tokens": 128,
+              "output_sha256": "3d21fd4496dd6f2419c11c9cc352dcc98855609dd45d5eeb64169cf9e1c52e81",
+              "physical_read_gib": 0
+            }
+          ]
+        }
+      },
+      "telemetry": {
+        "min_available_memory_gib": 8.177234649658203,
+        "swap_growth_bytes": 0,
+        "memory_guard_triggered": true,
+        "oom_kill_delta": 0
+      }
+    },
+    "cost": {
+      "expert_cache_slots": 6304,
+      "speculative_tokens": 5,
+      "workloads": {
+        "aime128": {
+          "measured_trials": 1,
+          "decode_tokens_per_second_median": 12.495461013925325,
+          "warm_ttft_seconds_median": 0.5054328419792,
+          "trials": [
+            {
+              "decode_tokens_per_second": 12.495461013925325,
+              "warm_ttft_seconds": 0.5054328419792,
+              "prompt_tokens": 48,
+              "completion_tokens": 128,
+              "output_sha256": "3d21fd4496dd6f2419c11c9cc352dcc98855609dd45d5eeb64169cf9e1c52e81",
+              "physical_read_gib": 0.92138671875
+            }
+          ]
+        },
+        "aime256": {
+          "measured_trials": 1,
+          "decode_tokens_per_second_median": 9.012504701513814,
+          "warm_ttft_seconds_median": 1.6341410219902173,
+          "trials": [
+            {
+              "decode_tokens_per_second": 9.012504701513814,
+              "warm_ttft_seconds": 1.6341410219902173,
+              "prompt_tokens": 48,
+              "completion_tokens": 256,
+              "output_sha256": "5ed7b47d6350445328b83574a129f77588d7f6f565667ba6199908e1afbc45f7",
+              "physical_read_gib": 42.25927734375
+            }
+          ]
+        },
+        "prose512": {
+          "measured_trials": 1,
+          "decode_tokens_per_second_median": 8.196537355473811,
+          "warm_ttft_seconds_median": 1.6931176440266427,
+          "trials": [
+            {
+              "decode_tokens_per_second": 8.196537355473811,
+              "warm_ttft_seconds": 1.6931176440266427,
+              "prompt_tokens": 33,
+              "completion_tokens": 512,
+              "output_sha256": "a7a052ef2c9a5e1116a7d957f4a725e46cd7d859edd0bb6abd42c941984956de",
+              "physical_read_gib": 61.38427734375
+            }
+          ]
+        }
+      },
+      "telemetry": {
+        "min_available_memory_gib": 20.45480728149414,
+        "swap_growth_bytes": 0,
+        "memory_guard_triggered": false,
+        "oom_kill_delta": 0
+      }
+    },
+    "selected": {
+      "expert_cache_slots": 6304,
+      "speculative_tokens": 5,
+      "workloads": {
+        "aime128": {
+          "measured_trials": 3,
+          "decode_tokens_per_second_median": 14.020594683037848,
+          "warm_ttft_seconds_median": 0.5152079400140792,
+          "trials": [
+            {
+              "decode_tokens_per_second": 14.046385577069259,
+              "warm_ttft_seconds": 0.5152079400140792,
+              "prompt_tokens": 48,
+              "completion_tokens": 128,
+              "output_sha256": "3d21fd4496dd6f2419c11c9cc352dcc98855609dd45d5eeb64169cf9e1c52e81",
+              "physical_read_gib": 0
+            },
+            {
+              "decode_tokens_per_second": 14.020594683037848,
+              "warm_ttft_seconds": 0.5173509930027649,
+              "prompt_tokens": 48,
+              "completion_tokens": 128,
+              "output_sha256": "3d21fd4496dd6f2419c11c9cc352dcc98855609dd45d5eeb64169cf9e1c52e81",
+              "physical_read_gib": 0
+            },
+            {
+              "decode_tokens_per_second": 14.013094715551233,
+              "warm_ttft_seconds": 0.5146551029756665,
+              "prompt_tokens": 48,
+              "completion_tokens": 128,
+              "output_sha256": "3d21fd4496dd6f2419c11c9cc352dcc98855609dd45d5eeb64169cf9e1c52e81",
+              "physical_read_gib": 0
+            }
+          ]
+        },
+        "aime256": {
+          "measured_trials": 3,
+          "decode_tokens_per_second_median": 9.964997149140318,
+          "warm_ttft_seconds_median": 1.947224756993819,
+          "trials": [
+            {
+              "decode_tokens_per_second": 9.964997149140318,
+              "warm_ttft_seconds": 1.8995866990007926,
+              "prompt_tokens": 48,
+              "completion_tokens": 256,
+              "output_sha256": "8cb18e5736b3bbdda5698d2458af0c07b3c57a106faf7d6bb15266fde894eedd",
+              "physical_read_gib": 37.57763671875
+            },
+            {
+              "decode_tokens_per_second": 9.939075662528046,
+              "warm_ttft_seconds": 1.947224756993819,
+              "prompt_tokens": 48,
+              "completion_tokens": 256,
+              "output_sha256": "8cb18e5736b3bbdda5698d2458af0c07b3c57a106faf7d6bb15266fde894eedd",
+              "physical_read_gib": 37.57763671875
+            },
+            {
+              "decode_tokens_per_second": 10.028500097072508,
+              "warm_ttft_seconds": 1.9721840549900662,
+              "prompt_tokens": 48,
+              "completion_tokens": 256,
+              "output_sha256": "8cb18e5736b3bbdda5698d2458af0c07b3c57a106faf7d6bb15266fde894eedd",
+              "physical_read_gib": 37.565185546875
+            }
+          ]
+        },
+        "code512": {
+          "measured_trials": 1,
+          "decode_tokens_per_second_median": 9.034067289349988,
+          "warm_ttft_seconds_median": 2.2403940910007805,
+          "trials": [
+            {
+              "decode_tokens_per_second": 9.034067289349988,
+              "warm_ttft_seconds": 2.2403940910007805,
+              "prompt_tokens": 46,
+              "completion_tokens": 512,
+              "output_sha256": "3996044f79102df2e8e06bc17535b35b5a778ed74321c153be0b7b6408887ae0",
+              "physical_read_gib": 92.923095703125
+            }
+          ]
+        },
+        "prose512": {
+          "measured_trials": 1,
+          "decode_tokens_per_second_median": 7.769179900964645,
+          "warm_ttft_seconds_median": 1.7385094740020577,
+          "trials": [
+            {
+              "decode_tokens_per_second": 7.769179900964645,
+              "warm_ttft_seconds": 1.7385094740020577,
+              "prompt_tokens": 33,
+              "completion_tokens": 512,
+              "output_sha256": "65a54b3bf9d6e37dc76fd845c27cb19457623e111a4a0cf1857196871095e1a4",
+              "physical_read_gib": 72.353759765625
+            }
+          ]
+        }
+      },
+      "telemetry": {
+        "min_available_memory_gib": 19.758270263671875,
+        "swap_growth_bytes": 0,
+        "memory_guard_triggered": false,
+        "oom_kill_delta": 0
+      }
+    }
+  },
+  "speculative": {
+    "selected_128": {
+      "steps": 5,
+      "accepted": 59,
+      "drafted": 107,
+      "outputs": 128,
+      "target_forwards": 69,
+      "replay_calls": 0,
+      "replay_tokens": 0,
+      "prefix_commits": 27
+    },
+    "selected_256": {
+      "steps": 5,
+      "accepted": 107,
+      "drafted": 191,
+      "outputs": 256,
+      "target_forwards": 149,
+      "replay_calls": 0,
+      "replay_tokens": 0,
+      "prefix_commits": 56
+    },
+    "all_selected_benchmark_runs_replay_free": true
+  },
+  "validation": {
+    "cpu_tests_passed": 944,
+    "cpu_tests_skipped": 20,
+    "prefix_state_tests": "Attention/indexer carry commits cover prefixes 1–6, ratios 4/128, starts 48/126/127/128/129 and physical page crossings; missing capture fails closed.",
+    "all_selected_math_trials_deterministic": true,
+    "target_only_trace_parity": false,
+    "corrected_replay_trace_parity": false,
+    "legacy_128_trace_parity": true,
+    "strict_behavior_probes_passed": 6,
+    "strict_behavior_probes_total": 8,
+    "target_only_strict_behavior_probes_passed": 6,
+    "behavior_probe_outcomes_match_target_only": true,
+    "arithmetic_answers_correct_in_both_profiles": true,
+    "behavior_probe_format_failures": [
+      "123 * 17 answered correctly as an equation, not a bare integer",
+      "Base problem solved correctly with boxed 70, not FINAL=70"
+    ],
+    "coding_executed": true,
+    "reasoning_channel_passed": true,
+    "tool_call_passed": true,
+    "prefix_recall_passed": true,
+    "selected_swap_growth_bytes": 0,
+    "selected_memory_guard_triggered": false,
+    "oom_count": 0
+  },
+  "experiments": {
+    "retained": [
+      "Per-token attention/indexer compressor carries captured on the prefill-style verification path and committed without target replay.",
+      "Shared CPU window-slot metadata and per-page row-index tensors within each verification block.",
+      "Safe replay fallback includes the anchor on first-draft rejection."
+    ],
+    "unselected": [
+      "Immediate re-drafting: 12.25 tok/s on 128 tokens; later 256-token warmup hit the memory guard.",
+      "Online measured-cost 0/1/3/5-width policy: 12.50 tok/s on 128 tokens, 9.01 on 256 tokens, 8.20 on prose; prose trailed target-only 8.69 tok/s. The prototype was removed from production code."
+    ]
+  },
+  "source": {
+    "summary": "Safe replay-free DSpark prefixes improve the selected short profile; an incorrectly wired legacy first-rejection capture was found and removed. Target-only remains the default because results are workload dependent.",
+    "raw_artifact": "$HOME/results/dsv4-opt/selected.json",
+    "corrected_replay": "$HOME/results/dsv4-opt/corrected-control.json",
+    "legacy_reproduction": "$HOME/results/dsv4-opt/baseline.json",
+    "quality": "$HOME/results/dsv4-opt/selected-quality.json",
+    "target_only_quality": "$HOME/results/dsv4-opt/target-quality-quality.json",
+    "unselected_prototype": "$HOME/results/dsv4-opt/cost-controller-experiment.patch",
+    "prior_evidence": "GB10-DSV4-SMALLM-005"
+  },
+  "limitations": [
+    "These are source-worktree measurements, not clean-release certification.",
+    "Legacy decoder results include the faulty first-rejection shortcut and are historical comparisons, not a correctness reference.",
+    "Target-only, corrected replay, and batched verification traces differ; fixed prompt/output length comparisons do not establish broad quality equivalence.",
+    "Target-only controls and 512-token candidate probes used one measured trial after warmup; only the selected/corrected 128/256 comparisons have three trials.",
+    "Two strict instruction-format probes failed despite correct mathematical answers; no full capability certification is claimed.",
+    "The selected run had no swap growth or memory-guard abort. Other exploratory runs had swap growth and two memory-guard aborts; no zero-swap endurance certification is claimed.",
+    "Full 64K context, broad quality, agent and endurance gates remain pending; the model remains Preview and DSpark remains opt-in.",
+    "Installed kernel-cache version 0.1.0+cu130 differs from source 0.1.2; the version guard was explicitly bypassed for source-tree measurements."
+  ]
+}

@@ -4,6 +4,10 @@ This directory contains compact, reviewable summaries for SparkLab model
 recipes. Raw logs and large result streams stay outside the source repository.
 
 - `result.schema.json` defines the versioned summary contract.
+- `results/GB10-DSV4-PREFIX-006.json` records safe replay-free compressor-prefix
+  commits and shared verification metadata: 14.02 tok/s over 128 tokens and
+  9.96 tok/s over 256 tokens. It also identifies the older first-rejection
+  capture bug and records the unselected cost-aware/re-drafting experiments.
 - `results/GB10-QWEN38-FP8-PLE-005.json` measures NVFP4 routed experts with a
   50%-smaller FP8 external PLE table.
 - `results/GB10-QWEN38-HYBRID-006.json` adds physical FP8 resident projections:

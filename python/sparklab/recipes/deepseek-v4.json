@@ -38,17 +38,18 @@
     "total_bytes": 107374182400
   },
   "performance": {
-    "decode_tokens_per_second": 13.147538086548575,
-    "warm_ttft_seconds": 0.5180109490029281,
-    "evidence": "GB10-DSV4-SMALLM-005",
-    "note": "The selected opt-in DSpark5 batch-one greedy profile measured a three-trial median 13.15 tok/s and 0.518 s warm TTFT over 128 tokens with 6,550 expert slots and a 0.45 confidence threshold. Target-only remains the default and measured 10.52 tok/s over the sustained 256-token control."
+    "decode_tokens_per_second": 14.020594683037848,
+    "warm_ttft_seconds": 0.5152079400140792,
+    "evidence": "GB10-DSV4-PREFIX-006",
+    "note": "The opt-in DSpark5 batch-one greedy profile measured a three-trial median 14.02 tok/s and 0.515 s warm TTFT over 128 tokens with 6,304 expert slots and a 0.45 confidence threshold. Safe compressor-prefix commits replace the faulty first-rejection shortcut. The corrected replay control measured 11.50 tok/s; the previous published profile recorded 13.15 tok/s. Over 256 tokens, prefix commits measured 9.96 tok/s versus 8.27 for corrected replay and 8.79 for the single-trial target-only control. Target-only remains the default."
   },
-  "description": "Fused DS-FP4 Frontier recipe with GPU-first expert residency, SM121 small-row kernels, optional confidence-adaptive DSpark speculative decoding, and route-first sparse prefill on one NVIDIA GB10.",
-  "evidence": ["GB10-DSV4-SMALLM-005", "GB10-DSV4-RESIDENCY-003", "GB10-DSV4-ADAPTIVE-004", "GB10-DSV4-DSPARK-002"],
+  "description": "Fused DS-FP4 Frontier recipe with GPU-first expert residency, SM121 small-row kernels, optional replay-free DSpark speculative decoding, and route-first sparse prefill on one NVIDIA GB10.",
+  "evidence": ["GB10-DSV4-PREFIX-006", "GB10-DSV4-SMALLM-005", "GB10-DSV4-RESIDENCY-003", "GB10-DSV4-ADAPTIVE-004", "GB10-DSV4-DSPARK-002"],
   "limitations": [
     "The 64K context and 60-minute agent gates have not passed.",
     "Capability, quality, parser, and agent gates remain incomplete.",
-    "The selected DSpark5 profile is opt-in and tuned for batch-one greedy bursts: it reached 13.15 tok/s over 128 tokens, while target-only remained faster over the 256-token sustained probe (10.52 versus 9.31 tok/s).",
+    "The selected DSpark5 profile remains opt-in and batch-one greedy. It reached 14.02 tok/s over 128 tokens and 9.96 tok/s over 256 tokens; these focused probes are not broad task-suite scores, and target-only/replay/verification traces can differ.",
+    "The previous DSpark first-rejection shortcut captured state on the wrong execution path. Its historical numbers remain archived, not a correctness reference for the current decoder.",
     "The zero-entry host LRU is tuned for GB10 unified memory, where host and GPU allocations compete for the same physical capacity; discrete-GPU systems may benefit from a host LRU.",
     "The 512-token sparse-prefill threshold is optimized for short interactive prompts; longer prefills retain the bounded full-layer streaming path."
   ]

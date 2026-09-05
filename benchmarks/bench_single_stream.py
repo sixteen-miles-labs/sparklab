@@ -15,8 +15,8 @@ PROMPTS = {
     "prose": "Explain how ocean navigation developed from coastal landmarks to celestial navigation and modern satellite systems. Write continuous prose with concrete examples of the limitations of each approach.",
 }
 
-def generate(base_url, prompt, tokens, thinking):
-    body = {"model": "qwen3.8-27b", "messages": [{"role": "user", "content": prompt}],
+def generate(base_url, prompt, tokens, thinking, model="qwen3.8-27b"):
+    body = {"model": model, "messages": [{"role": "user", "content": prompt}],
             "max_tokens": tokens, "temperature": 0, "ignore_eos": True,
             "stream": True, "stream_options": {"include_usage": True},
             "chat_template_kwargs": {"enable_thinking": thinking}}
@@ -51,6 +51,7 @@ def generate(base_url, prompt, tokens, thinking):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--base-url", default="http://127.0.0.1:1927")
+    p.add_argument("--model", default="qwen3.8-27b")
     p.add_argument("--tokens", type=int, default=512)
     p.add_argument("--trials", type=int, default=3)
     p.add_argument("--workloads", default="math,code,prose")
@@ -67,12 +68,13 @@ def main():
         PROMPTS["aime"], _ = load_problem(None, 0)
     if any(name not in PROMPTS for name in workloads):
         p.error("--workloads must contain math, code, prose, or aime")
-    report = {"label": args.label, "tokens": args.tokens, "thinking": args.thinking, "workloads": {}}
+    report = {"label": args.label, "model": args.model, "tokens": args.tokens,
+              "thinking": args.thinking, "workloads": {}}
     args.output.parent.mkdir(parents=True, exist_ok=True)
     for name in workloads:
         prompt = PROMPTS[name]
-        generate(args.base_url, prompt, args.tokens, args.thinking)
-        trials = [generate(args.base_url, prompt, args.tokens, args.thinking) for _ in range(args.trials)]
+        generate(args.base_url, prompt, args.tokens, args.thinking, args.model)
+        trials = [generate(args.base_url, prompt, args.tokens, args.thinking, args.model) for _ in range(args.trials)]
         result = {"prompt": prompt, "trials": trials,
                   "decode_tokens_per_second_median": statistics.median(t["decode_tokens_per_second"] for t in trials),
                   "ttft_seconds_median": statistics.median(t["ttft_seconds"] for t in trials)}

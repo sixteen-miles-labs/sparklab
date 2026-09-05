@@ -5,6 +5,7 @@ from dataclasses import asdict
 from types import SimpleNamespace
 
 import torch
+import pytest
 
 from sparklab.models import create_model
 from sparklab.models.deepseek_v4.args import DeepseekV4Args
@@ -185,6 +186,21 @@ def test_dspark_confidence_truncates_to_contiguous_prefix_with_one_token_floor()
     assert confidence_prefix_length(torch.empty(0), 0.5) == 0
 
 
+@pytest.mark.parametrize("length", [1, 2, 5])
+@pytest.mark.parametrize("capture", [False, True])
+def test_dspark_commit_requires_replay_without_prefill_capture(length, capture):
+    engine = Engine.__new__(Engine)
+    events = []
+    snapshot = object()
+    engine.kv_cache = SimpleNamespace(
+        capture_speculative_prefixes=capture,
+        commit_speculative_prefix=lambda snap, n: events.append(("commit", snap, n)),
+        restore_speculative=lambda snap: events.append(("restore", snap)),
+    )
+    assert engine._commit_dspark_prefix(snapshot, length) is capture
+    assert events == ([("commit", snapshot, length)] if capture else [("restore", snapshot)])
+
+
 def test_speculative_verification_uses_unaligned_compressor_continuation(monkeypatch):
     compressor = Compressor(DeepseekV4Args(dim=8), compress_ratio=4, head_dim=2)
     compressor.P = 128
@@ -214,3 +230,53 @@ def test_speculative_verification_uses_unaligned_compressor_continuation(monkeyp
     assert result is sentinel
     assert seeded == [303]
     assert received == [((1, 2, 8), 48, [304, 305], 7)]
+
+
+@pytest.mark.parametrize("ratio", [4, 128])
+@pytest.mark.parametrize("start", [48, 126, 127, 128, 129])
+def test_captured_compressor_prefix_matches_short_continuation(monkeypatch, ratio, start):
+    from sparklab.models.deepseek_v4 import compress as module
+    from sparklab.runtime.kvcache.dsv4_paged_pool import CompressStateRing, DSV4PagedKVCache
+
+    torch.manual_seed(17)
+    pool = DSV4PagedKVCache.__new__(DSV4PagedKVCache)
+    pool.P, pool._device = 128, torch.device("cpu")
+    pool._speculative_prefix_carries = []
+    pool._speculative_prefix_rows = {}
+    pool.capture_speculative_prefixes = False
+    compressor = Compressor(DeepseekV4Args(dim=8, rope_head_dim=2), ratio, 2)
+    compressor.norm = torch.nn.Identity()
+    ring = CompressStateRing(3 * compressor.ring_size, compressor.ring_size, ratio == 4, 2, pool._device)
+    ring.buffer[:-1].normal_()
+    original = ring.buffer.clone()
+    backend = SimpleNamespace(
+        pool=pool,
+        compress_pool=lambda *_: torch.empty(10, 2),
+        compress_state_ring=lambda *_: ring,
+        read_carry=lambda _l, _t, slot, size: ring.buffer[(slot // 128) * size:(slot // 128 + 1) * size],
+        write_carry=lambda _l, _t, slot, size, values: ring.buffer[(slot // 128) * size:(slot // 128 + 1) * size].copy_(values),
+        compress_rows_of=lambda _t, starts, _r: starts,
+        scatter_compressed=lambda *_: None,
+    )
+    monkeypatch.setattr(Compressor, "attn", property(lambda _self: backend))
+    monkeypatch.setattr(module, "gated_pool", lambda k, s, dtype: (k * s.softmax(1)).sum(1, keepdim=True).to(dtype))
+    monkeypatch.setattr(module, "apply_rotary_emb", lambda *_: None)
+    monkeypatch.setattr(module, "act_quant_fp8_inplace", lambda *_: None)
+    compressor.bind_paged(pool, 0, torch.ones(512, 1), pool._device, "attn")
+    compressor.ape.normal_()
+    compressor.wkv.weight.normal_()
+    compressor.wgate.weight.normal_()
+    x = torch.randn(1, 6, 8)
+    slots = torch.arange(start, start + 6)
+    rows = torch.arange(3 * compressor.ring_size)
+    snapshots = [(ring, rows, original[:-1].clone())]
+    for prefix in range(1, 7):
+        ring.buffer.copy_(original)
+        pool.begin_speculative_carry_capture(all_prefixes=True)
+        compressor.extend(x, start, slots, start - 1)
+        pool.commit_speculative_prefix(snapshots, prefix)
+        selected = ring.buffer.clone()
+        ring.buffer.copy_(original)
+        compressor._seed_carry_from_ring(start - 1)
+        compressor._extend_unaligned(x[:, :prefix], start, slots[:prefix], 0)
+        torch.testing.assert_close(selected, ring.buffer, rtol=1e-6, atol=1e-6)

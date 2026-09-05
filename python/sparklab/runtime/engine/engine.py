@@ -1402,7 +1402,9 @@ class Engine:
                 kv_snapshot = self.kv_cache.snapshot_speculative(
                     batch.reqs[0].table_idx, start, start + batch.input_ids.numel()
                 )
-                self.kv_cache.begin_speculative_carry_capture()
+                self.kv_cache.begin_speculative_carry_capture(
+                    all_prefixes=os.getenv("SPARKLAB_DSPARK_PREFIX_COMMIT", "1") == "1"
+                )
             else:
                 pool = self.linear_state_pool
                 if pool is None:
@@ -1457,12 +1459,13 @@ class Engine:
                     scratch, live, accepted + 1
                 )
             if accepted < drafts.numel():
+                dspark_prefix_committed = False
                 if self.config.speculative_method == "dspark":
-                    if accepted == 0:
-                        self.kv_cache.commit_first_speculative_carry(kv_snapshot)
+                    dspark_prefix_committed = self._commit_dspark_prefix(
+                        kv_snapshot, accepted + 1
+                    )
+                    if dspark_prefix_committed:
                         self.mtp_stats["fast_carry_commits"] += 1
-                    else:
-                        self.kv_cache.restore_speculative(kv_snapshot)
                 elif not batch.cache_verify_states:
                     live, scratch = state_snapshots[0]
                     self.linear_state_pool.copy_from(scratch, live)
@@ -1470,7 +1473,8 @@ class Engine:
                     self.config.speculative_method != "dspark"
                     and not batch.cache_verify_states
                 ) or (
-                    self.config.speculative_method == "dspark" and accepted > 0
+                    self.config.speculative_method == "dspark"
+                    and not dspark_prefix_committed
                 ):
                     self._replay_verified_prefix(batch, accepted + 1, start)
                     self.mtp_stats["replay_calls"] += 1
@@ -1497,6 +1501,8 @@ class Engine:
                     take_probs() if take_probs is not None else None
                 )
             req.cached_len = start + accepted + 1
+            if self.config.speculative_method == "dspark":
+                self.kv_cache.end_speculative_carry_capture()
             req.device_len = req.cached_len + 1
             # Accepted draft rows already occupy token_pool. The correction or
             # bonus token is the one new logical output row managed here.
@@ -1530,6 +1536,16 @@ class Engine:
             next_tokens_gpu, next_tokens_cpu, copy_done_event,
             token_counts, managed_writes,
         )
+
+    def _commit_dspark_prefix(self, snapshots, length: int) -> bool:
+        if self.kv_cache.capture_speculative_prefixes:
+            self.kv_cache.commit_speculative_prefix(snapshots, length)
+            return True
+        # Verification uses prefill kernels. A capture wired only to decode
+        # writes is empty here, even when the first draft is rejected. Without
+        # per-token captures the caller must replay the anchor as well.
+        self.kv_cache.restore_speculative(snapshots)
+        return False
 
     def _propose_from_verified_prefix(
         self, batch: Batch, correction: torch.Tensor, prefix_len: int
