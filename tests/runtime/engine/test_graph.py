@@ -45,6 +45,7 @@ def test_mtp_verification_capture_buffer_separates_rows_from_requests():
 def test_mtp_verification_graph_domain_is_fixed_width_and_dense():
     runner = MTPVerificationGraphRunner.__new__(MTPVerificationGraphRunner)
     runner.rows = 3
+    runner.dflash = False
     runner.attn_backend = SimpleNamespace(supports_cuda_graph=lambda _batch: True)
 
     eligible = SimpleNamespace(
@@ -56,3 +57,16 @@ def test_mtp_verification_graph_domain_is_fixed_width_and_dense():
     eligible.input_ids = torch.zeros(3, dtype=torch.int32)
     eligible.is_verify = False
     assert not runner.can_use_cuda_graph(eligible)
+
+
+def test_dflash_capture_preserves_multi_query_attention_and_dynamic_positions():
+    buffer = MTPVerificationCaptureBuffer.init(8, 16, torch.device("cpu"))
+    metadata = buffer.dflash_metadata(128)
+    assert not metadata.is_decode
+    assert metadata.max_q_len == 8
+    assert metadata.cu_seqlens_q_gpu.tolist() == [0, 8]
+    assert metadata.q_to_req.tolist() == [0] * 8
+    assert metadata.indices.shape == (128,)
+    assert metadata.q_positions.data_ptr() == buffer.positions.data_ptr()
+    buffer.positions.copy_(torch.arange(31, 39, dtype=torch.int32))
+    assert metadata.q_positions.tolist() == list(range(31, 39))

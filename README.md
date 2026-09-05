@@ -100,10 +100,10 @@ a SparkLab support claim.
     <tr>
       <td><a href="https://huggingface.co/Inferact/Qwen3.8-27B-NVFP4">Qwen3.8-27B</a></td>
       <td>27B dense</td>
-      <td>NVFP4 · FTW + optional DFlash2-8</td>
+      <td>NVFP4 · FTW + optional DFlash2-12</td>
       <td>Experimental</td>
-      <td align="right">35.48</td>
-      <td align="right">0.153</td>
+      <td align="right">45.88</td>
+      <td align="right">0.152</td>
       <td><a href="docs/models/qwen3.8-27b.md">Instructions</a></td>
     </tr>
     <tr>

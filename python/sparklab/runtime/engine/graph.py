@@ -277,12 +277,27 @@ class MTPVerificationCaptureBuffer:
         self.positions.copy_(batch.positions)
         self.table_idx.copy_(batch.linear_table_idx)
 
+    def dflash_metadata(self, max_seq_len: int):
+        from sparklab.attention.triton import TritonMetadata
+
+        rows, device = self.input_ids.numel(), self.input_ids.device
+        return TritonMetadata(
+            cu_seqlens_q_gpu=self.fla_cu_seqlens,
+            indptr=torch.tensor([0, rows + 1], dtype=torch.int32, device=device),
+            indices=torch.zeros(max_seq_len, dtype=torch.int32, device=device),
+            q_to_req=torch.zeros(rows, dtype=torch.int32, device=device),
+            q_positions=self.positions,
+            is_decode=False,
+            prefix_lens=torch.ones(1, dtype=torch.int32, device=device),
+            max_q_len=rows,
+        )
+
 
 class MTPVerificationGraphRunner:
-    """Capture the fixed ``1 + speculative_tokens`` target verification shape.
+    """Capture fixed-width target verification for Qwen MTP or DFlash2.
 
-    Transactional state snapshots and rejection repair remain eager in the
-    engine. Only the deterministic target forward is replayed.
+    MTP uses ``1 + speculative_tokens`` rows; DFlash2's block includes its
+    anchor. Transactional state commits remain eager in the engine.
     """
 
     def __init__(
@@ -301,8 +316,14 @@ class MTPVerificationGraphRunner:
         self.device = device
         self.model = model
         self.attn_backend = attn_backend
-        self.rows = speculative_tokens + 1
-        if getattr(attn_backend, "capture", None) is None:
+        self.dflash = getattr(model, "_dflash", None) is not None
+        if self.dflash:
+            from sparklab.attention.triton import TritonAttentionBackend
+
+            if not isinstance(attn_backend, TritonAttentionBackend):
+                raise ValueError("DFlash2 verification graphs require Triton attention")
+        self.rows = speculative_tokens if self.dflash else speculative_tokens + 1
+        if not self.dflash and getattr(attn_backend, "capture", None) is None:
             attn_backend.init_capture_graph(max_seq_len=max_seq_len, bs_list=[1])
         self.buffer = MTPVerificationCaptureBuffer.init(
             self.rows, vocab_size, device
@@ -325,8 +346,15 @@ class MTPVerificationGraphRunner:
         batch.padded_reqs = batch.reqs
         batch.return_all_logits = True
         batch.disable_state_tracking = True
-        self.attn_backend.prepare_for_capture(batch)
         self.buffer.set_batch(batch)
+        if self.dflash:
+            # Verification has multiple queries for one request. Decode graph
+            # metadata has only one query and would silently select the wrong kernel.
+            self.verify_metadata = self.buffer.dflash_metadata(max_seq_len)
+            batch.attn_metadata = self.verify_metadata
+            batch.cache_verify_states = True
+        else:
+            self.attn_backend.prepare_for_capture(batch)
         self.buffer.table_idx.fill_(
             verify_dummy.linear_slot_idx
             if verify_dummy.linear_slot_idx is not None
@@ -348,13 +376,19 @@ class MTPVerificationGraphRunner:
             batch.is_verify
             and batch.size == 1
             and batch.input_ids.numel() == self.rows
-            and self.attn_backend.supports_cuda_graph(batch)
+            and (self.dflash or self.attn_backend.supports_cuda_graph(batch))
         )
 
     def replay(self, batch: Batch) -> torch.Tensor:
         assert self.can_use_cuda_graph(batch)
         self.buffer.copy_from(batch)
-        self.attn_backend.prepare_for_replay(batch)
+        if self.dflash:
+            metadata = batch.attn_metadata
+            self.verify_metadata.indptr.copy_(metadata.indptr)
+            self.verify_metadata.prefix_lens.copy_(metadata.prefix_lens)
+            self.verify_metadata.indices[:metadata.indices.numel()].copy_(metadata.indices)
+        else:
+            self.attn_backend.prepare_for_replay(batch)
         self.model.prepare_cuda_graph_inputs(batch)
         self.graph.replay()
         # Python assignments inside model.forward are not replayed by CUDA.
@@ -365,4 +399,6 @@ class MTPVerificationGraphRunner:
     def destroy_cuda_graphs(self) -> None:
         self.graph = None
         self.buffer = None
+        if self.dflash:
+            self.verify_metadata = None
         gc.collect()
