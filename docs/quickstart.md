@@ -1,6 +1,8 @@
 # SparkLab quick start
 
-Install the SparkLab distribution first; see [install.md](install.md). The supported
+Install SparkLab first; see [install.md](install.md). The Qwen3.8-Flash-Next recipe
+used below requires a [source installation](install.md#method-2-install-from-source);
+the released 0.1.2 wheel lacks its current checkpoint support. The supported
 production target is one NVIDIA GB10.
 
 ## 1. Inspect the machine
@@ -60,13 +62,16 @@ sparklab serve --model /path/to/checkpoint
 
 ## 4. Send a request
 
+Keep the server running and open a second terminal. The recipe above serves as
+`nvidia/Qwen3.8-Flash-Next-NVFP4`; for another recipe, use the ID returned by `/v1/models`.
+
 ```bash
 curl http://127.0.0.1:1919/v1/models
 
 curl http://127.0.0.1:1919/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -d '{
-    "model": "served-model-id",
+    "model": "nvidia/Qwen3.8-Flash-Next-NVFP4",
     "messages": [{"role": "user", "content": "Explain unified memory."}],
     "max_tokens": 256,
     "stream": true
@@ -78,7 +83,8 @@ Anthropic Messages API.
 
 ## 5. Use the terminal or a coding agent
 
-Use SparkLab's built-in terminal chat:
+In the second terminal, activate the same virtual environment, then use SparkLab's
+built-in terminal chat:
 
 ```bash
 sparklab shell

@@ -7,7 +7,7 @@
 <h1 align="center">SparkLab</h1>
 
 <p align="center">
-  <a href="docs/">
+  <a href="#documentation">
     <img src="https://img.shields.io/badge/Documentation-Read%20the%20docs-2563EB" alt="Documentation">
   </a>
   <a href="https://github.com/sixteen-miles-labs/sparklab/releases">
@@ -46,13 +46,15 @@ SparkLab deliberately supports one narrow hardware profile:
 - NVIDIA GB10 Grace Blackwell Superchip (`SM121`)
 - 128 GB coherent unified memory
 - ARM64 Linux or DGX OS
+- Python 3.10 or newer
 - NVIDIA driver r580 or newer and CUDA 13 toolkit
 - Local NVMe storage for checkpoints, FTW artifacts, and disk-backed experts
 - One local DGX Spark; multi-node and high-concurrency serving are outside the Beta scope
 
-Platform, memory, swap, dependency, and storage requirements fail closed before a recipe
-launch. Unsupported hardware may still work through native runtime fallbacks, but it is not
-a SparkLab support claim.
+Recipe launch fails closed on failed platform, memory, swap, dependency, and storage
+checks. Storage whose NVMe backing cannot be established produces a warning requiring
+review; `sparklab doctor --strict` also returns non-zero for warnings. Unsupported hardware
+may still work through native runtime fallbacks, but it is not a SparkLab support claim.
 
 ## Why SparkLab
 
@@ -80,7 +82,7 @@ a SparkLab support claim.
       <th>Quantization</th>
       <th>Status</th>
       <th align="right">tok/s</th>
-      <th align="right">TTFT(s)</th>
+      <th align="right">Warm TTFT (s)</th>
       <th>Run</th>
     </tr>
   </thead>
@@ -92,9 +94,9 @@ a SparkLab support claim.
       <td><a href="https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW">Qwen3.6-35B-A3B</a></td>
       <td>35B total / 3B active</td>
       <td>NVFP4 · FTW + optional MTP2</td>
-      <td>Certified</td>
-      <td align="right">80.55</td>
-      <td align="right">0.367</td>
+      <td>Certified (target-only)</td>
+      <td align="right"><a href="benchmarks/gb10/results/GB10-QWEN36-FAST-002.json">67.79</a></td>
+      <td align="right">0.329</td>
       <td><a href="docs/models/qwen3.6-35b-a3b.md">Instructions</a></td>
     </tr>
     <tr>
@@ -102,7 +104,7 @@ a SparkLab support claim.
       <td>27B dense</td>
       <td>NVFP4 · FTW + optional DFlash2-12</td>
       <td>Experimental</td>
-      <td align="right">45.88</td>
+      <td align="right"><a href="benchmarks/gb10/results/GB10-QWEN38-DFLASH-004.json">45.88</a></td>
       <td align="right">0.152</td>
       <td><a href="docs/models/qwen3.8-27b.md">Instructions</a></td>
     </tr>
@@ -112,9 +114,9 @@ a SparkLab support claim.
     <tr>
       <td><a href="https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW">Qwen3.8-Flash-Next</a></td>
       <td>125B LM + 55B auxiliary / 6B active</td>
-      <td>NVFP4 · FTW + MTP3</td>
+      <td>NVFP4 · FTW + optional MTP3</td>
       <td>Experimental</td>
-      <td align="right">31.97</td>
+      <td align="right"><a href="benchmarks/gb10/results/GB10-QWENNVIDIA-002.json">31.97</a></td>
       <td align="right">0.260</td>
       <td><a href="docs/models/qwen3.8-flash-next.md">Instructions</a></td>
     </tr>
@@ -123,7 +125,7 @@ a SparkLab support claim.
       <td>284B total / 13B active</td>
       <td>DS-FP4 · FTW + optional DSpark5</td>
       <td>Preview</td>
-      <td align="right">14.02</td>
+      <td align="right"><a href="benchmarks/gb10/results/GB10-DSV4-PREFIX-006.json">14.02</a></td>
       <td align="right">0.515</td>
       <td><a href="docs/models/deepseek-v4.md">Instructions</a></td>
     </tr>
@@ -132,7 +134,7 @@ a SparkLab support claim.
       <td>320B total / 18B active</td>
       <td>NVFP4 + KDA FP8 · FTW + optional MTP3</td>
       <td>Experimental</td>
-      <td align="right">7.77</td>
+      <td align="right"><a href="benchmarks/gb10/results/GB10-GLM53-OPT-006.json">7.77</a></td>
       <td align="right">6.395</td>
       <td><a href="docs/models/glm-5.3-flash.md">Instructions</a></td>
     </tr>
@@ -144,7 +146,7 @@ a SparkLab support claim.
       <td>753B total / 40B active</td>
       <td>NVFP4 + resident FP8 · FTW</td>
       <td>Experimental</td>
-      <td align="right">0.81</td>
+      <td align="right"><a href="benchmarks/gb10/results/GB10-GLM53-RESEARCH-001.json">0.81</a></td>
       <td align="right">2.530</td>
       <td><a href="docs/models/glm-5.3.md">Instructions</a></td>
     </tr>
@@ -153,7 +155,7 @@ a SparkLab support claim.
       <td>2.8T total / 16 of 896 experts</td>
       <td>ModelOpt NVFP4/FP8 · FTW</td>
       <td>Experimental</td>
-      <td align="right">0.16</td>
+      <td align="right"><a href="benchmarks/gb10/results/GB10-KIMI-001.json">0.16</a></td>
       <td align="right">395.405</td>
       <td><a href="docs/models/kimi-k3.md">Instructions</a></td>
     </tr>
@@ -168,13 +170,26 @@ Status meanings:
 - **Certified:** the exact recipe, revision, artifact, and release environment passed all
   required correctness, parser, agent, context, latency, memory, NVMe, and endurance gates.
 
-Portfolio performance and warm-TTFT values report each recipe's selected single-stream
-profile. Concurrent-serving measurements remain in the linked model evidence.
+Throughput is decode tokens per second; warm TTFT is time to first token in seconds.
+Values report selected single-stream probes, with configurations and validation limits
+in the linked evidence. Qwen3.8-27B, Qwen3.8-Flash-Next, DeepSeek V4 Flash, and GLM-5.3
+Flash report opt-in speculative profiles; target-only serving remains their default.
+Concurrent-serving measurements remain in the linked model evidence.
+
+Qwen3.6's row reports its certified target-only profile. Its optional MTP2 path measured
+[80.55 tok/s and 0.367 s warm TTFT](benchmarks/gb10/results/GB10-QWEN36-MTP-005.json),
+but full MTP certification remains pending. GLM-5.3 and Kimi K3 measurements establish
+bounded execution; answer correctness remains unproven.
 
 Run `sparklab models --json` for exact recipe versions, checkpoint revisions, artifact
 fingerprints, implementation state, evidence IDs, and known constraints.
 
 ## Documentation
+
+Start with installation, then follow the quick start or a model's run instructions.
+The current Qwen3.8-Flash-Next recipe requires a
+[source installation](docs/install.md#method-2-install-from-source); the released 0.1.2
+wheel does not include its required runtime support.
 
 - [Installation](docs/install.md)
 - [Quick start](docs/quickstart.md)
@@ -190,6 +205,8 @@ backing, legal stewardship, and commercial support.
 - [Contributing guide](CONTRIBUTING.md)
 - [Governance](GOVERNANCE.md)
 - [Release and package policy](RELEASING.md)
+- [Security policy](SECURITY.md)
+- [Code of conduct](CODE_OF_CONDUCT.md)
 
 ## Credits and citation
 

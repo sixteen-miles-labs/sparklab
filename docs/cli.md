@@ -13,6 +13,7 @@ sparklab <command> [args]
 | `sparklab run` | Launch a prepared recipe after fail-closed GB10 admission |
 | `sparklab gate` | Evaluate versioned full-model evidence against product tier gates |
 | `sparklab status` | Show the persistent engine status |
+| `sparklab daemon` | Run or control the persistent engine supervisor; see the [supervisor guide](../python/sparklab/daemon/README.md) |
 | `sparklab serve` | Start the API server (OpenAI `/v1/*`, Anthropic `/v1/messages`, Responses) |
 | `sparklab shell` | Chat with a server in the terminal |
 | `sparklab ctl` | Query and manage a running server over HTTP |
@@ -139,6 +140,8 @@ the model-portfolio context behind offloaded execution.
 | Flag | Default | Meaning |
 |---|---|---|
 | `--moe-backend` | auto | `fused`/`offload`/`cpu`/`hybrid`; auto → offload, or hybrid with a `sparklab bench bw` profile |
+| `--moe-storage` | ram | Keep routed experts in host RAM, or use `disk` to fetch FTW expert rows on demand |
+| `--moe-host-cache-gb` | 1 | Disk-mode host expert-LRU budget in GiB; fixed staging buffers are additional |
 | `--moe-cache-size` / `--moe-cache-rate` / `--moe-cache-auto` | auto | GPU expert-cache size as slots / fraction of all experts / sized from free VRAM (mutually exclusive; auto is enabled by default for offload-family backends) |
 | `--moe-preload-all` | off | Disk FTW mode: preload every routed expert into a complete immutable GPU cache; forces GPU offload, disables prefill overlap, and fails if the full expert bank does not fit |
 | `--moe-cache-policy` | `lru` | `lru`, or borrowable `layer_lru` protection applied to both the GPU slot cache and disk host LRU |
@@ -165,9 +168,11 @@ the model-portfolio context behind offloaded execution.
 ```bash
 sparklab shell                                    # attach to a running server
 sparklab shell --model ~/models/Qwen3.6-35B-A3B   # serve + chat in one process
+sparklab shell --documents /path/to/documents     # attach with local .txt/.md retrieval
 ```
 
 - Attach mode talks to `--server URL` (default `http://127.0.0.1:1919`)
+- `--documents` requires an already running server and cannot be combined with `--model`.
 - `/help` inside the shell lists the commands (`/think`, `/cache`, `/reset`).
 
 ## sparklab ctl
