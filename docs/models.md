@@ -34,9 +34,9 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW + optional MTP2 | `qwen3.6-35b-a3b` | Certified | 67.79 | 0.329 |
 | [Qwen3.8-27B](https://huggingface.co/Inferact/Qwen3.8-27B-NVFP4) | 27B dense | NVFP4 · FTW + optional DFlash2-12 | `qwen3.8-27b` | Experimental | 45.88 | 0.152 |
 | **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |  |
-| [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW + MTP3 | `qwen3.8-flash-next` | Experimental | 30.67 | 0.258 |
+| [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW + MTP3 | `qwen3.8-flash-next` | Experimental | 31.97 | 0.260 |
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 · FTW + optional DSpark5 | `deepseek-v4` | Preview | 14.02 | 0.515 |
-| [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 + KDA FP8 · FTW + optional MTP3 | `glm-5.3-flash` | Experimental | 6.27 target<br>7.44 MTP3 | 5.681 target<br>6.330 MTP3 |
+| [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 + KDA FP8 · FTW + optional MTP3 | `glm-5.3-flash` | Experimental | 7.77 | 6.395 |
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
 | [GLM-5.3](https://huggingface.co/oakmindai/GLM-5.3-NVFP4-FTW) | 753B total / 40B active | NVFP4 + resident FP8 · FTW | `glm-5.3` | Experimental fallback | 0.81 | 2.530 |
 | [Kimi K3](https://huggingface.co/oakmindai/Kimi-K3-NVFP4-FTW) | 2.8T total / 16 of 896 experts | ModelOpt NVFP4/FP8 · FTW | `kimi-k3` | Experimental | 0.16 | 395.405 |
@@ -54,15 +54,14 @@ measured 80.55 tok/s with 0.367 s warm TTFT on a 256-token GB10 probe and matche
 fresh eager target-only output on that prompt; it remains opt-in pending the full
 certification suite.
 
-GLM-5.3 Flash similarly keeps its 6.27 tok/s, 5.681 s target-only result visible while
-also reporting the opt-in MTP3 probe. The optimized MTP3 path averaged 7.436 tok/s and
-6.330 s warm TTFT across two trials, with 87.9% draft acceptance and exact target-only
-output parity. It remains optimization evidence rather than certification.
+GLM-5.3 Flash's selected opt-in MTP3 profile measured a three-trial median of 7.77 tok/s
+and 6.395 s warm TTFT after eliminating rejection replay. All three trials reproduced
+the fresh MTP3 baseline's output. Target-only remains the default, with its separate
+6.27 tok/s, 5.681 s result; broader certification remains outstanding.
 
-Qwen3.8-Flash-Next's native target-only batch-eight profile measured 85.72 aggregate
-tok/s, up 54.1% from the matched batch-four admission control, while p95 TTFT fell from
-9.709 to 0.867 seconds. The selected MTP3 profile remains the comparable single-stream
-number because MTP is intentionally batch-one.
+The previous Inferact Qwen3.8-Flash-Next checkpoint measured 85.72 aggregate tok/s
+with native target-only batch-eight serving. That concurrency result does not transfer
+to the current NVIDIA checkpoint. Its selected MTP3 metric is batch-one.
 
 ## Evidence and caveats
 
@@ -70,9 +69,9 @@ number because MTP is intentionally batch-one.
 |---|---|---|
 | Qwen3.6-35B-A3B | Fast-certified target-only profile, including exact 32K recall and a 60-minute zero-swap run. Replay-free native MTP2 reached 80.55 tok/s and matched the eager target-only output on the focused prompt; it remains opt-in pending full certification. | [GB10-QWEN36-FAST-002](../benchmarks/gb10/results/GB10-QWEN36-FAST-002.json), [original MTP sweep](../benchmarks/gb10/results/GB10-QWEN36-MTP-003.json), [optimized MTP](../benchmarks/gb10/results/GB10-QWEN36-MTP-004.json), [replay-free MTP](../benchmarks/gb10/results/GB10-QWEN36-MTP-005.json) |
 | Qwen3.8-27B | The opt-in DFlash2-12 profile reached 45.88 tok/s with exact target-output parity on the 128-token probe. Longer math, coding, and prose probes improved; their complete traces can differ with verification grouping. Full Fast certification remains pending. | [target-only](../benchmarks/gb10/results/GB10-QWEN38-27B-001.json), [DFlash2-12](../benchmarks/gb10/results/GB10-QWEN38-DFLASH-004.json) |
-| Qwen3.8-Flash-Next | The selected MTP3 profile measured 30.67 tok/s at 0.258 s warm TTFT. Separately, native batch-eight target-only serving reached 85.72 aggregate tok/s and 0.867 s p95 TTFT at C8. | [MTP3](../benchmarks/gb10/results/GB10-QWEN38-MTP-007.json), [batch eight](../benchmarks/gb10/results/GB10-QWEN38-CONC-009.json) |
+| Qwen3.8-Flash-Next | NVIDIA MTP3 with accepted-prefix state commits measured 31.97 tok/s and 0.260 s warm TTFT, 13.9% above its baseline with zero rejection replay. Output differs from target-only; prior Inferact certification evidence does not transfer. | [NVIDIA baseline](../benchmarks/gb10/results/GB10-QWENNVIDIA-001.json), [accepted-prefix commits](../benchmarks/gb10/results/GB10-QWENNVIDIA-002.json) |
 | DeepSeek V4 Flash | The selected three-trial DSpark5 burst profile reaches 14.02 tok/s with replay-free compressor-prefix commits. This fixes the previous first-rejection carry shortcut; target-only remains the default and full certification is pending. | [GB10-DSV4-PREFIX-006](../benchmarks/gb10/results/GB10-DSV4-PREFIX-006.json) |
-| GLM-5.3 Flash | Target-only reaches 6.27 tok/s. The opt-in optimized MTP3 path averaged 7.436 tok/s with 87.9% acceptance and exact target-only output parity; NVMe sensitivity and the remaining certification gates keep it Experimental. | [target-only](../benchmarks/gb10/results/GB10-GLM53-MHC-003.json), [MTP sweep](../benchmarks/gb10/results/GB10-GLM53-MTP-004.json), [optimized MTP3](../benchmarks/gb10/results/GB10-GLM53-OPT-005.json) |
+| GLM-5.3 Flash | The opt-in MTP3 profile reached a median 7.77 tok/s with no rejection replay, 3.4% above its fresh baseline and identical output across three trials. NVMe sensitivity and the remaining certification gates keep it Experimental. | [target-only](../benchmarks/gb10/results/GB10-GLM53-MHC-003.json), [MTP sweep](../benchmarks/gb10/results/GB10-GLM53-MTP-004.json), [optimized MTP3](../benchmarks/gb10/results/GB10-GLM53-OPT-005.json), [KDA state commits](../benchmarks/gb10/results/GB10-GLM53-OPT-006.json) |
 | GLM-5.2 | Below Frontier speed and recorded swap growth, so it remains Experimental. | [Experiment](../exps/exp_glm5_2_gb10.md) |
 | GLM-5.3 | Correctness is not established; the measured output reached its length cap before answering. | [GB10-GLM53-RESEARCH-001](../benchmarks/gb10/results/GB10-GLM53-RESEARCH-001.json) |
 | Kimi K3 | Complete-checkpoint serving was measured, but correctness and cross-run determinism are not established. | [GB10-KIMI-001](../benchmarks/gb10/results/GB10-KIMI-001.json) |

@@ -347,6 +347,8 @@ class MTPVerificationGraphRunner:
         batch.return_all_logits = True
         batch.disable_state_tracking = True
         self.buffer.set_batch(batch)
+        pool = get_global_ctx().linear_state_pool
+        batch.cache_verify_states = bool(pool is not None and pool.verify_steps)
         if self.dflash:
             # Verification has multiple queries for one request. Decode graph
             # metadata has only one query and would silently select the wrong kernel.

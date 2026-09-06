@@ -577,7 +577,7 @@ def load_problem(path: str | None, index: int) -> tuple[str, str]:
         sys.exit(f"--problem {index} out of range ({len(rows)} problems available)")
     row = rows[index]
     text = row.get("problem") or row["prompt"]
-    if "boxed" not in text:
+    if row.get("problem") and "boxed" not in text:
         text = f"{text}\n{BOXED_INSTRUCTION}"
     return text, str(row.get("answer", ""))
 
@@ -990,6 +990,8 @@ def run_one(args: argparse.Namespace, backend: str) -> dict:
             "dsv4_kv_storage": args.dsv4_kv_storage,
             "dsv4_index_storage": args.dsv4_index_storage,
             "qwen4_dense_storage": args.qwen4_dense_storage,
+            "qwen4_draft_vocab_size": int(os.getenv("SPARKLAB_QWEN4_DRAFT_VOCAB_SIZE", "0")),
+            "mamba_ssm_dtype": os.getenv("SPARKLAB_MAMBA_SSM_DTYPE", "float32"),
             "cpu_threads": args.cpu_threads,
             "hybrid_fetch": args.hybrid_fetch,
             "disk_read_workers": int(os.getenv("SPARKLAB_DISK_READ_WORKERS", "16")),

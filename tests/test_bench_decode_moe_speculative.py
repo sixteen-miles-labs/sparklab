@@ -1,10 +1,23 @@
 import pytest
+import json
 
 from benchmarks.bench_decode_moe import (
+    load_problem,
     parse_args,
     parse_speculative_summary,
     serve_cmd,
 )
+
+
+def test_preformatted_benchmark_prompt_does_not_receive_math_instruction(tmp_path):
+    path = tmp_path / "prompts.jsonl"
+    prompt = "Write a Python interval-merging function."
+    path.write_text(json.dumps({"prompt": prompt, "answer": ""}) + "\n")
+    assert load_problem(str(path), 0) == (prompt, "")
+    path.write_text(json.dumps({"problem": "Compute 2 + 2.", "answer": "4"}) + "\n")
+    text, answer = load_problem(str(path), 0)
+    assert "boxed" in text
+    assert answer == "4"
 
 
 def test_decode_benchmark_forwards_speculative_options():

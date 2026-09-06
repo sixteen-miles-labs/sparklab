@@ -267,13 +267,25 @@ def test_linear_state_pool_prices_itself():
     # MTP uses an anchor plus N drafts; reserve all N+1 intermediate states.
     config.speculative_method = "mtp"
     config.speculative_tokens = 3
-    config.model_config.model_type = "qwen3_5_moe"
-    assert state_pool_bytes(config, num_slots=7) == per_req * 7 + expected_verify
+    for model_type in ("qwen3_5", "qwen3_5_moe", "glm5_next", "qwen4_exp"):
+        config.model_config.model_type = model_type
+        assert state_pool_bytes(config, num_slots=7) == per_req * 7 + expected_verify
     # Other MTP families retain their existing rollback paths and memory costs.
-    for model_type in ("qwen4_exp", "glm5_next"):
+    for model_type in ("deepseek_v4",):
         config.model_config.model_type = model_type
         assert state_pool_bytes(config, num_slots=7) == per_req * 7
+    config.model_config.model_type = "qwen4_exp"
+    config.model_config.hidden_size = 64
+    config.model_config.qwen4_exp_args = SimpleNamespace(
+        ple_conv_kernel_size=4, ngram_size=3, ple_layer_ids=(1, 3), hc_count=4,
+    )
+    ple_per_slot = 2 * 4 * 64 * 9 * 2
+    ple_verify = 2 * 4 * 64 * 4 * 2
+    assert state_pool_bytes(config, num_slots=7) == (
+        (per_req + ple_per_slot) * 7 + expected_verify + ple_verify
+    )
     config.model_config.model_type = "qwen3_5_moe"
+    config.model_config.qwen4_exp_args = None
     config.speculative_tokens = 0
     assert state_pool_bytes(config, num_slots=7) == per_req * 7
     # models without a linear group price to zero

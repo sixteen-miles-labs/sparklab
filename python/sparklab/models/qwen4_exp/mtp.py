@@ -1,7 +1,7 @@
 """Native Qwen4-Exp multi-token predictor.
 
 The publisher stores the one-layer draft head in a standalone safetensors file.
-Its routed experts are small enough to remain resident as native ModelOpt NVFP4
+Its routed experts remain resident as native ModelOpt NVFP4 or block-scaled FP8
 on GB10, independently of the target model's immutable 48-layer expert cache.
 """
 
@@ -42,6 +42,9 @@ class _ResidentNvfp4MTPMoE(BaseOP):
         self._expert_banks: tuple[torch.Tensor, ...] | None = None
 
     def load_experts(self, handle, device: torch.device) -> None:
+        if "mtp.layers.0.mlp.experts.0.gate_proj.weight_scale_inv" in handle.keys():
+            self._load_fp8_experts(handle, device)
+            return
         e, h, i = self.num_experts, self.hidden_size, self.intermediate_size
         fp8 = torch.float8_e4m3fn
         gate_up_packed = torch.empty(e, 2 * i, h // 2, dtype=torch.uint8, device=device)
@@ -75,6 +78,30 @@ class _ResidentNvfp4MTPMoE(BaseOP):
             down_global,
         )
 
+    def _load_fp8_experts(self, handle, device: torch.device) -> None:
+        e, h, i = self.num_experts, self.hidden_size, self.intermediate_size
+        if h % 128 or i % 128:
+            raise ValueError("Qwen4 FP8 MTP experts require 128-aligned dimensions")
+        gate_up = torch.empty(e, 2 * i, h, dtype=torch.float8_e4m3fn, device=device)
+        down = torch.empty(e, h, i, dtype=torch.float8_e4m3fn, device=device)
+        gate_up_scale = torch.empty(e, 2 * (i // 128), h // 128, dtype=torch.bfloat16, device=device)
+        down_scale = torch.empty(e, h // 128, i // 128, dtype=torch.bfloat16, device=device)
+        for expert in range(e):
+            prefix = f"mtp.layers.0.mlp.experts.{expert}"
+            for role, row, scale_row in (
+                ("gate_proj", slice(0, i), slice(0, i // 128)),
+                ("up_proj", slice(i, 2 * i), slice(i // 128, 2 * (i // 128))),
+            ):
+                if handle.get_slice(f"{prefix}.{role}.weight").get_dtype() != "F8_E4M3":
+                    raise ValueError(f"expected native FP8 Qwen4 MTP weight: {prefix}.{role}")
+                gate_up[expert, row].copy_(handle.get_tensor(f"{prefix}.{role}.weight"))
+                gate_up_scale[expert, scale_row].copy_(handle.get_tensor(f"{prefix}.{role}.weight_scale_inv"))
+            if handle.get_slice(f"{prefix}.down_proj.weight").get_dtype() != "F8_E4M3":
+                raise ValueError(f"expected native FP8 Qwen4 MTP weight: {prefix}.down_proj")
+            down[expert].copy_(handle.get_tensor(f"{prefix}.down_proj.weight"))
+            down_scale[expert].copy_(handle.get_tensor(f"{prefix}.down_proj.weight_scale_inv"))
+        self._expert_banks = (gate_up, gate_up_scale, down, down_scale)
+
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
         if self._expert_banks is None:
             raise RuntimeError("Qwen4 MTP expert banks were not loaded")
@@ -91,7 +118,21 @@ class _ResidentNvfp4MTPMoE(BaseOP):
             renormalize=True,
         )
         batch = get_global_ctx().batch
-        if batch.uses_prefill_kernels and not batch.is_verify:
+        if len(self._expert_banks) == 4:
+            from sparklab.moe.fused_fp8_block import (
+                fused_experts_decode_fp8_block, fused_experts_fp8_block,
+            )
+
+            if batch.uses_prefill_kernels and not batch.is_verify:
+                routed = fused_experts_fp8_block(
+                    hidden_states, *self._expert_banks, topk_weights, topk_ids,
+                    self.num_experts,
+                )
+            else:
+                routed = fused_experts_decode_fp8_block(
+                    hidden_states, *self._expert_banks, topk_weights, topk_ids,
+                )
+        elif batch.uses_prefill_kernels and not batch.is_verify:
             from sparklab.moe.fused_nvfp4 import fused_experts_nvfp4
 
             routed = fused_experts_nvfp4(
@@ -177,7 +218,7 @@ class Qwen4ExpMultiTokenPredictor(BaseOP):
 
         with safetensors.safe_open(path, framework="pt", device="cpu") as handle:
             for raw in handle.keys():
-                if ".experts." in raw or raw.endswith(".input_scale"):
+                if not raw.startswith("mtp.") or ".experts." in raw or raw.endswith(".input_scale"):
                     continue
                 name = raw.removeprefix("mtp.")
                 name = name.replace(".self_attn.indexer.index_qk_proj.", ".self_attn.index_qk_proj.")

@@ -64,7 +64,7 @@ def test_models_human_table_groups_tiers_and_shows_performance_metrics(capsys):
     qwen38_row = next(
         line for line in output.splitlines() if line.startswith("Qwen3.8 Flash Next")
     )
-    assert qwen38_row.split()[-2:] == ["30.67", "0.258"]
+    assert qwen38_row.split()[-2:] == ["31.97", "0.260"]
     assert "No recipe is certified yet" not in output
 
 
@@ -108,7 +108,7 @@ def test_pull_dry_run_delegates_to_pinned_acquisition(monkeypatch, capsys):
 
     monkeypatch.setattr("sparklab.acquire.acquire_recipe", fake_acquire)
     assert cli.main(["pull", "qwen3.8-flash-next", "--dry-run"]) == 0
-    assert seen["recipe"].revision == "103a7608316173ca6edd49929544244de7ffda70"
+    assert seen["recipe"].revision == "fab0aecb760cec45227f6656abcaafa11abca87a"
     assert seen["dry_run"] is True and seen["prepare"] is False
     assert seen["from_source"] is False
     assert "would acquire" in capsys.readouterr().out

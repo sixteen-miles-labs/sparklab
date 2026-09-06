@@ -45,6 +45,16 @@ def _expert_quantization(hf_config: Any, text: Any) -> tuple[str, tuple[int, int
         return "fp8_block", block_size
     if method == "modelopt" and algorithm == "nvfp4":
         return "nvfp4", None
+    if method == "modelopt" and algorithm == "mixed_precision":
+        layers = get("quantized_layers", {})
+        # NVIDIA mixes main-model NVFP4 experts with FP8 MTP/PLE tensors.
+        # Validate the main tower independently; the sidecar owns draft precision.
+        for layer in range(int(text.num_hidden_layers)):
+            name = f"model.language_model.layers.{layer}.mlp.experts"
+            spec = layers.get(name, {})
+            if spec.get("quant_algo", "").lower() != "nvfp4" or spec.get("group_size") != 16:
+                raise ValueError(f"unsupported Qwen4 mixed-precision expert group {name}: {spec}")
+        return "nvfp4", None
     if method or algorithm:
         descriptor = f"{method}/{algorithm}" if algorithm else method
         raise ValueError(f"unsupported Qwen4 checkpoint quantization: {descriptor!r}")

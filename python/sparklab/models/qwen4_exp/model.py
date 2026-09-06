@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import replace
 from typing import TYPE_CHECKING
@@ -120,6 +121,8 @@ class Qwen4ExpForCausalLM(BaseLLMModel):
         self._mtp_steps = int(getattr(config, "speculative_tokens", 0) or 0)
         self._mtp_path: str | None = None
         self._mtp_target_hidden: torch.Tensor | None = None
+        self._draft_vocab = None
+        self._draft_required_ids: list[int] = []
         super().__init__()
 
     def prepare_for_weight_load(self, model_path: str, *, dummy: bool = False) -> None:
@@ -130,6 +133,10 @@ class Qwen4ExpForCausalLM(BaseLLMModel):
             from .weight import find_mtp_sidecar
 
             self._mtp_path = find_mtp_sidecar(model_path)
+            if int(os.getenv("SPARKLAB_QWEN4_DRAFT_VOCAB_SIZE", "0")):
+                with open(os.path.join(model_path, "tokenizer_config.json"), encoding="utf-8") as handle:
+                    tokenizer_config = json.load(handle)
+                self._draft_required_ids = [int(token) for token in tokenizer_config.get("added_tokens_decoder", {})]
             if self._mtp_path is None:
                 raise FileNotFoundError(
                     "Qwen4 MTP requires nvfp4_experts_mtp.safetensors beside the "
@@ -141,6 +148,23 @@ class Qwen4ExpForCausalLM(BaseLLMModel):
             if self._mtp_path is None:
                 raise RuntimeError("Qwen4 MTP sidecar path was not prepared")
             self._mtp.load_sidecar(self._mtp_path, self.model.embed_tokens.weight.device)
+            budget = int(os.getenv("SPARKLAB_QWEN4_DRAFT_VOCAB_SIZE", "0"))
+            if budget:
+                from .draft_vocab import DraftVocabulary, draft_token_ids
+
+                head = self.lm_head.tied_embedding or self.lm_head
+                if head.tp_size != 1:
+                    raise ValueError("reduced Qwen4 draft vocabulary requires TP=1")
+                ids = draft_token_ids(head.weight.shape[0], budget, self._draft_required_ids)
+                self._draft_vocab = DraftVocabulary(head.weight, self.lm_head.bias, ids)
+
+    def _select_draft_token(self, hidden: torch.Tensor) -> torch.Tensor:
+        from sparklab.layers.linear import _linear_forward
+
+        if self._draft_vocab is not None:
+            return self._draft_vocab.select(hidden)
+        head = self.lm_head.tied_embedding or self.lm_head
+        return _linear_forward(hidden, head.weight, self.lm_head.bias).argmax(-1)
 
     def begin_external_inputs(self, batch) -> None:
         # Opt in until a checkpoint with multiple/later PLE layers provides enough
@@ -178,7 +202,6 @@ class Qwen4ExpForCausalLM(BaseLLMModel):
         if self._mtp is None or self._mtp_target_hidden is None or batch.size != 1:
             return None
         from sparklab.core import Batch, Req
-        from sparklab.layers.linear import _linear_forward
 
         ctx = get_global_ctx()
         req = batch.reqs[0]
@@ -199,10 +222,7 @@ class Qwen4ExpForCausalLM(BaseLLMModel):
         last = batch.attn_metadata.get_last_indices(1).to(torch.long)
         sample_hidden = sample_hidden.index_select(0, last)
         feedback = feedback.index_select(0, last)
-        head = self.lm_head.tied_embedding or self.lm_head
-        draft = torch.argmax(
-            _linear_forward(sample_hidden, head.weight, self.lm_head.bias), -1
-        )
+        draft = self._select_draft_token(sample_hidden)
         drafts = [draft.squeeze(0).to(torch.int32)]
 
         # The scheduler reserves the configured lookahead before this forward,
@@ -237,9 +257,7 @@ class Qwen4ExpForCausalLM(BaseLLMModel):
                 sample_hidden, feedback = self._mtp.forward(
                     self.model.embed_tokens.forward(draft_batch.input_ids), feedback
                 )
-            draft = torch.argmax(
-                _linear_forward(sample_hidden, head.weight, self.lm_head.bias), -1
-            )
+            draft = self._select_draft_token(sample_hidden)
             drafts.append(draft.squeeze(0).to(torch.int32))
         return torch.stack(drafts)
 

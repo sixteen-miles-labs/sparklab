@@ -173,6 +173,22 @@ class Glm5NextDeltaAttention(BaseOP):
         local = pool.local_index(self.layer_id)
         if fla.fresh_state_indices is not None:
             pool.recurrent_states[local].index_fill_(0, fla.fresh_state_indices, 0.0)
+        cache_verify = batch.is_verify and batch.cache_verify_states
+        intermediate = None
+        intermediate_indices = None
+        if cache_verify:
+            if (
+                pool.verify_recurrent_states is None
+                or pool.verify_conv_inputs is None
+                or pool.verify_state_indices is None
+                or total > pool.verify_steps
+            ):
+                raise RuntimeError("KDA verify transaction buffers are not initialized")
+            # Preserve every candidate boundary so rejection can commit the accepted
+            # prefix without running the transformer and its disk-backed MoE again.
+            pool.verify_conv_inputs[local, :total].copy_(raw)
+            intermediate = pool.verify_recurrent_states[local]
+            intermediate_indices = pool.verify_state_indices
         core = fused_sigmoid_gating_delta_rule_update(
             A_log=self.A_log,
             a=a,
@@ -191,6 +207,9 @@ class Glm5NextDeltaAttention(BaseOP):
             is_kda=True,
             kda_a_log_per_head=True,
             lower_bound=self.gate_lower_bound,
+            disable_state_update=cache_verify,
+            intermediate_states_buffer=intermediate,
+            intermediate_state_indices=intermediate_indices,
         )
         gate = self.g_b_proj.forward(self.g_a_proj.forward(hidden_states))
         gate = gate.view(-1, self.head_dim)

@@ -1,0 +1,733 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWENNVIDIA-001",
+  "status": "measured",
+  "platform": {
+    "device": "NVIDIA GB10",
+    "memory_gib": 128,
+    "machine": "aarch64",
+    "cuda": "13.0"
+  },
+  "engine": {
+    "name": "SparkLab",
+    "revision": "eab73f7aa48edc7a747297f5f05795a40e5ea7f3",
+    "git_tracked_dirty": true
+  },
+  "model": {
+    "repository": "nvidia/Qwen3.8-Flash-Next-NVFP4",
+    "revision": "fab0aecb760cec45227f6656abcaafa11abca87a",
+    "checkpoint_format": "ftw-nvfp4 + native block-FP8 MTP + scaled FP8 PLE",
+    "fingerprint": "94e1ee0daa442357"
+  },
+  "workload": {
+    "date": "2026-09-05",
+    "prompt_tokens": 96,
+    "completion_tokens": 128,
+    "sampling": "greedy",
+    "warmup_requests_per_run": 1,
+    "nvidia_mtp3_trials": 3,
+    "other_profiles_trials": 1,
+    "configuration": {
+      "storage": "disk",
+      "attention_backend": "qsa",
+      "qsa_fused_selection": true,
+      "page_size": 16,
+      "cache_type": "radix",
+      "max_seq_len": 8320,
+      "nvfp4_backend": "triton",
+      "host_cache_gb": 0,
+      "requested_cache_size": 24576,
+      "requested_cache_rate": null,
+      "memory_ratio": 0.9,
+      "requested_num_tokens": 131072,
+      "speculative_method": "mtp",
+      "speculative_tokens": 3,
+      "speculative_draft_model": null,
+      "draft_sample_method": "greedy",
+      "dspark_confidence_threshold": 0,
+      "dspark_draft_cache_slots": 0,
+      "dspark_draft_cache_quotas": "",
+      "dsv4_kv_storage": "bf16",
+      "dsv4_index_storage": "bf16",
+      "qwen4_dense_storage": "bf16",
+      "cpu_threads": 0,
+      "hybrid_fetch": -1,
+      "disk_read_workers": 16,
+      "cache_policy": "lru",
+      "prefill_overlap": false,
+      "preload_all": true,
+      "prefill_hit_d2d": false,
+      "prefill_sparse_max_tokens": 0,
+      "shared_expert_overlap": false,
+      "startup_prefill_warmup": true,
+      "cuda_graph": true,
+      "request_timeout_s": 1800,
+      "prompt_padding_repeats": 0
+    }
+  },
+  "metrics": {
+    "nvidia_mtp3_decode_tok_s_median": 28.07847323050209,
+    "nvidia_mtp3_warm_ttft_seconds_median": 0.2682476709887851,
+    "nvidia_target_decode_tok_s": 19.38260001331875,
+    "nvidia_target_warm_ttft_seconds": 0.23698916198918596,
+    "inferact_target_decode_tok_s": 19.436759861673444,
+    "inferact_target_warm_ttft_seconds": 0.23245153998141177,
+    "inferact_mtp3_decode_tok_s": 30.09807418120261,
+    "inferact_mtp3_warm_ttft_seconds": 0.25764829898253083,
+    "nvidia_mtp3_change_vs_inferact_percent": -6.710067024693012
+  },
+  "validation": {
+    "unit_tests": "1707 passed, 8 skipped",
+    "nvidia_target_mtp3_output_parity": true,
+    "limitations": [
+      "Single short math reasoning prompt; not a full quality, endurance, concurrency, or long-context certification.",
+      "Across checkpoints generated text differs; within NVIDIA this probe's target and MTP3 text is identical.",
+      "Pre-existing swap was resident and kernel-cache version checking was explicitly disabled; these are development measurements, not certification.",
+      "Earlier automatic-cache startup and incomplete MTP-sidecar attempts failed before inference; excluded from metrics.",
+      "Inferact controls were rerun in isolation after regression tests finished; overlapping runs excluded."
+    ],
+    "default_recipe_changed": false,
+    "trials": [
+      {
+        "model": "$HOME/models/qwen38-nvidia/prepared/fab0aecb760c",
+        "decode_tok_s": 28.172896282845073,
+        "ttft_ms": 494.2407850176096,
+        "completion_tokens": 128,
+        "prompt_tokens": 96,
+        "output_sha1": "ac7415546ef8",
+        "speculative": {
+          "steps": 3,
+          "accepted": 80,
+          "drafted": 105,
+          "acceptance_rate": 0.762,
+          "outputs": 128,
+          "target_forwards": 48,
+          "outputs_per_target_forward": 2.67,
+          "replay_calls": 12,
+          "replay_tokens": 23,
+          "fast_carry_commits": 0
+        },
+        "vram_gib": 80.005859375,
+        "configuration": {
+          "storage": "disk",
+          "attention_backend": "qsa",
+          "qsa_fused_selection": true,
+          "page_size": 16,
+          "cache_type": "radix",
+          "max_seq_len": 8320,
+          "nvfp4_backend": "triton",
+          "host_cache_gb": 0,
+          "requested_cache_size": 24576,
+          "requested_cache_rate": null,
+          "memory_ratio": 0.9,
+          "requested_num_tokens": 131072,
+          "speculative_method": "mtp",
+          "speculative_tokens": 3,
+          "speculative_draft_model": null,
+          "draft_sample_method": "greedy",
+          "dspark_confidence_threshold": 0,
+          "dspark_draft_cache_slots": 0,
+          "dspark_draft_cache_quotas": "",
+          "dsv4_kv_storage": "bf16",
+          "dsv4_index_storage": "bf16",
+          "qwen4_dense_storage": "bf16",
+          "cpu_threads": 0,
+          "hybrid_fetch": -1,
+          "disk_read_workers": 16,
+          "cache_policy": "lru",
+          "prefill_overlap": false,
+          "preload_all": true,
+          "prefill_hit_d2d": false,
+          "prefill_sparse_max_tokens": 0,
+          "shared_expert_overlap": false,
+          "startup_prefill_warmup": true,
+          "cuda_graph": true,
+          "request_timeout_s": 1800,
+          "prompt_padding_repeats": 0
+        },
+        "checkpoint": {
+          "path": "$HOME/models/qwen38-nvidia/prepared/fab0aecb760c",
+          "format": "ftw",
+          "bytes": 131931279080,
+          "fingerprint": "94e1ee0daa442357",
+          "quant_format": "nvfp4",
+          "source_model_path": "$HOME/models/qwen38-nvidia/source/fab0aecb760c",
+          "external_artifacts": [
+            {
+              "kind": "qwen4_ngram",
+              "schema_version": "1.0",
+              "file": "qwen4_ngram.bin",
+              "dtype": "float8_e4m3fn",
+              "rows": 320001536,
+              "dim": 160,
+              "nbytes": 51200245760,
+              "parts": 128,
+              "weight_scale": 0.00019931793212890625
+            },
+            {
+              "kind": "qwen4_mtp",
+              "file": "nvfp4_experts_mtp.safetensors",
+              "nbytes": 2698415848,
+              "format": "safetensors-fp8"
+            }
+          ]
+        },
+        "provenance": {
+          "git_revision": "eab73f7aa48edc7a747297f5f05795a40e5ea7f3",
+          "git_tracked_dirty": true,
+          "python": "3.11.15",
+          "platform": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+          "packages": {
+            "torch": "2.11.0+cu130",
+            "triton": "3.6.0",
+            "flashinfer-python": "0.6.15.post1",
+            "sglang-kernel": "0.4.5",
+            "transformers": "5.16.1"
+          },
+          "gpu_driver": "NVIDIA GB10, 580.126.09"
+        },
+        "telemetry": {
+          "swap_start_bytes": 763056128,
+          "swap_growth_bytes": 0,
+          "swap_in_pages_delta": 0,
+          "swap_out_pages_delta": 0,
+          "oom_kill_delta": 0,
+          "mem_available_gib_min": 31.47949981689453
+        },
+        "lifecycle": {
+          "swap_growth_bytes": 0,
+          "swap_out_pages_delta": 0,
+          "oom_kill_delta": 0
+        }
+      },
+      {
+        "model": "$HOME/models/qwen38-nvidia/prepared/fab0aecb760c",
+        "decode_tok_s": 28.07847323050209,
+        "ttft_ms": 268.2476709887851,
+        "completion_tokens": 128,
+        "prompt_tokens": 96,
+        "output_sha1": "ac7415546ef8",
+        "speculative": {
+          "steps": 3,
+          "accepted": 80,
+          "drafted": 105,
+          "acceptance_rate": 0.762,
+          "outputs": 128,
+          "target_forwards": 48,
+          "outputs_per_target_forward": 2.67,
+          "replay_calls": 12,
+          "replay_tokens": 23,
+          "fast_carry_commits": 0
+        },
+        "vram_gib": 80.005859375,
+        "configuration": {
+          "storage": "disk",
+          "attention_backend": "qsa",
+          "qsa_fused_selection": true,
+          "page_size": 16,
+          "cache_type": "radix",
+          "max_seq_len": 8320,
+          "nvfp4_backend": "triton",
+          "host_cache_gb": 0,
+          "requested_cache_size": 24576,
+          "requested_cache_rate": null,
+          "memory_ratio": 0.9,
+          "requested_num_tokens": 131072,
+          "speculative_method": "mtp",
+          "speculative_tokens": 3,
+          "speculative_draft_model": null,
+          "draft_sample_method": "greedy",
+          "dspark_confidence_threshold": 0,
+          "dspark_draft_cache_slots": 0,
+          "dspark_draft_cache_quotas": "",
+          "dsv4_kv_storage": "bf16",
+          "dsv4_index_storage": "bf16",
+          "qwen4_dense_storage": "bf16",
+          "cpu_threads": 0,
+          "hybrid_fetch": -1,
+          "disk_read_workers": 16,
+          "cache_policy": "lru",
+          "prefill_overlap": false,
+          "preload_all": true,
+          "prefill_hit_d2d": false,
+          "prefill_sparse_max_tokens": 0,
+          "shared_expert_overlap": false,
+          "startup_prefill_warmup": true,
+          "cuda_graph": true,
+          "request_timeout_s": 1800,
+          "prompt_padding_repeats": 0
+        },
+        "checkpoint": {
+          "path": "$HOME/models/qwen38-nvidia/prepared/fab0aecb760c",
+          "format": "ftw",
+          "bytes": 131931279080,
+          "fingerprint": "94e1ee0daa442357",
+          "quant_format": "nvfp4",
+          "source_model_path": "$HOME/models/qwen38-nvidia/source/fab0aecb760c",
+          "external_artifacts": [
+            {
+              "kind": "qwen4_ngram",
+              "schema_version": "1.0",
+              "file": "qwen4_ngram.bin",
+              "dtype": "float8_e4m3fn",
+              "rows": 320001536,
+              "dim": 160,
+              "nbytes": 51200245760,
+              "parts": 128,
+              "weight_scale": 0.00019931793212890625
+            },
+            {
+              "kind": "qwen4_mtp",
+              "file": "nvfp4_experts_mtp.safetensors",
+              "nbytes": 2698415848,
+              "format": "safetensors-fp8"
+            }
+          ]
+        },
+        "provenance": {
+          "git_revision": "eab73f7aa48edc7a747297f5f05795a40e5ea7f3",
+          "git_tracked_dirty": true,
+          "python": "3.11.15",
+          "platform": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+          "packages": {
+            "torch": "2.11.0+cu130",
+            "triton": "3.6.0",
+            "flashinfer-python": "0.6.15.post1",
+            "sglang-kernel": "0.4.5",
+            "transformers": "5.16.1"
+          },
+          "gpu_driver": "NVIDIA GB10, 580.126.09"
+        },
+        "telemetry": {
+          "swap_start_bytes": 762785792,
+          "swap_growth_bytes": 0,
+          "swap_in_pages_delta": 0,
+          "swap_out_pages_delta": 0,
+          "oom_kill_delta": 0,
+          "mem_available_gib_min": 31.556236267089844
+        },
+        "lifecycle": {
+          "swap_growth_bytes": 0,
+          "swap_out_pages_delta": 0,
+          "oom_kill_delta": 0
+        }
+      },
+      {
+        "model": "$HOME/models/qwen38-nvidia/prepared/fab0aecb760c",
+        "decode_tok_s": 28.077179493556564,
+        "ttft_ms": 261.27709899446927,
+        "completion_tokens": 128,
+        "prompt_tokens": 96,
+        "output_sha1": "ac7415546ef8",
+        "speculative": {
+          "steps": 3,
+          "accepted": 80,
+          "drafted": 105,
+          "acceptance_rate": 0.762,
+          "outputs": 128,
+          "target_forwards": 48,
+          "outputs_per_target_forward": 2.67,
+          "replay_calls": 12,
+          "replay_tokens": 23,
+          "fast_carry_commits": 0
+        },
+        "vram_gib": 80.005859375,
+        "configuration": {
+          "storage": "disk",
+          "attention_backend": "qsa",
+          "qsa_fused_selection": true,
+          "page_size": 16,
+          "cache_type": "radix",
+          "max_seq_len": 8320,
+          "nvfp4_backend": "triton",
+          "host_cache_gb": 0,
+          "requested_cache_size": 24576,
+          "requested_cache_rate": null,
+          "memory_ratio": 0.9,
+          "requested_num_tokens": 131072,
+          "speculative_method": "mtp",
+          "speculative_tokens": 3,
+          "speculative_draft_model": null,
+          "draft_sample_method": "greedy",
+          "dspark_confidence_threshold": 0,
+          "dspark_draft_cache_slots": 0,
+          "dspark_draft_cache_quotas": "",
+          "dsv4_kv_storage": "bf16",
+          "dsv4_index_storage": "bf16",
+          "qwen4_dense_storage": "bf16",
+          "cpu_threads": 0,
+          "hybrid_fetch": -1,
+          "disk_read_workers": 16,
+          "cache_policy": "lru",
+          "prefill_overlap": false,
+          "preload_all": true,
+          "prefill_hit_d2d": false,
+          "prefill_sparse_max_tokens": 0,
+          "shared_expert_overlap": false,
+          "startup_prefill_warmup": true,
+          "cuda_graph": true,
+          "request_timeout_s": 1800,
+          "prompt_padding_repeats": 0
+        },
+        "checkpoint": {
+          "path": "$HOME/models/qwen38-nvidia/prepared/fab0aecb760c",
+          "format": "ftw",
+          "bytes": 131931279080,
+          "fingerprint": "94e1ee0daa442357",
+          "quant_format": "nvfp4",
+          "source_model_path": "$HOME/models/qwen38-nvidia/source/fab0aecb760c",
+          "external_artifacts": [
+            {
+              "kind": "qwen4_ngram",
+              "schema_version": "1.0",
+              "file": "qwen4_ngram.bin",
+              "dtype": "float8_e4m3fn",
+              "rows": 320001536,
+              "dim": 160,
+              "nbytes": 51200245760,
+              "parts": 128,
+              "weight_scale": 0.00019931793212890625
+            },
+            {
+              "kind": "qwen4_mtp",
+              "file": "nvfp4_experts_mtp.safetensors",
+              "nbytes": 2698415848,
+              "format": "safetensors-fp8"
+            }
+          ]
+        },
+        "provenance": {
+          "git_revision": "eab73f7aa48edc7a747297f5f05795a40e5ea7f3",
+          "git_tracked_dirty": true,
+          "python": "3.11.15",
+          "platform": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+          "packages": {
+            "torch": "2.11.0+cu130",
+            "triton": "3.6.0",
+            "flashinfer-python": "0.6.15.post1",
+            "sglang-kernel": "0.4.5",
+            "transformers": "5.16.1"
+          },
+          "gpu_driver": "NVIDIA GB10, 580.126.09"
+        },
+        "telemetry": {
+          "swap_start_bytes": 762769408,
+          "swap_growth_bytes": 0,
+          "swap_in_pages_delta": 0,
+          "swap_out_pages_delta": 0,
+          "oom_kill_delta": 0,
+          "mem_available_gib_min": 31.54686737060547
+        },
+        "lifecycle": {
+          "swap_growth_bytes": 0,
+          "swap_out_pages_delta": 0,
+          "oom_kill_delta": 0
+        }
+      },
+      {
+        "model": "$HOME/models/qwen38-nvidia/prepared/fab0aecb760c",
+        "decode_tok_s": 19.38260001331875,
+        "ttft_ms": 236.98916198918596,
+        "completion_tokens": 128,
+        "prompt_tokens": 96,
+        "output_sha1": "ac7415546ef8",
+        "speculative": null,
+        "vram_gib": 77.1953125,
+        "configuration": {
+          "storage": "disk",
+          "attention_backend": "qsa",
+          "qsa_fused_selection": true,
+          "page_size": 16,
+          "cache_type": "radix",
+          "max_seq_len": 8320,
+          "nvfp4_backend": "triton",
+          "host_cache_gb": 0,
+          "requested_cache_size": 24576,
+          "requested_cache_rate": null,
+          "memory_ratio": 0.9,
+          "requested_num_tokens": 131072,
+          "speculative_method": "mtp",
+          "speculative_tokens": 0,
+          "speculative_draft_model": null,
+          "draft_sample_method": "greedy",
+          "dspark_confidence_threshold": 0,
+          "dspark_draft_cache_slots": 0,
+          "dspark_draft_cache_quotas": "",
+          "dsv4_kv_storage": "bf16",
+          "dsv4_index_storage": "bf16",
+          "qwen4_dense_storage": "bf16",
+          "cpu_threads": 0,
+          "hybrid_fetch": -1,
+          "disk_read_workers": 16,
+          "cache_policy": "lru",
+          "prefill_overlap": false,
+          "preload_all": true,
+          "prefill_hit_d2d": false,
+          "prefill_sparse_max_tokens": 0,
+          "shared_expert_overlap": false,
+          "startup_prefill_warmup": true,
+          "cuda_graph": true,
+          "request_timeout_s": 1800,
+          "prompt_padding_repeats": 0
+        },
+        "checkpoint": {
+          "path": "$HOME/models/qwen38-nvidia/prepared/fab0aecb760c",
+          "format": "ftw",
+          "bytes": 131931279080,
+          "fingerprint": "94e1ee0daa442357",
+          "quant_format": "nvfp4",
+          "source_model_path": "$HOME/models/qwen38-nvidia/source/fab0aecb760c",
+          "external_artifacts": [
+            {
+              "kind": "qwen4_ngram",
+              "schema_version": "1.0",
+              "file": "qwen4_ngram.bin",
+              "dtype": "float8_e4m3fn",
+              "rows": 320001536,
+              "dim": 160,
+              "nbytes": 51200245760,
+              "parts": 128,
+              "weight_scale": 0.00019931793212890625
+            },
+            {
+              "kind": "qwen4_mtp",
+              "file": "nvfp4_experts_mtp.safetensors",
+              "nbytes": 2698415848,
+              "format": "safetensors-fp8"
+            }
+          ]
+        },
+        "provenance": {
+          "git_revision": "eab73f7aa48edc7a747297f5f05795a40e5ea7f3",
+          "git_tracked_dirty": true,
+          "python": "3.11.15",
+          "platform": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+          "packages": {
+            "torch": "2.11.0+cu130",
+            "triton": "3.6.0",
+            "flashinfer-python": "0.6.15.post1",
+            "sglang-kernel": "0.4.5",
+            "transformers": "5.16.1"
+          },
+          "gpu_driver": "NVIDIA GB10, 580.126.09"
+        },
+        "telemetry": {
+          "swap_start_bytes": 762904576,
+          "swap_growth_bytes": 0,
+          "swap_in_pages_delta": 2,
+          "swap_out_pages_delta": 0,
+          "oom_kill_delta": 0,
+          "mem_available_gib_min": 34.491371154785156
+        },
+        "lifecycle": {
+          "swap_growth_bytes": 0,
+          "swap_out_pages_delta": 0,
+          "oom_kill_delta": 0
+        }
+      },
+      {
+        "model": "$HOME/.sparklab/models/qwen3.8-flash-next/prepared/0.5.0",
+        "decode_tok_s": 19.436759861673444,
+        "ttft_ms": 232.45153998141177,
+        "completion_tokens": 128,
+        "prompt_tokens": 96,
+        "output_sha1": "6e494a88449b",
+        "speculative": null,
+        "vram_gib": 77.1953125,
+        "configuration": {
+          "storage": "disk",
+          "attention_backend": "qsa",
+          "qsa_fused_selection": true,
+          "page_size": 16,
+          "cache_type": "radix",
+          "max_seq_len": 8320,
+          "nvfp4_backend": "triton",
+          "host_cache_gb": 0,
+          "requested_cache_size": 24576,
+          "requested_cache_rate": null,
+          "memory_ratio": 0.9,
+          "requested_num_tokens": 131072,
+          "speculative_method": "mtp",
+          "speculative_tokens": 0,
+          "speculative_draft_model": null,
+          "draft_sample_method": "greedy",
+          "dspark_confidence_threshold": 0,
+          "dspark_draft_cache_slots": 0,
+          "dspark_draft_cache_quotas": "",
+          "dsv4_kv_storage": "bf16",
+          "dsv4_index_storage": "bf16",
+          "qwen4_dense_storage": "bf16",
+          "cpu_threads": 0,
+          "hybrid_fetch": -1,
+          "disk_read_workers": 16,
+          "cache_policy": "lru",
+          "prefill_overlap": false,
+          "preload_all": true,
+          "prefill_hit_d2d": false,
+          "prefill_sparse_max_tokens": 0,
+          "shared_expert_overlap": false,
+          "startup_prefill_warmup": true,
+          "cuda_graph": true,
+          "request_timeout_s": 1800,
+          "prompt_padding_repeats": 0
+        },
+        "checkpoint": {
+          "path": "$HOME/.sparklab/models/qwen3.8-flash-next/prepared/0.5.0",
+          "format": "ftw",
+          "bytes": 180433108992,
+          "fingerprint": "47e11ddb878adf4c",
+          "quant_format": "nvfp4",
+          "source_model_path": "$HOME/.sparklab/models/qwen3.8-flash-next/source/103a76083161",
+          "external_artifacts": [
+            {
+              "kind": "qwen4_ngram",
+              "schema_version": "1.0",
+              "file": "qwen4_ngram.bin",
+              "dtype": "bfloat16",
+              "rows": 320001536,
+              "dim": 160,
+              "nbytes": 102400491520,
+              "parts": 128
+            }
+          ]
+        },
+        "provenance": {
+          "git_revision": "eab73f7aa48edc7a747297f5f05795a40e5ea7f3",
+          "git_tracked_dirty": true,
+          "python": "3.11.15",
+          "platform": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+          "packages": {
+            "torch": "2.11.0+cu130",
+            "triton": "3.6.0",
+            "flashinfer-python": "0.6.15.post1",
+            "sglang-kernel": "0.4.5",
+            "transformers": "5.16.1"
+          },
+          "gpu_driver": "NVIDIA GB10, 580.126.09"
+        },
+        "telemetry": {
+          "swap_start_bytes": 761942016,
+          "swap_growth_bytes": 0,
+          "swap_in_pages_delta": 7,
+          "swap_out_pages_delta": 0,
+          "oom_kill_delta": 0,
+          "mem_available_gib_min": 34.486392974853516
+        },
+        "lifecycle": {
+          "swap_growth_bytes": 0,
+          "swap_out_pages_delta": 0,
+          "oom_kill_delta": 0
+        }
+      },
+      {
+        "model": "$HOME/.sparklab/models/qwen3.8-flash-next/prepared/0.5.0",
+        "decode_tok_s": 30.09807418120261,
+        "ttft_ms": 257.64829898253083,
+        "completion_tokens": 128,
+        "prompt_tokens": 96,
+        "output_sha1": "6e5d26657cb6",
+        "speculative": {
+          "steps": 3,
+          "accepted": 83,
+          "drafted": 101,
+          "acceptance_rate": 0.8220000000000001,
+          "outputs": 128,
+          "target_forwards": 45,
+          "outputs_per_target_forward": 2.84,
+          "replay_calls": 9,
+          "replay_tokens": 17,
+          "fast_carry_commits": 0
+        },
+        "vram_gib": 78.990234375,
+        "configuration": {
+          "storage": "disk",
+          "attention_backend": "qsa",
+          "qsa_fused_selection": true,
+          "page_size": 16,
+          "cache_type": "radix",
+          "max_seq_len": 8320,
+          "nvfp4_backend": "triton",
+          "host_cache_gb": 0,
+          "requested_cache_size": 24576,
+          "requested_cache_rate": null,
+          "memory_ratio": 0.9,
+          "requested_num_tokens": 131072,
+          "speculative_method": "mtp",
+          "speculative_tokens": 3,
+          "speculative_draft_model": null,
+          "draft_sample_method": "greedy",
+          "dspark_confidence_threshold": 0,
+          "dspark_draft_cache_slots": 0,
+          "dspark_draft_cache_quotas": "",
+          "dsv4_kv_storage": "bf16",
+          "dsv4_index_storage": "bf16",
+          "qwen4_dense_storage": "bf16",
+          "cpu_threads": 0,
+          "hybrid_fetch": -1,
+          "disk_read_workers": 16,
+          "cache_policy": "lru",
+          "prefill_overlap": false,
+          "preload_all": true,
+          "prefill_hit_d2d": false,
+          "prefill_sparse_max_tokens": 0,
+          "shared_expert_overlap": false,
+          "startup_prefill_warmup": true,
+          "cuda_graph": true,
+          "request_timeout_s": 1800,
+          "prompt_padding_repeats": 0
+        },
+        "checkpoint": {
+          "path": "$HOME/.sparklab/models/qwen3.8-flash-next/prepared/0.5.0",
+          "format": "ftw",
+          "bytes": 180433108992,
+          "fingerprint": "47e11ddb878adf4c",
+          "quant_format": "nvfp4",
+          "source_model_path": "$HOME/.sparklab/models/qwen3.8-flash-next/source/103a76083161",
+          "external_artifacts": [
+            {
+              "kind": "qwen4_ngram",
+              "schema_version": "1.0",
+              "file": "qwen4_ngram.bin",
+              "dtype": "bfloat16",
+              "rows": 320001536,
+              "dim": 160,
+              "nbytes": 102400491520,
+              "parts": 128
+            }
+          ]
+        },
+        "provenance": {
+          "git_revision": "eab73f7aa48edc7a747297f5f05795a40e5ea7f3",
+          "git_tracked_dirty": true,
+          "python": "3.11.15",
+          "platform": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+          "packages": {
+            "torch": "2.11.0+cu130",
+            "triton": "3.6.0",
+            "flashinfer-python": "0.6.15.post1",
+            "sglang-kernel": "0.4.5",
+            "transformers": "5.16.1"
+          },
+          "gpu_driver": "NVIDIA GB10, 580.126.09"
+        },
+        "telemetry": {
+          "swap_start_bytes": 761769984,
+          "swap_growth_bytes": 0,
+          "swap_in_pages_delta": 0,
+          "swap_out_pages_delta": 0,
+          "oom_kill_delta": 0,
+          "mem_available_gib_min": 32.6009635925293
+        },
+        "lifecycle": {
+          "swap_growth_bytes": 0,
+          "swap_out_pages_delta": 0,
+          "oom_kill_delta": 0
+        }
+      }
+    ]
+  },
+  "source": {
+    "summary": "NVIDIA is smaller on disk, but this matched GB10 short-generation benchmark does not support replacing Inferact for speed. NVIDIA MTP3 weights are preserved as native block-FP8; dense MTP tensors are assembled from indexed source shards.",
+    "raw_artifact": "/tmp/qwen38-nvidia-{fixed,paired,isolated}-*.jsonl"
+  }
+}

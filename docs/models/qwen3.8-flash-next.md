@@ -1,29 +1,21 @@
 # Run Qwen3.8-Flash-Next
 
-Qwen3.8-Flash-Next is a text-only Frontier-tier NVFP4 recipe for one NVIDIA GB10. It
-uses a pinned, prebuilt FTW artifact and preloads every routed expert into immutable
-unified-memory slots. Local NVMe still holds the artifact and the external n-gram bank.
-The recipe is Experimental.
+Qwen3.8-Flash-Next is an Experimental, text-only Frontier recipe for one NVIDIA
+GB10. Recipe 0.9.0 uses NVIDIA's mixed-precision checkpoint: native NVFP4 target
+experts, native block-FP8 MTP experts, BF16 resident projections, and scaled FP8
+PLE n-gram embeddings.
 
-## Install SparkLab
+## Install
 
-Follow the [full installation guide](../install.md). On NVIDIA DGX Spark, the recommended
-package install is:
-
-```bash
-uv venv && source .venv/bin/activate
-uv pip install "sparklab[accel]"
-sparklab --version
-```
-
-The `sparklab` distribution provides the `sparklab` command.
-See [Install from source](../install.md#method-2-install-from-source) for a development
-checkout.
+Use a [source installation](../install.md#method-2-install-from-source) containing
+the NVIDIA mixed-precision loader, scaled FP8 PLE support, complete indexed MTP
+sidecar extraction, and accepted-prefix state commits. The previously released
+0.1.2 wheel does not contain these changes.
 
 ## Prepare
 
-Use fast local NVMe storage. The catalog currently requires about 503 GB of free space;
-`plan` reports the authoritative requirement before downloading.
+Use local NVMe storage. `plan` reports the authoritative disk requirement,
+including the safety margin.
 
 ```bash
 sparklab doctor --storage-path /path/to/models
@@ -31,12 +23,20 @@ sparklab plan qwen3.8-flash-next --root /path/to/models --prepare
 sparklab pull qwen3.8-flash-next --root /path/to/models --prepare
 ```
 
-`pull --prepare` automatically downloads the pinned Hugging Face FTW artifact from
-[`oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW`](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW),
-which now contains the pinned 1.49 GiB native MTP sidecar. SparkLab validates the
-artifact's immutable revision, total size, and FTW fingerprint. The artifact preserves
-the publisher's ModelOpt NVFP4 precision. Use `--from-source` only to reproduce the FTW
-conversion locally; that path also copies the MTP sidecar into the prepared checkpoint.
+The prebuilt artifact is
+[oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW),
+pinned to revision `f547c96e86d0e50908c1415f4525c4325555691e`.
+It derives from NVIDIA source revision `fab0aecb760cec45227f6656abcaafa11abca87a`.
+The weight payload is 131,931,279,080 bytes; fingerprint `94e1ee0daa442357`.
+
+Preparation preserves the published weight bytes and scales. The 51.2 GB PLE
+payload uses its global scale from `qwen4_ngram.json`. The legacy-named
+`nvfp4_experts_mtp.safetensors` now contains the complete NVIDIA FP8/BF16 draft
+module, assembled from three source shards. Use `--from-source` to reproduce
+conversion locally.
+
+The previous Inferact artifact remains available at revision
+`5ab790b83f149a96594237a35905d84be24599a3`; old pinned recipes continue to resolve it.
 
 ## Run
 
@@ -44,62 +44,73 @@ conversion locally; that path also copies the MTP sidecar into the prepared chec
 sparklab run qwen3.8-flash-next --root /path/to/models
 ```
 
-Startup includes a one-time full-expert preload (about 35 seconds in the measured run).
-Steady-state decode then performs no routed-expert disk staging or LRU bookkeeping. On
-GB10, SparkLab first advises Linux to release clean download page cache so a freshly
-pulled artifact does not hide reclaimable unified memory from the cache planner.
-QSA decode replays CUDA graphs at batch sizes 1, 2, 4, and 8 while every request remains
-inside the exact dense budget (up to 2,051 visible tokens). SparkLab pads intermediate
-batches to the next captured size and automatically returns to eager sparse QSA for
-longer contexts; no command-line switch is required. The recipe admits up to eight
-concurrent requests.
+Startup preloads all 24,576 routed experts into immutable unified-memory slots,
+eliminating steady-state expert disk reads and LRU management. The recipe retains
+the 131,072-token KV capacity and batch-eight admission/capture configuration.
+Dense QSA uses CUDA graphs; longer sparse-QSA requests fall back to eager
+execution. These are runtime settings, not transferred NVIDIA concurrency or
+long-context certification results.
 
-In a matched three-trial, 128-token HTTP benchmark, raising admission and graph capture
-from batch four to eight increased concurrency-eight aggregate throughput from 55.64 to
-85.72 tok/s (+54.1%). It reduced p95 TTFT from 9.709 to 0.867 seconds (-91.1%) and p95
-end-to-end latency from 18.403 to 11.945 seconds (-35.1%). Batch-eight eager serving
-reached 80.21 tok/s, so the batch-eight graph contributed a further 6.9% throughput.
-The C1 and C4 medians changed by -3.4% and -2.2%; this is a burst-concurrency
-optimization, not a single-stream speedup. See
-[`GB10-QWEN38-CONC-009`](../../benchmarks/gb10/results/GB10-QWEN38-CONC-009.json).
-The vLLM FP8-KV scale hoist does not transfer to this path: SparkLab's QSA K/V
-cache is BF16 and has no per-tensor K/V scales. The portable optimization is the
-wider request-admission and CUDA-graph profile.
-
-The default hybrid radix cache also snapshots the complete recurrent state: GDN state,
-PLE convolution history, paged QSA K/V, and pooled index keys. In a controlled repeated
-96-token prompt, it reused 64 tokens and lowered warm TTFT from 404 ms to 306 ms without
-changing the greedy output hash. Prefix reuse is most useful for repeated system prompts,
-few-shot examples, and agent/tool schemas; it does not increase single-stream decode speed.
-The recipe caps KV capacity at 131,072 tokens, enough for the validated 64K context gate
-while retaining substantially more operating-system headroom than the unconstrained
-auto-allocation.
-
-## Speculative decoding
-
-SparkLab can use the upstream model's native MTP layer. It verifies draft tokens with the
-target model and transactionally commits or rolls back paged KV, GDN, PLE, and QSA state
-at the accepted boundary. Enable the measured three-token setting with:
+## Native MTP
 
 ```bash
 sparklab run qwen3.8-flash-next --root /path/to/models -- --speculative-tokens 3
 ```
 
-On GB10, the selected three-draft profile measured a three-trial median 30.67 tok/s and
-0.258 s warm TTFT on a 128-token greedy decode. One and two draft tokens measured 25.19
-and 29.15 tok/s respectively. The three selected-profile trials reproduced the same
-output hash.
+MTP is opt-in, batch-one greedy, with one to three draft tokens. Accepted-prefix
+commits retain intermediate GDN state and PLE convolution inputs, avoiding
+rejection replay while keeping KV and recurrent state at the accepted boundary.
+Dense-QSA verification uses a dedicated fixed-shape graph.
 
-MTP is intentionally opt-in. The current transactional path supports one running greedy
-request and falls back to ordinary target decoding for non-greedy sampling. Dense-QSA
-verification uses a dedicated CUDA graph; longer sparse-QSA requests remain eager. Use
-`--speculative-tokens 3` for the measured single-stream greedy profile.
+The pre-optimization NVIDIA MTP3 baseline was 28.08 tok/s and 0.268 s warm TTFT
+(three-trial medians). See
+[the checkpoint comparison](../../benchmarks/gb10/results/GB10-QWENNVIDIA-001.json).
+The selected accepted-prefix profile measured **31.97 tok/s** and **0.260 s**
+warm TTFT (three-trial medians), a 13.9% speed improvement with zero rejection
+replay. All three runs produced the same output hash; that hash differs from
+target-only and pre-optimization MTP. See
+[accepted-prefix evidence](../../benchmarks/gb10/results/GB10-QWENNVIDIA-002.json).
 
-Wait for the API to listen on `127.0.0.1:1919`, then verify it:
+## Experimental reduced draft vocabulary
+
+An independent experiment inspired by
+[MiaAI-Lab's single-Spark recipe](https://github.com/MiaAI-Lab/Qwen3.8-Flash-Next-Single-DGX-Spark)
+limits only the draft output head. Target logits and target verification keep the
+full vocabulary; checkpoint weights on disk are unchanged. Enable it with:
 
 ```bash
-curl http://127.0.0.1:1919/health
-curl http://127.0.0.1:1919/v1/models
+SPARKLAB_QWEN4_DRAFT_VOCAB_SIZE=65536 \
+  sparklab run qwen3.8-flash-next --root /path/to/models -- --speculative-tokens 3
 ```
+
+The default is `0` (full draft vocabulary). Positive budgets must fit the target
+vocabulary and include all tokenizer-added tokens. This implementation uses a
+deterministic low-token-ID prefix plus those added tokens, not MiaAI-Lab's
+corpus-frequency vocabulary. It supports TP=1 and greedy native MTP only.
+
+The 65,536-row draft head adds approximately 0.31 GiB of resident memory. On the
+128-token math probe it reached a three-run median **35.28 tok/s**, versus a fresh
+**32.11 tok/s** baseline, with the same generated output. However, the 256-token
+code probe was effectively flat (25.41 to 25.36 tok/s), and Chinese regressed
+from 22.93 to 17.12 tok/s as draft acceptance dropped from 46.3% to 15.1%.
+Code and Chinese outputs differed. Do not enable this globally for multilingual
+or coding workloads; a frequency-trained vocabulary needs separate evaluation.
+Limited output parity
+does not establish quality equivalence across languages or long contexts;
+out-of-shortlist tokens may reduce acceptance. This remains opt-in and does not
+replace the portfolio's default-profile metric. See
+[the experiment](../../benchmarks/gb10/results/GB10-QWENNVIDIA-003.json).
+
+BF16 recurrent state was also tested but was slower on this workload; FP32
+remains the default. The other repository's prose/concurrency numbers use a
+different checkpoint and workload and are not a direct comparison to this probe.
+
+## Validation limits
+
+The NVIDIA checkpoint does not inherit the old Inferact quality, 64K recall,
+concurrency, or endurance evidence. Short greedy probes and state-comparison
+tests do not establish general quality parity or an advantage over Inferact.
+Saving verified intermediate states can change floating-point rounding relative
+to replaying smaller prefixes; exact generated-text parity is not guaranteed.
 
 See the [quick start](../quickstart.md) for API and agent examples.

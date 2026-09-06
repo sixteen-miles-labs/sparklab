@@ -66,6 +66,11 @@ Source conversions now copy an available `model_mtp.safetensors` into the prepar
 artifact automatically. MTP remains opt-in; target-only serving is unchanged when no
 speculative token count is requested.
 
+During MTP verification, SparkLab retains each candidate token's KDA recurrent state
+and convolution input. It then commits the accepted prefix directly, avoiding a second
+transformer pass after a rejected draft. The transaction buffers are included in runtime
+memory sizing; automatic expert-cache sizing reserves room for them.
+
 ## Performance and TTFT
 
 The fixed batch-one DGX Spark probe measured 6.27 decode tok/s and 5.681 s warm TTFT.
@@ -106,3 +111,12 @@ fetches. Two MTP-3 trials measured 7.434 and 7.438 tok/s (7.436 tok/s mean),
 the same route/I/O counts, and the exact target-only output hash. Shared-expert
 overlap is enabled by the recipe; MTP itself remains opt-in. See
 [`GB10-GLM53-OPT-005`](../../benchmarks/gb10/results/GB10-GLM53-OPT-005.json).
+
+Retaining verified KDA states removes the remaining rejection replays. Three 256-token
+trials measured 7.69–7.86 tok/s, with a median of **7.77 tok/s** and **6.395 s warm TTFT**.
+This is a 3.4% gain over the fresh 7.51 tok/s MTP3 control, with exactly the same output
+in every trial. Device allocation rose from 101.43 to 101.98 GiB at the same 6,149 expert
+slots; automatic cache sizing reserves that additional state memory. No OOM or swap-out
+occurred, although pre-existing swap and some swap-in activity were present. This remains
+a focused single-prompt result: NVMe reads still dominate latency and TTFT did not improve.
+See [`GB10-GLM53-OPT-006`](../../benchmarks/gb10/results/GB10-GLM53-OPT-006.json).
