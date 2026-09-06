@@ -89,7 +89,7 @@
     "default_recipe_changed": false,
     "trials": [
       {
-        "model": "/home/lidaiqing/models/qwen38-nvidia/prepared/fab0aecb760c",
+        "model": "$HOME/models/qwen38-nvidia/prepared/fab0aecb760c",
         "decode_tok_s": 28.172896282845073,
         "ttft_ms": 494.2407850176096,
         "completion_tokens": 128,
@@ -146,12 +146,12 @@
           "prompt_padding_repeats": 0
         },
         "checkpoint": {
-          "path": "/home/lidaiqing/models/qwen38-nvidia/prepared/fab0aecb760c",
+          "path": "$HOME/models/qwen38-nvidia/prepared/fab0aecb760c",
           "format": "ftw",
           "bytes": 131931279080,
           "fingerprint": "94e1ee0daa442357",
           "quant_format": "nvfp4",
-          "source_model_path": "/home/lidaiqing/models/qwen38-nvidia/source/fab0aecb760c",
+          "source_model_path": "$HOME/models/qwen38-nvidia/source/fab0aecb760c",
           "external_artifacts": [
             {
               "kind": "qwen4_ngram",
@@ -201,7 +201,7 @@
         }
       },
       {
-        "model": "/home/lidaiqing/models/qwen38-nvidia/prepared/fab0aecb760c",
+        "model": "$HOME/models/qwen38-nvidia/prepared/fab0aecb760c",
         "decode_tok_s": 28.07847323050209,
         "ttft_ms": 268.2476709887851,
         "completion_tokens": 128,
@@ -258,12 +258,12 @@
           "prompt_padding_repeats": 0
         },
         "checkpoint": {
-          "path": "/home/lidaiqing/models/qwen38-nvidia/prepared/fab0aecb760c",
+          "path": "$HOME/models/qwen38-nvidia/prepared/fab0aecb760c",
           "format": "ftw",
           "bytes": 131931279080,
           "fingerprint": "94e1ee0daa442357",
           "quant_format": "nvfp4",
-          "source_model_path": "/home/lidaiqing/models/qwen38-nvidia/source/fab0aecb760c",
+          "source_model_path": "$HOME/models/qwen38-nvidia/source/fab0aecb760c",
           "external_artifacts": [
             {
               "kind": "qwen4_ngram",
@@ -313,7 +313,7 @@
         }
       },
       {
-        "model": "/home/lidaiqing/models/qwen38-nvidia/prepared/fab0aecb760c",
+        "model": "$HOME/models/qwen38-nvidia/prepared/fab0aecb760c",
         "decode_tok_s": 28.077179493556564,
         "ttft_ms": 261.27709899446927,
         "completion_tokens": 128,
@@ -370,12 +370,12 @@
           "prompt_padding_repeats": 0
         },
         "checkpoint": {
-          "path": "/home/lidaiqing/models/qwen38-nvidia/prepared/fab0aecb760c",
+          "path": "$HOME/models/qwen38-nvidia/prepared/fab0aecb760c",
           "format": "ftw",
           "bytes": 131931279080,
           "fingerprint": "94e1ee0daa442357",
           "quant_format": "nvfp4",
-          "source_model_path": "/home/lidaiqing/models/qwen38-nvidia/source/fab0aecb760c",
+          "source_model_path": "$HOME/models/qwen38-nvidia/source/fab0aecb760c",
           "external_artifacts": [
             {
               "kind": "qwen4_ngram",
@@ -425,7 +425,7 @@
         }
       },
       {
-        "model": "/home/lidaiqing/models/qwen38-nvidia/prepared/fab0aecb760c",
+        "model": "$HOME/models/qwen38-nvidia/prepared/fab0aecb760c",
         "decode_tok_s": 19.38260001331875,
         "ttft_ms": 236.98916198918596,
         "completion_tokens": 128,
@@ -471,12 +471,12 @@
           "prompt_padding_repeats": 0
         },
         "checkpoint": {
-          "path": "/home/lidaiqing/models/qwen38-nvidia/prepared/fab0aecb760c",
+          "path": "$HOME/models/qwen38-nvidia/prepared/fab0aecb760c",
           "format": "ftw",
           "bytes": 131931279080,
           "fingerprint": "94e1ee0daa442357",
           "quant_format": "nvfp4",
-          "source_model_path": "/home/lidaiqing/models/qwen38-nvidia/source/fab0aecb760c",
+          "source_model_path": "$HOME/models/qwen38-nvidia/source/fab0aecb760c",
           "external_artifacts": [
             {
               "kind": "qwen4_ngram",
@@ -526,7 +526,7 @@
         }
       },
       {
-        "model": "/home/lidaiqing/.sparklab/models/qwen3.8-flash-next/prepared/0.5.0",
+        "model": "$HOME/.sparklab/models/qwen3.8-flash-next/prepared/0.5.0",
         "decode_tok_s": 19.436759861673444,
         "ttft_ms": 232.45153998141177,
         "completion_tokens": 128,
@@ -572,12 +572,12 @@
           "prompt_padding_repeats": 0
         },
         "checkpoint": {
-          "path": "/home/lidaiqing/.sparklab/models/qwen3.8-flash-next/prepared/0.5.0",
+          "path": "$HOME/.sparklab/models/qwen3.8-flash-next/prepared/0.5.0",
           "format": "ftw",
           "bytes": 180433108992,
           "fingerprint": "47e11ddb878adf4c",
           "quant_format": "nvfp4",
-          "source_model_path": "/home/lidaiqing/.sparklab/models/qwen3.8-flash-next/source/103a76083161",
+          "source_model_path": "$HOME/.sparklab/models/qwen3.8-flash-next/source/103a76083161",
           "external_artifacts": [
             {
               "kind": "qwen4_ngram",
@@ -620,7 +620,7 @@
         }
       },
       {
-        "model": "/home/lidaiqing/.sparklab/models/qwen3.8-flash-next/prepared/0.5.0",
+        "model": "$HOME/.sparklab/models/qwen3.8-flash-next/prepared/0.5.0",
         "decode_tok_s": 30.09807418120261,
         "ttft_ms": 257.64829898253083,
         "completion_tokens": 128,
@@ -677,12 +677,12 @@
           "prompt_padding_repeats": 0
         },
         "checkpoint": {
-          "path": "/home/lidaiqing/.sparklab/models/qwen3.8-flash-next/prepared/0.5.0",
+          "path": "$HOME/.sparklab/models/qwen3.8-flash-next/prepared/0.5.0",
           "format": "ftw",
           "bytes": 180433108992,
           "fingerprint": "47e11ddb878adf4c",
           "quant_format": "nvfp4",
-          "source_model_path": "/home/lidaiqing/.sparklab/models/qwen3.8-flash-next/source/103a76083161",
+          "source_model_path": "$HOME/.sparklab/models/qwen3.8-flash-next/source/103a76083161",
           "external_artifacts": [
             {
               "kind": "qwen4_ngram",

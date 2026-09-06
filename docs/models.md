@@ -59,10 +59,9 @@ and 6.395 s warm TTFT after eliminating rejection replay. All three trials repro
 the fresh MTP3 baseline's output. Target-only remains the default, with its separate
 6.27 tok/s, 5.681 s result; broader certification remains outstanding.
 
-Qwen3.8-Flash-Next's native target-only batch-eight profile measured 85.72 aggregate
-tok/s, up 54.1% from the matched batch-four admission control, while p95 TTFT fell from
-9.709 to 0.867 seconds. The selected MTP3 profile remains the comparable single-stream
-number because MTP is intentionally batch-one.
+The previous Inferact Qwen3.8-Flash-Next checkpoint measured 85.72 aggregate tok/s
+with native target-only batch-eight serving. That concurrency result does not transfer
+to the current NVIDIA checkpoint. Its selected MTP3 metric is batch-one.
 
 ## Evidence and caveats
 
