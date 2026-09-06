@@ -48,6 +48,7 @@ def test_model_draft_selector_defaults_to_full_head():
     weight = torch.arange(10, dtype=torch.float32).view(10, 1)
     model.lm_head = SimpleNamespace(weight=weight, bias=None, tied_embedding=None)
     model._draft_vocab = None
+    model._draft_fp8_head = None
     hidden = torch.ones(1, 1)
     assert model._select_draft_token(hidden).item() == 9
     model._draft_vocab = DraftVocabulary(weight, None, [0, 1, 2])

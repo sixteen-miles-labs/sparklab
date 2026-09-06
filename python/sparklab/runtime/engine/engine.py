@@ -457,7 +457,8 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
         raise ValueError(
             "--speculative-method mtp requires a supported checkpoint-native MTP head"
         )
-    max_tokens = 4 if glm5_mtp else 3
+    qwen4_mtp4 = qwen4_mtp and os.getenv("SPARKLAB_QWEN4_MTP4", "0") == "1"
+    max_tokens = 4 if glm5_mtp or qwen4_mtp4 else 3
     if speculative_tokens > max_tokens:
         family = "GLM-5.3 Flash" if glm5_mtp else "Qwen"
         raise ValueError(f"{family} MTP supports at most {max_tokens} speculative tokens")
@@ -1419,7 +1420,15 @@ class Engine:
                         # exclusively for speculative rollback.
                         live = req.table_idx
                         scratch = pool.num_slots - 1
-                    pool.copy_from(live, scratch)
+                    if (
+                        getattr(pool, "verify_steps", 0)
+                        and self.config.speculative_method == "mtp"
+                        and getattr(getattr(self.config, "model_config", None), "qwen4_exp_args", None) is not None
+                        and os.getenv("SPARKLAB_QWEN4_LIGHT_VERIFY_SNAPSHOT", "0") == "1"
+                    ):
+                        pool.snapshot_verify_inputs(live, scratch)
+                    else:
+                        pool.copy_from(live, scratch)
                     state_snapshots.append((live, scratch))
                 if getattr(pool, "verify_steps", 0):
                     batch.cache_verify_states = True
@@ -1481,6 +1490,14 @@ class Engine:
                     self.mtp_stats["replay_tokens"] += accepted + 1
                 req.speculative_drafts = None
                 req.speculative_draft_probs = None
+                prefix_proposer = getattr(self.model, "propose_mtp_prefix", None)
+                if (
+                    self.config.speculative_method == "mtp"
+                    and batch.cache_verify_states
+                    and prefix_proposer is not None
+                    and os.getenv("SPARKLAB_QWEN4_REJECT_DRAFT", "0") == "1"
+                ):
+                    req.speculative_drafts = prefix_proposer(batch, chosen[-1:], accepted + 1)
                 if (
                     self.config.speculative_method == "dflash2"
                     and batch.cache_verify_states

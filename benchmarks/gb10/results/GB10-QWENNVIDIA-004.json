@@ -1,0 +1,2442 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWENNVIDIA-004",
+  "status": "measured",
+  "platform": {
+    "device": "NVIDIA GB10",
+    "memory_gib": 128,
+    "machine": "aarch64",
+    "cuda": "13.0",
+    "driver": "580.126.09"
+  },
+  "engine": {
+    "name": "SparkLab",
+    "revision": "80acbe5aee9548a6dae9f244dfa6d851f61fab42",
+    "git_tracked_dirty": true,
+    "kernel_cache_version_check_disabled": true,
+    "note": "Isolated development worktree. Existing pinned/radix extensions reused with source/cache version check bypass; not clean-revision certification."
+  },
+  "model": {
+    "repository": "nvidia/Qwen3.8-Flash-Next-NVFP4",
+    "revision": "fab0aecb760cec45227f6656abcaafa11abca87a",
+    "checkpoint_format": "ftw-nvfp4 + native FP8 MTP/PLE",
+    "fingerprint": "94e1ee0daa442357",
+    "payload_bytes": 131931279080
+  },
+  "workload": {
+    "date": "2026-09-06",
+    "concurrency": 1,
+    "trials_per_workload": 5,
+    "warmups_per_workload": 1,
+    "order": [
+      "aime",
+      "hashmap",
+      "code",
+      "chinese"
+    ],
+    "sampling": "temperature=0, ignore_eos=true for fixed-length speed only; thinking on only for aime",
+    "metric": "(completion_tokens - 1) / (last content chunk time - first content chunk time)",
+    "configuration": {
+      "speculative_method": "mtp",
+      "speculative_tokens": 3,
+      "draft_vocabulary": "full, 248320 tokens",
+      "target_resident_projections": "bf16",
+      "qsa_kv": "bf16",
+      "gdn_recurrent_state": "float32",
+      "expert_preload": 24576,
+      "nvfp4_backend": "triton",
+      "kv_token_capacity": 131072,
+      "max_seq_len_override": 8792,
+      "page_size": 16,
+      "cache_type": "radix resolves hybrid_radix",
+      "host_cache_gb": 0,
+      "prefill_overlap": false
+    },
+    "comparison_boundary": "Same native NVIDIA checkpoint and workload per baseline/candidate. Not a direct comparison to MiaAI/vLLM with a different checkpoint, precision and long-prose protocol."
+  },
+  "metrics": {
+    "profiles": {
+      "baseline-fixed-repeat": {
+        "environment": {
+          "SPARKLAB_QWEN4_DRAFT_HEAD": "bf16",
+          "SPARKLAB_QWEN4_DRAFT_VOCAB_SIZE": "0",
+          "SPARKLAB_QWEN4_REJECT_DRAFT": "0",
+          "SPARKLAB_DISABLE_KERNEL_CACHE_VERSION_CHECK": "1"
+        },
+        "workloads": {
+          "aime": {
+            "prompt": "Find the sum of all integer bases $b>9$ for which $17_b$ is a divisor of $97_b.$\nPlease reason step by step, and put your final answer within \\boxed{}.",
+            "thinking": true,
+            "trials": [
+              {
+                "decode_tokens_per_second": 31.87419594821494,
+                "ttft_seconds": 0.25808785000117496,
+                "elapsed_seconds": 4.242850212962367,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 32.64531679646092,
+                "ttft_seconds": 0.24800753605086356,
+                "elapsed_seconds": 4.138587275054306,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 32.57276241682192,
+                "ttft_seconds": 0.24781310296384618,
+                "elapsed_seconds": 4.1470628989627585,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 32.53798226495312,
+                "ttft_seconds": 0.25334098003804684,
+                "elapsed_seconds": 4.156751647009514,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 32.625727191979344,
+                "ttft_seconds": 0.2560439989902079,
+                "elapsed_seconds": 4.148967016953975,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              }
+            ],
+            "decode_tok_s_median": 32.57276241682192,
+            "ttft_seconds_median": 0.25334098003804684
+          },
+          "hashmap": {
+            "prompt": "Write a detailed step-by-step explanation of how a hash map works, including collision handling, resizing, and time complexity. Be thorough.",
+            "thinking": false,
+            "trials": [
+              {
+                "decode_tokens_per_second": 26.445192123702707,
+                "ttft_seconds": 0.2543626780388877,
+                "elapsed_seconds": 22.905248996044975,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "16bb5dcb93aac36fac7569acc8fa2d1ba9c778881f4f647c3fa106a8b54c6964"
+              },
+              {
+                "decode_tokens_per_second": 27.579718927315117,
+                "ttft_seconds": 0.2538366370135918,
+                "elapsed_seconds": 21.97387222200632,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "1a32c13daae3949669cc77b8d987dab276b8b262550b2833005bc5f3b3479a58"
+              },
+              {
+                "decode_tokens_per_second": 29.016145621379195,
+                "ttft_seconds": 0.261887147964444,
+                "elapsed_seconds": 20.90628147800453,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "a5e4832719b78059e0f67358a45ad1a08fece13da33e3c284496db5450881a71"
+              },
+              {
+                "decode_tokens_per_second": 28.175016617100713,
+                "ttft_seconds": 0.2546484599588439,
+                "elapsed_seconds": 21.51558521098923,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "3b9ab58f8ac0d13acda989f722437b668f7fd3bbb2f6f3b2f0d8454aef9fae0d"
+              },
+              {
+                "decode_tokens_per_second": 25.86414368569954,
+                "ttft_seconds": 0.2612059310195036,
+                "elapsed_seconds": 23.421312863996718,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "0f0f3492426558f255207ce4971240e71d5e5c79b459196033ce810b1232537e"
+              }
+            ],
+            "decode_tok_s_median": 27.579718927315117,
+            "ttft_seconds_median": 0.2546484599588439
+          },
+          "code": {
+            "prompt": "Implement a Python LRU cache using a doubly linked list and a dictionary. Include get and put methods, a capacity check, and tests covering updates, eviction, and capacity one. Explain the invariants.",
+            "thinking": false,
+            "trials": [
+              {
+                "decode_tokens_per_second": 32.359555837310005,
+                "ttft_seconds": 0.2914684659917839,
+                "elapsed_seconds": 16.08377811597893,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "8b287299df69fc58463df8b1795101bf3325927ff95a281d8c87472603be326e"
+              },
+              {
+                "decode_tokens_per_second": 33.66575733785229,
+                "ttft_seconds": 0.2858614280121401,
+                "elapsed_seconds": 15.464831769000739,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "6bf18939e3f722419559109c068ef51276ea2b6783a86ae50d22bcb25d160d80"
+              },
+              {
+                "decode_tokens_per_second": 32.24807709460173,
+                "ttft_seconds": 0.2834688799921423,
+                "elapsed_seconds": 16.129508549987804,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "22c294f497317ec83657eecb48ae665b3d7c4a040d0e122a9bb84b741484923f"
+              },
+              {
+                "decode_tokens_per_second": 34.06737583135861,
+                "ttft_seconds": 0.2887543370015919,
+                "elapsed_seconds": 15.288716380018741,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "0ece2eed94b79b54bc5321dfb7405ac87dd3ef0eba462cbc8d296ea9954705fe"
+              },
+              {
+                "decode_tokens_per_second": 33.923571271552206,
+                "ttft_seconds": 0.2837308539892547,
+                "elapsed_seconds": 15.348009623994585,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "8b287299df69fc58463df8b1795101bf3325927ff95a281d8c87472603be326e"
+              }
+            ],
+            "decode_tok_s_median": 33.66575733785229,
+            "ttft_seconds_median": 0.2858614280121401
+          },
+          "chinese": {
+            "prompt": "请用中文详细解释哈希表的工作原理，包括哈希冲突、扩容、负载因子以及时间复杂度，并给出具体例子。",
+            "thinking": false,
+            "trials": [
+              {
+                "decode_tokens_per_second": 30.966475237099303,
+                "ttft_seconds": 0.2402805809979327,
+                "elapsed_seconds": 19.58446137601277,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "385f2f6650104800a683c7ec0e34bba74669e15708b8ab51f89793e5a8ca9ecd"
+              },
+              {
+                "decode_tokens_per_second": 29.282915624018937,
+                "ttft_seconds": 0.2460845570312813,
+                "elapsed_seconds": 20.702462883025873,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "f0cd5fa36c86339161b90e7da5391c2b373195db67c61c95cb6bf338e60a0e46"
+              },
+              {
+                "decode_tokens_per_second": 29.276771131422834,
+                "ttft_seconds": 0.24210049799876288,
+                "elapsed_seconds": 20.702929279999807,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "b03d79830facfbd1944c41826ae3d4c497a4c60b29eec1240b21ff799addd893"
+              },
+              {
+                "decode_tokens_per_second": 28.33077404708815,
+                "ttft_seconds": 0.2448836750118062,
+                "elapsed_seconds": 21.388999483024236,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "9f00bb17884aefdcdd9b81dde402959707eb448208073819a3bba424ec1e4594"
+              },
+              {
+                "decode_tokens_per_second": 28.935627731104717,
+                "ttft_seconds": 0.24306816700845957,
+                "elapsed_seconds": 20.94502729200758,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "d88ee33f785481e2a5d4dcdf19a5d10af52f2e7c6fb955b161b535ec84ee50ec"
+              }
+            ],
+            "decode_tok_s_median": 29.276771131422834,
+            "ttft_seconds_median": 0.24306816700845957
+          }
+        },
+        "telemetry": {
+          "samples": 1447,
+          "duration_s": 1527.8764585150057,
+          "swap_start_bytes": 746127360,
+          "memory_guard_gib": 12,
+          "memory_guard_triggered": false,
+          "swap_end_bytes": 744251392,
+          "swap_growth_bytes": 0,
+          "cgroup": {
+            "start": {
+              "swap_max": "max",
+              "swap_current_bytes": 79888384,
+              "swap_peak_bytes": 2587770880,
+              "oom_kill": 0
+            },
+            "end": {
+              "swap_max": "max",
+              "swap_current_bytes": 78192640,
+              "swap_peak_bytes": 2587770880,
+              "oom_kill": 0
+            },
+            "delta": {
+              "oom_kill": 0,
+              "swap_current_bytes": -1695744
+            }
+          },
+          "power_w_avg": 45.61962681409814,
+          "power_w_peak": 67.88,
+          "temperature_c_peak": 69,
+          "utilization_pct_avg": 86.53559087767796,
+          "request_energy_j_est": 69701.15385550045,
+          "mem_available_gib_min": 29.46820831298828,
+          "nvme_temperature_c_peak": 54.85,
+          "swap_in_pages_delta": 589,
+          "swap_out_pages_delta": 0,
+          "page_faults_delta": 31092267,
+          "major_faults_delta": 593,
+          "oom_kill_delta": 0
+        }
+      },
+      "candidate-fp8-light": {
+        "environment": {
+          "SPARKLAB_QWEN4_DRAFT_HEAD": "fp8",
+          "SPARKLAB_QWEN4_LIGHT_VERIFY_SNAPSHOT": "1",
+          "SPARKLAB_QWEN4_DRAFT_VOCAB_SIZE": "0",
+          "SPARKLAB_QWEN4_REJECT_DRAFT": "1",
+          "SPARKLAB_DISABLE_KERNEL_CACHE_VERSION_CHECK": "1"
+        },
+        "workloads": {
+          "aime": {
+            "prompt": "Find the sum of all integer bases $b>9$ for which $17_b$ is a divisor of $97_b.$\nPlease reason step by step, and put your final answer within \\boxed{}.",
+            "thinking": true,
+            "trials": [
+              {
+                "decode_tokens_per_second": 41.980871729905736,
+                "ttft_seconds": 0.2537983920192346,
+                "elapsed_seconds": 3.2792632289929315,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 42.147880467006786,
+                "ttft_seconds": 0.24442370096221566,
+                "elapsed_seconds": 3.2580076350132003,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 42.15413820014292,
+                "ttft_seconds": 0.24402077100239694,
+                "elapsed_seconds": 3.2571731749922037,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 42.13908026419058,
+                "ttft_seconds": 0.24309964600251988,
+                "elapsed_seconds": 3.2573178880265914,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 42.13150080591395,
+                "ttft_seconds": 0.24058199900900945,
+                "elapsed_seconds": 3.255353165033739,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              }
+            ],
+            "decode_tok_s_median": 42.13908026419058,
+            "ttft_seconds_median": 0.24402077100239694
+          },
+          "hashmap": {
+            "prompt": "Write a detailed step-by-step explanation of how a hash map works, including collision handling, resizing, and time complexity. Be thorough.",
+            "thinking": false,
+            "trials": [
+              {
+                "decode_tokens_per_second": 34.833356232854875,
+                "ttft_seconds": 0.24770654499297962,
+                "elapsed_seconds": 17.444849078019615,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "770d56434acb4f22b5242261b06843a17a3521e9e86762b14b53849ebe86c76b"
+              },
+              {
+                "decode_tokens_per_second": 34.81657172085351,
+                "ttft_seconds": 0.24692775402218103,
+                "elapsed_seconds": 17.452075896027964,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "bf38ee4d3951a95efa310c513ac5eb18c1ea54391d184377ed9b086ceeeab25c"
+              },
+              {
+                "decode_tokens_per_second": 32.8038439542053,
+                "ttft_seconds": 0.24653050198685378,
+                "elapsed_seconds": 18.50725737499306,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "e464c216fcc193ae85508e1df5d597c5ae1d732d7e60315bbd707608b0fe6110"
+              },
+              {
+                "decode_tokens_per_second": 34.13557685574901,
+                "ttft_seconds": 0.24612880003405735,
+                "elapsed_seconds": 17.794488960003946,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "1d60a0b0157f5b868c250fd2612b1fa44b5d58a9c7b35582535f1452c61f9c4d"
+              },
+              {
+                "decode_tokens_per_second": 34.2068268816413,
+                "ttft_seconds": 0.2480149359907955,
+                "elapsed_seconds": 17.759425649011973,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "9386cc23493c524fed45454a5acb9a1bd4d185dbaf571d6a1789770da6e3502e"
+              }
+            ],
+            "decode_tok_s_median": 34.2068268816413,
+            "ttft_seconds_median": 0.24692775402218103
+          },
+          "code": {
+            "prompt": "Implement a Python LRU cache using a doubly linked list and a dictionary. Include get and put methods, a capacity check, and tests covering updates, eviction, and capacity one. Explain the invariants.",
+            "thinking": false,
+            "trials": [
+              {
+                "decode_tokens_per_second": 37.95410311553864,
+                "ttft_seconds": 0.28026722703361884,
+                "elapsed_seconds": 13.744873741001356,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "8fe32fb6e0cae570184ab0f49cd06a525e7bb8fc28c6a1f0dc0f40fdaf256d70"
+              },
+              {
+                "decode_tokens_per_second": 38.15153110286989,
+                "ttft_seconds": 0.2778474680380896,
+                "elapsed_seconds": 13.672479254018981,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "df0f9f32cfd8e0f558f04bc6bf5a77ad8d21db88686981c9ab20f3612a2840c3"
+              },
+              {
+                "decode_tokens_per_second": 38.64305771006826,
+                "ttft_seconds": 0.2796721800114028,
+                "elapsed_seconds": 13.503909439023118,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "d34d898a0e3201516658b7d6f756ecd9cfcd1d2fb39bc657c29945f44d9beb25"
+              },
+              {
+                "decode_tokens_per_second": 39.76936868625414,
+                "ttft_seconds": 0.2793967839679681,
+                "elapsed_seconds": 13.128743162960745,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "3e2b617fe13792b015cc8822c24647895fd0210d102f7afe393283f2f62f0d37"
+              },
+              {
+                "decode_tokens_per_second": 40.632129793486676,
+                "ttft_seconds": 0.28030817897524685,
+                "elapsed_seconds": 12.856885209970642,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "6526842fe35198c8c00171a2aabd8f30e58542284a75c849edf8e55c6b88f8d3"
+              }
+            ],
+            "decode_tok_s_median": 38.64305771006826,
+            "ttft_seconds_median": 0.2796721800114028
+          },
+          "chinese": {
+            "prompt": "请用中文详细解释哈希表的工作原理，包括哈希冲突、扩容、负载因子以及时间复杂度，并给出具体例子。",
+            "thinking": false,
+            "trials": [
+              {
+                "decode_tokens_per_second": 37.303455302496964,
+                "ttft_seconds": 0.23178651503985748,
+                "elapsed_seconds": 16.289357295027003,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "8e78a4c488ca0a0a334bca5ae6cdd6416d0ee2ba4874d20e30dcfcd420c9a485"
+              },
+              {
+                "decode_tokens_per_second": 36.18014089792002,
+                "ttft_seconds": 0.23859181202715263,
+                "elapsed_seconds": 16.794917157036252,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "ea746693e8dde6d9943a72b96e79a8b650e138ab8223e7293fbb0ffd2983da3c"
+              },
+              {
+                "decode_tokens_per_second": 36.772210881848316,
+                "ttft_seconds": 0.23813968000467867,
+                "elapsed_seconds": 16.52774294099072,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "e14cd636c6935628bd7e4243624cd38b00261a98747a9583a54dc0a1bf404474"
+              },
+              {
+                "decode_tokens_per_second": 33.25913794336448,
+                "ttft_seconds": 0.23160724400077015,
+                "elapsed_seconds": 18.242604302009568,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "b36d3d65daaa7abd96654930be5c54ddeec0e841112175bfc9e306ebd0aafaea"
+              },
+              {
+                "decode_tokens_per_second": 35.63585015634741,
+                "ttft_seconds": 0.2352549889474176,
+                "elapsed_seconds": 17.044996723998338,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "f0cd5fa36c86339161b90e7da5391c2b373195db67c61c95cb6bf338e60a0e46"
+              }
+            ],
+            "decode_tok_s_median": 36.18014089792002,
+            "ttft_seconds_median": 0.2352549889474176
+          }
+        },
+        "telemetry": {
+          "samples": 1211,
+          "duration_s": 1276.343527133984,
+          "swap_start_bytes": 744116224,
+          "memory_guard_gib": 12,
+          "memory_guard_triggered": false,
+          "swap_end_bytes": 738041856,
+          "swap_growth_bytes": 0,
+          "cgroup": {
+            "start": {
+              "swap_max": "max",
+              "swap_current_bytes": 78061568,
+              "swap_peak_bytes": 2587770880,
+              "oom_kill": 0
+            },
+            "end": {
+              "swap_max": "max",
+              "swap_current_bytes": 72044544,
+              "swap_peak_bytes": 2587770880,
+              "oom_kill": 0
+            },
+            "delta": {
+              "oom_kill": 0,
+              "swap_current_bytes": -6017024
+            }
+          },
+          "power_w_avg": 48.364698596201485,
+          "power_w_peak": 68.68,
+          "temperature_c_peak": 71,
+          "utilization_pct_avg": 86.36746490503715,
+          "request_energy_j_est": 61729.969995047846,
+          "mem_available_gib_min": 28.667007446289062,
+          "nvme_temperature_c_peak": 54.85,
+          "swap_in_pages_delta": 1603,
+          "swap_out_pages_delta": 0,
+          "page_faults_delta": 30073711,
+          "major_faults_delta": 899,
+          "oom_kill_delta": 0
+        }
+      },
+      "candidate-bf16-light": {
+        "environment": {
+          "SPARKLAB_QWEN4_DRAFT_HEAD": "bf16",
+          "SPARKLAB_QWEN4_LIGHT_VERIFY_SNAPSHOT": "1",
+          "SPARKLAB_QWEN4_DRAFT_VOCAB_SIZE": "0",
+          "SPARKLAB_QWEN4_REJECT_DRAFT": "1",
+          "SPARKLAB_DISABLE_KERNEL_CACHE_VERSION_CHECK": "1"
+        },
+        "workloads": {
+          "aime": {
+            "prompt": "Find the sum of all integer bases $b>9$ for which $17_b$ is a divisor of $97_b.$\nPlease reason step by step, and put your final answer within \\boxed{}.",
+            "thinking": true,
+            "trials": [
+              {
+                "decode_tokens_per_second": 36.57806073659535,
+                "ttft_seconds": 0.25723332504276186,
+                "elapsed_seconds": 3.729612220020499,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 36.571158805114145,
+                "ttft_seconds": 0.2455480580101721,
+                "elapsed_seconds": 3.7186433830065653,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 36.551706273870764,
+                "ttft_seconds": 0.24955954402685165,
+                "elapsed_seconds": 3.7244953390327282,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 36.55590591088905,
+                "ttft_seconds": 0.24990208802046254,
+                "elapsed_seconds": 3.724455696006771,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 36.563874967345434,
+                "ttft_seconds": 0.24751790601294488,
+                "elapsed_seconds": 3.7212895629927516,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              }
+            ],
+            "decode_tok_s_median": 36.563874967345434,
+            "ttft_seconds_median": 0.24955954402685165
+          },
+          "hashmap": {
+            "prompt": "Write a detailed step-by-step explanation of how a hash map works, including collision handling, resizing, and time complexity. Be thorough.",
+            "thinking": false,
+            "trials": [
+              {
+                "decode_tokens_per_second": 32.10362545720543,
+                "ttft_seconds": 0.2542849989840761,
+                "elapsed_seconds": 18.913082379032858,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "770d56434acb4f22b5242261b06843a17a3521e9e86762b14b53849ebe86c76b"
+              },
+              {
+                "decode_tokens_per_second": 31.854497950050263,
+                "ttft_seconds": 0.25705233501503244,
+                "elapsed_seconds": 19.06160658900626,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "bf38ee4d3951a95efa310c513ac5eb18c1ea54391d184377ed9b086ceeeab25c"
+              },
+              {
+                "decode_tokens_per_second": 30.07110603438496,
+                "ttft_seconds": 0.2553533799946308,
+                "elapsed_seconds": 20.175085912982468,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "e464c216fcc193ae85508e1df5d597c5ae1d732d7e60315bbd707608b0fe6110"
+              },
+              {
+                "decode_tokens_per_second": 31.416284261952654,
+                "ttft_seconds": 0.2583981570205651,
+                "elapsed_seconds": 19.32572797499597,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "1d60a0b0157f5b868c250fd2612b1fa44b5d58a9c7b35582535f1452c61f9c4d"
+              },
+              {
+                "decode_tokens_per_second": 30.96254969598645,
+                "ttft_seconds": 0.2547900369972922,
+                "elapsed_seconds": 19.601453075010795,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "8bebe13037494a99b1bceef9401be658191ddc2e4309b6408e4183a3ee552517"
+              }
+            ],
+            "decode_tok_s_median": 31.416284261952654,
+            "ttft_seconds_median": 0.2553533799946308
+          },
+          "code": {
+            "prompt": "Implement a Python LRU cache using a doubly linked list and a dictionary. Include get and put methods, a capacity check, and tests covering updates, eviction, and capacity one. Explain the invariants.",
+            "thinking": false,
+            "trials": [
+              {
+                "decode_tokens_per_second": 34.43380891062808,
+                "ttft_seconds": 0.28467867797007784,
+                "elapsed_seconds": 15.12551371898735,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "7d6de58ae6e974caf1feb6744bf586d9d154b14b8489d10886d4cbb133821e2c"
+              },
+              {
+                "decode_tokens_per_second": 35.55831130906167,
+                "ttft_seconds": 0.28649144899100065,
+                "elapsed_seconds": 14.658315362990834,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "6bf18939e3f722419559109c068ef51276ea2b6783a86ae50d22bcb25d160d80"
+              },
+              {
+                "decode_tokens_per_second": 35.95865763266887,
+                "ttft_seconds": 0.290481086994987,
+                "elapsed_seconds": 14.502242512011435,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "8fe32fb6e0cae570184ab0f49cd06a525e7bb8fc28c6a1f0dc0f40fdaf256d70"
+              },
+              {
+                "decode_tokens_per_second": 35.91721589311251,
+                "ttft_seconds": 0.2846632240107283,
+                "elapsed_seconds": 14.511956082016695,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "df0f9f32cfd8e0f558f04bc6bf5a77ad8d21db88686981c9ab20f3612a2840c3"
+              },
+              {
+                "decode_tokens_per_second": 35.46890670851492,
+                "ttft_seconds": 0.2856705680023879,
+                "elapsed_seconds": 14.692960655025672,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "d34d898a0e3201516658b7d6f756ecd9cfcd1d2fb39bc657c29945f44d9beb25"
+              }
+            ],
+            "decode_tok_s_median": 35.55831130906167,
+            "ttft_seconds_median": 0.2856705680023879
+          },
+          "chinese": {
+            "prompt": "请用中文详细解释哈希表的工作原理，包括哈希冲突、扩容、负载因子以及时间复杂度，并给出具体例子。",
+            "thinking": false,
+            "trials": [
+              {
+                "decode_tokens_per_second": 31.269736569298534,
+                "ttft_seconds": 0.23926448699785396,
+                "elapsed_seconds": 19.3955715369666,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "ec08f277313328881e228e88db8eb0be4115967c984eee603f821bf7ec1a85c9"
+              },
+              {
+                "decode_tokens_per_second": 33.6428914456407,
+                "ttft_seconds": 0.25081041996600106,
+                "elapsed_seconds": 18.056077359011397,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "9a6b8f4d9b1a25479bb275ef79baf23fbe460dea6877da14a4d93833fc873d10"
+              },
+              {
+                "decode_tokens_per_second": 32.0188370861574,
+                "ttft_seconds": 0.2488359980052337,
+                "elapsed_seconds": 18.957287478027865,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "74696235a9d9397c004dde150d65f89d63714f6b34b226384bc039102deded55"
+              },
+              {
+                "decode_tokens_per_second": 32.080939928296765,
+                "ttft_seconds": 0.2484172180411406,
+                "elapsed_seconds": 18.920716287044343,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "a043228d4eb678feea33609425e51104e2232b4c722dd0692b3b0aefb984a174"
+              },
+              {
+                "decode_tokens_per_second": 33.20455610529323,
+                "ttft_seconds": 0.24027228500926867,
+                "elapsed_seconds": 18.280780653003603,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "e13c77e444056732506d294931c1dc6e0c9ee4a9c2a34c9355428882de7211e3"
+              }
+            ],
+            "decode_tok_s_median": 32.080939928296765,
+            "ttft_seconds_median": 0.2484172180411406
+          }
+        },
+        "telemetry": {
+          "samples": 1245,
+          "duration_s": 1316.0011705289944,
+          "swap_start_bytes": 737812480,
+          "memory_guard_gib": 12,
+          "memory_guard_triggered": false,
+          "swap_end_bytes": 727400448,
+          "swap_growth_bytes": 0,
+          "cgroup": {
+            "start": {
+              "swap_max": "max",
+              "swap_current_bytes": 71815168,
+              "swap_peak_bytes": 2587770880,
+              "oom_kill": 0
+            },
+            "end": {
+              "swap_max": "max",
+              "swap_current_bytes": 63676416,
+              "swap_peak_bytes": 2587770880,
+              "oom_kill": 0
+            },
+            "delta": {
+              "oom_kill": 0,
+              "swap_current_bytes": -8138752
+            }
+          },
+          "power_w_avg": 47.165734939759034,
+          "power_w_peak": 67.88,
+          "temperature_c_peak": 70,
+          "utilization_pct_avg": 86.514859437751,
+          "request_energy_j_est": 62070.16238958318,
+          "mem_available_gib_min": 28.801387786865234,
+          "nvme_temperature_c_peak": 54.85,
+          "swap_in_pages_delta": 1674,
+          "swap_out_pages_delta": 0,
+          "page_faults_delta": 29807483,
+          "major_faults_delta": 993,
+          "oom_kill_delta": 0
+        }
+      },
+      "baseline-schedule-fp8": {
+        "environment": {
+          "SPARKLAB_QWEN4_FAST_QSA_METADATA": "1",
+          "SPARKLAB_QWEN4_DRAFT_HEAD": "fp8",
+          "SPARKLAB_QWEN4_LIGHT_VERIFY_SNAPSHOT": "1",
+          "SPARKLAB_QWEN4_DRAFT_VOCAB_SIZE": "0",
+          "SPARKLAB_QWEN4_REJECT_DRAFT": "0",
+          "SPARKLAB_DISABLE_KERNEL_CACHE_VERSION_CHECK": "1"
+        },
+        "workloads": {
+          "aime": {
+            "prompt": "Find the sum of all integer bases $b>9$ for which $17_b$ is a divisor of $97_b.$\nPlease reason step by step, and put your final answer within \\boxed{}.",
+            "thinking": true,
+            "trials": [
+              {
+                "decode_tokens_per_second": 35.31167544607591,
+                "ttft_seconds": 0.254218433983624,
+                "elapsed_seconds": 3.8515286179608665,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 35.97053394093177,
+                "ttft_seconds": 0.2399942459887825,
+                "elapsed_seconds": 3.771277010033373,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 36.02114255448676,
+                "ttft_seconds": 0.23497660999419168,
+                "elapsed_seconds": 3.7614714719820768,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 36.07415126238872,
+                "ttft_seconds": 0.2427262340206653,
+                "elapsed_seconds": 3.7638753590290435,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 35.97553086382846,
+                "ttft_seconds": 0.23565785103710368,
+                "elapsed_seconds": 3.7665682950173505,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              }
+            ],
+            "decode_tok_s_median": 35.97553086382846,
+            "ttft_seconds_median": 0.2399942459887825
+          },
+          "hashmap": {
+            "prompt": "Write a detailed step-by-step explanation of how a hash map works, including collision handling, resizing, and time complexity. Be thorough.",
+            "thinking": false,
+            "trials": [
+              {
+                "decode_tokens_per_second": 29.40278775004706,
+                "ttft_seconds": 0.24735584802692756,
+                "elapsed_seconds": 20.619709883001633,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "a9ddd1ac906ce18f2a5c0692ce0cc98a1a0418e96be1a1d557cedf327f8c4878"
+              },
+              {
+                "decode_tokens_per_second": 30.185071876816345,
+                "ttft_seconds": 0.24927547702100128,
+                "elapsed_seconds": 20.094170283991843,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "57fc78e2c710fe4b529c179deed8a6246caeff026a2bcb32718bf124875d0b30"
+              },
+              {
+                "decode_tokens_per_second": 30.379495397643442,
+                "ttft_seconds": 0.2548227090155706,
+                "elapsed_seconds": 19.97307492600521,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "50975c98da941f2c8e5ce66a97386e8e2997432adfb267479f18106d5d1c2b9f"
+              },
+              {
+                "decode_tokens_per_second": 30.042533770927143,
+                "ttft_seconds": 0.25101106002693996,
+                "elapsed_seconds": 20.19048400101019,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "675393c6cbc310820dbc608ab9803d14856021399063cf3b7edf7367f7971d73"
+              },
+              {
+                "decode_tokens_per_second": 30.518249606213598,
+                "ttft_seconds": 0.2504001109628007,
+                "elapsed_seconds": 19.878684347961098,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "9f4e76d1c6cf850fb09251ae4ddad92af381caffab3d77e6676dd04a55f9a0bd"
+              }
+            ],
+            "decode_tok_s_median": 30.185071876816345,
+            "ttft_seconds_median": 0.2504001109628007
+          },
+          "code": {
+            "prompt": "Implement a Python LRU cache using a doubly linked list and a dictionary. Include get and put methods, a capacity check, and tests covering updates, eviction, and capacity one. Explain the invariants.",
+            "thinking": false,
+            "trials": [
+              {
+                "decode_tokens_per_second": 36.97170058714564,
+                "ttft_seconds": 0.2848039090167731,
+                "elapsed_seconds": 14.106976079987362,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "9238098138d7f719f10d8ae3e487e877f64ca4ce5ad920725457e0740ce6fbec"
+              },
+              {
+                "decode_tokens_per_second": 35.69801859279974,
+                "ttft_seconds": 0.27684327703900635,
+                "elapsed_seconds": 14.59165805001976,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "28cccb1a4d78a1bcc2ce1a59c5a913f957b7bb68e5acd6a49afa237b3783aacc"
+              },
+              {
+                "decode_tokens_per_second": 35.577499040372814,
+                "ttft_seconds": 0.28291764797177166,
+                "elapsed_seconds": 14.646741910954006,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "baa669f3cbabb48bf99a32e3976d86b8bde263c46692d3fddba6a826802c96f2"
+              },
+              {
+                "decode_tokens_per_second": 35.29791742818087,
+                "ttft_seconds": 0.27679852896835655,
+                "elapsed_seconds": 14.7539284430095,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "6bf18939e3f722419559109c068ef51276ea2b6783a86ae50d22bcb25d160d80"
+              },
+              {
+                "decode_tokens_per_second": 36.82241785622221,
+                "ttft_seconds": 0.28097530599916354,
+                "elapsed_seconds": 14.159205137984827,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "f4603a28ebd401d6c829f66a16c957fdc7f047d57d37b33e865bc2c5fcf5b552"
+              }
+            ],
+            "decode_tok_s_median": 35.69801859279974,
+            "ttft_seconds_median": 0.28097530599916354
+          },
+          "chinese": {
+            "prompt": "请用中文详细解释哈希表的工作原理，包括哈希冲突、扩容、负载因子以及时间复杂度，并给出具体例子。",
+            "thinking": false,
+            "trials": [
+              {
+                "decode_tokens_per_second": 34.211751519983125,
+                "ttft_seconds": 0.23457250895444304,
+                "elapsed_seconds": 17.743909599957988,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "a811c3e8815052a2af162a12b3b643ba4c84d7f35e3aacc8610a6a7ad5e110a8"
+              },
+              {
+                "decode_tokens_per_second": 30.051107976035894,
+                "ttft_seconds": 0.23154357902240008,
+                "elapsed_seconds": 20.164696262974758,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "ad2c4a9e8ef5665a0713f2d8c7435e4be28f1a70054213c3997344b294ddff9a"
+              },
+              {
+                "decode_tokens_per_second": 32.10797705426346,
+                "ttft_seconds": 0.23201424395665526,
+                "elapsed_seconds": 18.88899757398758,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "9f00bb17884aefdcdd9b81dde402959707eb448208073819a3bba424ec1e4594"
+              },
+              {
+                "decode_tokens_per_second": 30.954922008937405,
+                "ttft_seconds": 0.23576709697954357,
+                "elapsed_seconds": 19.587205018964596,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "af9a33898fc281c03bc58655a4748612aca980e7c437ba1109c62fcb115d0c3f"
+              },
+              {
+                "decode_tokens_per_second": 33.122348421545524,
+                "ttft_seconds": 0.23307372600538656,
+                "elapsed_seconds": 18.31835321499966,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "a19a874686922626e90ab0b1cc24c17641a9a5d045afcff048985584c9918072"
+              }
+            ],
+            "decode_tok_s_median": 32.10797705426346,
+            "ttft_seconds_median": 0.23307372600538656
+          }
+        },
+        "telemetry": {
+          "samples": 1280,
+          "duration_s": 1348.385806331993,
+          "swap_start_bytes": 726388736,
+          "memory_guard_gib": 12,
+          "memory_guard_triggered": false,
+          "swap_end_bytes": 724901888,
+          "swap_growth_bytes": 0,
+          "cgroup": {
+            "start": {
+              "swap_max": "max",
+              "swap_current_bytes": 62676992,
+              "swap_peak_bytes": 2587770880,
+              "oom_kill": 0
+            },
+            "end": {
+              "swap_max": "max",
+              "swap_current_bytes": 61857792,
+              "swap_peak_bytes": 2587770880,
+              "oom_kill": 0
+            },
+            "delta": {
+              "oom_kill": 0,
+              "swap_current_bytes": -819200
+            }
+          },
+          "power_w_avg": 46.5297421875,
+          "power_w_peak": 68,
+          "temperature_c_peak": 69,
+          "utilization_pct_avg": 85.38984375,
+          "request_energy_j_est": 62740.04393791194,
+          "mem_available_gib_min": 29.017868041992188,
+          "nvme_temperature_c_peak": 54.85,
+          "swap_in_pages_delta": 791,
+          "swap_out_pages_delta": 0,
+          "page_faults_delta": 30065022,
+          "major_faults_delta": 866,
+          "oom_kill_delta": 0
+        }
+      },
+      "relaxed-fp8-fast-screen": {
+        "environment": {
+          "SPARKLAB_QWEN4_FAST_QSA_METADATA": "1",
+          "SPARKLAB_QWEN4_DRAFT_HEAD": "fp8",
+          "SPARKLAB_QWEN4_LIGHT_VERIFY_SNAPSHOT": "1",
+          "SPARKLAB_QWEN4_DRAFT_VOCAB_SIZE": "0",
+          "SPARKLAB_QWEN4_REJECT_DRAFT": "1",
+          "SPARKLAB_DISABLE_KERNEL_CACHE_VERSION_CHECK": "1"
+        },
+        "speculative_tokens": 3,
+        "workloads": {
+          "aime": {
+            "prompt": "Find the sum of all integer bases $b>9$ for which $17_b$ is a divisor of $97_b.$\nPlease reason step by step, and put your final answer within \\boxed{}.",
+            "thinking": true,
+            "trials": [
+              {
+                "decode_tokens_per_second": 42.10580437342033,
+                "ttft_seconds": 0.24705164297483861,
+                "elapsed_seconds": 3.263882503961213,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 42.24419737356593,
+                "ttft_seconds": 0.23453243501717225,
+                "elapsed_seconds": 3.241722034988925,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 42.30077942906403,
+                "ttft_seconds": 0.2435939809656702,
+                "elapsed_seconds": 3.2468662440078333,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 42.24511498628312,
+                "ttft_seconds": 0.24173708603484556,
+                "elapsed_seconds": 3.248736618028488,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 42.23704041345348,
+                "ttft_seconds": 0.2419134540250525,
+                "elapsed_seconds": 3.249723653018009,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              }
+            ],
+            "decode_tok_s_median": 42.24419737356593,
+            "ttft_seconds_median": 0.2419134540250525
+          },
+          "hashmap": {
+            "prompt": "Write a detailed step-by-step explanation of how a hash map works, including collision handling, resizing, and time complexity. Be thorough.",
+            "thinking": false,
+            "trials": [
+              {
+                "decode_tokens_per_second": 34.99472968875662,
+                "ttft_seconds": 0.2474206379847601,
+                "elapsed_seconds": 17.365270756999962,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "770d56434acb4f22b5242261b06843a17a3521e9e86762b14b53849ebe86c76b"
+              },
+              {
+                "decode_tokens_per_second": 35.01262651637658,
+                "ttft_seconds": 0.25437185500049964,
+                "elapsed_seconds": 17.36324296600651,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "bf38ee4d3951a95efa310c513ac5eb18c1ea54391d184377ed9b086ceeeab25c"
+              },
+              {
+                "decode_tokens_per_second": 32.87645374892128,
+                "ttft_seconds": 0.24501999700441957,
+                "elapsed_seconds": 18.46509122295538,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "e464c216fcc193ae85508e1df5d597c5ae1d732d7e60315bbd707608b0fe6110"
+              },
+              {
+                "decode_tokens_per_second": 34.29606692310371,
+                "ttft_seconds": 0.2530032299691811,
+                "elapsed_seconds": 17.719381299975794,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "1d60a0b0157f5b868c250fd2612b1fa44b5d58a9c7b35582535f1452c61f9c4d"
+              },
+              {
+                "decode_tokens_per_second": 34.37240893517388,
+                "ttft_seconds": 0.2484218419995159,
+                "elapsed_seconds": 17.675260771007743,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "9386cc23493c524fed45454a5acb9a1bd4d185dbaf571d6a1789770da6e3502e"
+              }
+            ],
+            "decode_tok_s_median": 34.37240893517388,
+            "ttft_seconds_median": 0.2484218419995159
+          },
+          "code": {
+            "prompt": "Implement a Python LRU cache using a doubly linked list and a dictionary. Include get and put methods, a capacity check, and tests covering updates, eviction, and capacity one. Explain the invariants.",
+            "thinking": false,
+            "trials": [
+              {
+                "decode_tokens_per_second": 38.11670910286664,
+                "ttft_seconds": 0.2802951880148612,
+                "elapsed_seconds": 13.686845046002418,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "8fe32fb6e0cae570184ab0f49cd06a525e7bb8fc28c6a1f0dc0f40fdaf256d70"
+              },
+              {
+                "decode_tokens_per_second": 38.241738122207735,
+                "ttft_seconds": 0.2780904700048268,
+                "elapsed_seconds": 13.640744749980513,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "df0f9f32cfd8e0f558f04bc6bf5a77ad8d21db88686981c9ab20f3612a2840c3"
+              },
+              {
+                "decode_tokens_per_second": 38.701592394048625,
+                "ttft_seconds": 0.28007489000447094,
+                "elapsed_seconds": 13.48392662301194,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "d34d898a0e3201516658b7d6f756ecd9cfcd1d2fb39bc657c29945f44d9beb25"
+              },
+              {
+                "decode_tokens_per_second": 39.834810562935495,
+                "ttft_seconds": 0.28204156196443364,
+                "elapsed_seconds": 13.110794451960828,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "3e2b617fe13792b015cc8822c24647895fd0210d102f7afe393283f2f62f0d37"
+              },
+              {
+                "decode_tokens_per_second": 40.65871292515796,
+                "ttft_seconds": 0.2771716709830798,
+                "elapsed_seconds": 12.845949737005867,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "6526842fe35198c8c00171a2aabd8f30e58542284a75c849edf8e55c6b88f8d3"
+              }
+            ],
+            "decode_tok_s_median": 38.701592394048625,
+            "ttft_seconds_median": 0.28007489000447094
+          },
+          "chinese": {
+            "prompt": "请用中文详细解释哈希表的工作原理，包括哈希冲突、扩容、负载因子以及时间复杂度，并给出具体例子。",
+            "thinking": false,
+            "trials": [
+              {
+                "decode_tokens_per_second": 37.427045096480065,
+                "ttft_seconds": 0.234739453997463,
+                "elapsed_seconds": 16.24001462099841,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "8e78a4c488ca0a0a334bca5ae6cdd6416d0ee2ba4874d20e30dcfcd420c9a485"
+              },
+              {
+                "decode_tokens_per_second": 36.17161470549137,
+                "ttft_seconds": 0.2305651560309343,
+                "elapsed_seconds": 16.79129683302017,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "ea746693e8dde6d9943a72b96e79a8b650e138ab8223e7293fbb0ffd2983da3c"
+              },
+              {
+                "decode_tokens_per_second": 36.87382318560467,
+                "ttft_seconds": 0.23657503398135304,
+                "elapsed_seconds": 16.48197203996824,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "e14cd636c6935628bd7e4243624cd38b00261a98747a9583a54dc0a1bf404474"
+              },
+              {
+                "decode_tokens_per_second": 33.69202106254814,
+                "ttft_seconds": 0.23331254097865894,
+                "elapsed_seconds": 18.012860172020737,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "b36d3d65daaa7abd96654930be5c54ddeec0e841112175bfc9e306ebd0aafaea"
+              },
+              {
+                "decode_tokens_per_second": 35.87818780729111,
+                "ttft_seconds": 0.23186315799830481,
+                "elapsed_seconds": 16.927535771974362,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "f0cd5fa36c86339161b90e7da5391c2b373195db67c61c95cb6bf338e60a0e46"
+              }
+            ],
+            "decode_tok_s_median": 36.17161470549137,
+            "ttft_seconds_median": 0.23331254097865894
+          }
+        },
+        "telemetry": {
+          "samples": 434,
+          "duration_s": 455.325093461026,
+          "swap_start_bytes": 724164608,
+          "memory_guard_gib": 12,
+          "memory_guard_triggered": false,
+          "swap_end_bytes": 720785408,
+          "swap_growth_bytes": 0,
+          "cgroup": {
+            "start": {
+              "swap_max": "max",
+              "swap_current_bytes": 61120512,
+              "swap_peak_bytes": 2587770880,
+              "oom_kill": 0
+            },
+            "end": {
+              "swap_max": "max",
+              "swap_current_bytes": 57753600,
+              "swap_peak_bytes": 2587770880,
+              "oom_kill": 0
+            },
+            "delta": {
+              "oom_kill": 0,
+              "swap_current_bytes": -3366912
+            }
+          },
+          "power_w_avg": 44.93841013824885,
+          "power_w_peak": 69.01,
+          "temperature_c_peak": 74,
+          "utilization_pct_avg": 77.27649769585254,
+          "request_energy_j_est": 20461.585796188076,
+          "mem_available_gib_min": 29.001483917236328,
+          "nvme_temperature_c_peak": 54.85,
+          "swap_in_pages_delta": 882,
+          "swap_out_pages_delta": 0,
+          "page_faults_delta": 26320518,
+          "major_faults_delta": 543,
+          "oom_kill_delta": 0
+        }
+      },
+      "relaxed-fp8-mtp4-screen": {
+        "environment": {
+          "SPARKLAB_QWEN4_FAST_QSA_METADATA": "0",
+          "SPARKLAB_QWEN4_DRAFT_HEAD": "fp8",
+          "SPARKLAB_QWEN4_LIGHT_VERIFY_SNAPSHOT": "1",
+          "SPARKLAB_QWEN4_DRAFT_VOCAB_SIZE": "0",
+          "SPARKLAB_QWEN4_MTP4": "1",
+          "SPARKLAB_QWEN4_REJECT_DRAFT": "1",
+          "SPARKLAB_DISABLE_KERNEL_CACHE_VERSION_CHECK": "1"
+        },
+        "speculative_tokens": 4,
+        "workloads": {
+          "aime": {
+            "prompt": "Find the sum of all integer bases $b>9$ for which $17_b$ is a divisor of $97_b.$\nPlease reason step by step, and put your final answer within \\boxed{}.",
+            "thinking": true,
+            "trials": [
+              {
+                "decode_tokens_per_second": 41.010868144366384,
+                "ttft_seconds": 0.25331589503912255,
+                "elapsed_seconds": 3.3503209420014173,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 41.635505632531135,
+                "ttft_seconds": 0.24090824101585895,
+                "elapsed_seconds": 3.2914547999971546,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 41.631687894504246,
+                "ttft_seconds": 0.24225293897325173,
+                "elapsed_seconds": 3.2930857929750346,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 41.724153077460365,
+                "ttft_seconds": 0.24501194700133055,
+                "elapsed_seconds": 3.2888761749491096,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              },
+              {
+                "decode_tokens_per_second": 41.63837923546566,
+                "ttft_seconds": 0.24547198601067066,
+                "elapsed_seconds": 3.2958301629987545,
+                "usage": {
+                  "prompt_tokens": 96,
+                  "completion_tokens": 128,
+                  "total_tokens": 224
+                },
+                "output_sha256": "d10cecf60588dacadf7aceb15af2b04fda2371e10d3c1593e094db3599f8d946"
+              }
+            ],
+            "decode_tok_s_median": 41.635505632531135,
+            "ttft_seconds_median": 0.24501194700133055
+          },
+          "hashmap": {
+            "prompt": "Write a detailed step-by-step explanation of how a hash map works, including collision handling, resizing, and time complexity. Be thorough.",
+            "thinking": false,
+            "trials": [
+              {
+                "decode_tokens_per_second": 34.53142366402502,
+                "ttft_seconds": 0.2501445359666832,
+                "elapsed_seconds": 17.597351698961575,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "770d56434acb4f22b5242261b06843a17a3521e9e86762b14b53849ebe86c76b"
+              },
+              {
+                "decode_tokens_per_second": 35.38627220210816,
+                "ttft_seconds": 0.24987537902779877,
+                "elapsed_seconds": 17.177990230033174,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "bf38ee4d3951a95efa310c513ac5eb18c1ea54391d184377ed9b086ceeeab25c"
+              },
+              {
+                "decode_tokens_per_second": 32.74652665697882,
+                "ttft_seconds": 0.2514326759846881,
+                "elapsed_seconds": 18.54374704399379,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "e464c216fcc193ae85508e1df5d597c5ae1d732d7e60315bbd707608b0fe6110"
+              },
+              {
+                "decode_tokens_per_second": 34.44447073324469,
+                "ttft_seconds": 0.2552756490185857,
+                "elapsed_seconds": 17.64647249697009,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "740b122731dcca817f2f0b56716d9083f7a84a603969a0d15494e2636ba43480"
+              },
+              {
+                "decode_tokens_per_second": 37.35924103866278,
+                "ttft_seconds": 0.25042976799886674,
+                "elapsed_seconds": 16.284076737007126,
+                "usage": {
+                  "prompt_tokens": 39,
+                  "completion_tokens": 600,
+                  "total_tokens": 639
+                },
+                "output_sha256": "d5e11ba01fb3d6a411e4c949d0445b7fb7f502870818715f256cb37076322e0a"
+              }
+            ],
+            "decode_tok_s_median": 34.53142366402502,
+            "ttft_seconds_median": 0.25042976799886674
+          },
+          "code": {
+            "prompt": "Implement a Python LRU cache using a doubly linked list and a dictionary. Include get and put methods, a capacity check, and tests covering updates, eviction, and capacity one. Explain the invariants.",
+            "thinking": false,
+            "trials": [
+              {
+                "decode_tokens_per_second": 40.78274946203318,
+                "ttft_seconds": 0.2836237109731883,
+                "elapsed_seconds": 12.81368693796685,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "ecf3e1b3787fc8cdfd78dee46e0a718d1278117448080e28e79a3ef787dac199"
+              },
+              {
+                "decode_tokens_per_second": 40.6286301711546,
+                "ttft_seconds": 0.2875852040015161,
+                "elapsed_seconds": 12.865610682987608,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "a4c00b27d9b1934d6e4b482499da14fb2d834ba847ab3058e0e66396aeea97fe"
+              },
+              {
+                "decode_tokens_per_second": 41.128388254539914,
+                "ttft_seconds": 0.28512431698618457,
+                "elapsed_seconds": 12.710464862990193,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "df0f9f32cfd8e0f558f04bc6bf5a77ad8d21db88686981c9ab20f3612a2840c3"
+              },
+              {
+                "decode_tokens_per_second": 42.01714887672902,
+                "ttft_seconds": 0.28557689796434715,
+                "elapsed_seconds": 12.447970153996721,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "d34d898a0e3201516658b7d6f756ecd9cfcd1d2fb39bc657c29945f44d9beb25"
+              },
+              {
+                "decode_tokens_per_second": 41.69068379119147,
+                "ttft_seconds": 0.28420914901653305,
+                "elapsed_seconds": 12.54194661701331,
+                "usage": {
+                  "prompt_tokens": 53,
+                  "completion_tokens": 512,
+                  "total_tokens": 565
+                },
+                "output_sha256": "8b287299df69fc58463df8b1795101bf3325927ff95a281d8c87472603be326e"
+              }
+            ],
+            "decode_tok_s_median": 41.128388254539914,
+            "ttft_seconds_median": 0.28512431698618457
+          },
+          "chinese": {
+            "prompt": "请用中文详细解释哈希表的工作原理，包括哈希冲突、扩容、负载因子以及时间复杂度，并给出具体例子。",
+            "thinking": false,
+            "trials": [
+              {
+                "decode_tokens_per_second": 35.24676937514336,
+                "ttft_seconds": 0.24009086895966902,
+                "elapsed_seconds": 17.23543759097811,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "8b7449635ebb9c3b600d2558db1ed607bba65b3b698380a60a8765f8e22468e1"
+              },
+              {
+                "decode_tokens_per_second": 34.92542252197742,
+                "ttft_seconds": 0.23808369401376694,
+                "elapsed_seconds": 17.389597920991946,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "d2810996c3f40715cf4dffe41dd0ba9cd12d59fd7a1efaac97d98ac59c1f7103"
+              },
+              {
+                "decode_tokens_per_second": 39.01275264970333,
+                "ttft_seconds": 0.23695591499563307,
+                "elapsed_seconds": 15.591748265956994,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "8e78a4c488ca0a0a334bca5ae6cdd6416d0ee2ba4874d20e30dcfcd420c9a485"
+              },
+              {
+                "decode_tokens_per_second": 34.69409153681887,
+                "ttft_seconds": 0.23555509303696454,
+                "elapsed_seconds": 17.50087008299306,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "8349a42e2cd551800d2d2969c54d0eaab4edfc0db5293ad43803cab1b226a52b"
+              },
+              {
+                "decode_tokens_per_second": 35.305256247031245,
+                "ttft_seconds": 0.24253668100573123,
+                "elapsed_seconds": 17.209699948027264,
+                "usage": {
+                  "prompt_tokens": 37,
+                  "completion_tokens": 600,
+                  "total_tokens": 637
+                },
+                "output_sha256": "12926f62092d7e8a73e9faacf00ce7a29818c23a977f7f3e63c059ac83c11752"
+              }
+            ],
+            "decode_tok_s_median": 35.24676937514336,
+            "ttft_seconds_median": 0.23808369401376694
+          }
+        },
+        "telemetry": {
+          "samples": 454,
+          "duration_s": 477.5964148279745,
+          "swap_start_bytes": 720670720,
+          "memory_guard_gib": 12,
+          "memory_guard_triggered": false,
+          "swap_end_bytes": 716472320,
+          "swap_growth_bytes": 0,
+          "cgroup": {
+            "start": {
+              "swap_max": "max",
+              "swap_current_bytes": 57638912,
+              "swap_peak_bytes": 2587770880,
+              "oom_kill": 0
+            },
+            "end": {
+              "swap_max": "max",
+              "swap_current_bytes": 53444608,
+              "swap_peak_bytes": 2587770880,
+              "oom_kill": 0
+            },
+            "delta": {
+              "oom_kill": 0,
+              "swap_current_bytes": -4194304
+            }
+          },
+          "power_w_avg": 46.497797356828194,
+          "power_w_peak": 68.35,
+          "temperature_c_peak": 70,
+          "utilization_pct_avg": 77.99339207048457,
+          "request_energy_j_est": 22207.181315018814,
+          "mem_available_gib_min": 29.432151794433594,
+          "nvme_temperature_c_peak": 55.85,
+          "swap_in_pages_delta": 938,
+          "swap_out_pages_delta": 0,
+          "page_faults_delta": 26154785,
+          "major_faults_delta": 561,
+          "oom_kill_delta": 0
+        }
+      }
+    },
+    "candidate_improvement_percent": {
+      "aime": 29.36907138839482,
+      "hashmap": 24.028917668782523,
+      "code": 14.784459836344489,
+      "chinese": 23.579682798721556
+    },
+    "fp8_draft_copy_gib": 0.5929660797119141,
+    "bf16_redraft_improvement_percent": {
+      "aime": 12.252913951388855,
+      "hashmap": 13.910821008541108,
+      "code": 5.62159927732111,
+      "chinese": 9.578135458606663
+    },
+    "baseline_schedule_fp8_improvement_percent": {
+      "aime": 10.446668303604522,
+      "hashmap": 9.446626183419404,
+      "code": 6.036582615839348,
+      "chinese": 9.670485553654107
+    }
+  },
+  "validation": {
+    "recommendation": "Under a provisional two-point fixed math-subset quality budget (94/100 -> 92/100), candidate-fp8-light remains the recommended opt-in: metadata reuse adds no meaningful speed and MTP4 has mixed workload results with no MGSM score. It does not meet a no-quality-drop requirement. Original recipe/default and portfolio remain unchanged. The target-FP8 projection screen in GB10-QWENNVIDIA-005 was also not selected for speed and cannot inherit this profile's quality results.",
+    "default_changed": false,
+    "portfolio_metrics_changed": false,
+    "checkpoint_bytes_requantized": false,
+    "target_precision_changed": false,
+    "separate_draft_head_quantized": true,
+    "full_vocabulary_retained": true,
+    "math_output_hash_parity": true,
+    "long_output_hash_parity": false,
+    "smoke": {
+      "cases": 52,
+      "baseline_strict_passed": 41,
+      "baseline_answer_correct": 42,
+      "target_only_strict_passed": 42,
+      "target_only_answer_correct": 43,
+      "candidate_strict_passed": 42,
+      "candidate_answer_correct": 43,
+      "paired_candidate_regressions": []
+    },
+    "mgsm": {
+      "source": "https://github.com/google-research/url-nlp/tree/452a21ad3dae5668c06ceeac21ff073e1e40f9be/mgsm",
+      "license": "CC-BY-4.0",
+      "sha256": {
+        "en": "50021d0f28cc957edcb44e7806425b1c7fbd648ddcb9e0a8ec689d10e57d40fa",
+        "zh": "b2fa63151022370a0de1f4211c8c284eae74b0f5a3b003b1d5982c0d4a73f661"
+      },
+      "indices_per_language": [
+        2,
+        7,
+        12,
+        17,
+        22,
+        27,
+        32,
+        37,
+        42,
+        47,
+        52,
+        57,
+        62,
+        67,
+        72,
+        77,
+        82,
+        87,
+        92,
+        97,
+        102,
+        107,
+        112,
+        117,
+        122,
+        127,
+        132,
+        137,
+        142,
+        147,
+        152,
+        157,
+        162,
+        167,
+        172,
+        177,
+        182,
+        187,
+        192,
+        197,
+        202,
+        207,
+        212,
+        217,
+        222,
+        227,
+        232,
+        237,
+        242,
+        247
+      ],
+      "protocol": "zero-shot; thinking off; temperature 0; max_tokens 1536; FINAL numeric match",
+      "total": 100,
+      "baseline_passed": 94,
+      "candidate_passed": 92,
+      "baseline_by_language": {
+        "en": 50,
+        "zh": 44
+      },
+      "candidate_by_language": {
+        "en": 49,
+        "zh": 43
+      },
+      "baseline_failed_ids": [
+        "mgsm-zh-12",
+        "mgsm-zh-42",
+        "mgsm-zh-62",
+        "mgsm-zh-87",
+        "mgsm-zh-157",
+        "mgsm-zh-162"
+      ],
+      "candidate_failed_ids": [
+        "mgsm-en-87",
+        "mgsm-zh-12",
+        "mgsm-zh-42",
+        "mgsm-zh-62",
+        "mgsm-zh-157",
+        "mgsm-zh-162",
+        "mgsm-zh-172",
+        "mgsm-zh-187"
+      ],
+      "new_regressions": [
+        "mgsm-en-87",
+        "mgsm-zh-172",
+        "mgsm-zh-187"
+      ],
+      "improvements": [
+        "mgsm-zh-87"
+      ],
+      "regression_details": {
+        "mgsm-en-87": "Baseline FINAL=9360 in509 tokens; candidate hits1536-token limit without FINAL.",
+        "mgsm-zh-172": "Baseline FINAL=51 in919 tokens; candidate disputes interpretation and truncates at1536 without FINAL.",
+        "mgsm-zh-187": "Baseline FINAL=106; candidate FINAL=106.12 (compound rather than dataset simple-interest interpretation). Gold/scoring unchanged."
+      }
+    },
+    "lifecycle": {
+      "candidate_passed": 15,
+      "total": 15,
+      "checks": "9 output budgets, stop-string, 2 multi-turn replacements, 3 streamed-disconnect recovery probes",
+      "cache_error_scan": "No AssertionError/Traceback/ERROR/illegal memory/out-of-memory in completed short-cap server log."
+    },
+    "extended_candidate": {
+      "max_seq_len_override": 32768,
+      "actual_recall_prompt_tokens": [
+        11735,
+        11735,
+        11735
+      ],
+      "passed": 15,
+      "total": 15,
+      "paired_regressions_vs_target_only": [],
+      "lifecycle_passed": 15,
+      "lifecycle_total": 15,
+      "telemetry": {
+        "samples": 196,
+        "duration_s": 203.22571249102475,
+        "swap_start_bytes": 738033664,
+        "memory_guard_gib": 12,
+        "memory_guard_triggered": false,
+        "swap_end_bytes": 737869824,
+        "swap_growth_bytes": 0,
+        "cgroup": {
+          "start": {
+            "swap_max": "max",
+            "swap_current_bytes": 72036352,
+            "swap_peak_bytes": 2587770880,
+            "oom_kill": 0
+          },
+          "end": {
+            "swap_max": "max",
+            "swap_current_bytes": 71872512,
+            "swap_peak_bytes": 2587770880,
+            "oom_kill": 0
+          },
+          "delta": {
+            "oom_kill": 0,
+            "swap_current_bytes": -163840
+          }
+        },
+        "power_w_avg": 40.92316326530612,
+        "power_w_peak": 65.2,
+        "temperature_c_peak": 70,
+        "utilization_pct_avg": 60.464285714285715,
+        "request_energy_j_est": 8316.639011978368,
+        "mem_available_gib_min": 27.697341918945312,
+        "nvme_temperature_c_peak": 55.85,
+        "swap_in_pages_delta": 52,
+        "swap_out_pages_delta": 0,
+        "page_faults_delta": 24481326,
+        "major_faults_delta": 306,
+        "oom_kill_delta": 0
+      },
+      "shutdown_warning": "multiprocessing resource_tracker reported four semaphore objects for cleanup; no cache-integrity assertion or CUDA/OOM error observed."
+    },
+    "tests": {
+      "cpu_passed": 1602,
+      "cpu_skipped": 81,
+      "gpu_gdn_prefix_vs_replay_passed": 18,
+      "new_file_ruff": "passed",
+      "git_diff_check": "passed",
+      "gpu_qsa_metadata_bitwise_passed": 33,
+      "note": "Latest CPU suite includes opt-in Qwen4 MTP4 family limits, 36 chunked-prefill watermark cases, and five-row metadata capacity. GPU QSA tests cover five-row verification metadata. MTP4 startup, speed/smoke/lifecycle screen completed; its MGSM subset has not run."
+    },
+    "limits": [
+      "One fixed100-case EN/ZH MGSM subset, not the full500 cases or canonical few-shot protocol.",
+      "No general quality equivalence,64K recall,concurrency or full endurance certification.",
+      "Correctness is measured at the same fixed token budget; mentions of a gold number before truncation do not count as a final answer.",
+      "The fixed100-case EN/ZH MGSM subset was used during tuning; it is not an independent held-out final certification."
+    ],
+    "bf16_redraft": {
+      "smoke": {
+        "strict_passed": 42,
+        "answer_correct": 43,
+        "total": 52
+      },
+      "mgsm": {
+        "total": 100,
+        "passed": 93,
+        "by_language": {
+          "en": 49,
+          "zh": 44
+        },
+        "failed_ids": [
+          "mgsm-en-87",
+          "mgsm-zh-12",
+          "mgsm-zh-42",
+          "mgsm-zh-62",
+          "mgsm-zh-157",
+          "mgsm-zh-162",
+          "mgsm-zh-187"
+        ],
+        "new_regressions": [
+          "mgsm-en-87",
+          "mgsm-zh-187"
+        ],
+        "improvements": [
+          "mgsm-zh-87"
+        ],
+        "attribution": "Restoring BF16 draft-head precision does not remove these immediate-redraft regressions. Neither draft precision nor scheduling should be blamed alone without component ablations."
+      },
+      "lifecycle": {
+        "passed": 15,
+        "total": 15
+      },
+      "extended": {
+        "max_seq_len_override": 32768,
+        "actual_recall_prompt_tokens": [
+          11735,
+          11735,
+          11735
+        ],
+        "passed": 15,
+        "total": 15,
+        "lifecycle_passed": 15,
+        "lifecycle_total": 15,
+        "telemetry": {
+          "samples": 197,
+          "duration_s": 204.83170610002708,
+          "swap_start_bytes": 727379968,
+          "memory_guard_gib": 12,
+          "memory_guard_triggered": false,
+          "swap_end_bytes": 726515712,
+          "swap_growth_bytes": 0,
+          "cgroup": {
+            "start": {
+              "swap_max": "max",
+              "swap_current_bytes": 63655936,
+              "swap_peak_bytes": 2587770880,
+              "oom_kill": 0
+            },
+            "end": {
+              "swap_max": "max",
+              "swap_current_bytes": 62803968,
+              "swap_peak_bytes": 2587770880,
+              "oom_kill": 0
+            },
+            "delta": {
+              "oom_kill": 0,
+              "swap_current_bytes": -851968
+            }
+          },
+          "power_w_avg": 41.07670050761421,
+          "power_w_peak": 65.07,
+          "temperature_c_peak": 68,
+          "utilization_pct_avg": 60.7258883248731,
+          "request_energy_j_est": 8413.810645934467,
+          "mem_available_gib_min": 28.29104995727539,
+          "nvme_temperature_c_peak": 55.85,
+          "swap_in_pages_delta": 166,
+          "swap_out_pages_delta": 0,
+          "page_faults_delta": 24495760,
+          "major_faults_delta": 311,
+          "oom_kill_delta": 0
+        }
+      }
+    },
+    "quality_budget": {
+      "provisional": true,
+      "date": "2026-09-06",
+      "reference_passed": 94,
+      "minimum_subset_passed": 92,
+      "total": 100,
+      "scope": "Provisional budget on the existing fixed EN/ZH MGSM subset only, not a bound on general-task accuracy loss.",
+      "original_profile_retained": true
+    },
+    "baseline_schedule_fp8": {
+      "smoke": {
+        "strict_passed": 41,
+        "answer_correct": 42,
+        "total": 52
+      },
+      "mgsm": {
+        "passed": 94,
+        "total": 100,
+        "by_language": {
+          "en": 49,
+          "zh": 45
+        },
+        "new_regressions": [
+          "mgsm-en-12"
+        ],
+        "improvements": [
+          "mgsm-zh-87"
+        ],
+        "note": "Same aggregate score does not imply identical answers or zero per-case regression."
+      },
+      "lifecycle": {
+        "passed": 15,
+        "total": 15
+      },
+      "extended": {
+        "passed": 15,
+        "total": 15,
+        "lifecycle_passed": 15,
+        "lifecycle_total": 15,
+        "max_seq_len_override": 32768,
+        "actual_recall_prompt_tokens": [
+          11735,
+          11735,
+          11735
+        ],
+        "telemetry": {
+          "samples": 195,
+          "duration_s": 202.23522917897208,
+          "swap_start_bytes": 724869120,
+          "memory_guard_gib": 12,
+          "memory_guard_triggered": false,
+          "swap_end_bytes": 724541440,
+          "swap_growth_bytes": 0,
+          "cgroup": {
+            "start": {
+              "swap_max": "max",
+              "swap_current_bytes": 61825024,
+              "swap_peak_bytes": 2587770880,
+              "oom_kill": 0
+            },
+            "end": {
+              "swap_max": "max",
+              "swap_current_bytes": 61497344,
+              "swap_peak_bytes": 2587770880,
+              "oom_kill": 0
+            },
+            "delta": {
+              "oom_kill": 0,
+              "swap_current_bytes": -327680
+            }
+          },
+          "power_w_avg": 41.351128205128205,
+          "power_w_peak": 65.11,
+          "temperature_c_peak": 67,
+          "utilization_pct_avg": 62.38974358974359,
+          "request_energy_j_est": 8362.65488937316,
+          "mem_available_gib_min": 28.101253509521484,
+          "nvme_temperature_c_peak": 55.85,
+          "swap_in_pages_delta": 65,
+          "swap_out_pages_delta": 0,
+          "page_faults_delta": 24539808,
+          "major_faults_delta": 276,
+          "oom_kill_delta": 0
+        },
+        "shutdown_warning": "Four multiprocessing semaphore objects reported for cleanup at shutdown."
+      },
+      "provenance": {
+        "source_manifest": "baseline-schedule-fp8-source.json",
+        "source_manifest_sha256": "ca524acb32574d806fbf903eadc50386b876f7df7bc5209824a239a2992d7435",
+        "source_diff_sha256": "939d8fe2ae05361ef0ea380d1706dfb277f4f243bed50609721457634de55fa6",
+        "source_files_sha256": {
+          "python/sparklab/models/qwen4_exp/model.py": "93355037407d08ed72f11465277cc77dba4424b06936423adef3635e23c7e0b5",
+          "python/sparklab/runtime/engine/engine.py": "e606c1e92773e184b6d3af9392b1c00297df886b77395b40993c80d9b12d6bf3",
+          "python/sparklab/runtime/scheduler/prefill.py": "d320bda8e21dbc17cf890da731a38d2b61cbc65e03f0a03b3ca9ea1d97f4bad2",
+          "python/sparklab/runtime/kvcache/linear_state_pool.py": "8775d9a5d22b15e2678f212f354731914d3b66a0e24108af3a97a140ae419c6b",
+          "python/sparklab/attention/qsa.py": "077f45a07d26fdb70c8fea452bb27d249b4fde725942d0dd210f8fb8e7c1da2b",
+          "benchmarks/quality/qwen4_regression.py": "306995df56e55b5bd6e6c1a9a70cce27fff2256e1d98df62dee083c4a5aeb262",
+          "benchmarks/bench_single_stream.py": "b9f62626e92b43e53b8f6bf955b73bcebbd1013818086490210f54f0dda4a50c",
+          "tests/models/test_qwen4_exp.py": "02f5ee4a2726c9aa29015f635257e02da0977d9e05ef572167493477fd823005",
+          "tests/models/test_qwen4_qsa_metadata.py": "64523ebcb9c541e88dbd30afb954f3eaf563fa060a75276f52c16d1fc38b0b84"
+        },
+        "extended_source_manifest": "baseline-schedule-fp8-extended-source.json",
+        "extended_source_manifest_sha256": "ca524acb32574d806fbf903eadc50386b876f7df7bc5209824a239a2992d7435"
+      }
+    },
+    "screens": {
+      "relaxed-fp8-fast-screen": {
+        "status": "complete",
+        "smoke": {
+          "strict_passed": 42,
+          "answer_correct": 43,
+          "total": 52
+        },
+        "lifecycle": {
+          "passed": 15,
+          "total": 15
+        },
+        "mgsm": "Not run for this speed screen; do not inherit candidate-fp8-light's 92/100 score.",
+        "change_percent_vs_candidate_fp8_light": {
+          "aime": 0.24945278519683534,
+          "hashmap": 0.48406142465511337,
+          "code": 0.15147529064478693,
+          "chinese": -0.02356594589474348
+        },
+        "decision": "No meaningful speed gain: all workload median changes are within 0.5%. Do not add FAST_QSA_METADATA to the recommended fast profile.",
+        "test_overlap_note": "A brief CPU-only regression suite ran during this exploratory screen; GPU/model jobs were serial. This is not a clean isolated microbenchmark of sub-percent differences.",
+        "provenance": {
+          "source_manifest": "relaxed-fp8-fast-screen-source.json",
+          "source_manifest_sha256": "09cb5d55983ee7e1ed8b53ce0cbd17e214436d9dca72bb135f3ff14d9dfe7b7e",
+          "source_diff_sha256": "939d8fe2ae05361ef0ea380d1706dfb277f4f243bed50609721457634de55fa6",
+          "source_files_sha256": {
+            "python/sparklab/models/qwen4_exp/model.py": "93355037407d08ed72f11465277cc77dba4424b06936423adef3635e23c7e0b5",
+            "python/sparklab/runtime/engine/engine.py": "e606c1e92773e184b6d3af9392b1c00297df886b77395b40993c80d9b12d6bf3",
+            "python/sparklab/runtime/scheduler/prefill.py": "d320bda8e21dbc17cf890da731a38d2b61cbc65e03f0a03b3ca9ea1d97f4bad2",
+            "python/sparklab/runtime/kvcache/linear_state_pool.py": "8775d9a5d22b15e2678f212f354731914d3b66a0e24108af3a97a140ae419c6b",
+            "python/sparklab/attention/qsa.py": "077f45a07d26fdb70c8fea452bb27d249b4fde725942d0dd210f8fb8e7c1da2b",
+            "benchmarks/quality/qwen4_regression.py": "306995df56e55b5bd6e6c1a9a70cce27fff2256e1d98df62dee083c4a5aeb262",
+            "benchmarks/bench_single_stream.py": "b9f62626e92b43e53b8f6bf955b73bcebbd1013818086490210f54f0dda4a50c",
+            "tests/models/test_qwen4_exp.py": "02f5ee4a2726c9aa29015f635257e02da0977d9e05ef572167493477fd823005",
+            "tests/models/test_qwen4_qsa_metadata.py": "64523ebcb9c541e88dbd30afb954f3eaf563fa060a75276f52c16d1fc38b0b84",
+            "tests/models/test_qwen4_reject_draft.py": "f24bf941d63963cfddfa7385926d015646625eaf58d71060bddfc505cbf58d80",
+            "python/sparklab/kernels/triton/qwen4_skinny.py": "938762a5aa40cb4810004bef589502eb1cc3f57428258d6ce51e98e4953c507c",
+            "tests/runtime/kvcache/test_linear_state_pool_alloc.py": "578be602612d3abf0d751ebaae90b3c1c7d481d37e1687a6dcbd2dd0dff2edf4",
+            "tests/runtime/scheduler/test_scheduler_chunked_prefill.py": "ed16ea5012300c36aa8fee8dd64e43c73e6b9d69262ed1551fe971b5e63e0c6a"
+          }
+        }
+      },
+      "relaxed-fp8-mtp4-screen": {
+        "status": "complete",
+        "smoke": {
+          "strict_passed": 42,
+          "answer_correct": 43,
+          "total": 52
+        },
+        "lifecycle": {
+          "passed": 15,
+          "total": 15
+        },
+        "mgsm": "Not run for this speed screen; no evidence that MTP4 meets the accepted 92/100 budget.",
+        "change_percent_vs_candidate_fp8_light": {
+          "aime": -1.195029954385074,
+          "hashmap": 0.9489239779733261,
+          "code": 6.431505920464753,
+          "chinese": -2.5797896293718425
+        },
+        "decision": "Mixed workload trade-off, not a general replacement: code improves, math and Chinese regress. Keep MTP3 as recommendation; MTP4 remains opt-in research pending its own full quality evaluation.",
+        "provenance": {
+          "source_manifest": "relaxed-fp8-mtp4-screen-source.json",
+          "source_manifest_sha256": "2484a8c0894681c5fa39c157f6b74b34351a7447bf74005a475ade38000646a9",
+          "source_diff_sha256": "cdb82d1a16f5d620d862291240dd2d74d4b23ab9fd04a6dd0e9a7a5e153b94c4",
+          "source_files_sha256": {
+            "python/sparklab/models/qwen4_exp/model.py": "93355037407d08ed72f11465277cc77dba4424b06936423adef3635e23c7e0b5",
+            "python/sparklab/runtime/engine/engine.py": "5c72fafb4b72b1874693dd10b8aa805a88e7ffe76f4e7d35b83e1a3e1dfdadce",
+            "python/sparklab/runtime/scheduler/prefill.py": "d320bda8e21dbc17cf890da731a38d2b61cbc65e03f0a03b3ca9ea1d97f4bad2",
+            "python/sparklab/runtime/kvcache/linear_state_pool.py": "8775d9a5d22b15e2678f212f354731914d3b66a0e24108af3a97a140ae419c6b",
+            "python/sparklab/attention/qsa.py": "60d9211ef374df2fbf641e89bb3df2d8113de33f4710ef120dc0fc3a680e67ea",
+            "benchmarks/quality/qwen4_regression.py": "306995df56e55b5bd6e6c1a9a70cce27fff2256e1d98df62dee083c4a5aeb262",
+            "benchmarks/bench_single_stream.py": "b9f62626e92b43e53b8f6bf955b73bcebbd1013818086490210f54f0dda4a50c",
+            "tests/models/test_qwen4_exp.py": "02f5ee4a2726c9aa29015f635257e02da0977d9e05ef572167493477fd823005",
+            "tests/models/test_qwen4_qsa_metadata.py": "2b5ebd5f252f907ee27c7ecc58b3d0bd985ef83b8f6b1813c229d28a7f639635",
+            "tests/models/test_qwen4_reject_draft.py": "dbc6d2f47901c8bd354074071371301defc6d45d07814472d8376ec302ea8ca1",
+            "python/sparklab/kernels/triton/qwen4_skinny.py": "938762a5aa40cb4810004bef589502eb1cc3f57428258d6ce51e98e4953c507c",
+            "tests/runtime/kvcache/test_linear_state_pool_alloc.py": "578be602612d3abf0d751ebaae90b3c1c7d481d37e1687a6dcbd2dd0dff2edf4",
+            "tests/runtime/scheduler/test_scheduler_chunked_prefill.py": "243e44ef85d946a2a4b734723b85cc5b69cfc7eacfb8c85e14b0055f13da89cf"
+          }
+        }
+      }
+    }
+  },
+  "source": {
+    "summary": "Native full-vocabulary speculative optimizations: immediate redraft, optional proposal-only FP8 head, smaller verification snapshots and exact metadata reuse. All measured trade-offs retained under a provisional two-point fixed-subset quality budget.",
+    "raw_artifact": "$HOME/results/qwen38-quality-opt/",
+    "raw_artifact_sha256": {
+      "baseline-fixed-repeat.json": "c4547f00a395a04b52d68f1bc18f185f365ab540aa5387a627b37d23c4b39a59",
+      "baseline-fixed-repeat-server.log": "a52e8a950764aa0c9ca2c71f26b7735fe7708e9517c19c9b0fd15629b2d63a5e",
+      "baseline-fixed-repeat-quality.json": "c4c7d32c5311e3d276cfdb6a3f00e5227bc1a8fe505086d8e25e785cb9a33fce",
+      "baseline-fixed-repeat-mgsm.json": "6e276ba36ee2903c06af70acfab7455d6940b11b611e6045d90bc5c01c9cbc5f",
+      "candidate-fp8-light.json": "00e8642723c93db7bef5e6c95c0d5bb94426e7d2aefec528a91d6e1f3278ca03",
+      "candidate-fp8-light-server.log": "ead50cba605f789f90c89a1de96e0d5e342742c920b38f44cf913a294b0541f9",
+      "candidate-fp8-light-quality.json": "c6e340e6fc2b1d5b4dda7cec1f4bced026d8f7f386115c5485eb4ccb8ef6c7cb",
+      "candidate-fp8-light-mgsm.json": "c47b1cd3c8a678d68f5a46dfec8ca6e95f74db325bb17fea080ecfe3e75e3bb8",
+      "candidate-fp8-light-lifecycle.json": "5000c453bbe4cb8d5701bb455cbd18311be02caf49602df87d56803e2ac2d751",
+      "target-quality-quality.json": "9c9d2f7af52a9e80466802c0b4ac446ad2d8944740b2df237c22a34abd41eee6",
+      "target-extended-extended-quality.json": "82f8956aff566862db45a7509acb2032ef80f55854350db967ca28c24538b4a6",
+      "candidate-fp8-light-extended.json": "2c065b31f709143caf7028ac2021c6d87b6d14f10f2f42fd46f2e67277dcc3a8",
+      "candidate-fp8-light-extended-server.log": "05432c295cb6425414460e58ea9f555864f5907405daa36c35c974d0450d45bd",
+      "candidate-fp8-light-extended-extended-quality.json": "f99af21f2fa46b2892665832938c387909d373e4dbd3c8fb7e70fda1e1e98e14",
+      "candidate-fp8-light-extended-lifecycle.json": "73dc51b75c1ece4c4eb0a33004fb12e132524089988c3e6c0761c15ba12a4b21",
+      "candidate-bf16-light.json": "6a30dcf67c770762185b91fe27edd93edb27306923a22ec9f584d3d718bf1dc6",
+      "candidate-bf16-light-server.log": "4f011a7c8275ad42d3d7eb5acd068f1af62544eeda1f436a4aa66cc79d44c3d2",
+      "candidate-bf16-light-quality.json": "c6e340e6fc2b1d5b4dda7cec1f4bced026d8f7f386115c5485eb4ccb8ef6c7cb",
+      "candidate-bf16-light-mgsm.json": "dfdda49e8ac9a4ad2a6549c8159a23d37c3f4c1903dd31989dc3e76af8ec2912",
+      "candidate-bf16-light-lifecycle.json": "0d9827b1dab580c017992fe0f51b069bee93824eef87f3bc34d37611e6ef127b",
+      "candidate-bf16-light-extended.json": "92e35f79d4abcd31491904577747755a207dd3c3cd8600222117606180dc67f3",
+      "candidate-bf16-light-extended-server.log": "a41a70bb1705ac39cf4045d9dbc04078a436f0e2ac5f6c88ce8e3bc0e198aca4",
+      "candidate-bf16-light-extended-extended-quality.json": "eed18c3c07006a94464f272ae6be541df4b4f5df009a49a7985ee107573616c0",
+      "candidate-bf16-light-extended-lifecycle.json": "b74d34d4e020cc70e1b292e43d686cb67c1e0c394015e321b7d5edbaae77e36f",
+      "baseline-schedule-fp8-extended-extended-quality.json": "ed231ad36314aac4c9531f90db85fbb04a6abe77cad6a2fb15971d522de1fe23",
+      "baseline-schedule-fp8-extended-lifecycle.json": "766d7ac43f8c2b2ec4468f0b0797e2b8a0f67668fba4133de4c876aeda0d9d6b",
+      "baseline-schedule-fp8-extended-source.json": "ca524acb32574d806fbf903eadc50386b876f7df7bc5209824a239a2992d7435",
+      "baseline-schedule-fp8-extended.json": "d31a2d2913a3980c4746f8c608a4ccb4d049a47588604cacf50cee6eee9992b7",
+      "baseline-schedule-fp8-lifecycle.json": "932ba6661d5b1a5d8ee21d9a2e8ca4dc806bd8488aa994d8a6a71b9e1ad83759",
+      "baseline-schedule-fp8-mgsm.json": "d0afc3dcfb866034fd73bff6fb22bcdfadcf9e721d88678a909df620d4f08cc7",
+      "baseline-schedule-fp8-quality.json": "4c26977854ccee1767a73c16375a3a5e64ed2e67c0704ced5ed1b6c58c5154d7",
+      "baseline-schedule-fp8-source.json": "ca524acb32574d806fbf903eadc50386b876f7df7bc5209824a239a2992d7435",
+      "baseline-schedule-fp8.json": "3d37b7b6e464403312483a4228253fddee47a424bbd2d435e22546fdb9d77973",
+      "baseline-schedule-fp8-extended-server.log": "bb0e4d6396c0856ba0ae83618fb1d0c2d7330c88589c7faad3443f745a179c06",
+      "baseline-schedule-fp8-server.log": "9016da5d10fe9fc264dd230b1781cf871a992618ba0e32e0b2f7feb37b6a1149",
+      "relaxed-fp8-fast-screen-lifecycle.json": "c4138b8a07acf9588a228cae911a9c6ce8aabb4ae4b5350673516c90bf9a1697",
+      "relaxed-fp8-fast-screen-quality.json": "c6e340e6fc2b1d5b4dda7cec1f4bced026d8f7f386115c5485eb4ccb8ef6c7cb",
+      "relaxed-fp8-fast-screen-source.json": "09cb5d55983ee7e1ed8b53ce0cbd17e214436d9dca72bb135f3ff14d9dfe7b7e",
+      "relaxed-fp8-fast-screen.json": "517a3838d4ca53b5dc093a4b35fe7c05b6e13946b5f9fb1ba836b9f3652c2125",
+      "relaxed-fp8-fast-screen-server.log": "3f33860bc71d0f666ce448a72e6090a9e23c36fad9aecb336fe9c6ffc31a254a",
+      "relaxed-fp8-mtp4-screen-lifecycle.json": "c98f9f6b12ba273145ffd303d5441a581473436f4602473d51e5ac895765e420",
+      "relaxed-fp8-mtp4-screen-quality.json": "e761cb3545d9377a1473a5da74eea64789e39b3d56c02b44c6ba2268492f98a8",
+      "relaxed-fp8-mtp4-screen-source.json": "2484a8c0894681c5fa39c157f6b74b34351a7447bf74005a475ade38000646a9",
+      "relaxed-fp8-mtp4-screen.json": "10552056ece48824ce916a61deb0d9b6320f6755daa98e32b831668e0b9f2f74",
+      "relaxed-fp8-mtp4-screen-server.log": "ccecdb7bbc4613c1c57f8cdde8499699b0e4da3fdc8c90db620b860f9ad34dcf"
+    },
+    "candidate_started_utc": "2026-09-06T16:46:12.059440+00:00",
+    "candidate_source_files_sha256": {
+      "python/sparklab/models/qwen4_exp/model.py": "a6b97e10ddd7ac21dde3232cad82973bea06feffb469677899a6ef5649784a72",
+      "python/sparklab/runtime/engine/engine.py": "8b36269039277d92c5b0164577d9dd1d09410357ecd7344a58d6b41e629a42fe",
+      "python/sparklab/runtime/scheduler/prefill.py": "d320bda8e21dbc17cf890da731a38d2b61cbc65e03f0a03b3ca9ea1d97f4bad2",
+      "benchmarks/quality/qwen4_regression.py": "306995df56e55b5bd6e6c1a9a70cce27fff2256e1d98df62dee083c4a5aeb262"
+    },
+    "candidate_source_diff_sha256": "db76a16043fc6991ea4d9f9b3e3217e330ba9031c911731778433e736cd9875d",
+    "provenance_limit": "Baseline predates per-file source snapshot logging. Candidate capture omitted linear_state_pool.py; original QSA four-query allocation was active. A disabled MTP4 config experiment was present during this run and removed afterward; it did not affect width3.",
+    "bf16_redraft_provenance": {
+      "started_utc": "2026-09-06T17:11:02.732970+00:00",
+      "source_files_sha256": {
+        "python/sparklab/models/qwen4_exp/model.py": "a6b97e10ddd7ac21dde3232cad82973bea06feffb469677899a6ef5649784a72",
+        "python/sparklab/runtime/engine/engine.py": "e606c1e92773e184b6d3af9392b1c00297df886b77395b40993c80d9b12d6bf3",
+        "python/sparklab/runtime/scheduler/prefill.py": "d320bda8e21dbc17cf890da731a38d2b61cbc65e03f0a03b3ca9ea1d97f4bad2",
+        "python/sparklab/runtime/kvcache/linear_state_pool.py": "8775d9a5d22b15e2678f212f354731914d3b66a0e24108af3a97a140ae419c6b",
+        "python/sparklab/attention/qsa.py": "9fac049425bdd187eaee6ef32df56fde7b52964815f6cb63e812b9a03a1a7331",
+        "benchmarks/quality/qwen4_regression.py": "306995df56e55b5bd6e6c1a9a70cce27fff2256e1d98df62dee083c4a5aeb262"
+      },
+      "source_diff_sha256": "8904ec1a9124c2a21bf1b6bb34c4cf93636d407c9259f41aeaffbba2d07a3b69"
+    }
+  }
+}

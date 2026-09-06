@@ -64,6 +64,46 @@ def test_copy_from_snapshot():
     assert torch.equal(pool.recurrent_states[:, dst], pool.recurrent_states[:, src])
 
 
+@pytest.mark.parametrize("length", [1, 2, 3, 4, 5])
+def test_light_snapshot_commit_never_reads_snapshot_recurrent_state(length):
+    pool = _pool(num_slots=4)
+    pool.enable_verify_transactions(5)
+    src, dst = 1, 2
+    torch.manual_seed(25)
+    pool.conv_states.normal_()
+    pool.recurrent_states.normal_()
+    aux = pool.ensure_aux_state("ple", (2, 7), torch.bfloat16)
+    aux.normal_()
+    aux_inputs = pool.ensure_aux_verify_inputs("ple")
+    aux_inputs.normal_()
+    pool.verify_recurrent_states.normal_()
+    pool.verify_conv_inputs.normal_()
+    conv_before = pool.conv_states[:, src].clone()
+    aux_before = aux[src].clone()
+    rec_before = pool.recurrent_states[:, src].clone()
+    pool.recurrent_states[:, dst].fill_(float("nan"))
+
+    pool.snapshot_verify_inputs(src, dst)
+    assert torch.equal(pool.conv_states[:, dst], conv_before)
+    assert torch.equal(aux[dst], aux_before)
+    assert torch.isnan(pool.recurrent_states[:, dst]).all()
+    assert torch.equal(pool.recurrent_states[:, src], rec_before)
+    pool.conv_states[:, src].fill_(99)
+    aux[src].fill_(99)
+    pool.commit_verify_prefix(dst, src, length)
+
+    expected_conv = torch.cat((conv_before, pool.verify_conv_inputs[:, :length].transpose(1, 2)), -1)
+    expected_aux = torch.cat((aux_before, aux_inputs[:length].T), -1)
+    assert torch.equal(pool.conv_states[:, src], expected_conv[..., -conv_before.shape[-1]:])
+    assert torch.equal(aux[src], expected_aux[..., -aux_before.shape[-1]:])
+    assert torch.equal(pool.recurrent_states[:, src], pool.verify_recurrent_states[:, 0, length - 1])
+
+
+def test_light_snapshot_requires_transactions():
+    with pytest.raises(RuntimeError, match="prefix transactions"):
+        _pool().snapshot_verify_inputs(1, 2)
+
+
 @pytest.mark.parametrize("length", [1, 2, 3, 4])
 def test_commit_verify_prefix(length):
     pool = _pool(num_slots=6)

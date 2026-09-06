@@ -105,6 +105,43 @@ exactly three steps and a passing evaluator. Full W4 runs require exactly thirte
 `--mode smoke --allow-partial-scenario` is available only to validate client wiring and is
 always labeled as smoke in the output.
 
+## Focused Qwen4 optimization regressions
+
+`qwen4_regression.py` checks an already-running server. Run the **same suite and
+protocol on baseline and candidate**, serially, then compare individual cases as
+well as aggregate scores. These checks do not establish general quality parity
+or Frontier certification. Keep speed measurements separate from CPU test runs.
+
+```bash
+python benchmarks/quality/qwen4_regression.py \
+  --base-url http://127.0.0.1:8000 --model qwen3.8-flash-next \
+  --suite smoke --output results/baseline-smoke.json
+```
+
+- `smoke`: 52 fixed arithmetic, recall and JSON cases. Reports answer correctness
+  separately from strict formatting; thinking off, greedy, 256-token limit.
+- `extended`: five constrained executable Python tasks, four thinking-on reasoning
+  cases, three roughly 12K-token recall positions and three tool calls. The
+  server needs at least 16K context. Generated code runs in a resource-limited
+  subprocess with restricted syntax/builtins; tool calls are graded, not executed.
+- `mgsm`: 100 fixed cases (50 English, 50 Chinese), selected before evaluation as
+  zero-based indices `2, 7, ..., 247`. This is **not full MGSM**. Zero-shot,
+  thinking off, greedy, 1,536-token limit, final numeric-answer matching.
+- `lifecycle`: 15 checks for output limits around speculative/page boundaries,
+  stop-string handling, multi-turn label replacement, and streamed requests
+  disconnected after one to three content chunks followed by recovery probes.
+  Inspect cache-integrity logs too; a correct probe alone is not a leak test.
+
+For MGSM, place the official `mgsm_en.tsv` and `mgsm_zh.tsv` files from
+[Google Research's pinned dataset](https://github.com/google-research/url-nlp/tree/452a21ad3dae5668c06ceeac21ff073e1e40f9be/mgsm)
+in a directory and pass `--data-dir /path/to/mgsm`. The runner validates their
+SHA-256 digests before use. The dataset is licensed CC-BY-4.0; provenance,
+selection and protocol are recorded in the report.
+
+Choose a fresh output path for each run. Reports are saved after every case and
+label incomplete runs `running`; a complete case count does not by itself prove
+server health or memory safety. Retain server logs and memory telemetry too.
+
 ## Supported models and validation
 
 `models.json` contains the three paper models and their reported weight formats. An arbitrary
