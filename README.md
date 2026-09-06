@@ -114,11 +114,11 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
     <tr>
       <td><a href="https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW">Qwen3.8-Flash-Next</a></td>
       <td>125B LM + 55B auxiliary / 6B active</td>
-      <td>NVFP4 · FTW + opt-in fast MTP3 (FP8 draft head)</td>
-      <td>Experimental<br><small>MGSM subset: 94/100 → 92/100</small></td>
-      <td align="right"><a href="benchmarks/gb10/results/GB10-QWENNVIDIA-004.json" title="Single stream, 128 output tokens, five-trial median">42.14</a></td>
+      <td>NVFP4 · FTW + opt-in fast MTP3</td>
+      <td>Experimental</td>
+      <td align="right">42.14</td>
       <td align="right">0.244</td>
-      <td><a href="docs/models/qwen3.8-flash-next.md#experimental-full-vocabulary-draft-optimization">Fast profile</a></td>
+      <td><a href="docs/models/qwen3.8-flash-next.md#experimental-full-vocabulary-draft-optimization">Instructions</a></td>
     </tr>
     <tr>
       <td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731">DeepSeek V4 Flash</a></td>
