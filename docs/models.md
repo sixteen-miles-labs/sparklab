@@ -31,8 +31,8 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | Model | Parameter | Quantization | Recipe | Status | tok/s | TTFT(s) |
 |---|---|---|---|---|---:|---:|
 | **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |  |
-| [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW + optional MTP2 | `qwen3.6-35b-a3b` | Certified | 67.79 | 0.329 |
-| [Qwen3.8-27B](https://huggingface.co/Inferact/Qwen3.8-27B-NVFP4) | 27B dense | NVFP4 · FTW + optional DFlash2-12 | `qwen3.8-27b` | Experimental | 45.88 | 0.152 |
+| [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW + optional MTP2 | `qwen3.6-35b-a3b` | Target-only certified; MTP2 certification pending | 80.55 | 0.367 |
+| [Qwen3.8-27B](https://huggingface.co/oakmindai/Qwen3.8-27B-NVFP4-FTW) | 27B dense | NVFP4 · FTW + optional DFlash2-12 | `qwen3.8-27b` | Experimental | 45.88 | 0.152 |
 | **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |  |
 | [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW + optional MTP3 | `qwen3.8-flash-next` | Experimental | 31.97 | 0.260 |
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 · FTW + optional DSpark5 | `deepseek-v4` | Preview | 14.02 | 0.515 |
@@ -52,11 +52,11 @@ evidence attached to each recipe. Certification applies only to that exact check
 and recipe version. Portfolio performance and warm-TTFT columns use the selected
 single-stream profile; concurrent-serving results remain in model-specific evidence.
 
-Qwen3.6's published FTW artifact includes its native BF16 MTP weights, but the portfolio
-row continues to report the certified target-only profile. The optimized two-draft path
-measured 80.55 tok/s with 0.367 s warm TTFT on a 256-token GB10 probe and matched the
-fresh eager target-only output on that prompt; it remains opt-in pending the full
-certification suite.
+Qwen3.6's published FTW artifact includes its native BF16 MTP weights. The portfolio
+row reports the opt-in MTP2 profile: 80.55 tok/s with 0.367 s warm TTFT on a 256-token
+GB10 probe, matching the fresh eager target-only output on that prompt. Full MTP
+certification remains pending; the certified target-only profile measured 67.79 tok/s
+and 0.329 s warm TTFT.
 
 GLM-5.3 Flash's selected opt-in MTP3 profile measured a three-trial median of 7.77 tok/s
 and 6.395 s warm TTFT after eliminating rejection replay. All three trials reproduced

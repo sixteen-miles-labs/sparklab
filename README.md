@@ -94,13 +94,13 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
       <td><a href="https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW">Qwen3.6-35B-A3B</a></td>
       <td>35B total / 3B active</td>
       <td>NVFP4 · FTW + optional MTP2</td>
-      <td>Certified (target-only)</td>
-      <td align="right"><a href="benchmarks/gb10/results/GB10-QWEN36-FAST-002.json">67.79</a></td>
-      <td align="right">0.329</td>
+      <td>Target-only certified; MTP2 certification pending</td>
+      <td align="right"><a href="benchmarks/gb10/results/GB10-QWEN36-MTP-005.json">80.55</a></td>
+      <td align="right">0.367</td>
       <td><a href="docs/models/qwen3.6-35b-a3b.md">Instructions</a></td>
     </tr>
     <tr>
-      <td><a href="https://huggingface.co/Inferact/Qwen3.8-27B-NVFP4">Qwen3.8-27B</a></td>
+      <td><a href="https://huggingface.co/oakmindai/Qwen3.8-27B-NVFP4-FTW">Qwen3.8-27B</a></td>
       <td>27B dense</td>
       <td>NVFP4 · FTW + optional DFlash2-12</td>
       <td>Experimental</td>
@@ -172,13 +172,13 @@ Status meanings:
 
 Throughput is decode tokens per second; warm TTFT is time to first token in seconds.
 Values report selected single-stream probes, with configurations and validation limits
-in the linked evidence. Qwen3.8-27B, Qwen3.8-Flash-Next, DeepSeek V4 Flash, and GLM-5.3
+in the linked evidence. Qwen3.6-35B-A3B, Qwen3.8-27B, Qwen3.8-Flash-Next, DeepSeek V4 Flash, and GLM-5.3
 Flash report opt-in speculative profiles; target-only serving remains their default.
 Concurrent-serving measurements remain in the linked model evidence.
 
-Qwen3.6's row reports its certified target-only profile. Its optional MTP2 path measured
-[80.55 tok/s and 0.367 s warm TTFT](benchmarks/gb10/results/GB10-QWEN36-MTP-005.json),
-but full MTP certification remains pending. GLM-5.3 and Kimi K3 measurements establish
+Qwen3.6's row reports its optional MTP2 profile; full MTP certification remains pending.
+Its certified target-only profile measured
+[67.79 tok/s and 0.329 s warm TTFT](benchmarks/gb10/results/GB10-QWEN36-FAST-002.json). GLM-5.3 and Kimi K3 measurements establish
 bounded execution; answer correctness remains unproven.
 
 Run `sparklab models --json` for exact recipe versions, checkpoint revisions, artifact
