@@ -116,7 +116,8 @@ was about 11,735 prompt tokens, not 32K/64K certification. This is the fastest
 fully evaluated profile so far and is a reasonable opt-in when the observed
 two-point loss on this subset is acceptable. It does **not** meet a
 no-quality-drop requirement; two points here are not a bound on losses on other
-tasks. The original recipe and portfolio metric remain unchanged.
+tasks. Recipe defaults remain unchanged; the README portfolio reports this
+opt-in profile.
 This fixed subset was used during tuning, not as an independent final evaluation.
 
 Restoring the BF16 draft head while retaining immediate redraft scored
