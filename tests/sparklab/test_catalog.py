@@ -31,7 +31,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
         "RedHatAI/GLM-5.3-Flash-NVFP4"
     )
     assert get_recipe("qwen3.8-flash-next").model == (
-        "Inferact/Qwen3.8-Flash-Next-NVFP4"
+        "nvidia/Qwen3.8-Flash-Next-NVFP4"
     )
     assert get_recipe("qwen3.8-27b").model == "Inferact/Qwen3.8-27B-NVFP4"
     assert get_recipe("qwen3.6-35b-a3b").name == "Qwen3.6 35B A3B"
@@ -57,17 +57,12 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
         "qwen3.8-27b",
     }
     qwen = get_recipe("qwen3.8-flash-next")
-    assert qwen.recipe_version == "0.8.0"
+    assert qwen.recipe_version == "0.9.0"
     assert qwen.intended_tier == "frontier"
     assert qwen.status == "experimental"
     assert qwen.evidence == (
-        "GB10-QWEN38-MTP-007",
-        "GB10-QWEN38-CONC-009",
-        "GB10-QWEN38-NVFP4-OPT-004",
-        "GB10-QWEN38-NVFP4-OPT-003",
-        "GB10-QWEN38-NVFP4-OPT-002",
-        "GB10-QWEN38-NVFP4-OPT-001",
-        "GB10-QWEN38-NVFP4-001",
+        "GB10-QWENNVIDIA-002",
+        "GB10-QWENNVIDIA-001",
     )
     assert qwen.backend == "native"
     assert qwen.deployment.source_format == "safetensors-nvfp4"
@@ -77,10 +72,10 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert "convert_expert_quantization" not in qwen.deployment.backend_options
     assert qwen.deployment.backend_options["nvfp4_backend"] == "triton"
     assert qwen.performance.decode_tokens_per_second == pytest.approx(
-        30.67455057137699
+        31.97199845843447
     )
     assert qwen.performance.warm_ttft_seconds == pytest.approx(
-        0.2582157750002807
+        0.2602699250273872
     )
     assert qwen.deployment.backend_options["moe_host_cache_gb"] == 0
     assert qwen.deployment.backend_options["moe_preload_all"] is True
@@ -92,10 +87,10 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert qwen.runtime_memory == {"total_bytes": 107374182400}
     assert qwen.runtime_artifact is not None
     assert qwen.runtime_artifact.repo_id == "oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW"
-    assert qwen.runtime_artifact.revision == "5ab790b83f149a96594237a35905d84be24599a3"
-    assert qwen.runtime_artifact.fingerprint == "47e11ddb878adf4c"
-    assert qwen.runtime_artifact.bytes == 182030550080
-    assert qwen.runtime_artifact.total_bytes == 182030550080
+    assert qwen.runtime_artifact.revision == "f547c96e86d0e50908c1415f4525c4325555691e"
+    assert qwen.runtime_artifact.fingerprint == "94e1ee0daa442357"
+    assert qwen.runtime_artifact.bytes == 131931279080
+    assert qwen.runtime_artifact.total_bytes == 131931279080
     assert qwen.runtime_artifact.supplemental_files == ()
     kimi = get_recipe("kimi-k3")
     assert kimi.recipe_version == "0.3.0"
@@ -173,7 +168,7 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     glm52 = get_recipe("glm-5.2")
     glm53 = get_recipe("glm-5.3")
     deepseek = get_recipe("deepseek-v4")
-    assert qwen.revision == "103a7608316173ca6edd49929544244de7ffda70"
+    assert qwen.revision == "fab0aecb760cec45227f6656abcaafa11abca87a"
     assert qwen27.revision == "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
     assert qwen27.source_bytes == 26404418018
     assert qwen27.prepared_bytes == 24640689529
@@ -197,7 +192,7 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     assert glm52.revision == "aec724e8c7b8ee9db3b48c01c320f63f9cdaf8aa"
     assert glm53.revision == "ce67b36f3669192b5bb233819f0fda6c8a9837f8"
     assert deepseek.revision == "7872f01b1d1fe23eabc4c98b48bffcef5a386062"
-    assert qwen.source_bytes == 182838060595
+    assert qwen.source_bytes == 132734506208
     assert qwen.expert_quantization == "nvfp4"
     assert glm.source_bytes == 190262422658
     assert glm.deployment.source_format == "safetensors-nvfp4"
@@ -401,7 +396,7 @@ def test_historical_qwen_fp8_evidence_does_not_transfer_to_nvfp4_recipe():
     assert any("recipe_version mismatch" in reason for reason in evaluation.reasons)
 
 
-def test_qwen_default_profile_evidence_passes_all_non_endurance_frontier_gates():
+def test_inferact_frontier_gates_do_not_transfer_to_nvidia_recipe():
     from sparklab.certification import evaluate_tier
 
     recipe = get_recipe("qwen3.8-flash-next")
@@ -409,7 +404,7 @@ def test_qwen_default_profile_evidence_passes_all_non_endurance_frontier_gates()
     result = json.loads(
         (root / "benchmarks/gb10/results/GB10-QWEN38-NVFP4-OPT-003.json").read_text()
     )
-    assert result["result_id"] in recipe.evidence
+    assert result["result_id"] not in recipe.evidence
     assert result["admission"]["performance_gate_passed"] is True
     assert result["metrics"]["decode_tokens_per_second"] == pytest.approx(
         16.84
@@ -423,23 +418,23 @@ def test_qwen_default_profile_evidence_passes_all_non_endurance_frontier_gates()
     assert result["validation"]["quality_gate_run"] is True
     evaluation = evaluate_tier(recipe, result, "frontier")
     assert not evaluation.passed
-    assert not any("recipe " in reason and "mismatch" in reason for reason in evaluation.reasons)
+    assert any("recipe_version mismatch" in reason for reason in evaluation.reasons)
     assert not any("decode_tokens_per_second" in reason for reason in evaluation.reasons)
     assert not any("warm_ttft_seconds" in reason for reason in evaluation.reasons)
     assert not any("context_tokens" in reason for reason in evaluation.reasons)
     assert any("duration_minutes" in reason for reason in evaluation.reasons)
 
 
-def test_qwen_native_mtp_evidence_selects_three_drafts():
+def test_nvidia_mtp_evidence_matches_current_recipe():
     recipe = get_recipe("qwen3.8-flash-next")
     root = Path(__file__).resolve().parents[2]
     result = json.loads(
-        (root / "benchmarks/gb10/results/GB10-QWEN38-MTP-007.json").read_text()
+        (root / "benchmarks/gb10/results" / (recipe.performance.evidence + ".json")).read_text()
     )
-
     assert result["result_id"] in recipe.evidence
-    assert result["result_id"] == recipe.performance.evidence
-    assert result["recipe"]["recipe_version"] == recipe.recipe_version
+    assert result["model"]["repository"] == recipe.model
+    assert result["model"]["revision"] == recipe.revision
+    assert result["model"]["fingerprint"] == recipe.runtime_artifact.fingerprint
     metrics = result["metrics"]
     assert metrics["decode_tokens_per_second"] == pytest.approx(
         recipe.performance.decode_tokens_per_second
@@ -447,14 +442,7 @@ def test_qwen_native_mtp_evidence_selects_three_drafts():
     assert metrics["warm_ttft_seconds"] == pytest.approx(
         recipe.performance.warm_ttft_seconds
     )
-    assert metrics["mtp3_decode_tokens_per_second"] > metrics[
-        "mtp2_decode_tokens_per_second"
-    ]
-    assert metrics["mtp2_decode_tokens_per_second"] > metrics[
-        "mtp1_decode_tokens_per_second"
-    ]
-    assert metrics["mtp3_improvement_over_target_percent"] == pytest.approx(55.3466)
-    assert result["validation"]["all_mtp3_trials_deterministic"] is True
+    assert result["validation"]["replay_calls_all_zero"] is True
 
 
 def test_preview_and_certified_statuses_fail_closed_without_evidence_or_memory():

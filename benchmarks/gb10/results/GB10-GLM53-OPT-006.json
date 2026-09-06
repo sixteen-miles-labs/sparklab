@@ -1,0 +1,205 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-GLM53-OPT-006",
+  "status": "measured",
+  "date": "2026-09-04",
+  "recipe": {
+    "slug": "glm-5.3-flash",
+    "recipe_version": "0.3.2",
+    "revision": "9eaeadaf026871a90640e32c0604f6ab0b2d641d"
+  },
+  "engine": {
+    "name": "SparkLab",
+    "git_revision": "eab73f7aa48edc7a747297f5f05795a40e5ea7f3",
+    "git_tracked_dirty": true
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "os": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+    "unified_memory_gib": 128,
+    "machine": "aarch64",
+    "python": "3.11.15",
+    "packages": {
+      "torch": "2.11.0+cu130",
+      "triton": "3.6.0",
+      "flashinfer-python": "0.6.15.post1",
+      "sglang-kernel": "0.4.5",
+      "transformers": "5.16.1"
+    },
+    "gpu_driver": "NVIDIA GB10, 580.126.09"
+  },
+  "checkpoint": {
+    "repository": "oakmindai/GLM-5.3-Flash-NVFP4-FTW",
+    "revision": "f296cec0baceb2276121efe76f14d61b62c1e47d",
+    "format": "ftw-nvfp4-kda-fp8 + native block-FP8 MTP sidecar",
+    "fingerprint": "4c021651a1e61802",
+    "bytes": 184716947456,
+    "mtp_repository": "RedHatAI/GLM-5.3-Flash-NVFP4",
+    "mtp_revision": "36c184c6cda000a481711306df5adde42f63321a"
+  },
+  "workload": {
+    "name": "AIME-25 problem 0 fixed decode probe",
+    "batch_size": 1,
+    "sampling": "greedy",
+    "prompt_tokens": 54,
+    "completion_tokens": 256,
+    "warmup_requests_per_process": 1,
+    "measured_requests_per_process": 1,
+    "baseline_trials": 1,
+    "selected_trials": 3,
+    "client_path": "OpenAI-compatible streaming HTTP API"
+  },
+  "configuration": {
+    "storage": "disk",
+    "attention_backend": "dsa",
+    "qsa_fused_selection": true,
+    "page_size": 1,
+    "cache_type": "naive",
+    "max_seq_len": 8448,
+    "nvfp4_backend": "triton",
+    "host_cache_gb": 0,
+    "requested_cache_size": 6149,
+    "requested_cache_rate": null,
+    "memory_ratio": 0.96,
+    "requested_num_tokens": 8691,
+    "speculative_method": "mtp",
+    "speculative_tokens": 3,
+    "speculative_draft_model": null,
+    "draft_sample_method": "greedy",
+    "dspark_confidence_threshold": 0,
+    "dspark_draft_cache_slots": 0,
+    "dspark_draft_cache_quotas": "",
+    "dsv4_kv_storage": "bf16",
+    "dsv4_index_storage": "bf16",
+    "qwen4_dense_storage": "bf16",
+    "cpu_threads": 0,
+    "hybrid_fetch": -1,
+    "disk_read_workers": 16,
+    "cache_policy": "lru",
+    "prefill_overlap": false,
+    "preload_all": false,
+    "prefill_hit_d2d": true,
+    "prefill_sparse_max_tokens": 512,
+    "shared_expert_overlap": true,
+    "startup_prefill_warmup": true,
+    "cuda_graph": false,
+    "request_timeout_s": 1800,
+    "prompt_padding_repeats": 0
+  },
+  "optimization": {
+    "description": "Cache KDA recurrent states and convolution inputs at every verified token, then commit the accepted prefix without replaying the transformer.",
+    "verification_buffer_steps": 4,
+    "automatic_memory_budget_includes_transaction_buffers": true,
+    "additional_device_allocation_gib": 0.546875
+  },
+  "metrics": {
+    "decode_tokens_per_second_trials": [
+      7.768982056295403,
+      7.69111782464541,
+      7.86320961694814
+    ],
+    "decode_tokens_per_second_median": 7.768982056295403,
+    "warm_ttft_seconds_trials": [
+      6.406243003002601,
+      6.390963617013767,
+      6.395404228998814
+    ],
+    "warm_ttft_seconds_median": 6.395404228998814,
+    "baseline_decode_tokens_per_second": 7.513268054176673,
+    "baseline_warm_ttft_seconds": 6.329177171021001,
+    "improvement_over_fresh_baseline_percent": 3.4034989870563415,
+    "prior_published_mtp3_tokens_per_second": 7.436220026100699,
+    "improvement_over_prior_published_percent": 4.474881445502277,
+    "device_allocation_gib": [
+      101.9765625,
+      101.9765625,
+      101.9765625
+    ],
+    "baseline_device_allocation_gib": 101.4296875,
+    "physical_io_gib": [
+      169.92202758789062,
+      169.92202758789062,
+      169.92202758789062
+    ],
+    "baseline_physical_io_gib": 168.2721710205078,
+    "expert_disk_read_operations": [
+      77244,
+      77244,
+      77244
+    ],
+    "baseline_expert_disk_read_operations": 76494
+  },
+  "speculative": {
+    "baseline": {
+      "steps": 3,
+      "accepted": 174,
+      "drafted": 198,
+      "acceptance_rate": 0.879,
+      "outputs": 256,
+      "target_forwards": 82,
+      "outputs_per_target_forward": 3.12,
+      "replay_calls": 15,
+      "replay_tokens": 36,
+      "fast_carry_commits": 0
+    },
+    "selected": {
+      "steps": 3,
+      "accepted": 170,
+      "drafted": 201,
+      "acceptance_rate": 0.846,
+      "outputs": 256,
+      "target_forwards": 86,
+      "outputs_per_target_forward": 2.98,
+      "replay_calls": 0,
+      "replay_tokens": 0,
+      "fast_carry_commits": 0
+    },
+    "selected_counters_identical_across_trials": true
+  },
+  "validation": {
+    "full_suite_passed": 1698,
+    "full_suite_skipped": 8,
+    "test_command": "env SPARKLAB_DISABLE_KERNEL_CACHE_VERSION_CHECK=1 .venv/bin/pytest -q --ignore=tests/test_document_query_demo.py",
+    "gpu_commit_boundaries_tested": [1, 2, 3, 4],
+    "cached_kernel_states_match_independent_prefixes_exactly": true,
+    "api_stream_completed": true,
+    "output_sha1": "d3523265958c",
+    "baseline_output_sha1": "d3523265958c",
+    "all_selected_outputs_match_fresh_baseline": true,
+    "all_selected_output_text_matches_fresh_baseline": true,
+    "oom_count": 0,
+    "lifecycle_swap_growth_bytes": [
+      0,
+      0,
+      0
+    ],
+    "lifecycle_swap_out_pages": [
+      0,
+      0,
+      0
+    ],
+    "lifecycle_swap_in_pages": [
+      7,
+      1,
+      5
+    ],
+    "minimum_mem_available_gib": 6.4055328369140625,
+    "memory_guard_triggered": false
+  },
+  "source": {
+    "baseline_artifact": "/tmp/frontier-glm-baseline.jsonl",
+    "selected_artifact": "/tmp/frontier-glm-transaction.jsonl",
+    "prior_evidence": "GB10-GLM53-OPT-005",
+    "baseline_note": "The successful baseline process imported the runtime before the KDA transaction edits. Provenance is collected after measurement and reports the worktree edits made while the baseline process was running. The earlier missing-sidecar startup error row is excluded."
+  },
+  "limitations": [
+    "Focused source-tree optimization evidence, not a clean-release certification result.",
+    "One greedy 54-token prompt and 256-token completion; quality, long-context, sampled, concurrent and endurance suites were not repeated.",
+    "The baseline is one fresh measured request; the selected profile has three independent-process trials. The measured gain is modest and workload-dependent.",
+    "The fixed expert cache has 6,149 slots in both profiles. Automatic sizing must trade the additional transaction memory against expert residency.",
+    "Draft acceptance changed from 87.9% to 84.6% despite identical output text; retaining verification intermediates avoids the differently shaped rejection replay.",
+    "NVMe reads still dominate latency: physical I/O increased slightly, and TTFT did not improve.",
+    "Swap was already in use before these runs; selected runs had no swap growth or swap-out, but some swap-in activity.",
+    "The installed kernel-cache wheel does not match the source release; SPARKLAB_DISABLE_KERNEL_CACHE_VERSION_CHECK=1 was used for these experiments."
+  ]
+}

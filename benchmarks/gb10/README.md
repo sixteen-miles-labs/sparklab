@@ -8,6 +8,17 @@ recipes. Raw logs and large result streams stay outside the source repository.
   commits and shared verification metadata: 14.02 tok/s over 128 tokens and
   9.96 tok/s over 256 tokens. It also identifies the older first-rejection
   capture bug and records the unselected cost-aware/re-drafting experiments.
+- `results/GB10-QWENNVIDIA-003.json` evaluates ideas from MiaAI-Lab's single-Spark
+  recipe. Opt-in 65K draft vocabulary improves the math median to 35.28 tok/s
+  but regresses Chinese; BF16 recurrent state also loses on the short math probe.
+  The default profile and portfolio metrics remain unchanged.
+- `results/GB10-QWENNVIDIA-002.json` records the NVIDIA FTW publication and
+  accepted-prefix GDN/PLE state commits: 31.97 tok/s, 0.260 s warm TTFT,
+  13.9% above its baseline with zero rejection replay; quality remains Experimental.
+- `results/GB10-QWENNVIDIA-001.json` compares NVIDIA and Inferact Qwen3.8
+  Flash-Next checkpoints: NVIDIA MTP3 reaches 28.08 tok/s versus 30.10 tok/s
+  for Inferact on the matched short probe, before the NVIDIA migration and
+  accepted-prefix optimization.
 - `results/GB10-QWEN38-FP8-PLE-005.json` measures NVFP4 routed experts with a
   50%-smaller FP8 external PLE table.
 - `results/GB10-QWEN38-HYBRID-006.json` adds physical FP8 resident projections:
@@ -83,6 +94,10 @@ recipes. Raw logs and large result streams stay outside the source repository.
 - `results/GB10-GLM53-NVFP4-001.json` records the GLM-5.3 Flash NVFP4
   complete-checkpoint probe: 4.46 decode tok/s and 5.760 s warm TTFT. Its corrected
   greedy probe reaches the reference answer; the broader quality gates remain outstanding.
+- `results/GB10-GLM53-OPT-006.json` records GLM-5.3 Flash MTP3 with direct KDA state
+  commits: a three-trial median of 7.77 tok/s and 6.395 s warm TTFT, 3.4% above the
+  fresh MTP3 control. Every trial preserved its output and eliminated rejection replay,
+  at an additional 0.55 GiB of device allocation with fixed expert-cache capacity.
 - `results/GB10-KIMI-001.json` records the full Kimi K3 ModelOpt NVFP4 FTW
   capacity experiment with SparkLab's GB10 resident FP8 profile: 0.161 decode tok/s,
   395.405 s warm TTFT, exact 256-token completion, and zero runtime OOM/swap-out.

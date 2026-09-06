@@ -160,8 +160,9 @@ def test_mtp_acceptance_stops_at_first_mismatch(truth, drafts, expected):
         (False, False, "decode"),
     ],
 )
+@pytest.mark.parametrize("expert_format", ["nvfp4", "fp8"])
 def test_qwen4_mtp_verification_uses_small_batch_decode_moe(
-    monkeypatch, uses_prefill_kernels, is_verify, expected
+    monkeypatch, uses_prefill_kernels, is_verify, expected, expert_format
 ):
     from sparklab.models.qwen4_exp.mtp import _ResidentNvfp4MTPMoE
 
@@ -170,7 +171,7 @@ def test_qwen4_mtp_verification_uses_small_batch_decode_moe(
     topk_weights = torch.ones(3, 2)
     topk_ids = torch.zeros(3, 2, dtype=torch.int32)
     block = _ResidentNvfp4MTPMoE.__new__(_ResidentNvfp4MTPMoE)
-    block._expert_banks = tuple(object() for _ in range(6))
+    block._expert_banks = tuple(object() for _ in range(6 if expert_format == "nvfp4" else 4))
     block.num_experts = 8
     block.top_k = 2
     block.gate = SimpleNamespace(forward=lambda value: torch.zeros(value.size(0), 8))
@@ -197,6 +198,14 @@ def test_qwen4_mtp_verification_uses_small_batch_decode_moe(
     )
     monkeypatch.setattr(
         "sparklab.moe.fused_nvfp4.fused_experts_decode_nvfp4_marlin",
+        lambda *args, **_kwargs: calls.append("decode") or torch.ones_like(args[0]),
+    )
+    monkeypatch.setattr(
+        "sparklab.moe.fused_fp8_block.fused_experts_fp8_block",
+        lambda *args, **_kwargs: calls.append("prefill") or torch.ones_like(args[0]),
+    )
+    monkeypatch.setattr(
+        "sparklab.moe.fused_fp8_block.fused_experts_decode_fp8_block",
         lambda *args, **_kwargs: calls.append("decode") or torch.ones_like(args[0]),
     )
 
@@ -266,6 +275,59 @@ def test_config_accepts_conversion_owned_nvfp4_experts():
     source = _config()
     source.text_config.sparklab_expert_quant = "nvfp4"
     assert parse_config(source).expert_quant == "nvfp4"
+
+
+def test_config_validates_nvidia_mixed_precision_main_experts():
+    source = _config()
+    layers = {
+        f"model.language_model.layers.{i}.mlp.experts": {
+            "quant_algo": "NVFP4", "group_size": 16,
+        }
+        for i in range(source.text_config.num_hidden_layers)
+    }
+    layers["mtp.layers.0.mlp.experts"] = {"quant_algo": "FP8"}
+    source.quantization_config = {
+        "quant_method": "modelopt", "quant_algo": "MIXED_PRECISION",
+        "quantized_layers": layers,
+    }
+    config = parse_config(source)
+    assert config.expert_quant == "nvfp4"
+    assert config.shared_expert_quant == "none"
+    del layers["model.language_model.layers.0.mlp.experts"]
+    with pytest.raises(ValueError, match="mixed-precision expert group"):
+        parse_config(source)
+
+
+def test_mtp_loads_native_fp8_experts_without_requantization(tmp_path):
+    import safetensors
+    from sparklab.models.qwen4_exp.mtp import _ResidentNvfp4MTPMoE
+
+    block = object.__new__(_ResidentNvfp4MTPMoE)
+    block.num_experts, block.hidden_size, block.intermediate_size = 2, 128, 128
+    weights = {}
+    for expert in range(2):
+        for i, role in enumerate(("gate_proj", "up_proj", "down_proj")):
+            prefix = f"mtp.layers.0.mlp.experts.{expert}.{role}"
+            weights[prefix + ".weight"] = torch.full(
+                (128, 128), expert + i + 1, dtype=torch.float8_e4m3fn
+            )
+            weights[prefix + ".weight_scale_inv"] = torch.full(
+                (1, 1), 0.125 * (i + 1), dtype=torch.bfloat16
+            )
+    path = tmp_path / "draft.safetensors"
+    save_file(weights, path)
+    with safetensors.safe_open(path, framework="pt") as handle:
+        block.load_experts(handle, torch.device("cpu"))
+    gate_up, gate_scale, down, down_scale = block._expert_banks
+    assert gate_up.shape == (2, 256, 128)
+    assert gate_scale.shape == (2, 2, 1)
+    for expert in range(2):
+        for i, role in enumerate(("gate_proj", "up_proj", "down_proj")):
+            prefix = f"mtp.layers.0.mlp.experts.{expert}.{role}"
+            got = gate_up[expert, i * 128:(i + 1) * 128] if i < 2 else down[expert]
+            scale = gate_scale[expert, i:i + 1] if i < 2 else down_scale[expert]
+            torch.testing.assert_close(got.float(), weights[prefix + ".weight"].float(), rtol=0, atol=0)
+            torch.testing.assert_close(scale, weights[prefix + ".weight_scale_inv"], rtol=0, atol=0)
 
 
 def test_config_detects_official_routed_only_block_fp8():
@@ -634,6 +696,55 @@ def test_external_ngram_artifact_streams_exact_rows(tmp_path):
     assert reads == 3
 
 
+@pytest.mark.parametrize("lookup_count", [3, 40])
+@pytest.mark.parametrize("split_mtp", [False, True])
+def test_nvidia_scaled_fp8_table_and_combined_sidecar(tmp_path, lookup_count, split_mtp):
+    import safetensors
+    from sparklab.models.qwen4_exp.ple import SafetensorNGramStore
+
+    source, out = tmp_path / "source", tmp_path / "out"
+    source.mkdir()
+    out.mkdir()
+    prefix = "model.language_model.layers.1.ple.ple_embedding.ngram_embedding"
+    values = torch.arange(12, dtype=torch.float32).view(3, 4).to(torch.float8_e4m3fn)
+    draft_key = "mtp.layers.0.mlp.experts.0.gate_proj.weight_scale_inv"
+    tensors = {
+        prefix + ".shard_0.weight": values,
+        prefix + ".weight_scale": torch.tensor([0.125], dtype=torch.bfloat16),
+        draft_key: torch.ones(1, 1, dtype=torch.bfloat16),
+        "mtp.fc_hidden.weight": torch.arange(4, dtype=torch.bfloat16).view(2, 2),
+    }
+    filename = "model-fp8-mtp-ple.safetensors"
+    weight_map = {key: filename for key in tensors}
+    combined = dict(tensors)
+    if split_mtp:
+        dense_key = "mtp.fc_hidden.weight"
+        save_file({dense_key: combined.pop(dense_key)}, source / "dense.safetensors")
+        weight_map[dense_key] = "dense.safetensors"
+    save_file(combined, source / filename)
+    (source / "model.safetensors.index.json").write_text(json.dumps({
+        "weight_map": weight_map,
+    }))
+    args = SimpleNamespace(split_ngram_parts=1, ple_embed_dim=64, ngram_size=3, heads_per_ngram=8)
+    artifacts = copy_external_artifacts(str(source), str(out), SimpleNamespace(qwen4_exp_args=args))
+    manifest = json.loads((out / "qwen4_ngram.json").read_text())
+    assert manifest["weight_scale"] == 0.125
+    assert (out / "qwen4_ngram.bin").read_bytes() == values.view(torch.uint8).numpy().tobytes()
+    assert artifacts[1]["format"] == "safetensors-fp8"
+    with safetensors.safe_open(out / artifacts[1]["file"], framework="pt") as handle:
+        assert set(handle.keys()) == {key for key in tensors if key.startswith("mtp.")}
+        for key in handle.keys():
+            torch.testing.assert_close(handle.get_tensor(key), tensors[key], rtol=0, atol=0)
+    ids = torch.arange(lookup_count) % 3
+    expected = (values.float() * 0.125).to(torch.bfloat16).index_select(0, ids)
+    for store in (RawNGramStore(str(out), manifest, 4), SafetensorNGramStore(str(source), 1, 4)):
+        try:
+            torch.testing.assert_close(store.lookup(ids), expected, rtol=0, atol=0)
+            torch.testing.assert_close(store.lookup_async(ids).result(), expected, rtol=0, atol=0)
+        finally:
+            store.close()
+
+
 def test_external_ngram_artifact_can_stream_bf16_as_fp8(tmp_path):
     source, out = tmp_path / "source", tmp_path / "out"
     source.mkdir()
@@ -706,7 +817,7 @@ def test_external_artifacts_copy_optional_mtp_sidecar(tmp_path):
         json.dumps({"weight_map": {name: "model.safetensors"}}), encoding="utf-8"
     )
     sidecar = source / "nvfp4_experts_mtp.safetensors"
-    sidecar.write_bytes(b"synthetic-mtp")
+    save_file({"mtp.fc_hidden.weight": torch.ones(2, 2)}, sidecar)
     args = SimpleNamespace(
         split_ngram_parts=1, ple_embed_dim=64, ngram_size=3, heads_per_ngram=8
     )
@@ -718,10 +829,10 @@ def test_external_artifacts_copy_optional_mtp_sidecar(tmp_path):
     assert artifacts[1] == {
         "kind": "qwen4_mtp",
         "file": "nvfp4_experts_mtp.safetensors",
-        "nbytes": len(b"synthetic-mtp"),
+        "nbytes": sidecar.stat().st_size,
         "format": "safetensors-nvfp4",
     }
-    assert (out / "nvfp4_experts_mtp.safetensors").read_bytes() == b"synthetic-mtp"
+    assert (out / "nvfp4_experts_mtp.safetensors").read_bytes() == sidecar.read_bytes()
 
 
 def test_external_ngram_artifact_preserves_official_fp8_payload(tmp_path):
@@ -1041,6 +1152,91 @@ def test_ple_verification_updates_dynamic_state_slot(monkeypatch):
     torch.testing.assert_close(states[1], history[:, -state_len:])
     torch.testing.assert_close(states[0], original[0])
     torch.testing.assert_close(states[2], original[2])
+
+
+@pytest.mark.parametrize("accepted_inputs", [1, 2, 3, 4])
+@pytest.mark.parametrize("state_len", [2, 9])
+def test_ple_verify_prefix_commits_only_accepted_history(monkeypatch, accepted_inputs, state_len):
+    from sparklab.runtime.kvcache.linear_state_pool import LinearStatePool
+
+    config = parse_config(_config())
+    pool = LinearStatePool(config.linear_attention_group(), 3, torch.float32,
+                           torch.device("cpu"), tp_size=1)
+    pool.enable_verify_transactions(4)
+    states = pool.ensure_aux_state("qwen4_ple_0_conv", (2, state_len), torch.float32)
+    states[1].copy_(torch.arange(2 * state_len).view(2, state_len))
+    pool.copy_from(1, 2)
+    before = states[1].clone()
+    monkeypatch.setattr("sparklab.models.qwen4_exp.ple.get_global_ctx",
+                        lambda: SimpleNamespace(linear_state_pool=pool))
+    ple = Qwen4PLE.__new__(Qwen4PLE)
+    ple.layer_id, ple.width, ple.state_len, ple.dilation = 0, 2, state_len, 1
+    ple.conv1d = SimpleNamespace(weight=torch.ones(2, 1, state_len + 1))
+    x = torch.arange(8, dtype=torch.float32).view(4, 2) + 20
+    batch = SimpleNamespace(is_verify=True, cache_verify_states=True,
+        padded_reqs=[SimpleNamespace()],
+        fla_metadata=SimpleNamespace(cache_indices=torch.tensor([1], dtype=torch.int32)))
+    ple._conv(x, batch)
+    pool.verify_recurrent_states.zero_()
+    pool.verify_conv_inputs.zero_()
+    pool.commit_verify_prefix(2, 1, accepted_inputs)
+    expected = torch.cat((before, x[:accepted_inputs].T), -1)[:, -state_len:]
+    torch.testing.assert_close(states[1], expected, rtol=0, atol=0)
+    torch.testing.assert_close(states[2], before, rtol=0, atol=0)
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
+@pytest.mark.parametrize("accepted_inputs", [1, 2, 3, 4])
+def test_qwen4_gdn_verify_prefix_matches_replay(monkeypatch, accepted_inputs):
+    from sparklab.models.qwen3_5_moe import gdn as module
+    from sparklab.runtime.kvcache.linear_state_pool import LinearStatePool
+    from sparklab.runtime.distributed import info
+
+    monkeypatch.setattr(info, "_TP_INFO", info.DistributedInfo(0, 1))
+
+    torch.manual_seed(97)
+    config = parse_config(_config())
+    from dataclasses import replace
+    group = replace(config.linear_attention_group(), layer_ids=(0,))
+    previous = torch.get_default_dtype()
+    try:
+        torch.set_default_dtype(torch.bfloat16)
+        block = module.Qwen3_5GatedDeltaNet(config.hidden_size, group.num_key_heads,
+            group.num_value_heads, group.key_head_dim, group.value_head_dim,
+            group.conv_kernel_dim, config.rms_norm_eps, 0)
+    finally:
+        torch.set_default_dtype(previous)
+    block.load_state_dict({name: torch.randn_like(value, device="cuda") * 0.05
+                          for name, value in block.state_dict().items()})
+    pool = LinearStatePool(group, 3, torch.bfloat16, torch.device("cuda"), tp_size=1)
+    pool.enable_verify_transactions(4)
+    pool.conv_states.normal_(std=0.1)
+    pool.recurrent_states.normal_(std=0.1)
+    pool.copy_from(1, 2)
+    context = SimpleNamespace(linear_state_pool=pool)
+    monkeypatch.setattr(module, "get_global_ctx", lambda: context)
+    hidden = torch.randn(5, config.hidden_size, device="cuda", dtype=torch.bfloat16)
+
+    def run(x, capture=False):
+        context.batch = SimpleNamespace(is_verify=capture, is_speculative_replay=not capture,
+            cache_verify_states=capture, uses_prefill_kernels=True,
+            fla_metadata=SimpleNamespace(track_dst=None, fresh_state_indices=None,
+                cache_indices=torch.tensor([1], device="cuda", dtype=torch.int32),
+                cu_seqlens=torch.tensor([0, len(x)], device="cuda", dtype=torch.int32),
+                has_initial_state=torch.tensor([True], device="cuda")))
+        return block.forward(x)
+
+    expected_output = run(hidden[:accepted_inputs])
+    expected_conv = pool.conv_states[:, 1].clone()
+    expected_rec = pool.recurrent_states[:, 1].clone()
+    expected_next = run(hidden[4:])
+    pool.copy_from(2, 1)
+    actual = run(hidden[:4], True)
+    pool.commit_verify_prefix(2, 1, accepted_inputs)
+    torch.testing.assert_close(pool.conv_states[:, 1], expected_conv)
+    torch.testing.assert_close(pool.recurrent_states[:, 1], expected_rec, atol=1e-5, rtol=1e-4)
+    torch.testing.assert_close(actual[:accepted_inputs], expected_output)
+    torch.testing.assert_close(run(hidden[4:]), expected_next)
 
 
 def test_ple_prefill_checkpoint_includes_convolution_history(monkeypatch):

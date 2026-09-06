@@ -119,6 +119,12 @@ class _CachedRowStore:
                 self._row_cache.popitem(last=False)
         return [value for value in rows if value is not None]
 
+    def _decode_table(self, table: torch.Tensor) -> torch.Tensor:
+        scale = getattr(self, "weight_scale", 1.0)
+        if scale != 1.0:
+            return (table.float() * scale).to(torch.bfloat16)
+        return table if table.dtype == torch.bfloat16 else table.to(torch.bfloat16)
+
     def _lookup(self, ids: torch.Tensor) -> torch.Tensor:
         flat = ids.detach().to(device="cpu", dtype=torch.long).flatten()
         if flat.numel() <= 32:
@@ -129,15 +135,14 @@ class _CachedRowStore:
             payload = bytearray().join(rows)
             table = torch.frombuffer(payload, dtype=self.storage_dtype).clone()
             table = table.view(*ids.shape, self.dim)
-            return table if table.dtype == torch.bfloat16 else table.to(torch.bfloat16)
+            return self._decode_table(table)
         unique, inverse = torch.unique(flat, sorted=False, return_inverse=True)
         rows = self._lookup_rows(unique.tolist())
         if len(rows) != unique.numel():
             raise RuntimeError("Qwen4 n-gram row cache returned an incomplete lookup")
         payload = bytearray().join(rows)
         table = torch.frombuffer(payload, dtype=self.storage_dtype).clone().view(-1, self.dim)
-        if table.dtype != torch.bfloat16:
-            table = table.to(torch.bfloat16)
+        table = self._decode_table(table)
         return table.index_select(0, inverse).view(*ids.shape, self.dim)
 
     def lookup_async(self, ids: torch.Tensor) -> Future[torch.Tensor]:
@@ -153,6 +158,9 @@ class SafetensorNGramStore(_CachedRowStore):
         index_path = folder / "model.safetensors.index.json"
         with index_path.open(encoding="utf-8") as handle:
             weight_map = json.load(handle)["weight_map"]
+        from .weight import read_ngram_scale
+
+        self.weight_scale = read_ngram_scale(model_path, weight_map)
         parts: list[tuple[int, str, Path]] = []
         for name, filename in weight_map.items():
             match = _SHARD_RE.search(name)
@@ -236,6 +244,9 @@ class RawNGramStore(_CachedRowStore):
         if dtype_name not in _STORAGE_DTYPES:
             raise ValueError(f"unsupported Qwen4 FTW n-gram dtype: {dtype_name!r}")
         self.storage_dtype, item_size = _STORAGE_DTYPES[dtype_name]
+        self.weight_scale = float(manifest.get("weight_scale", 1.0))
+        if not math.isfinite(self.weight_scale) or self.weight_scale <= 0:
+            raise ValueError(f"invalid Qwen4 n-gram embedding scale: {self.weight_scale}")
         self.row_bytes = dim * item_size
         self.total_rows = int(manifest["rows"])
         if int(manifest["dim"]) != dim or int(manifest["nbytes"]) != self.total_rows * self.row_bytes:
@@ -568,6 +579,9 @@ class Qwen4PLE(BaseOP):
             # slot instead of baking the dummy Python index into the graph.
             slots = batch.fla_metadata.cache_indices.to(torch.long)
             prior = states.index_select(0, slots)[0]
+            if getattr(batch, "cache_verify_states", False):
+                inputs = pool.ensure_aux_verify_inputs(f"qwen4_ple_{self.layer_id}_conv")
+                inputs[:x.shape[0]].copy_(x)
             history = torch.cat((prior, x.T.contiguous()), -1)
             out = F.conv1d(
                 history.unsqueeze(0),

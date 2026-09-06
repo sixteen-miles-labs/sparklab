@@ -55,6 +55,7 @@ class LinearStatePool:
         self._aux_states: dict[str, torch.Tensor] = {}
         self._aux_specs: dict[str, tuple[tuple[int, ...], torch.dtype, float]] = {}
         self._verify_steps = 0
+        self._verify_aux_inputs: dict[str, torch.Tensor] = {}
         self.verify_recurrent_states: torch.Tensor | None = None
         self.verify_conv_inputs: torch.Tensor | None = None
         self.verify_state_indices: torch.Tensor | None = None
@@ -131,6 +132,28 @@ class LinearStatePool:
             self.conv_states[:, live_slot, :, history - length :].copy_(
                 self.verify_conv_inputs[:, :length].transpose(1, 2)
             )
+        for name, inputs in self._verify_aux_inputs.items():
+            states = self._aux_states[name]
+            history = states.shape[-1]
+            if length >= history:
+                states[live_slot].copy_(inputs[length - history:length].T)
+            else:
+                states[live_slot, :, :history - length].copy_(
+                    states[snapshot_slot, :, length:]
+                )
+                states[live_slot, :, history - length:].copy_(inputs[:length].T)
+
+    def ensure_aux_verify_inputs(self, name: str) -> torch.Tensor:
+        """Stable raw-input lane for a model-owned convolution's prefix commit."""
+        states = self._aux_states[name]
+        if not self._verify_steps or states.ndim != 3:
+            raise RuntimeError("auxiliary verify capture requires a convolution transaction")
+        if name not in self._verify_aux_inputs:
+            self._verify_aux_inputs[name] = torch.empty(
+                (self._verify_steps, states.shape[1]), dtype=states.dtype,
+                device=self._device,
+            )
+        return self._verify_aux_inputs[name]
 
     @property
     def num_free_slots(self) -> int:
@@ -310,7 +333,7 @@ __all__ = [
 
 
 def verify_transaction_steps(config) -> int:
-    """Width of the batch-one GDN transaction for supported speculative paths."""
+    """Width of the batch-one recurrent-state transaction for speculative paths."""
     steps = int(getattr(config, "speculative_tokens", 0) or 0)
     method = getattr(config, "speculative_method", "none")
     if method == "dflash2":
@@ -318,7 +341,8 @@ def verify_transaction_steps(config) -> int:
     if (
         steps > 0
         and method == "mtp"
-        and getattr(config.model_config, "model_type", "") in {"qwen3_5", "qwen3_5_moe"}
+        and getattr(config.model_config, "model_type", "")
+        in {"qwen3_5", "qwen3_5_moe", "glm5_next", "qwen4_exp"}
     ):
         return steps + 1  # anchor plus the proposed tokens
     return 0
@@ -347,6 +371,11 @@ def state_pool_bytes(config, num_slots: int | None = None) -> int:
     total = per_slot * slots
     steps = verify_transaction_steps(config)
     if steps:
+        if qwen is not None:
+            total += (
+                len(qwen.ple_layer_ids) * qwen.hc_count
+                * config.model_config.hidden_size * steps * config.dtype.itemsize
+            )
         total += verify_transaction_bytes(
             linear_group,
             config.tp_info.size,

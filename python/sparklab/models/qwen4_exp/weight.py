@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import struct
@@ -349,11 +350,102 @@ def _copy_range(src_fd: int, dst_fd: int, offset: int, length: int) -> None:
 def find_mtp_sidecar(model_path: str) -> str | None:
     """Return the publisher's standalone Qwen4 MTP checkpoint, if present."""
     override = os.getenv("SPARKLAB_QWEN4_MTP_PATH")
-    candidates = [override, os.path.join(model_path, _MTP_FILE)]
+    candidates = [
+        override, os.path.join(model_path, _MTP_FILE),
+        os.path.join(model_path, "model-fp8-mtp-ple.safetensors"),
+    ]
     for path in candidates:
         if path and os.path.isfile(path):
             return os.path.realpath(path)
     return None
+
+
+def read_ngram_scale(model_path: str, weight_map: dict[str, str]) -> float:
+    names = [name for name in weight_map if name.endswith(".ngram_embedding.weight_scale")]
+    if not names:
+        return 1.0
+    if len(names) != 1:
+        raise ValueError("Qwen4 expects one global n-gram embedding scale")
+    name = names[0]
+    with safetensors.safe_open(os.path.join(model_path, weight_map[name]), framework="pt") as handle:
+        tensor = handle.get_tensor(name)
+        if tensor.numel() != 1:
+            raise ValueError("Qwen4 n-gram embedding scale must be scalar")
+        scale = float(tensor.item())
+    if not math.isfinite(scale) or scale <= 0:
+        raise ValueError(f"invalid Qwen4 n-gram embedding scale: {scale}")
+    return scale
+
+
+def _copy_mtp_sidecar(source: str, destination: str) -> tuple[int, str]:
+    """Copy only MTP tensor bytes, excluding NVIDIA's combined 51-GB PLE payload."""
+    index_path = os.path.join(os.path.dirname(source), "model.safetensors.index.json")
+    if os.path.basename(source) == "model-fp8-mtp-ple.safetensors" and os.path.isfile(index_path):
+        with open(index_path, encoding="utf-8") as index:
+            weight_map = json.load(index)["weight_map"]
+        sources = sorted({filename for name, filename in weight_map.items() if name.startswith("mtp.")})
+        if len(sources) > 1:
+            selected, ranges, offset = {}, [], 0
+            for filename in sources:
+                path = os.path.join(os.path.dirname(source), filename)
+                with open(path, "rb") as src:
+                    header_size = struct.unpack("<Q", src.read(8))[0]
+                    if header_size > os.fstat(src.fileno()).st_size - 8:
+                        raise ValueError("invalid Qwen4 MTP safetensors header length")
+                    header = json.loads(src.read(header_size))
+                for name, meta in header.items():
+                    if not name.startswith("mtp.") or weight_map.get(name) != filename:
+                        continue
+                    begin, end = meta["data_offsets"]
+                    selected[name] = {**meta, "data_offsets": [offset, offset + end - begin]}
+                    ranges.append((path, 8 + header_size + begin, end - begin))
+                    offset += end - begin
+            expected = {name for name in weight_map if name.startswith("mtp.")}
+            if set(selected) != expected:
+                raise ValueError("incomplete indexed Qwen4 MTP tensors")
+            encoded = json.dumps(selected, separators=(",", ":")).encode()
+            encoded += b" " * (-len(encoded) % 8)
+            temporary = destination + ".tmp"
+            with open(temporary, "wb", buffering=0) as out:
+                out.write(struct.pack("<Q", len(encoded)))
+                out.write(encoded)
+                for path, begin, length in ranges:
+                    with open(path, "rb") as src:
+                        _copy_range(src.fileno(), out.fileno(), begin, length)
+                os.fsync(out.fileno())
+            os.replace(temporary, destination)
+            return 8 + len(encoded) + offset, "safetensors-fp8"
+    with open(source, "rb") as src:
+        header_size = struct.unpack("<Q", src.read(8))[0]
+        if header_size > os.fstat(src.fileno()).st_size - 8:
+            raise ValueError("invalid Qwen4 MTP safetensors header length")
+        header = json.loads(src.read(header_size))
+        tensors = {name: meta for name, meta in header.items() if name.startswith("mtp.")}
+        if not tensors:
+            raise ValueError("Qwen4 sidecar contains no MTP tensors")
+        fmt = (
+            "safetensors-fp8" if "mtp.layers.0.mlp.experts.0.gate_proj.weight_scale_inv" in tensors
+            else "safetensors-nvfp4"
+        )
+        if len(tensors) == len(header) - int("__metadata__" in header):
+            return _copy_file_atomic(source, destination), fmt
+        selected, offset = {}, 0
+        for name, meta in tensors.items():
+            begin, end = meta["data_offsets"]
+            selected[name] = {**meta, "data_offsets": [offset, offset + end - begin]}
+            offset += end - begin
+        encoded = json.dumps(selected, separators=(",", ":")).encode()
+        encoded += b" " * (-len(encoded) % 8)
+        temporary = destination + ".tmp"
+        with open(temporary, "wb", buffering=0) as out:
+            out.write(struct.pack("<Q", len(encoded)))
+            out.write(encoded)
+            for meta in tensors.values():
+                begin, end = meta["data_offsets"]
+                _copy_range(src.fileno(), out.fileno(), 8 + header_size + begin, end - begin)
+            os.fsync(out.fileno())
+        os.replace(temporary, destination)
+        return 8 + len(encoded) + offset, fmt
 
 
 def _copy_file_atomic(source: str, destination: str) -> int:
@@ -602,6 +694,9 @@ def copy_external_artifacts(
         "nbytes": total_bytes,
         "parts": args.split_ngram_parts,
     }
+    scale = read_ngram_scale(model_path, weight_map)
+    if scale != 1.0:
+        manifest["weight_scale"] = scale
     manifest_path = os.path.join(out_dir, _NGRAM_MANIFEST)
     temp_manifest = manifest_path + ".tmp"
     with open(temp_manifest, "w", encoding="utf-8") as handle:
@@ -611,12 +706,12 @@ def copy_external_artifacts(
     mtp_source = find_mtp_sidecar(model_path)
     if mtp_source is not None:
         mtp_file = _MTP_FILE
-        mtp_bytes = _copy_file_atomic(mtp_source, os.path.join(out_dir, mtp_file))
+        mtp_bytes, mtp_format = _copy_mtp_sidecar(mtp_source, os.path.join(out_dir, mtp_file))
         artifacts.append({
             "kind": "qwen4_mtp",
             "file": mtp_file,
             "nbytes": mtp_bytes,
-            "format": "safetensors-nvfp4",
+            "format": mtp_format,
         })
     return artifacts
 

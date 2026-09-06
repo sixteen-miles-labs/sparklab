@@ -90,7 +90,7 @@ def test_native_backend_compiles_qwen_recipe_options_in_stable_order(tmp_path):
         "--model",
         str(checkpoint),
         "--served-model-name",
-        "Inferact/Qwen3.8-Flash-Next-NVFP4",
+        "nvidia/Qwen3.8-Flash-Next-NVFP4",
         "--attention-backend",
         "qsa",
         "--moe-backend",

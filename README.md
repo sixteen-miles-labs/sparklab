@@ -114,8 +114,8 @@ a SparkLab support claim.
       <td>125B LM + 55B auxiliary / 6B active</td>
       <td>NVFP4 · FTW + MTP3</td>
       <td>Experimental</td>
-      <td align="right">30.67</td>
-      <td align="right">0.258</td>
+      <td align="right">31.97</td>
+      <td align="right">0.260</td>
       <td><a href="docs/models/qwen3.8-flash-next.md">Instructions</a></td>
     </tr>
     <tr>
@@ -132,8 +132,8 @@ a SparkLab support claim.
       <td>320B total / 18B active</td>
       <td>NVFP4 + KDA FP8 · FTW + optional MTP3</td>
       <td>Experimental</td>
-      <td align="right">7.44</td>
-      <td align="right">6.330</td>
+      <td align="right">7.77</td>
+      <td align="right">6.395</td>
       <td><a href="docs/models/glm-5.3-flash.md">Instructions</a></td>
     </tr>
     <tr>

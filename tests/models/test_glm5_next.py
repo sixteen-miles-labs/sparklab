@@ -602,6 +602,76 @@ def test_glm53_checkpoint_name_mapping_and_registry():
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
+@pytest.mark.parametrize("accepted_inputs", [1, 2, 3, 4])
+def test_kda_verify_commit_matches_prefix_and_continuation(monkeypatch, accepted_inputs):
+    from sparklab.models.glm5_next import kda as kda_module
+    from sparklab.runtime.kvcache.linear_state_pool import LinearStatePool
+
+    torch.manual_seed(29)
+    hf = _config(layers=1)
+    hf.text_config.linear_attn_config["head_dim"] = 128
+    config = parse_config(hf)
+    previous_dtype = torch.get_default_dtype()
+    try:
+        torch.set_default_dtype(torch.bfloat16)
+        block = kda_module.Glm5NextDeltaAttention(config, layer_id=0)
+    finally:
+        torch.set_default_dtype(previous_dtype)
+    block.load_state_dict({
+        name: torch.randn_like(value, device="cuda") * 0.05
+        for name, value in block.state_dict().items()
+    })
+    block.prepare_for_runtime()
+    pool = LinearStatePool(
+        config.linear_attention_group(), 4, torch.bfloat16, torch.device("cuda"),
+        tp_size=1,
+    )
+    pool.enable_verify_transactions(4)
+    live, snapshot = 1, 2
+    pool.conv_states.normal_(std=0.1)
+    pool.recurrent_states.normal_(std=0.1)
+    pool.copy_from(live, snapshot)
+    original_conv = pool.conv_states[:, live].clone()
+    original_recurrent = pool.recurrent_states[:, live].clone()
+    context = SimpleNamespace(linear_state_pool=pool)
+    monkeypatch.setattr(kda_module, "get_global_ctx", lambda: context)
+    hidden = torch.randn(5, config.hidden_size, device="cuda", dtype=torch.bfloat16)
+
+    def run(x, capture=False):
+        context.batch = SimpleNamespace(
+            is_verify=capture,
+            cache_verify_states=capture,
+            uses_prefill_kernels=True,
+            fla_metadata=SimpleNamespace(
+                track_dst=None,
+                fresh_state_indices=None,
+                cache_indices=torch.tensor([live], device="cuda", dtype=torch.int32),
+                cu_seqlens=torch.tensor([0, len(x)], device="cuda", dtype=torch.int32),
+                has_initial_state=torch.tensor([True], device="cuda"),
+            ),
+        )
+        return block.forward(x)
+
+    prefix_output = run(hidden[:accepted_inputs])
+    expected_conv = pool.conv_states[:, live].clone()
+    expected_recurrent = pool.recurrent_states[:, live].clone()
+    expected_continuation = run(hidden[4:])
+
+    pool.copy_from(snapshot, live)
+    verified = run(hidden[:4], capture=True)
+    # Verification leaves recurrent state pending until the engine chooses a boundary.
+    torch.testing.assert_close(pool.recurrent_states[:, live], original_recurrent)
+    pool.commit_verify_prefix(snapshot, live, accepted_inputs)
+    # Prefix replay uses a smaller GEMM shape; allow BF16 projection rounding.
+    torch.testing.assert_close(pool.conv_states[:, live], expected_conv)
+    torch.testing.assert_close(pool.recurrent_states[:, live], expected_recurrent)
+    torch.testing.assert_close(verified[:accepted_inputs], prefix_output)
+    torch.testing.assert_close(run(hidden[4:]), expected_continuation)
+    torch.testing.assert_close(pool.conv_states[:, snapshot], original_conv, atol=0, rtol=0)
+    torch.testing.assert_close(pool.recurrent_states[:, snapshot], original_recurrent)
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 def test_glm53_per_head_kda_kernel_matches_reference_and_continuation():
     from sparklab.kernels.fla import fused_sigmoid_gating_delta_rule_update
 
@@ -615,7 +685,7 @@ def test_glm53_per_head_kda_kernel_matches_reference_and_continuation():
     a_log = torch.randn(heads, device="cuda")
     dt_bias = torch.randn(heads * dim, device="cuda")
 
-    def run(q_part, k_part, v_part, a_part, b_part, state):
+    def run(q_part, k_part, v_part, a_part, b_part, state, **verify_options):
         n = q_part.shape[1]
         return fused_sigmoid_gating_delta_rule_update(
             A_log=a_log,
@@ -635,6 +705,7 @@ def test_glm53_per_head_kda_kernel_matches_reference_and_continuation():
             is_kda=True,
             kda_a_log_per_head=True,
             lower_bound=-5.0,
+            **verify_options,
         )
 
     whole_state = torch.zeros(1, heads, dim, dim, device="cuda")
@@ -643,6 +714,31 @@ def test_glm53_per_head_kda_kernel_matches_reference_and_continuation():
     first = run(q[:, :2], k[:, :2], v[:, :2], a[:2], beta_logits[:2], split_state)
     second = run(q[:, 2:], k[:, 2:], v[:, 2:], a[2:], beta_logits[2:], split_state)
     torch.testing.assert_close(torch.cat((first, second), dim=1), whole, atol=0, rtol=0)
+
+    # With identical projected inputs, every captured boundary must be exactly
+    # equal to a standalone prefix recurrence, including a shortened verify batch.
+    pending_state = torch.zeros_like(whole_state)
+    intermediates = torch.full(
+        (1, steps + 2, heads, dim, dim), float("nan"), device="cuda"
+    )
+    captured = run(
+        q, k, v, a, beta_logits, pending_state,
+        disable_state_update=True,
+        intermediate_states_buffer=intermediates,
+        intermediate_state_indices=torch.tensor([0], device="cuda", dtype=torch.int32),
+    )
+    torch.testing.assert_close(captured, whole, atol=0, rtol=0)
+    assert torch.count_nonzero(pending_state) == 0
+    assert intermediates[:, steps:].isnan().all()
+    for length in range(1, steps + 1):
+        prefix_state = torch.zeros_like(whole_state)
+        run(
+            q[:, :length], k[:, :length], v[:, :length], a[:length],
+            beta_logits[:length], prefix_state,
+        )
+        torch.testing.assert_close(
+            intermediates[:, length - 1], prefix_state, atol=0, rtol=0
+        )
 
     # Independent explicit recurrence: A_log is one scalar per head and broadcasts
     # over that head's 128 (reduced to 8 here) key coordinates.
