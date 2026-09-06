@@ -13,6 +13,8 @@ PROMPTS = {
     "math": "Find the sum of all integer bases b > 9 for which 17_b is a divisor of 97_b. Explain your reasoning and put the final answer in \\boxed{}.",
     "code": "Implement a Python LRU cache using a doubly linked list and a dictionary. Include get and put methods, a capacity check, and tests covering updates, eviction, and capacity one. Explain the invariants.",
     "prose": "Explain how ocean navigation developed from coastal landmarks to celestial navigation and modern satellite systems. Write continuous prose with concrete examples of the limitations of each approach.",
+    "hashmap": "Write a detailed step-by-step explanation of how a hash map works, including collision handling, resizing, and time complexity. Be thorough.",
+    "chinese": "请用中文详细解释哈希表的工作原理，包括哈希冲突、扩容、负载因子以及时间复杂度，并给出具体例子。",
 }
 
 def generate(base_url, prompt, tokens, thinking, model="qwen3.8-27b"):
@@ -67,7 +69,7 @@ def main():
 
         PROMPTS["aime"], _ = load_problem(None, 0)
     if any(name not in PROMPTS for name in workloads):
-        p.error("--workloads must contain math, code, prose, or aime")
+        p.error("--workloads must contain math, code, prose, hashmap, chinese, or aime")
     report = {"label": args.label, "model": args.model, "tokens": args.tokens,
               "thinking": args.thinking, "workloads": {}}
     args.output.parent.mkdir(parents=True, exist_ok=True)

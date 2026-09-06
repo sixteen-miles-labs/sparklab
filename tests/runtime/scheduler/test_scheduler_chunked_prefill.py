@@ -14,6 +14,7 @@ prompt is inserted once when the final (non-chunked) chunk is processed.
 
 from __future__ import annotations
 
+import pytest
 import torch
 
 CHUNK = 8
@@ -150,3 +151,51 @@ def test_batched_prefill_carries_each_new_prompt_admission():
     batch = pm.schedule_next_batch(16)
     assert batch is not None
     assert batch.prompt_admissions == [(1, 3, 0), (2, 5, 0)]
+
+
+@pytest.mark.parametrize("page_size", [1, 16])
+@pytest.mark.parametrize("lookahead", [1, 3, 4])
+@pytest.mark.parametrize("cache_type", ["radix", "hybrid_radix"])
+@pytest.mark.parametrize("abort_after", [None, 1, 2])
+def test_chunked_prefill_retains_speculative_allocation_watermark(
+    page_size, lookahead, cache_type, abort_after,
+):
+    from sparklab.core import SamplingParams
+    from sparklab.runtime.scheduler.cache import CacheManager
+    from sparklab.runtime.scheduler.decode import DecodeManager
+    from sparklab.runtime.scheduler.prefill import PrefillManager
+    from sparklab.runtime.scheduler.table import TableManager
+    from sparklab.runtime.scheduler.utils import PendingReq
+    from tests.runtime.scheduler.test_hybrid_cache_manager import _pool
+
+    _setup_context()
+    pt = torch.zeros((4, 128), dtype=torch.int32)
+    pool = _pool() if cache_type == "hybrid_radix" else None
+    cm = CacheManager(128, page_size, pt, cache_type, linear_state_pool=pool)
+    tm = TableManager(max_running_reqs=4, page_table=pt)
+    pm = PrefillManager(cm, tm, DecodeManager(page_size=page_size))
+    pm.pending_list = [PendingReq(
+        UID, torch.arange(48, dtype=torch.int32), SamplingParams(max_tokens=8),
+    )]
+    prior_allocated = 0
+    chunks = 0
+    while pm.runnable:
+        batch = pm.schedule_next_batch(16)
+        req = batch.reqs[0]
+        assert req.allocated_len == prior_allocated
+        # Same lookahead reservation as Scheduler._prepare_batch. The next
+        # ChunkedReq must inherit it even though target cached_len is shorter.
+        actual = req.device_len
+        req.device_len += lookahead
+        cm.allocate_paged([req])
+        prior_allocated = req.allocated_len
+        req.device_len = actual
+        req.complete_one()
+        chunks += 1
+        if chunks == abort_after:
+            assert pm.abort_req(UID) is req
+            break
+
+    cm.cache_req(req, finished=True)
+    tm.free(req.table_idx)
+    cm.check_integrity()

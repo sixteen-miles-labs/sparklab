@@ -237,6 +237,19 @@ class LinearStatePool:
         for state in self._aux_states.values():
             state[dst].copy_(state[src])
 
+    def snapshot_verify_inputs(self, src: int, dst: int) -> None:
+        """Save convolution history for a transactional prefix commit only.
+
+        Transactional GDN verification does not overwrite the live recurrent
+        state. Its commit reads verify_recurrent_states, never the snapshot's
+        recurrent lane. This is NOT a whole-state snapshot for replay or COW.
+        """
+        if not self._verify_steps:
+            raise RuntimeError("light verify snapshots require prefix transactions")
+        self.conv_states[:, dst].copy_(self.conv_states[:, src])
+        for state in self._aux_states.values():
+            state[dst].copy_(state[src])
+
     def ensure_aux_state(
         self, name: str, shape: tuple[int, ...], dtype: torch.dtype, *, fill: float = 0.0
     ) -> torch.Tensor:

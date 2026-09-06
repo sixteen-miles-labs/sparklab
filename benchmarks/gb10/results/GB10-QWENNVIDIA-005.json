@@ -1,0 +1,798 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWENNVIDIA-005",
+  "status": "measured",
+  "platform": {
+    "device": "NVIDIA GB10",
+    "memory_gib": 128,
+    "machine": "aarch64",
+    "cuda": "13.0",
+    "driver": "580.126.09"
+  },
+  "engine": {
+    "name": "SparkLab",
+    "revision": "80acbe5aee9548a6dae9f244dfa6d851f61fab42",
+    "git_tracked_dirty": true,
+    "kernel_cache_version_check_disabled": true,
+    "note": "Isolated development worktree. Existing pinned/radix extensions reused with source/cache version check bypass; not clean-revision certification."
+  },
+  "model": {
+    "repository": "nvidia/Qwen3.8-Flash-Next-NVFP4",
+    "revision": "fab0aecb760cec45227f6656abcaafa11abca87a",
+    "checkpoint_format": "ftw-nvfp4 + native FP8 MTP/PLE",
+    "fingerprint": "94e1ee0daa442357",
+    "payload_bytes": 131931279080,
+    "runtime_target_projection_storage": "per-row FP8 W8A16; checkpoint bytes, target LM head and embeddings unchanged"
+  },
+  "workload": {
+    "date": "2026-09-06",
+    "concurrency": 1,
+    "trials_per_workload": 5,
+    "warmups_per_workload": 1,
+    "order": [
+      "aime",
+      "hashmap",
+      "code",
+      "chinese"
+    ],
+    "sampling": "temperature=0, ignore_eos=true for fixed-length speed only; thinking on only for aime",
+    "metric": "(completion_tokens - 1) / (last content chunk time - first content chunk time)",
+    "configuration": {
+      "speculative_method": "mtp",
+      "speculative_tokens": 3,
+      "draft_vocabulary": "full, 248320 tokens",
+      "target_resident_projections": "fp8",
+      "qsa_kv": "bf16",
+      "gdn_recurrent_state": "float32",
+      "expert_preload": 24576,
+      "nvfp4_backend": "triton",
+      "kv_token_capacity": 131072,
+      "max_seq_len_override": 8792,
+      "page_size": 16,
+      "cache_type": "radix resolves hybrid_radix",
+      "host_cache_gb": 0,
+      "prefill_overlap": false
+    },
+    "comparison_boundary": "Same NVIDIA checkpoint, MTP3, full draft vocabulary, proposal-only FP8 head, immediate redraft and light snapshots; target resident projection storage changes from BF16 to FP8. All requests C1. No runtime model/test contention during timed requests."
+  },
+  "metrics": {
+    "comparison_result": "GB10-QWENNVIDIA-004",
+    "comparison_profile": "candidate-fp8-light",
+    "comparison_workloads": {
+      "aime": {
+        "decode_tok_s_median": 42.13908026419058,
+        "ttft_seconds_median": 0.24402077100239694
+      },
+      "hashmap": {
+        "decode_tok_s_median": 34.2068268816413,
+        "ttft_seconds_median": 0.24692775402218103
+      },
+      "code": {
+        "decode_tok_s_median": 38.64305771006826,
+        "ttft_seconds_median": 0.2796721800114028
+      },
+      "chinese": {
+        "decode_tok_s_median": 36.18014089792002,
+        "ttft_seconds_median": 0.2352549889474176
+      }
+    },
+    "candidate": {
+      "environment": {
+        "SPARKLAB_QWEN4_FAST_QSA_METADATA": "0",
+        "SPARKLAB_QWEN4_DRAFT_HEAD": "fp8",
+        "SPARKLAB_QWEN4_LIGHT_VERIFY_SNAPSHOT": "1",
+        "SPARKLAB_QWEN4_DRAFT_VOCAB_SIZE": "0",
+        "SPARKLAB_QWEN4_MTP4": "0",
+        "SPARKLAB_QWEN4_REJECT_DRAFT": "1",
+        "SPARKLAB_DISABLE_KERNEL_CACHE_VERSION_CHECK": "1"
+      },
+      "server_argv": [
+        "$HOME/projects/freetoken/.venv/bin/python",
+        "-m",
+        "sparklab.cli",
+        "serve",
+        "--model",
+        "$HOME/models/qwen38-nvidia/prepared/fab0aecb760c",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "1938",
+        "--moe-backend",
+        "offload",
+        "--nvfp4-backend",
+        "triton",
+        "--moe-storage",
+        "disk",
+        "--moe-host-cache-gb",
+        "0.0",
+        "--max-running-requests",
+        "1",
+        "--max-seq-len-override",
+        "8792",
+        "--attention-backend",
+        "qsa",
+        "--page-size",
+        "16",
+        "--cache-type",
+        "radix",
+        "--memory-ratio",
+        "0.9",
+        "--cuda-graph-max-bs",
+        "1",
+        "--moe-hybrid-max-fetch",
+        "-1",
+        "--moe-cache-policy",
+        "lru",
+        "--speculative-method",
+        "mtp",
+        "--speculative-tokens",
+        "3",
+        "--draft-sample-method",
+        "greedy",
+        "--dspark-confidence-threshold",
+        "0.0",
+        "--dspark-draft-cache-slots",
+        "0",
+        "--dspark-draft-cache-quotas",
+        "",
+        "--dsv4-kv-storage",
+        "bf16",
+        "--dsv4-index-storage",
+        "bf16",
+        "--qwen4-dense-storage",
+        "fp8",
+        "--num-tokens",
+        "131072",
+        "--disable-moe-prefill-overlap",
+        "--moe-preload-all",
+        "--moe-collect-stats",
+        "--moe-cache-size",
+        "24576"
+      ],
+      "workloads": {
+        "aime": {
+          "prompt": "Find the sum of all integer bases $b>9$ for which $17_b$ is a divisor of $97_b.$\nPlease reason step by step, and put your final answer within \\boxed{}.",
+          "thinking": true,
+          "trials": [
+            {
+              "decode_tokens_per_second": 35.92282362514978,
+              "ttft_seconds": 0.2559185459977016,
+              "elapsed_seconds": 3.7921121370163746,
+              "usage": {
+                "prompt_tokens": 96,
+                "completion_tokens": 128,
+                "total_tokens": 224
+              },
+              "output_sha256": "07779a4d1fe443e33fe628449169fe549341c71ceb90cc5e41063ccb3dacb66b"
+            },
+            {
+              "decode_tokens_per_second": 36.159051308960294,
+              "ttft_seconds": 0.23771257302723825,
+              "elapsed_seconds": 3.7508730760309845,
+              "usage": {
+                "prompt_tokens": 96,
+                "completion_tokens": 128,
+                "total_tokens": 224
+              },
+              "output_sha256": "07779a4d1fe443e33fe628449169fe549341c71ceb90cc5e41063ccb3dacb66b"
+            },
+            {
+              "decode_tokens_per_second": 36.22409820205944,
+              "ttft_seconds": 0.23714513197774068,
+              "elapsed_seconds": 3.744103538978379,
+              "usage": {
+                "prompt_tokens": 96,
+                "completion_tokens": 128,
+                "total_tokens": 224
+              },
+              "output_sha256": "07779a4d1fe443e33fe628449169fe549341c71ceb90cc5e41063ccb3dacb66b"
+            },
+            {
+              "decode_tokens_per_second": 36.20265885957405,
+              "ttft_seconds": 0.23821808496722952,
+              "elapsed_seconds": 3.747044104966335,
+              "usage": {
+                "prompt_tokens": 96,
+                "completion_tokens": 128,
+                "total_tokens": 224
+              },
+              "output_sha256": "07779a4d1fe443e33fe628449169fe549341c71ceb90cc5e41063ccb3dacb66b"
+            },
+            {
+              "decode_tokens_per_second": 36.273849192432245,
+              "ttft_seconds": 0.23688835196662694,
+              "elapsed_seconds": 3.738698158005718,
+              "usage": {
+                "prompt_tokens": 96,
+                "completion_tokens": 128,
+                "total_tokens": 224
+              },
+              "output_sha256": "07779a4d1fe443e33fe628449169fe549341c71ceb90cc5e41063ccb3dacb66b"
+            }
+          ],
+          "decode_tok_s_median": 36.20265885957405,
+          "ttft_seconds_median": 0.23771257302723825
+        },
+        "hashmap": {
+          "prompt": "Write a detailed step-by-step explanation of how a hash map works, including collision handling, resizing, and time complexity. Be thorough.",
+          "thinking": false,
+          "trials": [
+            {
+              "decode_tokens_per_second": 33.408700802298256,
+              "ttft_seconds": 0.24469423398841172,
+              "elapsed_seconds": 18.175175232987385,
+              "usage": {
+                "prompt_tokens": 39,
+                "completion_tokens": 600,
+                "total_tokens": 639
+              },
+              "output_sha256": "fee87043573c8e8d0fb0850fba3ecd293606dfbb8808a9aaead118194dac6cc5"
+            },
+            {
+              "decode_tokens_per_second": 36.100835750942316,
+              "ttft_seconds": 0.2478807430015877,
+              "elapsed_seconds": 16.841459218994714,
+              "usage": {
+                "prompt_tokens": 39,
+                "completion_tokens": 600,
+                "total_tokens": 639
+              },
+              "output_sha256": "73e8bc6c4db438171323f6abdb1316552ac84112135134cc0316bb809b71443d"
+            },
+            {
+              "decode_tokens_per_second": 34.02602610675266,
+              "ttft_seconds": 0.24570678803138435,
+              "elapsed_seconds": 17.85077614604961,
+              "usage": {
+                "prompt_tokens": 39,
+                "completion_tokens": 600,
+                "total_tokens": 639
+              },
+              "output_sha256": "e002c82a74ec8f447ec118849db73596b1ca927b4c4b7e27b3108ee95934a384"
+            },
+            {
+              "decode_tokens_per_second": 35.12492960317594,
+              "ttft_seconds": 0.244581623992417,
+              "elapsed_seconds": 17.298287131008692,
+              "usage": {
+                "prompt_tokens": 39,
+                "completion_tokens": 600,
+                "total_tokens": 639
+              },
+              "output_sha256": "4613a19340174ac73798eb57fcd40b467ca8a43d9cec4d3cc74686ce3c646ec5"
+            },
+            {
+              "decode_tokens_per_second": 33.216603994581604,
+              "ttft_seconds": 0.2489714359981008,
+              "elapsed_seconds": 18.283005627978127,
+              "usage": {
+                "prompt_tokens": 39,
+                "completion_tokens": 600,
+                "total_tokens": 639
+              },
+              "output_sha256": "f86fdb64314aa92c0c9beb6d541f19d6f7e8969e4df545ef73841be8e9781a92"
+            }
+          ],
+          "decode_tok_s_median": 34.02602610675266,
+          "ttft_seconds_median": 0.24570678803138435
+        },
+        "code": {
+          "prompt": "Implement a Python LRU cache using a doubly linked list and a dictionary. Include get and put methods, a capacity check, and tests covering updates, eviction, and capacity one. Explain the invariants.",
+          "thinking": false,
+          "trials": [
+            {
+              "decode_tokens_per_second": 36.00101557391889,
+              "ttft_seconds": 0.2766616510343738,
+              "elapsed_seconds": 14.471294704009779,
+              "usage": {
+                "prompt_tokens": 53,
+                "completion_tokens": 512,
+                "total_tokens": 565
+              },
+              "output_sha256": "aedeb9e26e361dd349e7d1703211cfa0f475ff581ddbed3ffe733da72a9c377a"
+            },
+            {
+              "decode_tokens_per_second": 38.595318655434845,
+              "ttft_seconds": 0.2793938199756667,
+              "elapsed_seconds": 13.520039767958224,
+              "usage": {
+                "prompt_tokens": 53,
+                "completion_tokens": 512,
+                "total_tokens": 565
+              },
+              "output_sha256": "1a68e291186419a315ee9d5b93ef29c56340ede9439fb586b8818d68a18456b1"
+            },
+            {
+              "decode_tokens_per_second": 38.8246565498166,
+              "ttft_seconds": 0.27997243899153545,
+              "elapsed_seconds": 13.442729717004113,
+              "usage": {
+                "prompt_tokens": 53,
+                "completion_tokens": 512,
+                "total_tokens": 565
+              },
+              "output_sha256": "080893b9326c24a1ddf1c40f7c65cbade2c1de9dd369014a0439aeacdc2ee9a9"
+            },
+            {
+              "decode_tokens_per_second": 38.77682343527308,
+              "ttft_seconds": 0.27505723299691454,
+              "elapsed_seconds": 13.453758368035778,
+              "usage": {
+                "prompt_tokens": 53,
+                "completion_tokens": 512,
+                "total_tokens": 565
+              },
+              "output_sha256": "bbc355f0b44e256a671af20112fd665990621486e8614e810e9757e7f98987ad"
+            },
+            {
+              "decode_tokens_per_second": 39.365657435779326,
+              "ttft_seconds": 0.276534239994362,
+              "elapsed_seconds": 13.257908520987257,
+              "usage": {
+                "prompt_tokens": 53,
+                "completion_tokens": 512,
+                "total_tokens": 565
+              },
+              "output_sha256": "080893b9326c24a1ddf1c40f7c65cbade2c1de9dd369014a0439aeacdc2ee9a9"
+            }
+          ],
+          "decode_tok_s_median": 38.77682343527308,
+          "ttft_seconds_median": 0.2766616510343738
+        },
+        "chinese": {
+          "prompt": "请用中文详细解释哈希表的工作原理，包括哈希冲突、扩容、负载因子以及时间复杂度，并给出具体例子。",
+          "thinking": false,
+          "trials": [
+            {
+              "decode_tokens_per_second": 32.68374708829222,
+              "ttft_seconds": 0.23766940698260441,
+              "elapsed_seconds": 18.565933261008468,
+              "usage": {
+                "prompt_tokens": 37,
+                "completion_tokens": 600,
+                "total_tokens": 637
+              },
+              "output_sha256": "5146c3b3a574b7554308113fd0db9ab9d780a606dace294a7a45a4d248f3df2c"
+            },
+            {
+              "decode_tokens_per_second": 31.668355611387092,
+              "ttft_seconds": 0.2310320459655486,
+              "elapsed_seconds": 19.14612703601597,
+              "usage": {
+                "prompt_tokens": 37,
+                "completion_tokens": 600,
+                "total_tokens": 637
+              },
+              "output_sha256": "19396efb9633fb6312fca7c7846f43db070193fc7686e5d9ce9188017d6b1fda"
+            },
+            {
+              "decode_tokens_per_second": 32.393717945448614,
+              "ttft_seconds": 0.23573320196010172,
+              "elapsed_seconds": 18.72729069000343,
+              "usage": {
+                "prompt_tokens": 37,
+                "completion_tokens": 600,
+                "total_tokens": 637
+              },
+              "output_sha256": "d58d4f95f6a6d4613747d391b6f35df10c555e5dafd91b6e54174b34ef7cfd1c"
+            },
+            {
+              "decode_tokens_per_second": 33.577561458725945,
+              "ttft_seconds": 0.23430220899172127,
+              "elapsed_seconds": 18.073914777021855,
+              "usage": {
+                "prompt_tokens": 37,
+                "completion_tokens": 600,
+                "total_tokens": 637
+              },
+              "output_sha256": "ed8ebca929dfb0c356af8dd69740de5d71473f9d361cef2d55d8e7d28355e5d5"
+            },
+            {
+              "decode_tokens_per_second": 35.366513928430464,
+              "ttft_seconds": 0.22974937001708895,
+              "elapsed_seconds": 17.166923440003302,
+              "usage": {
+                "prompt_tokens": 37,
+                "completion_tokens": 600,
+                "total_tokens": 637
+              },
+              "output_sha256": "499f7189549a8f9d8fa266a6b45a0e4bcda03883dd08e033c8aa2fccdddf9682"
+            }
+          ],
+          "decode_tok_s_median": 32.68374708829222,
+          "ttft_seconds_median": 0.23430220899172127
+        }
+      },
+      "telemetry": {
+        "samples": 466,
+        "duration_s": 485.5452551409835,
+        "swap_start_bytes": 716414976,
+        "memory_guard_gib": 12,
+        "memory_guard_triggered": false,
+        "swap_end_bytes": 715534336,
+        "swap_growth_bytes": 0,
+        "cgroup": {
+          "start": {
+            "swap_max": "max",
+            "swap_current_bytes": 53387264,
+            "swap_peak_bytes": 2587770880,
+            "oom_kill": 0
+          },
+          "end": {
+            "swap_max": "max",
+            "swap_current_bytes": 52506624,
+            "swap_peak_bytes": 2587770880,
+            "oom_kill": 0
+          },
+          "delta": {
+            "oom_kill": 0,
+            "swap_current_bytes": -880640
+          }
+        },
+        "power_w_avg": 42.9581974248927,
+        "power_w_peak": 68.64,
+        "temperature_c_peak": 69,
+        "utilization_pct_avg": 78.66094420600858,
+        "request_energy_j_est": 20858.14892906627,
+        "mem_available_gib_min": 32.32687759399414,
+        "nvme_temperature_c_peak": 55.85,
+        "swap_in_pages_delta": 260,
+        "swap_out_pages_delta": 0,
+        "page_faults_delta": 25831303,
+        "major_faults_delta": 355,
+        "oom_kill_delta": 0
+      }
+    },
+    "change_percent_vs_accepted_fast_profile": {
+      "aime": -14.087686222381201,
+      "hashmap": -0.5285517289113861,
+      "code": 0.3461571964838761,
+      "chinese": -9.66384796425379
+    }
+  },
+  "validation": {
+    "status": "complete_speed_smoke_lifecycle_screen",
+    "recommendation": "Not selected for speed. Math and Chinese are materially slower; prose and code are nearly unchanged. Keep the BF16 target projections with the accepted candidate-fp8-light profile.",
+    "quality_budget": {
+      "provisional": true,
+      "date": "2026-09-06",
+      "reference_passed": 94,
+      "minimum_subset_passed": 92,
+      "total": 100,
+      "scope": "Provisional budget on the existing fixed EN/ZH MGSM subset only, not a bound on general-task accuracy loss.",
+      "original_profile_retained": true
+    },
+    "mgsm": "Not run: speed screen does not justify a full MGSM evaluation for recommendation. The accepted profile's 92/100 score must not be assigned to this target-FP8 candidate.",
+    "smoke": {
+      "strict_passed": 41,
+      "answer_correct": 42,
+      "total": 52,
+      "accepted_fast_profile_strict_passed": 42,
+      "accepted_fast_profile_answer_correct": 43,
+      "new_answer_regressions_vs_accepted_fast_profile": [
+        "remainder-4"
+      ],
+      "cases": [
+        {
+          "name": "multiply-0",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-1",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-2",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-3",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-4",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-5",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-6",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-7",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-8",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-9",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-10",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-11",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-12",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-13",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-14",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-15",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-16",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-17",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-18",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-19",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-20",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-21",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-22",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "multiply-23",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "remainder-0",
+          "passed": false,
+          "answer_correct": false
+        },
+        {
+          "name": "remainder-1",
+          "passed": false,
+          "answer_correct": false
+        },
+        {
+          "name": "remainder-2",
+          "passed": false,
+          "answer_correct": false
+        },
+        {
+          "name": "remainder-3",
+          "passed": false,
+          "answer_correct": false
+        },
+        {
+          "name": "remainder-4",
+          "passed": false,
+          "answer_correct": false
+        },
+        {
+          "name": "remainder-5",
+          "passed": false,
+          "answer_correct": false
+        },
+        {
+          "name": "remainder-6",
+          "passed": false,
+          "answer_correct": true
+        },
+        {
+          "name": "remainder-7",
+          "passed": false,
+          "answer_correct": false
+        },
+        {
+          "name": "remainder-8",
+          "passed": false,
+          "answer_correct": false
+        },
+        {
+          "name": "remainder-9",
+          "passed": false,
+          "answer_correct": false
+        },
+        {
+          "name": "remainder-10",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "remainder-11",
+          "passed": false,
+          "answer_correct": false
+        },
+        {
+          "name": "recall-0",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "recall-1",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "recall-2",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "recall-3",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "recall-4",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "recall-5",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "recall-6",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "recall-7",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "json-0",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "json-1",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "json-2",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "json-3",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "json-4",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "json-5",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "json-6",
+          "passed": true,
+          "answer_correct": true
+        },
+        {
+          "name": "json-7",
+          "passed": true,
+          "answer_correct": true
+        }
+      ]
+    },
+    "lifecycle": {
+      "passed": 15,
+      "total": 15
+    },
+    "checkpoint_bytes_requantized": false,
+    "target_precision_changed": true,
+    "target_lm_head_storage": "bf16",
+    "target_embedding_storage": "bf16",
+    "default_changed": false,
+    "portfolio_metrics_changed": false,
+    "math_output_hash_parity": false,
+    "tests": {
+      "cpu_passed": 1602,
+      "cpu_skipped": 81,
+      "gpu_gdn_prefix_vs_replay_passed": 18,
+      "gpu_qsa_metadata_bitwise_passed": 33,
+      "new_file_ruff": "passed",
+      "git_diff_check": "passed"
+    },
+    "shutdown_warning": "multiprocessing resource_tracker reported four semaphore objects for cleanup; no cache-integrity assertion or CUDA/OOM error observed.",
+    "limits": [
+      "Five-trial medians on four fixed C1 workloads; not a general task-throughput benchmark.",
+      "No MGSM, extended, long-context or full endurance certification for this unselected candidate.",
+      "The fixed 100-case subset quality budget applies to evaluated profiles, not arbitrary FP8 configurations."
+    ]
+  },
+  "source": {
+    "summary": "Bounded screen of existing --qwen4-dense-storage fp8 under a provisional two-point fixed-subset quality budget; candidate not selected.",
+    "public_copy_note": "Machine-specific home directories in server_argv are replaced by $HOME. Raw artifact hashes refer to the original local evidence, not this portable public summary.",
+    "raw_artifact": "$HOME/results/qwen38-quality-opt/",
+    "source_manifest": "relaxed-fp8-dense-screen-source.json",
+    "source_manifest_sha256": "cbcc8a50e2d0f64617790099ec626f433abf18e48b8cb8ec3e631174959b5d8f",
+    "source_diff_sha256": "35eea6d9c6b348e47a3e391dffe0de59118205a28981d01f814791230f30dd9f",
+    "source_files_sha256": {
+      "python/sparklab/models/qwen4_exp/model.py": "93355037407d08ed72f11465277cc77dba4424b06936423adef3635e23c7e0b5",
+      "python/sparklab/runtime/engine/engine.py": "5c72fafb4b72b1874693dd10b8aa805a88e7ffe76f4e7d35b83e1a3e1dfdadce",
+      "python/sparklab/runtime/scheduler/prefill.py": "d320bda8e21dbc17cf890da731a38d2b61cbc65e03f0a03b3ca9ea1d97f4bad2",
+      "python/sparklab/runtime/kvcache/linear_state_pool.py": "8775d9a5d22b15e2678f212f354731914d3b66a0e24108af3a97a140ae419c6b",
+      "python/sparklab/attention/qsa.py": "60d9211ef374df2fbf641e89bb3df2d8113de33f4710ef120dc0fc3a680e67ea",
+      "benchmarks/quality/qwen4_regression.py": "306995df56e55b5bd6e6c1a9a70cce27fff2256e1d98df62dee083c4a5aeb262",
+      "benchmarks/bench_single_stream.py": "b9f62626e92b43e53b8f6bf955b73bcebbd1013818086490210f54f0dda4a50c",
+      "tests/models/test_qwen4_exp.py": "02f5ee4a2726c9aa29015f635257e02da0977d9e05ef572167493477fd823005",
+      "tests/models/test_qwen4_qsa_metadata.py": "2b5ebd5f252f907ee27c7ecc58b3d0bd985ef83b8f6b1813c229d28a7f639635",
+      "tests/models/test_qwen4_reject_draft.py": "dbc6d2f47901c8bd354074071371301defc6d45d07814472d8376ec302ea8ca1",
+      "python/sparklab/kernels/triton/qwen4_skinny.py": "938762a5aa40cb4810004bef589502eb1cc3f57428258d6ce51e98e4953c507c",
+      "python/sparklab/models/qwen4_exp/weight.py": "6726f6fba919a5784c878935b23f077e33c1f85c6b827ca7e993b595eda7dabf",
+      "python/sparklab/models/qwen4_exp/attention.py": "02c8c5b449abc9fc24cf6e5a59158cc7655616b86077f659369565d62afb3f12",
+      "python/sparklab/models/qwen4_exp/hyper.py": "dbb7087f6701a7164725bbefeb6d747e68d70365cfe90bf6ae032a7dc5c05629",
+      "python/sparklab/models/qwen3_5_moe/gdn.py": "86bea3c44e06587996526a81c7c60b6a32c3179cd1b1a9e05ca81c14c633983c",
+      "tests/runtime/kvcache/test_linear_state_pool_alloc.py": "578be602612d3abf0d751ebaae90b3c1c7d481d37e1687a6dcbd2dd0dff2edf4",
+      "tests/runtime/scheduler/test_scheduler_chunked_prefill.py": "243e44ef85d946a2a4b734723b85cc5b69cfc7eacfb8c85e14b0055f13da89cf"
+    },
+    "raw_artifact_sha256": {
+      "relaxed-fp8-dense-screen-lifecycle.json": "b58bc7eaae4f96959ab88dc10186925520d20f9a7d09a0ab172ba80c56d9d690",
+      "relaxed-fp8-dense-screen-quality.json": "063537ef9b973ac1d3901844e79c420c688dd556ed2375619ced9924891ef751",
+      "relaxed-fp8-dense-screen-source.json": "cbcc8a50e2d0f64617790099ec626f433abf18e48b8cb8ec3e631174959b5d8f",
+      "relaxed-fp8-dense-screen.json": "2dd29fad7f11319b3fa7d0e589000fcf818bd3aaea324949b5a13c065d7f8bc1",
+      "relaxed-fp8-dense-screen-server.log": "f96f73c8d8ca5ac34a0ee9f5605671d77facf970229fa5214726d24373cd51cb"
+    }
+  }
+}
