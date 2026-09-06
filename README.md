@@ -94,8 +94,8 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
       <td><a href="https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW">Qwen3.6-35B-A3B</a></td>
       <td>35B total / 3B active</td>
       <td>NVFP4 · FTW + optional MTP2</td>
-      <td>Target-only certified; MTP2 certification pending</td>
-      <td align="right"><a href="benchmarks/gb10/results/GB10-QWEN36-MTP-005.json">80.55</a></td>
+      <td>Experimental</td>
+      <td align="right">80.55</td>
       <td align="right">0.367</td>
       <td><a href="docs/models/qwen3.6-35b-a3b.md">Instructions</a></td>
     </tr>
@@ -104,7 +104,7 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
       <td>27B dense</td>
       <td>NVFP4 · FTW + optional DFlash2-12</td>
       <td>Experimental</td>
-      <td align="right"><a href="benchmarks/gb10/results/GB10-QWEN38-DFLASH-004.json">45.88</a></td>
+      <td align="right">45.88</td>
       <td align="right">0.152</td>
       <td><a href="docs/models/qwen3.8-27b.md">Instructions</a></td>
     </tr>
@@ -116,7 +116,7 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
       <td>125B LM + 55B auxiliary / 6B active</td>
       <td>NVFP4 · FTW + optional MTP3</td>
       <td>Experimental</td>
-      <td align="right"><a href="benchmarks/gb10/results/GB10-QWENNVIDIA-002.json">31.97</a></td>
+      <td align="right">31.97</td>
       <td align="right">0.260</td>
       <td><a href="docs/models/qwen3.8-flash-next.md">Instructions</a></td>
     </tr>
@@ -125,7 +125,7 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
       <td>284B total / 13B active</td>
       <td>DS-FP4 · FTW + optional DSpark5</td>
       <td>Preview</td>
-      <td align="right"><a href="benchmarks/gb10/results/GB10-DSV4-PREFIX-006.json">14.02</a></td>
+      <td align="right">14.02</td>
       <td align="right">0.515</td>
       <td><a href="docs/models/deepseek-v4.md">Instructions</a></td>
     </tr>
@@ -134,7 +134,7 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
       <td>320B total / 18B active</td>
       <td>NVFP4 + KDA FP8 · FTW + optional MTP3</td>
       <td>Experimental</td>
-      <td align="right"><a href="benchmarks/gb10/results/GB10-GLM53-OPT-006.json">7.77</a></td>
+      <td align="right">7.77</td>
       <td align="right">6.395</td>
       <td><a href="docs/models/glm-5.3-flash.md">Instructions</a></td>
     </tr>
@@ -146,7 +146,7 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
       <td>753B total / 40B active</td>
       <td>NVFP4 + resident FP8 · FTW</td>
       <td>Experimental</td>
-      <td align="right"><a href="benchmarks/gb10/results/GB10-GLM53-RESEARCH-001.json">0.81</a></td>
+      <td align="right">0.81</td>
       <td align="right">2.530</td>
       <td><a href="docs/models/glm-5.3.md">Instructions</a></td>
     </tr>
@@ -155,7 +155,7 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
       <td>2.8T total / 16 of 896 experts</td>
       <td>ModelOpt NVFP4/FP8 · FTW</td>
       <td>Experimental</td>
-      <td align="right"><a href="benchmarks/gb10/results/GB10-KIMI-001.json">0.16</a></td>
+      <td align="right">0.16</td>
       <td align="right">395.405</td>
       <td><a href="docs/models/kimi-k3.md">Instructions</a></td>
     </tr>
@@ -171,14 +171,17 @@ Status meanings:
   required correctness, parser, agent, context, latency, memory, NVMe, and endurance gates.
 
 Throughput is decode tokens per second; warm TTFT is time to first token in seconds.
-Values report selected single-stream probes, with configurations and validation limits
-in the linked evidence. Qwen3.6-35B-A3B, Qwen3.8-27B, Qwen3.8-Flash-Next, DeepSeek V4 Flash, and GLM-5.3
+Values report selected single-stream probes; see the
+[model evidence and caveats](docs/models.md#evidence-and-caveats) for configurations and
+validation limits. Qwen3.6-35B-A3B, Qwen3.8-27B, Qwen3.8-Flash-Next, DeepSeek V4 Flash, and GLM-5.3
 Flash report opt-in speculative profiles; target-only serving remains their default.
 Concurrent-serving measurements remain in the linked model evidence.
 
 Qwen3.6's row reports its optional MTP2 profile; full MTP certification remains pending.
 Its certified target-only profile measured
-[67.79 tok/s and 0.329 s warm TTFT](benchmarks/gb10/results/GB10-QWEN36-FAST-002.json). GLM-5.3 and Kimi K3 measurements establish
+67.79 tok/s and 0.329 s warm TTFT; see its
+[target-only evidence](benchmarks/gb10/results/GB10-QWEN36-FAST-002.json).
+GLM-5.3 and Kimi K3 measurements establish
 bounded execution; answer correctness remains unproven.
 
 Run `sparklab models --json` for exact recipe versions, checkpoint revisions, artifact
