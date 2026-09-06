@@ -170,20 +170,6 @@ Status meanings:
 - **Certified:** the exact recipe, revision, artifact, and release environment passed all
   required correctness, parser, agent, context, latency, memory, NVMe, and endurance gates.
 
-Throughput is decode tokens per second; warm TTFT is time to first token in seconds.
-Values report selected single-stream probes; see the
-[model evidence and caveats](docs/models.md#evidence-and-caveats) for configurations and
-validation limits. Qwen3.6-35B-A3B, Qwen3.8-27B, Qwen3.8-Flash-Next, DeepSeek V4 Flash, and GLM-5.3
-Flash report opt-in speculative profiles; target-only serving remains their default.
-Concurrent-serving measurements remain in the linked model evidence.
-
-Qwen3.6's row reports its optional MTP2 profile; full MTP certification remains pending.
-Its certified target-only profile measured
-67.79 tok/s and 0.329 s warm TTFT; see its
-[target-only evidence](benchmarks/gb10/results/GB10-QWEN36-FAST-002.json).
-GLM-5.3 and Kimi K3 measurements establish
-bounded execution; answer correctness remains unproven.
-
 Run `sparklab models --json` for exact recipe versions, checkpoint revisions, artifact
 fingerprints, implementation state, evidence IDs, and known constraints.
 
