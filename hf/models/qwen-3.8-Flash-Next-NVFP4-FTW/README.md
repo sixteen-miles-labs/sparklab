@@ -8,7 +8,7 @@ SparkLab source: <https://github.com/sixteen-miles-labs/sparklab>
 The default source is SparkLab's prepared artifact:
 
 ```text
-~/.sparklab/models/qwen3.8-flash-next/prepared/0.5.0
+~/.sparklab/models/qwen3.8-flash-next/prepared/0.9.0
 ```
 
 Upload it with:
@@ -22,3 +22,8 @@ HF_XET_HIGH_PERFORMANCE=1 \
 Pass a directory as the first argument to upload a different copy. The uploader
 checks for the FTW index, shards, and n-gram artifacts before starting, and its
 upload state is resumable when the same command is run again.
+
+`MODEL_CARD.md` is the canonical public model card. The uploader requires it,
+checks the NVIDIA artifact fingerprint, excludes any prepared-directory README,
+and publishes this card as the Hub README after the weights finish uploading.
+Keep its provenance, commands, and validation claims synchronized with the recipe.

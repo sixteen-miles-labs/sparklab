@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -13,13 +14,16 @@ from huggingface_hub.errors import HfHubHTTPError
 
 DEFAULT_REPO_ID = "oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW"
 DEFAULT_WEIGHTS_DIR = Path(
-    "~/.sparklab/models/qwen3.8-flash-next/prepared/0.5.0"
+    "~/.sparklab/models/qwen3.8-flash-next/prepared/0.9.0"
 ).expanduser()
+PUBLIC_CARD = Path(__file__).with_name("MODEL_CARD.md")
+EXPECTED_FINGERPRINT = "94e1ee0daa442357"
 REQUIRED_FILES = (
     "config.json",
     "freetoken_weight.json",
     "qwen4_ngram.bin",
     "qwen4_ngram.json",
+    "nvfp4_experts_mtp.safetensors",
 )
 DEFAULT_IGNORE_PATTERNS = [
     ".git/**",
@@ -27,6 +31,7 @@ DEFAULT_IGNORE_PATTERNS = [
     "__pycache__/**",
     "*.pyc",
     "*.tmp",
+    "README.md",  # Publish the version-controlled card after the weight transfer.
 ]
 
 
@@ -63,6 +68,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def validate_args(args: argparse.Namespace) -> Path:
+    if not PUBLIC_CARD.is_file():
+        raise ValueError(f"public model card is missing: {PUBLIC_CARD}")
     weights_dir = args.weights_dir.expanduser().resolve()
     if not weights_dir.is_dir():
         raise ValueError(f"weights directory does not exist: {weights_dir}")
@@ -71,6 +78,10 @@ def validate_args(args: argparse.Namespace) -> Path:
         raise ValueError(f"FTW artifact is missing: {', '.join(missing)}")
     if not list(weights_dir.glob("freetoken-*.ftw")):
         raise ValueError("FTW artifact has no freetoken-*.ftw shards")
+    index = json.loads((weights_dir / "freetoken_weight.json").read_text())
+    if (index.get("format") != "freetoken_weight" or index.get("version") != 1
+            or index.get("fingerprint") != EXPECTED_FINGERPRINT):
+        raise ValueError("artifact does not match the NVIDIA model card")
     if args.workers is not None and args.workers < 1:
         raise ValueError("--workers must be at least 1")
     if args.private and not args.create:
@@ -110,6 +121,14 @@ def main() -> int:
             ignore_patterns=DEFAULT_IGNORE_PATTERNS,
             num_workers=args.workers,
             print_report=True,
+        )
+        api.upload_file(
+            repo_id=args.repo_id,
+            repo_type="model",
+            path_or_fileobj=str(PUBLIC_CARD),
+            path_in_repo="README.md",
+            revision=args.revision,
+            commit_message="Publish canonical SparkLab Qwen3.8 NVIDIA FTW model card",
         )
     except HfHubHTTPError as error:
         print(f"Hugging Face upload failed: {error}", file=sys.stderr)
