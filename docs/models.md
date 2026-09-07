@@ -38,7 +38,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 · FTW + optional DSpark5 | `deepseek-v4` | Preview | 14.02 | 0.515 |
 | [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 + KDA FP8 · FTW + optional MTP3 | `glm-5.3-flash` | Experimental | 7.77 | 6.395 |
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
-| [GLM-5.3](https://huggingface.co/oakmindai/GLM-5.3-NVFP4-FTW) | 753B total / 40B active | NVFP4 + resident FP8 · FTW | `glm-5.3` | Experimental fallback | 0.81 | 2.530 |
+| [GLM-5.3](https://huggingface.co/oakmindai/GLM-5.3-NVFP4-FTW) | 753B total / 40B active | NVFP4 + resident FP8 · FTW | `glm-5.3` | Experimental fallback | 1.11 | 1.958 |
 | [Kimi K3](https://huggingface.co/oakmindai/Kimi-K3-NVFP4-FTW) | 2.8T total / 16 of 896 experts | ModelOpt NVFP4/FP8 · FTW | `kimi-k3` | Experimental | 0.16 | 395.405 |
 
 Model links point to the selected source or published FTW checkpoint. Qwen3.6, GLM-5.3,
@@ -77,7 +77,7 @@ to the current NVIDIA checkpoint. Its selected MTP3 metric is batch-one.
 | DeepSeek V4 Flash | The selected three-trial DSpark5 burst profile reaches 14.02 tok/s with replay-free compressor-prefix commits. This fixes the previous first-rejection carry shortcut; target-only remains the default and full certification is pending. | [GB10-DSV4-PREFIX-006](../benchmarks/gb10/results/GB10-DSV4-PREFIX-006.json) |
 | GLM-5.3 Flash | The opt-in MTP3 profile reached a median 7.77 tok/s with no rejection replay, 3.4% above its fresh baseline and identical output across three trials. NVMe sensitivity and the remaining certification gates keep it Experimental. | [target-only](../benchmarks/gb10/results/GB10-GLM53-MHC-003.json), [MTP sweep](../benchmarks/gb10/results/GB10-GLM53-MTP-004.json), [optimized MTP3](../benchmarks/gb10/results/GB10-GLM53-OPT-005.json), [KDA state commits](../benchmarks/gb10/results/GB10-GLM53-OPT-006.json) |
 | GLM-5.2 | Below Frontier speed and recorded swap growth, so it remains Experimental. | [Experiment](../exps/exp_glm5_2_gb10.md) |
-| GLM-5.3 | Correctness is not established; the measured output reached its length cap before answering. | [GB10-GLM53-RESEARCH-001](../benchmarks/gb10/results/GB10-GLM53-RESEARCH-001.json) |
+| GLM-5.3 | Larger expert cache measured 1.11 tok/s and 1.958 s warm TTFT. A separate completed-answer check passed; a second problem reached its token cap. Broader quality and certification remain unverified. | [GB10-GLM53-RESEARCH-OPT-002](../benchmarks/gb10/results/GB10-GLM53-RESEARCH-OPT-002.json) |
 | Kimi K3 | Complete-checkpoint serving was measured, but correctness and cross-run determinism are not established. | [GB10-KIMI-001](../benchmarks/gb10/results/GB10-KIMI-001.json) |
 
 ## Running a recipe

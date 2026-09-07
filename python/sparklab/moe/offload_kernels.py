@@ -52,13 +52,17 @@ def layer_lru_ensure(cache, layer_id: int, expert_ids: torch.Tensor, *, stats=No
     Every layer owns ``cache_size // num_layers`` protected slots (the remainder is
     distributed to the first layers). Empty slots are freely borrowed. Once full,
     victims come from layers above quota; when none is above quota, a request replaces
-    within its own layer. Counts stay device-side, so decode remains graph-capturable.
+    within its own layer. A query larger than its layer's quota can temporarily
+    borrow protected slots from other layers, but never evicts a current route.
+    Counts stay device-side, so decode remains graph-capturable.
     """
-    if not expert_ids.is_cuda:
-        return _layer_lru_ensure_cpu(cache, layer_id, expert_ids, stats=stats)
     K = expert_ids.numel()
     C = cache.cache_size
-    assert K <= C and (not __debug__ or int(torch.unique(expert_ids).numel()) <= C)
+    # The number of unique routes cannot exceed K. Calling torch.unique here
+    # redundantly synchronizes the GPU once per MoE layer on every decode step.
+    assert K <= C, "layer-LRU query exceeds the total slot capacity"
+    if not expert_ids.is_cuda:
+        return _layer_lru_ensure_cpu(cache, layer_id, expert_ids, stats=stats)
     _layer_lru_ensure_kernel[(1,)](
         expert_ids,
         cache.slot_for_id,
@@ -111,6 +115,13 @@ def _layer_lru_ensure_cpu(cache, layer_id: int, expert_ids: torch.Tensor, *, sta
             owner = old // cache.num_experts if old >= 0 else -1
             if old < 0 or owner in over or (not over and owner == layer_id):
                 candidates.append(slot)
+        if not candidates:
+            # Quotas protect reuse, not at the expense of the current query.
+            # This occurs when top-k (or a sparse prefill) exceeds the quota.
+            candidates = [
+                slot for slot in range(cache.cache_size)
+                if int(cache.usage[slot]) != step
+            ]
         assert candidates, "layer-LRU has no evictable slot for this query"
         victim = min(candidates, key=lambda slot: (int(cache.usage[slot]), slot))
         old = int(cache.id_of_slot[victim])
@@ -207,6 +218,11 @@ def _layer_lru_ensure_kernel(
                 & ((owners < 0) | (owner_count > owner_quota) | ((~any_over) & (owner == layer_id)))
             )
             score = tl.where(eligible, usage, USAGE_MAX)
+            if tl.min(score, axis=0) == USAGE_MAX:
+                # Every preferred victim is pinned by this query. Fall back to
+                # global LRU among non-current routes instead of selecting slot
+                # zero from an all-MAX score vector and corrupting a live route.
+                score = usage
             victim = tl.argmin(score, axis=0).to(tl.int32)
             old = tl.load(id_of_slot_ptr + victim)
             old_layer = old // num_experts

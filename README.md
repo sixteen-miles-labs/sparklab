@@ -146,8 +146,8 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
       <td>753B total / 40B active</td>
       <td>NVFP4 + resident FP8 · FTW</td>
       <td>Experimental</td>
-      <td align="right">0.81</td>
-      <td align="right">2.530</td>
+      <td align="right">1.11</td>
+      <td align="right">1.958</td>
       <td><a href="docs/models/glm-5.3.md">Instructions</a></td>
     </tr>
     <tr>

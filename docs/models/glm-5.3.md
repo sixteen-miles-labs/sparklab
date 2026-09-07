@@ -5,10 +5,21 @@ NVMe-backed inference. The pinned Inferact checkpoint declares the same
 `glm_moe_dsa` architecture and runtime dimensions as GLM-5.2, so SparkLab uses
 the existing GLM-5.2 execution path.
 
-The complete checkpoint has been measured on one NVIDIA GB10 at 0.813 decode
-tok/s and 2.530 seconds warm TTFT. The selected output reached its 256-token cap
-before stating the expected final answer, so this remains a bounded performance
-result rather than a correctness or certification claim.
+The complete checkpoint measured **1.11 decode tok/s** and **1.958 seconds warm
+TTFT** on one NVIDIA GB10 with a 2,850-slot expert cache: about 36% faster than
+the previous 256-token result. First-request TTFT was 25.858 seconds.
+
+In separate normal-EOS checks, AIME problem 0 completed correctly at 1.091 tok/s
+(675-slot control: 0.815 tok/s). Problem 1 reached its 1,024-token cap without a
+final answer. Cache layouts can change the generated text; no bit-exact parity
+or broad quality certification is claimed. The recipe remains Experimental.
+
+The selected run retained at least 29.7 GiB available memory, with no scoped
+OOM or swap-out. It used one request at a time, 2,048 KV tokens, FlashInfer b12x,
+layer-LRU caching, route-only sparse prefill, and eager execution. The published
+weights and recipe artifact version are unchanged; no checkpoint conversion is
+needed for the cache optimization. Runtime admission reserves a conservative
+96 GiB for the profile, separate from the planner's safety reserve.
 
 ## Install SparkLab
 
@@ -38,7 +49,7 @@ Review the exact storage and runtime admission output from `plan` before continu
 ## Run
 
 ```bash
-sparklab run glm-5.3 --root /path/to/models
+SPARKLAB_DISK_READ_WORKERS=20 sparklab run glm-5.3 --root /path/to/models
 ```
 
 Wait for the API to listen on `127.0.0.1:1919`, then verify it:
@@ -48,6 +59,8 @@ curl http://127.0.0.1:1919/health
 curl http://127.0.0.1:1919/v1/models
 ```
 
-Expect Research-tier throughput. See the
-[GLM-5.3 experiment](../../exps/exp_glm5_3_full_gb10.md) and the
+The measured profile used 20 disk readers, set explicitly above. Expect
+Research-tier throughput. See the
+[cache optimization evidence](../../exps/exp_research_cache_optimization.md),
+[original GLM-5.3 experiment](../../exps/exp_glm5_3_full_gb10.md), and the
 [quick start](../quickstart.md) for more detail.

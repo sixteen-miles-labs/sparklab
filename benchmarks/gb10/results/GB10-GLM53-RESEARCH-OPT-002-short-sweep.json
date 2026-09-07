@@ -1,0 +1,5109 @@
+{
+  "status": "exploratory_not_selected",
+  "notes": [
+    "64-token length-capped probes, not quality certification.",
+    "Original control SHA1 e19ef21a678b. Compact-path sizes do not have universal bit-exact output parity."
+  ],
+  "runs": [
+    {
+      "cache_slots": 675,
+      "measurement": {
+        "schema_version": "1.0",
+        "model": "$HOME/models/models/glm-5.3/prepared/0.1.0-b12x",
+        "backend": "offload",
+        "recipe": {
+          "slug": "glm-5.3",
+          "recipe_version": "0.1.0",
+          "model": "Inferact/GLM-5.3-NVFP4",
+          "revision": "ce67b36f3669192b5bb233819f0fda6c8a9837f8",
+          "intended_tier": "research",
+          "status_at_run": "experimental",
+          "deployment": {
+            "backend": "native",
+            "backend_api": "1.0",
+            "source_format": "safetensors",
+            "runtime_format": "ftw-nvfp4",
+            "quantization": "nvfp4",
+            "execution_policy": "nvme-moe",
+            "backend_options": {}
+          }
+        },
+        "checkpoint": {
+          "path": "$HOME/models/models/glm-5.3/prepared/0.1.0-b12x",
+          "format": "ftw",
+          "bytes": 428713099264,
+          "fingerprint": "a0e799b03bceb4bf",
+          "quant_format": "nvfp4_b12x",
+          "source_model_path": "$HOME/models/models/glm-5.3/source/ce67b36f3669",
+          "external_artifacts": []
+        },
+        "platform": {
+          "checks": [
+            {
+              "detail": "SparkLab's supported runtime is Linux-only.",
+              "expected": "Linux / DGX OS",
+              "name": "operating_system",
+              "observed": "Linux",
+              "status": "pass"
+            },
+            {
+              "detail": "GB10 pairs the Blackwell GPU with a Grace ARM64 CPU.",
+              "expected": "aarch64",
+              "name": "cpu_architecture",
+              "observed": "aarch64",
+              "status": "pass"
+            },
+            {
+              "detail": "CUDA must be visible to the Python runtime.",
+              "expected": "CUDA 13.x available",
+              "name": "cuda",
+              "observed": "13.0",
+              "status": "pass"
+            },
+            {
+              "detail": "SparkLab's GB10 kernel contract targets CUDA 13.",
+              "expected": "13.x",
+              "name": "cuda_version",
+              "observed": "13.0",
+              "status": "pass"
+            },
+            {
+              "detail": "Architecture-specific kernels must fail closed on a different GPU.",
+              "expected": "SM121 (12.1)",
+              "name": "compute_capability",
+              "observed": [
+                12,
+                1
+              ],
+              "status": "pass"
+            },
+            {
+              "detail": "SM121 is authoritative; the device name is retained as supporting evidence.",
+              "expected": "NVIDIA GB10",
+              "name": "gpu_identity",
+              "observed": "NVIDIA GB10",
+              "status": "pass"
+            },
+            {
+              "detail": "The 128 GB product profile exposes roughly 119 GiB to Linux.",
+              "expected": ">= 123480309760 bytes",
+              "name": "unified_memory",
+              "observed": 130663591936,
+              "status": "pass"
+            },
+            {
+              "detail": "Model recipes consume only memory above the operational reserve.",
+              "expected": ">= 12884901888 bytes safety reserve",
+              "name": "available_memory",
+              "observed": 125911412736,
+              "status": "pass"
+            },
+            {
+              "detail": "Swap is never counted as model capacity.",
+              "expected": "0 bytes used",
+              "name": "swap_usage",
+              "observed": 687915008,
+              "status": "fail"
+            },
+            {
+              "detail": "Device-mapper filesystems may require manual NVMe verification.",
+              "expected": "local NVMe-backed filesystem",
+              "name": "nvme_storage",
+              "observed": "/dev/nvme0n1p2",
+              "status": "pass"
+            },
+            {
+              "detail": "Large FTW and Kimi K3 workflows require substantial local capacity.",
+              "expected": ">= 549755813888 bytes free",
+              "name": "storage_capacity",
+              "observed": 1001038065664,
+              "status": "pass"
+            },
+            {
+              "detail": "The prebuilt CUDA kernels must come from the same SparkLab release and, when stamped, the same source build.",
+              "expected": "same release and build stamp",
+              "name": "kernel_cache_version",
+              "observed": {
+                "sparklab": "0.1.2",
+                "sparklab-kernel-cache": "0.1.0+cu130"
+              },
+              "status": "fail"
+            }
+          ],
+          "failures": [
+            "swap_usage",
+            "kernel_cache_version"
+          ],
+          "memory": {
+            "available_bytes": 125911412736,
+            "cuda_free_bytes": 95138279424,
+            "physical_bytes": 130663591936,
+            "safe_available_bytes": 113026510848,
+            "safety_reserve_bytes": 12884901888,
+            "swap_total_bytes": 17179865088,
+            "swap_used_bytes": 687915008
+          },
+          "platform_failures": [],
+          "product": "SparkLab",
+          "profile": "gb10",
+          "ready": false,
+          "recommendations": [
+            "Resolve failed platform checks before loading a model.",
+            "Finish active workloads and return swap usage to zero before starting a certified recipe.",
+            "Reinstall sparklab and sparklab-kernel-cache as a matched wheel pair before loading a model."
+          ],
+          "runtime": {
+            "compute_capability": [
+              12,
+              1
+            ],
+            "cuda": "13.0",
+            "dependencies": {
+              "flashinfer-python": "0.6.15.post1",
+              "sglang-kernel": "0.4.5",
+              "sparklab": "0.1.2",
+              "sparklab-kernel-cache": "0.1.0+cu130",
+              "torch": "2.11.0+cu130",
+              "triton": "3.6.0"
+            },
+            "gpu": "NVIDIA GB10",
+            "integrated_gpu": true
+          },
+          "schema_version": "1.0",
+          "snapshot": {
+            "block_device": "/dev/nvme0n1p2",
+            "compute_capability": [
+              12,
+              1
+            ],
+            "cuda_available": true,
+            "cuda_free_bytes": 95138279424,
+            "cuda_version": "13.0",
+            "dependencies": {
+              "flashinfer-python": "0.6.15.post1",
+              "sglang-kernel": "0.4.5",
+              "sparklab": "0.1.2",
+              "sparklab-kernel-cache": "0.1.0+cu130",
+              "torch": "2.11.0+cu130",
+              "triton": "3.6.0"
+            },
+            "filesystem": "ext4",
+            "gpu_name": "NVIDIA GB10",
+            "gpu_total_bytes": 130663591936,
+            "integrated_gpu": true,
+            "machine": "aarch64",
+            "memory_available_bytes": 125911412736,
+            "memory_total_bytes": 130663591936,
+            "nvme": true,
+            "os_name": "Linux",
+            "storage_free_bytes": 1001038065664,
+            "storage_path": "$HOME/models/models/glm-5.3/prepared/0.1.0-b12x",
+            "storage_total_bytes": 4031871553536,
+            "swap_free_bytes": 16491950080,
+            "swap_total_bytes": 17179865088
+          },
+          "status": "supported_not_ready",
+          "storage": {
+            "block_device": "/dev/nvme0n1p2",
+            "filesystem": "ext4",
+            "free_bytes": 1001038065664,
+            "nvme": true,
+            "path": "$HOME/models/models/glm-5.3/prepared/0.1.0-b12x",
+            "total_bytes": 4031871553536
+          },
+          "supported": true,
+          "warnings": [],
+          "exit_code": 1
+        },
+        "configuration": {
+          "storage": "disk",
+          "attention_backend": "auto",
+          "qsa_fused_selection": true,
+          "page_size": 1,
+          "cache_type": "radix",
+          "max_seq_len": 8256,
+          "nvfp4_backend": "flashinfer",
+          "host_cache_gb": 0,
+          "requested_cache_size": 675,
+          "requested_cache_rate": null,
+          "memory_ratio": 0.9,
+          "requested_num_tokens": 2048,
+          "speculative_method": "auto",
+          "speculative_tokens": 0,
+          "speculative_draft_model": null,
+          "draft_sample_method": "greedy",
+          "dspark_confidence_threshold": 0,
+          "dspark_draft_cache_slots": 0,
+          "dspark_draft_cache_quotas": "",
+          "dsv4_kv_storage": "bf16",
+          "dsv4_index_storage": "bf16",
+          "qwen4_dense_storage": "bf16",
+          "qwen4_draft_vocab_size": 0,
+          "mamba_ssm_dtype": "float32",
+          "cpu_threads": 0,
+          "hybrid_fetch": -1,
+          "disk_read_workers": 20,
+          "cache_policy": "layer_lru",
+          "prefill_overlap": false,
+          "preload_all": false,
+          "prefill_hit_d2d": false,
+          "prefill_sparse_max_tokens": 256,
+          "shared_expert_overlap": true,
+          "startup_prefill_warmup": true,
+          "cuda_graph": false,
+          "request_timeout_s": 1800,
+          "prompt_padding_repeats": 0
+        },
+        "cache_geometry": {
+          "num_pages": 2048,
+          "page_size": 1,
+          "moe_cache_size": 675,
+          "num_mamba_slots": 0,
+          "num_experts": 256,
+          "num_moe_layers": 75,
+          "moe_cache_policy": "layer_lru",
+          "unit_bytes": {
+            "kv_per_token": 95232,
+            "moe_per_expert": 21233664,
+            "mamba_per_slot": 0,
+            "swa_per_token": 0
+          },
+          "swa_full_tokens_ratio": 0,
+          "swa_page_size": 0,
+          "num_swa_pages": 0,
+          "cache_budget_bytes": 62065204838,
+          "reasoning": null,
+          "limits": {
+            "kv_tokens": {
+              "min": 1,
+              "max": 651726
+            },
+            "moe_experts": {
+              "min": 256,
+              "max": 2922
+            },
+            "mamba_slots": {
+              "min": 0,
+              "max": 0
+            },
+            "swa_tokens": {
+              "min": 0,
+              "max": 0
+            }
+          }
+        },
+        "problem": 0,
+        "prompt_tokens": 54,
+        "first_request_ttft_ms": 25500.066237000283,
+        "first_request_completion_tokens": 64,
+        "first_request_finish_reason": "length",
+        "decode_steps": 63,
+        "decode_tok_s": 0.8457603186093946,
+        "ms_per_token": 1182.3680752062326,
+        "event_ms_p50": 1197.2787999548018,
+        "event_ms_p99": 1569.4865940022282,
+        "ttft_ms": 2538.649742025882,
+        "events": 64,
+        "completion_tokens": 64,
+        "finish_reason": "length",
+        "vram_gib": 33.765625,
+        "sampling": {
+          "temperature": 0,
+          "top_p": 1,
+          "top_k": -1
+        },
+        "output_sha1": "e19ef21a678b",
+        "expected_answer": "70",
+        "extracted_answer": null,
+        "answer_correct": null,
+        "server_log": "/tmp/bench-serve-offload-41662052.log",
+        "gpu_telemetry": {
+          "samples": 75,
+          "duration_s": 77.02941614895826,
+          "swap_start_bytes": 687906816,
+          "memory_guard_gib": 0,
+          "memory_guard_triggered": false,
+          "swap_end_bytes": 687906816,
+          "swap_growth_bytes": 0,
+          "cgroup": {
+            "start": {
+              "path": "/user.slice/user-1000.slice/user@1000.service/tmux-spawn-4412f8c4-65fa-456d-867b-c3415fc39811.scope",
+              "swap_max": "max",
+              "swap_current_bytes": 86851584,
+              "swap_peak_bytes": 1533071360,
+              "oom_kill": 0
+            },
+            "end": {
+              "path": "/user.slice/user-1000.slice/user@1000.service/tmux-spawn-4412f8c4-65fa-456d-867b-c3415fc39811.scope",
+              "swap_max": "max",
+              "swap_current_bytes": 86851584,
+              "swap_peak_bytes": 1533071360,
+              "oom_kill": 0
+            },
+            "delta": {
+              "oom_kill": 0,
+              "swap_current_bytes": 0
+            }
+          },
+          "power_w_avg": 14.8532,
+          "power_w_peak": 15.26,
+          "temperature_c_peak": 43,
+          "utilization_pct_avg": 22.04,
+          "request_energy_j_est": 1144.1333239437067,
+          "mem_available_gib_min": 73.50151062011719,
+          "nvme_temperature_c_peak": 48.85,
+          "swap_in_pages_delta": 1,
+          "swap_out_pages_delta": 0,
+          "page_faults_delta": 676127,
+          "major_faults_delta": 1,
+          "oom_kill_delta": 0
+        },
+        "lifecycle_telemetry": {
+          "samples": 199,
+          "duration_s": 205.03988910798216,
+          "swap_start_bytes": 687915008,
+          "memory_guard_gib": 12,
+          "memory_guard_triggered": false,
+          "swap_end_bytes": 687906816,
+          "swap_growth_bytes": 0,
+          "cgroup": {
+            "start": {
+              "path": "/user.slice/user-1000.slice/user@1000.service/tmux-spawn-4412f8c4-65fa-456d-867b-c3415fc39811.scope",
+              "swap_max": "max",
+              "swap_current_bytes": 86859776,
+              "swap_peak_bytes": 1533071360,
+              "oom_kill": 0
+            },
+            "end": {
+              "path": "/user.slice/user-1000.slice/user@1000.service/tmux-spawn-4412f8c4-65fa-456d-867b-c3415fc39811.scope",
+              "swap_max": "max",
+              "swap_current_bytes": 86851584,
+              "swap_peak_bytes": 1533071360,
+              "oom_kill": 0
+            },
+            "delta": {
+              "oom_kill": 0,
+              "swap_current_bytes": -8192
+            }
+          },
+          "power_w_avg": 14.227286432160804,
+          "power_w_peak": 34.83,
+          "temperature_c_peak": 43,
+          "utilization_pct_avg": 19.271356783919597,
+          "request_energy_j_est": 2917.1612323577506,
+          "mem_available_gib_min": 73.32402801513672,
+          "nvme_temperature_c_peak": 48.85,
+          "swap_in_pages_delta": 3,
+          "swap_out_pages_delta": 0,
+          "page_faults_delta": 11572024,
+          "major_faults_delta": 2,
+          "oom_kill_delta": 0
+        },
+        "oom_markers": 0,
+        "provenance": {
+          "git_revision": "c6d4956c06f64a1ef9a9e52efd01fa693992fd58",
+          "git_tracked_dirty": true,
+          "python": "3.11.15",
+          "platform": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+          "packages": {
+            "torch": "2.11.0+cu130",
+            "triton": "3.6.0",
+            "flashinfer-python": "0.6.15.post1",
+            "sglang-kernel": "0.4.5",
+            "transformers": "5.16.1"
+          },
+          "gpu_driver": "NVIDIA GB10, 580.126.09"
+        },
+        "output_text": "We need to find integer bases $b > 9$ such that $17_b$ divides $97_b$.\n\nFirst, convert to base 10:\n- $17_b = 1 \\cdot b + 7 = b + 7$\n- $97_b = 9 \\cdot b + 7",
+        "moe": {
+          "active": 37800,
+          "missing": 28108,
+          "fetched": 0,
+          "calls": 4725,
+          "sparse_prefill_layers": 75,
+          "sparse_prefill_routes": 600,
+          "sparse_prefill_unique_rows": 600,
+          "sparse_prefill_fallback_layers": 0,
+          "shared_expert_overlap_calls": 4800,
+          "active_per_layer": 8,
+          "missing_per_layer": 5.948783068783069,
+          "miss_rate": 0.7435978835978836,
+          "fetched_per_layer": 0,
+          "fetch_rate": 0,
+          "per_layer": [
+            {
+              "layer": 0,
+              "steps": 63,
+              "active": 504,
+              "missing": 189,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3,
+              "miss_rate": 0.375,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 1,
+              "steps": 63,
+              "active": 504,
+              "missing": 271,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.301587301587301,
+              "miss_rate": 0.5376984126984127,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 2,
+              "steps": 63,
+              "active": 504,
+              "missing": 241,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.8253968253968256,
+              "miss_rate": 0.4781746031746032,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 3,
+              "steps": 63,
+              "active": 504,
+              "missing": 398,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.317460317460317,
+              "miss_rate": 0.7896825396825397,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 4,
+              "steps": 63,
+              "active": 504,
+              "missing": 379,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.015873015873016,
+              "miss_rate": 0.751984126984127,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 5,
+              "steps": 63,
+              "active": 504,
+              "missing": 337,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.349206349206349,
+              "miss_rate": 0.6686507936507936,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 6,
+              "steps": 63,
+              "active": 504,
+              "missing": 403,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.396825396825397,
+              "miss_rate": 0.7996031746031746,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 7,
+              "steps": 63,
+              "active": 504,
+              "missing": 412,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.5396825396825395,
+              "miss_rate": 0.8174603174603174,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 8,
+              "steps": 63,
+              "active": 504,
+              "missing": 408,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.476190476190476,
+              "miss_rate": 0.8095238095238095,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 9,
+              "steps": 63,
+              "active": 504,
+              "missing": 404,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.412698412698413,
+              "miss_rate": 0.8015873015873016,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 10,
+              "steps": 63,
+              "active": 504,
+              "missing": 396,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.285714285714286,
+              "miss_rate": 0.7857142857142857,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 11,
+              "steps": 63,
+              "active": 504,
+              "missing": 399,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.333333333333333,
+              "miss_rate": 0.7916666666666666,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 12,
+              "steps": 63,
+              "active": 504,
+              "missing": 402,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.380952380952381,
+              "miss_rate": 0.7976190476190477,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 13,
+              "steps": 63,
+              "active": 504,
+              "missing": 379,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.015873015873016,
+              "miss_rate": 0.751984126984127,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 14,
+              "steps": 63,
+              "active": 504,
+              "missing": 353,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.603174603174603,
+              "miss_rate": 0.7003968253968254,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 15,
+              "steps": 63,
+              "active": 504,
+              "missing": 362,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.746031746031746,
+              "miss_rate": 0.7182539682539683,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 16,
+              "steps": 63,
+              "active": 504,
+              "missing": 353,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.603174603174603,
+              "miss_rate": 0.7003968253968254,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 17,
+              "steps": 63,
+              "active": 504,
+              "missing": 332,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.26984126984127,
+              "miss_rate": 0.6587301587301587,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 18,
+              "steps": 63,
+              "active": 504,
+              "missing": 341,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.412698412698413,
+              "miss_rate": 0.6765873015873016,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 19,
+              "steps": 63,
+              "active": 504,
+              "missing": 384,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.095238095238095,
+              "miss_rate": 0.7619047619047619,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 20,
+              "steps": 63,
+              "active": 504,
+              "missing": 423,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.714285714285714,
+              "miss_rate": 0.8392857142857143,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 21,
+              "steps": 63,
+              "active": 504,
+              "missing": 424,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.73015873015873,
+              "miss_rate": 0.8412698412698413,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 22,
+              "steps": 63,
+              "active": 504,
+              "missing": 409,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.492063492063492,
+              "miss_rate": 0.8115079365079365,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 23,
+              "steps": 63,
+              "active": 504,
+              "missing": 412,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.5396825396825395,
+              "miss_rate": 0.8174603174603174,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 24,
+              "steps": 63,
+              "active": 504,
+              "missing": 407,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.4603174603174605,
+              "miss_rate": 0.8075396825396826,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 25,
+              "steps": 63,
+              "active": 504,
+              "missing": 366,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.809523809523809,
+              "miss_rate": 0.7261904761904762,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 26,
+              "steps": 63,
+              "active": 504,
+              "missing": 404,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.412698412698413,
+              "miss_rate": 0.8015873015873016,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 27,
+              "steps": 63,
+              "active": 504,
+              "missing": 405,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.428571428571429,
+              "miss_rate": 0.8035714285714286,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 28,
+              "steps": 63,
+              "active": 504,
+              "missing": 351,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.571428571428571,
+              "miss_rate": 0.6964285714285714,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 29,
+              "steps": 63,
+              "active": 504,
+              "missing": 371,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.888888888888889,
+              "miss_rate": 0.7361111111111112,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 30,
+              "steps": 63,
+              "active": 504,
+              "missing": 362,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.746031746031746,
+              "miss_rate": 0.7182539682539683,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 31,
+              "steps": 63,
+              "active": 504,
+              "missing": 399,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.333333333333333,
+              "miss_rate": 0.7916666666666666,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 32,
+              "steps": 63,
+              "active": 504,
+              "missing": 369,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.857142857142857,
+              "miss_rate": 0.7321428571428571,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 33,
+              "steps": 63,
+              "active": 504,
+              "missing": 388,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.158730158730159,
+              "miss_rate": 0.7698412698412699,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 34,
+              "steps": 63,
+              "active": 504,
+              "missing": 394,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.253968253968254,
+              "miss_rate": 0.7817460317460317,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 35,
+              "steps": 63,
+              "active": 504,
+              "missing": 370,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.873015873015873,
+              "miss_rate": 0.7341269841269841,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 36,
+              "steps": 63,
+              "active": 504,
+              "missing": 399,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.333333333333333,
+              "miss_rate": 0.7916666666666666,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 37,
+              "steps": 63,
+              "active": 504,
+              "missing": 395,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.26984126984127,
+              "miss_rate": 0.7837301587301587,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 38,
+              "steps": 63,
+              "active": 504,
+              "missing": 400,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.349206349206349,
+              "miss_rate": 0.7936507936507936,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 39,
+              "steps": 63,
+              "active": 504,
+              "missing": 382,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.063492063492063,
+              "miss_rate": 0.7579365079365079,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 40,
+              "steps": 63,
+              "active": 504,
+              "missing": 418,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.634920634920635,
+              "miss_rate": 0.8293650793650794,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 41,
+              "steps": 63,
+              "active": 504,
+              "missing": 378,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6,
+              "miss_rate": 0.75,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 42,
+              "steps": 63,
+              "active": 504,
+              "missing": 356,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.650793650793651,
+              "miss_rate": 0.7063492063492064,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 43,
+              "steps": 63,
+              "active": 504,
+              "missing": 376,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.968253968253968,
+              "miss_rate": 0.746031746031746,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 44,
+              "steps": 63,
+              "active": 504,
+              "missing": 389,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.174603174603175,
+              "miss_rate": 0.7718253968253969,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 45,
+              "steps": 63,
+              "active": 504,
+              "missing": 397,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.301587301587301,
+              "miss_rate": 0.7876984126984127,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 46,
+              "steps": 63,
+              "active": 504,
+              "missing": 392,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.222222222222222,
+              "miss_rate": 0.7777777777777778,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 47,
+              "steps": 63,
+              "active": 504,
+              "missing": 390,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.190476190476191,
+              "miss_rate": 0.7738095238095238,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 48,
+              "steps": 63,
+              "active": 504,
+              "missing": 367,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.825396825396825,
+              "miss_rate": 0.7281746031746031,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 49,
+              "steps": 63,
+              "active": 504,
+              "missing": 365,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.7936507936507935,
+              "miss_rate": 0.7242063492063492,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 50,
+              "steps": 63,
+              "active": 504,
+              "missing": 381,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.0476190476190474,
+              "miss_rate": 0.7559523809523809,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 51,
+              "steps": 63,
+              "active": 504,
+              "missing": 389,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.174603174603175,
+              "miss_rate": 0.7718253968253969,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 52,
+              "steps": 63,
+              "active": 504,
+              "missing": 365,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.7936507936507935,
+              "miss_rate": 0.7242063492063492,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 53,
+              "steps": 63,
+              "active": 504,
+              "missing": 327,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.190476190476191,
+              "miss_rate": 0.6488095238095238,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 54,
+              "steps": 63,
+              "active": 504,
+              "missing": 346,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.492063492063492,
+              "miss_rate": 0.6865079365079365,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 55,
+              "steps": 63,
+              "active": 504,
+              "missing": 388,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.158730158730159,
+              "miss_rate": 0.7698412698412699,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 56,
+              "steps": 63,
+              "active": 504,
+              "missing": 378,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6,
+              "miss_rate": 0.75,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 57,
+              "steps": 63,
+              "active": 504,
+              "missing": 356,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.650793650793651,
+              "miss_rate": 0.7063492063492064,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 58,
+              "steps": 63,
+              "active": 504,
+              "missing": 378,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6,
+              "miss_rate": 0.75,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 59,
+              "steps": 63,
+              "active": 504,
+              "missing": 360,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.714285714285714,
+              "miss_rate": 0.7142857142857143,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 60,
+              "steps": 63,
+              "active": 504,
+              "missing": 393,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.238095238095238,
+              "miss_rate": 0.7797619047619048,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 61,
+              "steps": 63,
+              "active": 504,
+              "missing": 367,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.825396825396825,
+              "miss_rate": 0.7281746031746031,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 62,
+              "steps": 63,
+              "active": 504,
+              "missing": 405,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.428571428571429,
+              "miss_rate": 0.8035714285714286,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 63,
+              "steps": 63,
+              "active": 504,
+              "missing": 381,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.0476190476190474,
+              "miss_rate": 0.7559523809523809,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 64,
+              "steps": 63,
+              "active": 504,
+              "missing": 350,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.555555555555555,
+              "miss_rate": 0.6944444444444444,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 65,
+              "steps": 63,
+              "active": 504,
+              "missing": 358,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.682539682539683,
+              "miss_rate": 0.7103174603174603,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 66,
+              "steps": 63,
+              "active": 504,
+              "missing": 386,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.126984126984127,
+              "miss_rate": 0.7658730158730159,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 67,
+              "steps": 63,
+              "active": 504,
+              "missing": 374,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.936507936507937,
+              "miss_rate": 0.7420634920634921,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 68,
+              "steps": 63,
+              "active": 504,
+              "missing": 356,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.650793650793651,
+              "miss_rate": 0.7063492063492064,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 69,
+              "steps": 63,
+              "active": 504,
+              "missing": 343,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.444444444444445,
+              "miss_rate": 0.6805555555555556,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 70,
+              "steps": 63,
+              "active": 504,
+              "missing": 377,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.984126984126984,
+              "miss_rate": 0.748015873015873,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 71,
+              "steps": 63,
+              "active": 504,
+              "missing": 385,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.111111111111111,
+              "miss_rate": 0.7638888888888888,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 72,
+              "steps": 63,
+              "active": 504,
+              "missing": 374,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.936507936507937,
+              "miss_rate": 0.7420634920634921,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 73,
+              "steps": 63,
+              "active": 504,
+              "missing": 376,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.968253968253968,
+              "miss_rate": 0.746031746031746,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 74,
+              "steps": 63,
+              "active": 504,
+              "missing": 414,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.571428571428571,
+              "miss_rate": 0.8214285714285714,
+              "fetched_per_step": 0
+            }
+          ],
+          "disk": {
+            "cache_hits": 0,
+            "cache_misses": 28684,
+            "cache_evictions": 0,
+            "cache_bypasses": 576,
+            "read_ops": 114736,
+            "logical_bytes": 609066418176,
+            "physical_bytes": 609066418176,
+            "read_seconds": 56.04442551068496,
+            "cache_capacity_entries": 0,
+            "cache_capacity_bytes": 0,
+            "cache_allocated_bytes": 0,
+            "cache_occupancy_entries": 0,
+            "cache_occupancy_bytes": 0,
+            "staging_allocated_bytes": 5435817984,
+            "host_allocated_bytes": 5435817984,
+            "read_workers": 20,
+            "cache_policy": "layer_lru",
+            "staging_buffers": 1
+          }
+        }
+      }
+    },
+    {
+      "cache_slots": 1350,
+      "measurement": {
+        "schema_version": "1.0",
+        "model": "$HOME/models/models/glm-5.3/prepared/0.1.0-b12x",
+        "backend": "offload",
+        "recipe": {
+          "slug": "glm-5.3",
+          "recipe_version": "0.1.0",
+          "model": "Inferact/GLM-5.3-NVFP4",
+          "revision": "ce67b36f3669192b5bb233819f0fda6c8a9837f8",
+          "intended_tier": "research",
+          "status_at_run": "experimental",
+          "deployment": {
+            "backend": "native",
+            "backend_api": "1.0",
+            "source_format": "safetensors",
+            "runtime_format": "ftw-nvfp4",
+            "quantization": "nvfp4",
+            "execution_policy": "nvme-moe",
+            "backend_options": {}
+          }
+        },
+        "checkpoint": {
+          "path": "$HOME/models/models/glm-5.3/prepared/0.1.0-b12x",
+          "format": "ftw",
+          "bytes": 428713099264,
+          "fingerprint": "a0e799b03bceb4bf",
+          "quant_format": "nvfp4_b12x",
+          "source_model_path": "$HOME/models/models/glm-5.3/source/ce67b36f3669",
+          "external_artifacts": []
+        },
+        "platform": {
+          "checks": [
+            {
+              "detail": "SparkLab's supported runtime is Linux-only.",
+              "expected": "Linux / DGX OS",
+              "name": "operating_system",
+              "observed": "Linux",
+              "status": "pass"
+            },
+            {
+              "detail": "GB10 pairs the Blackwell GPU with a Grace ARM64 CPU.",
+              "expected": "aarch64",
+              "name": "cpu_architecture",
+              "observed": "aarch64",
+              "status": "pass"
+            },
+            {
+              "detail": "CUDA must be visible to the Python runtime.",
+              "expected": "CUDA 13.x available",
+              "name": "cuda",
+              "observed": "13.0",
+              "status": "pass"
+            },
+            {
+              "detail": "SparkLab's GB10 kernel contract targets CUDA 13.",
+              "expected": "13.x",
+              "name": "cuda_version",
+              "observed": "13.0",
+              "status": "pass"
+            },
+            {
+              "detail": "Architecture-specific kernels must fail closed on a different GPU.",
+              "expected": "SM121 (12.1)",
+              "name": "compute_capability",
+              "observed": [
+                12,
+                1
+              ],
+              "status": "pass"
+            },
+            {
+              "detail": "SM121 is authoritative; the device name is retained as supporting evidence.",
+              "expected": "NVIDIA GB10",
+              "name": "gpu_identity",
+              "observed": "NVIDIA GB10",
+              "status": "pass"
+            },
+            {
+              "detail": "The 128 GB product profile exposes roughly 119 GiB to Linux.",
+              "expected": ">= 123480309760 bytes",
+              "name": "unified_memory",
+              "observed": 130663591936,
+              "status": "pass"
+            },
+            {
+              "detail": "Model recipes consume only memory above the operational reserve.",
+              "expected": ">= 12884901888 bytes safety reserve",
+              "name": "available_memory",
+              "observed": 126082408448,
+              "status": "pass"
+            },
+            {
+              "detail": "Swap is never counted as model capacity.",
+              "expected": "0 bytes used",
+              "name": "swap_usage",
+              "observed": 687906816,
+              "status": "fail"
+            },
+            {
+              "detail": "Device-mapper filesystems may require manual NVMe verification.",
+              "expected": "local NVMe-backed filesystem",
+              "name": "nvme_storage",
+              "observed": "/dev/nvme0n1p2",
+              "status": "pass"
+            },
+            {
+              "detail": "Large FTW and Kimi K3 workflows require substantial local capacity.",
+              "expected": ">= 549755813888 bytes free",
+              "name": "storage_capacity",
+              "observed": 1001042026496,
+              "status": "pass"
+            },
+            {
+              "detail": "The prebuilt CUDA kernels must come from the same SparkLab release and, when stamped, the same source build.",
+              "expected": "same release and build stamp",
+              "name": "kernel_cache_version",
+              "observed": {
+                "sparklab": "0.1.2",
+                "sparklab-kernel-cache": "0.1.0+cu130"
+              },
+              "status": "fail"
+            }
+          ],
+          "failures": [
+            "swap_usage",
+            "kernel_cache_version"
+          ],
+          "memory": {
+            "available_bytes": 126082408448,
+            "cuda_free_bytes": 95218348032,
+            "physical_bytes": 130663591936,
+            "safe_available_bytes": 113197506560,
+            "safety_reserve_bytes": 12884901888,
+            "swap_total_bytes": 17179865088,
+            "swap_used_bytes": 687906816
+          },
+          "platform_failures": [],
+          "product": "SparkLab",
+          "profile": "gb10",
+          "ready": false,
+          "recommendations": [
+            "Resolve failed platform checks before loading a model.",
+            "Finish active workloads and return swap usage to zero before starting a certified recipe.",
+            "Reinstall sparklab and sparklab-kernel-cache as a matched wheel pair before loading a model."
+          ],
+          "runtime": {
+            "compute_capability": [
+              12,
+              1
+            ],
+            "cuda": "13.0",
+            "dependencies": {
+              "flashinfer-python": "0.6.15.post1",
+              "sglang-kernel": "0.4.5",
+              "sparklab": "0.1.2",
+              "sparklab-kernel-cache": "0.1.0+cu130",
+              "torch": "2.11.0+cu130",
+              "triton": "3.6.0"
+            },
+            "gpu": "NVIDIA GB10",
+            "integrated_gpu": true
+          },
+          "schema_version": "1.0",
+          "snapshot": {
+            "block_device": "/dev/nvme0n1p2",
+            "compute_capability": [
+              12,
+              1
+            ],
+            "cuda_available": true,
+            "cuda_free_bytes": 95218348032,
+            "cuda_version": "13.0",
+            "dependencies": {
+              "flashinfer-python": "0.6.15.post1",
+              "sglang-kernel": "0.4.5",
+              "sparklab": "0.1.2",
+              "sparklab-kernel-cache": "0.1.0+cu130",
+              "torch": "2.11.0+cu130",
+              "triton": "3.6.0"
+            },
+            "filesystem": "ext4",
+            "gpu_name": "NVIDIA GB10",
+            "gpu_total_bytes": 130663591936,
+            "integrated_gpu": true,
+            "machine": "aarch64",
+            "memory_available_bytes": 126082408448,
+            "memory_total_bytes": 130663591936,
+            "nvme": true,
+            "os_name": "Linux",
+            "storage_free_bytes": 1001042026496,
+            "storage_path": "$HOME/models/models/glm-5.3/prepared/0.1.0-b12x",
+            "storage_total_bytes": 4031871553536,
+            "swap_free_bytes": 16491958272,
+            "swap_total_bytes": 17179865088
+          },
+          "status": "supported_not_ready",
+          "storage": {
+            "block_device": "/dev/nvme0n1p2",
+            "filesystem": "ext4",
+            "free_bytes": 1001042026496,
+            "nvme": true,
+            "path": "$HOME/models/models/glm-5.3/prepared/0.1.0-b12x",
+            "total_bytes": 4031871553536
+          },
+          "supported": true,
+          "warnings": [],
+          "exit_code": 1
+        },
+        "configuration": {
+          "storage": "disk",
+          "attention_backend": "auto",
+          "qsa_fused_selection": true,
+          "page_size": 1,
+          "cache_type": "radix",
+          "max_seq_len": 8256,
+          "nvfp4_backend": "flashinfer",
+          "host_cache_gb": 0,
+          "requested_cache_size": 1350,
+          "requested_cache_rate": null,
+          "memory_ratio": 0.9,
+          "requested_num_tokens": 2048,
+          "speculative_method": "auto",
+          "speculative_tokens": 0,
+          "speculative_draft_model": null,
+          "draft_sample_method": "greedy",
+          "dspark_confidence_threshold": 0,
+          "dspark_draft_cache_slots": 0,
+          "dspark_draft_cache_quotas": "",
+          "dsv4_kv_storage": "bf16",
+          "dsv4_index_storage": "bf16",
+          "qwen4_dense_storage": "bf16",
+          "qwen4_draft_vocab_size": 0,
+          "mamba_ssm_dtype": "float32",
+          "cpu_threads": 0,
+          "hybrid_fetch": -1,
+          "disk_read_workers": 20,
+          "cache_policy": "layer_lru",
+          "prefill_overlap": false,
+          "preload_all": false,
+          "prefill_hit_d2d": false,
+          "prefill_sparse_max_tokens": 256,
+          "shared_expert_overlap": true,
+          "startup_prefill_warmup": true,
+          "cuda_graph": false,
+          "request_timeout_s": 1800,
+          "prompt_padding_repeats": 0
+        },
+        "cache_geometry": {
+          "num_pages": 2048,
+          "page_size": 1,
+          "moe_cache_size": 1350,
+          "num_mamba_slots": 0,
+          "num_experts": 256,
+          "num_moe_layers": 75,
+          "moe_cache_policy": "layer_lru",
+          "unit_bytes": {
+            "kv_per_token": 95232,
+            "moe_per_expert": 21233664,
+            "mamba_per_slot": 0,
+            "swa_per_token": 0
+          },
+          "swa_full_tokens_ratio": 0,
+          "swa_page_size": 0,
+          "num_swa_pages": 0,
+          "cache_budget_bytes": 61876579532,
+          "reasoning": null,
+          "limits": {
+            "kv_tokens": {
+              "min": 1,
+              "max": 649745
+            },
+            "moe_experts": {
+              "min": 256,
+              "max": 2914
+            },
+            "mamba_slots": {
+              "min": 0,
+              "max": 0
+            },
+            "swa_tokens": {
+              "min": 0,
+              "max": 0
+            }
+          }
+        },
+        "problem": 0,
+        "prompt_tokens": 54,
+        "first_request_ttft_ms": 25874.93056996027,
+        "first_request_completion_tokens": 64,
+        "first_request_finish_reason": "length",
+        "decode_steps": 63,
+        "decode_tok_s": 0.9000188685093883,
+        "ms_per_token": 1111.0878171434344,
+        "event_ms_p50": 1110.1693090167828,
+        "event_ms_p99": 1423.9899259991944,
+        "ttft_ms": 2518.284319958184,
+        "events": 64,
+        "completion_tokens": 64,
+        "finish_reason": "length",
+        "vram_gib": 47.26171875,
+        "sampling": {
+          "temperature": 0,
+          "top_p": 1,
+          "top_k": -1
+        },
+        "output_sha1": "e04fe1589d9a",
+        "expected_answer": "70",
+        "extracted_answer": null,
+        "answer_correct": null,
+        "server_log": "/tmp/bench-serve-offload-xnxmv998.log",
+        "gpu_telemetry": {
+          "samples": 71,
+          "duration_s": 72.51877632696414,
+          "swap_start_bytes": 687906816,
+          "memory_guard_gib": 0,
+          "memory_guard_triggered": false,
+          "swap_end_bytes": 687902720,
+          "swap_growth_bytes": 0,
+          "cgroup": {
+            "start": {
+              "path": "/user.slice/user-1000.slice/user@1000.service/tmux-spawn-4412f8c4-65fa-456d-867b-c3415fc39811.scope",
+              "swap_max": "max",
+              "swap_current_bytes": 86851584,
+              "swap_peak_bytes": 1533071360,
+              "oom_kill": 0
+            },
+            "end": {
+              "path": "/user.slice/user-1000.slice/user@1000.service/tmux-spawn-4412f8c4-65fa-456d-867b-c3415fc39811.scope",
+              "swap_max": "max",
+              "swap_current_bytes": 86851584,
+              "swap_peak_bytes": 1533071360,
+              "oom_kill": 0
+            },
+            "delta": {
+              "oom_kill": 0,
+              "swap_current_bytes": 0
+            }
+          },
+          "power_w_avg": 16.808028169014086,
+          "power_w_peak": 17.68,
+          "temperature_c_peak": 46,
+          "utilization_pct_avg": 31.12676056338028,
+          "request_energy_j_est": 1218.8976352860452,
+          "mem_available_gib_min": 60.42804718017578,
+          "nvme_temperature_c_peak": 49.85,
+          "swap_in_pages_delta": 1,
+          "swap_out_pages_delta": 0,
+          "page_faults_delta": 687998,
+          "major_faults_delta": 1,
+          "oom_kill_delta": 0
+        },
+        "lifecycle_telemetry": {
+          "samples": 212,
+          "duration_s": 219.19663248001598,
+          "swap_start_bytes": 687906816,
+          "memory_guard_gib": 12,
+          "memory_guard_triggered": false,
+          "swap_end_bytes": 687902720,
+          "swap_growth_bytes": 0,
+          "cgroup": {
+            "start": {
+              "path": "/user.slice/user-1000.slice/user@1000.service/tmux-spawn-4412f8c4-65fa-456d-867b-c3415fc39811.scope",
+              "swap_max": "max",
+              "swap_current_bytes": 86851584,
+              "swap_peak_bytes": 1533071360,
+              "oom_kill": 0
+            },
+            "end": {
+              "path": "/user.slice/user-1000.slice/user@1000.service/tmux-spawn-4412f8c4-65fa-456d-867b-c3415fc39811.scope",
+              "swap_max": "max",
+              "swap_current_bytes": 86851584,
+              "swap_peak_bytes": 1533071360,
+              "oom_kill": 0
+            },
+            "delta": {
+              "oom_kill": 0,
+              "swap_current_bytes": 0
+            }
+          },
+          "power_w_avg": 16.183962264150942,
+          "power_w_peak": 24.22,
+          "temperature_c_peak": 47,
+          "utilization_pct_avg": 29.589622641509433,
+          "request_energy_j_est": 3547.470028485541,
+          "mem_available_gib_min": 60.10727310180664,
+          "nvme_temperature_c_peak": 49.85,
+          "swap_in_pages_delta": 1,
+          "swap_out_pages_delta": 0,
+          "page_faults_delta": 11842690,
+          "major_faults_delta": 2,
+          "oom_kill_delta": 0
+        },
+        "oom_markers": 0,
+        "provenance": {
+          "git_revision": "c6d4956c06f64a1ef9a9e52efd01fa693992fd58",
+          "git_tracked_dirty": true,
+          "python": "3.11.15",
+          "platform": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+          "packages": {
+            "torch": "2.11.0+cu130",
+            "triton": "3.6.0",
+            "flashinfer-python": "0.6.15.post1",
+            "sglang-kernel": "0.4.5",
+            "transformers": "5.16.1"
+          },
+          "gpu_driver": "NVIDIA GB10, 580.126.09"
+        },
+        "output_text": "We need to find integer bases $b > 9$ such that $17_b$ divides $97_b$.\n\nIn base $b$:\n- $17_b = 1 \\cdot b + 7 = b + 7$\n- $97_b = 9 \\cdot b + 7 = ",
+        "moe": {
+          "active": 37800,
+          "missing": 23547,
+          "fetched": 0,
+          "calls": 4725,
+          "sparse_prefill_layers": 75,
+          "sparse_prefill_routes": 600,
+          "sparse_prefill_unique_rows": 600,
+          "sparse_prefill_fallback_layers": 0,
+          "shared_expert_overlap_calls": 4800,
+          "active_per_layer": 8,
+          "missing_per_layer": 4.983492063492063,
+          "miss_rate": 0.6229365079365079,
+          "fetched_per_layer": 0,
+          "fetch_rate": 0,
+          "per_layer": [
+            {
+              "layer": 0,
+              "steps": 63,
+              "active": 504,
+              "missing": 42,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 0.6666666666666666,
+              "miss_rate": 0.08333333333333333,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 1,
+              "steps": 63,
+              "active": 504,
+              "missing": 147,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 2.3333333333333335,
+              "miss_rate": 0.2916666666666667,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 2,
+              "steps": 63,
+              "active": 504,
+              "missing": 118,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 1.873015873015873,
+              "miss_rate": 0.23412698412698413,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 3,
+              "steps": 63,
+              "active": 504,
+              "missing": 347,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.507936507936508,
+              "miss_rate": 0.6884920634920635,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 4,
+              "steps": 63,
+              "active": 504,
+              "missing": 340,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.396825396825397,
+              "miss_rate": 0.6746031746031746,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 5,
+              "steps": 63,
+              "active": 504,
+              "missing": 299,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.746031746031746,
+              "miss_rate": 0.5932539682539683,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 6,
+              "steps": 63,
+              "active": 504,
+              "missing": 381,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.0476190476190474,
+              "miss_rate": 0.7559523809523809,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 7,
+              "steps": 63,
+              "active": 504,
+              "missing": 378,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6,
+              "miss_rate": 0.75,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 8,
+              "steps": 63,
+              "active": 504,
+              "missing": 365,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.7936507936507935,
+              "miss_rate": 0.7242063492063492,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 9,
+              "steps": 63,
+              "active": 504,
+              "missing": 332,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.26984126984127,
+              "miss_rate": 0.6587301587301587,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 10,
+              "steps": 63,
+              "active": 504,
+              "missing": 368,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.841269841269841,
+              "miss_rate": 0.7301587301587301,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 11,
+              "steps": 63,
+              "active": 504,
+              "missing": 374,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.936507936507937,
+              "miss_rate": 0.7420634920634921,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 12,
+              "steps": 63,
+              "active": 504,
+              "missing": 349,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.5396825396825395,
+              "miss_rate": 0.6924603174603174,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 13,
+              "steps": 63,
+              "active": 504,
+              "missing": 319,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.063492063492063,
+              "miss_rate": 0.6329365079365079,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 14,
+              "steps": 63,
+              "active": 504,
+              "missing": 288,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.571428571428571,
+              "miss_rate": 0.5714285714285714,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 15,
+              "steps": 63,
+              "active": 504,
+              "missing": 297,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.714285714285714,
+              "miss_rate": 0.5892857142857143,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 16,
+              "steps": 63,
+              "active": 504,
+              "missing": 278,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.412698412698413,
+              "miss_rate": 0.5515873015873016,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 17,
+              "steps": 63,
+              "active": 504,
+              "missing": 260,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.126984126984127,
+              "miss_rate": 0.5158730158730159,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 18,
+              "steps": 63,
+              "active": 504,
+              "missing": 259,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.111111111111111,
+              "miss_rate": 0.5138888888888888,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 19,
+              "steps": 63,
+              "active": 504,
+              "missing": 334,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.301587301587301,
+              "miss_rate": 0.6626984126984127,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 20,
+              "steps": 63,
+              "active": 504,
+              "missing": 386,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.126984126984127,
+              "miss_rate": 0.7658730158730159,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 21,
+              "steps": 63,
+              "active": 504,
+              "missing": 399,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.333333333333333,
+              "miss_rate": 0.7916666666666666,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 22,
+              "steps": 63,
+              "active": 504,
+              "missing": 380,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6.031746031746032,
+              "miss_rate": 0.753968253968254,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 23,
+              "steps": 63,
+              "active": 504,
+              "missing": 378,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 6,
+              "miss_rate": 0.75,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 24,
+              "steps": 63,
+              "active": 504,
+              "missing": 350,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.555555555555555,
+              "miss_rate": 0.6944444444444444,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 25,
+              "steps": 63,
+              "active": 504,
+              "missing": 320,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.079365079365079,
+              "miss_rate": 0.6349206349206349,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 26,
+              "steps": 63,
+              "active": 504,
+              "missing": 363,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.761904761904762,
+              "miss_rate": 0.7202380952380952,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 27,
+              "steps": 63,
+              "active": 504,
+              "missing": 350,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.555555555555555,
+              "miss_rate": 0.6944444444444444,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 28,
+              "steps": 63,
+              "active": 504,
+              "missing": 266,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.222222222222222,
+              "miss_rate": 0.5277777777777778,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 29,
+              "steps": 63,
+              "active": 504,
+              "missing": 299,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.746031746031746,
+              "miss_rate": 0.5932539682539683,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 30,
+              "steps": 63,
+              "active": 504,
+              "missing": 297,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.714285714285714,
+              "miss_rate": 0.5892857142857143,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 31,
+              "steps": 63,
+              "active": 504,
+              "missing": 322,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.111111111111111,
+              "miss_rate": 0.6388888888888888,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 32,
+              "steps": 63,
+              "active": 504,
+              "missing": 292,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.634920634920635,
+              "miss_rate": 0.5793650793650794,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 33,
+              "steps": 63,
+              "active": 504,
+              "missing": 328,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.2063492063492065,
+              "miss_rate": 0.6507936507936508,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 34,
+              "steps": 63,
+              "active": 504,
+              "missing": 325,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.158730158730159,
+              "miss_rate": 0.6448412698412699,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 35,
+              "steps": 63,
+              "active": 504,
+              "missing": 305,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.841269841269841,
+              "miss_rate": 0.6051587301587301,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 36,
+              "steps": 63,
+              "active": 504,
+              "missing": 343,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.444444444444445,
+              "miss_rate": 0.6805555555555556,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 37,
+              "steps": 63,
+              "active": 504,
+              "missing": 331,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.253968253968254,
+              "miss_rate": 0.6567460317460317,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 38,
+              "steps": 63,
+              "active": 504,
+              "missing": 348,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.523809523809524,
+              "miss_rate": 0.6904761904761905,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 39,
+              "steps": 63,
+              "active": 504,
+              "missing": 327,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.190476190476191,
+              "miss_rate": 0.6488095238095238,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 40,
+              "steps": 63,
+              "active": 504,
+              "missing": 348,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.523809523809524,
+              "miss_rate": 0.6904761904761905,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 41,
+              "steps": 63,
+              "active": 504,
+              "missing": 302,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.7936507936507935,
+              "miss_rate": 0.5992063492063492,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 42,
+              "steps": 63,
+              "active": 504,
+              "missing": 275,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.365079365079365,
+              "miss_rate": 0.5456349206349206,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 43,
+              "steps": 63,
+              "active": 504,
+              "missing": 302,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.7936507936507935,
+              "miss_rate": 0.5992063492063492,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 44,
+              "steps": 63,
+              "active": 504,
+              "missing": 328,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.2063492063492065,
+              "miss_rate": 0.6507936507936508,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 45,
+              "steps": 63,
+              "active": 504,
+              "missing": 342,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.428571428571429,
+              "miss_rate": 0.6785714285714286,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 46,
+              "steps": 63,
+              "active": 504,
+              "missing": 321,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.095238095238095,
+              "miss_rate": 0.6369047619047619,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 47,
+              "steps": 63,
+              "active": 504,
+              "missing": 308,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.888888888888889,
+              "miss_rate": 0.6111111111111112,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 48,
+              "steps": 63,
+              "active": 504,
+              "missing": 291,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.619047619047619,
+              "miss_rate": 0.5773809523809523,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 49,
+              "steps": 63,
+              "active": 504,
+              "missing": 305,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.841269841269841,
+              "miss_rate": 0.6051587301587301,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 50,
+              "steps": 63,
+              "active": 504,
+              "missing": 313,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.968253968253968,
+              "miss_rate": 0.621031746031746,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 51,
+              "steps": 63,
+              "active": 504,
+              "missing": 342,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.428571428571429,
+              "miss_rate": 0.6785714285714286,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 52,
+              "steps": 63,
+              "active": 504,
+              "missing": 294,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.666666666666667,
+              "miss_rate": 0.5833333333333334,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 53,
+              "steps": 63,
+              "active": 504,
+              "missing": 263,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.174603174603175,
+              "miss_rate": 0.5218253968253969,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 54,
+              "steps": 63,
+              "active": 504,
+              "missing": 272,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.317460317460317,
+              "miss_rate": 0.5396825396825397,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 55,
+              "steps": 63,
+              "active": 504,
+              "missing": 311,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.936507936507937,
+              "miss_rate": 0.6170634920634921,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 56,
+              "steps": 63,
+              "active": 504,
+              "missing": 317,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.031746031746032,
+              "miss_rate": 0.628968253968254,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 57,
+              "steps": 63,
+              "active": 504,
+              "missing": 295,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.682539682539683,
+              "miss_rate": 0.5853174603174603,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 58,
+              "steps": 63,
+              "active": 504,
+              "missing": 299,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.746031746031746,
+              "miss_rate": 0.5932539682539683,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 59,
+              "steps": 63,
+              "active": 504,
+              "missing": 302,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.7936507936507935,
+              "miss_rate": 0.5992063492063492,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 60,
+              "steps": 63,
+              "active": 504,
+              "missing": 323,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.126984126984127,
+              "miss_rate": 0.6408730158730159,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 61,
+              "steps": 63,
+              "active": 504,
+              "missing": 315,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5,
+              "miss_rate": 0.625,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 62,
+              "steps": 63,
+              "active": 504,
+              "missing": 332,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.26984126984127,
+              "miss_rate": 0.6587301587301587,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 63,
+              "steps": 63,
+              "active": 504,
+              "missing": 312,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.9523809523809526,
+              "miss_rate": 0.6190476190476191,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 64,
+              "steps": 63,
+              "active": 504,
+              "missing": 283,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.492063492063492,
+              "miss_rate": 0.5615079365079365,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 65,
+              "steps": 63,
+              "active": 504,
+              "missing": 311,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.936507936507937,
+              "miss_rate": 0.6170634920634921,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 66,
+              "steps": 63,
+              "active": 504,
+              "missing": 320,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.079365079365079,
+              "miss_rate": 0.6349206349206349,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 67,
+              "steps": 63,
+              "active": 504,
+              "missing": 317,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.031746031746032,
+              "miss_rate": 0.628968253968254,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 68,
+              "steps": 63,
+              "active": 504,
+              "missing": 313,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.968253968253968,
+              "miss_rate": 0.621031746031746,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 69,
+              "steps": 63,
+              "active": 504,
+              "missing": 275,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.365079365079365,
+              "miss_rate": 0.5456349206349206,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 70,
+              "steps": 63,
+              "active": 504,
+              "missing": 337,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.349206349206349,
+              "miss_rate": 0.6686507936507936,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 71,
+              "steps": 63,
+              "active": 504,
+              "missing": 348,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.523809523809524,
+              "miss_rate": 0.6904761904761905,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 72,
+              "steps": 63,
+              "active": 504,
+              "missing": 343,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.444444444444445,
+              "miss_rate": 0.6805555555555556,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 73,
+              "steps": 63,
+              "active": 504,
+              "missing": 342,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.428571428571429,
+              "miss_rate": 0.6785714285714286,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 74,
+              "steps": 63,
+              "active": 504,
+              "missing": 362,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.746031746031746,
+              "miss_rate": 0.7182539682539683,
+              "fetched_per_step": 0
+            }
+          ],
+          "disk": {
+            "cache_hits": 0,
+            "cache_misses": 24034,
+            "cache_evictions": 0,
+            "cache_bypasses": 487,
+            "read_ops": 96136,
+            "logical_bytes": 510329880576,
+            "physical_bytes": 510329880576,
+            "read_seconds": 47.17330106254667,
+            "cache_capacity_entries": 0,
+            "cache_capacity_bytes": 0,
+            "cache_allocated_bytes": 0,
+            "cache_occupancy_entries": 0,
+            "cache_occupancy_bytes": 0,
+            "staging_allocated_bytes": 5435817984,
+            "host_allocated_bytes": 5435817984,
+            "read_workers": 20,
+            "cache_policy": "layer_lru",
+            "staging_buffers": 1
+          }
+        }
+      }
+    },
+    {
+      "cache_slots": 2700,
+      "measurement": {
+        "schema_version": "1.0",
+        "model": "$HOME/models/models/glm-5.3/prepared/0.1.0-b12x",
+        "backend": "offload",
+        "recipe": {
+          "slug": "glm-5.3",
+          "recipe_version": "0.1.0",
+          "model": "Inferact/GLM-5.3-NVFP4",
+          "revision": "ce67b36f3669192b5bb233819f0fda6c8a9837f8",
+          "intended_tier": "research",
+          "status_at_run": "experimental",
+          "deployment": {
+            "backend": "native",
+            "backend_api": "1.0",
+            "source_format": "safetensors",
+            "runtime_format": "ftw-nvfp4",
+            "quantization": "nvfp4",
+            "execution_policy": "nvme-moe",
+            "backend_options": {}
+          }
+        },
+        "checkpoint": {
+          "path": "$HOME/models/models/glm-5.3/prepared/0.1.0-b12x",
+          "format": "ftw",
+          "bytes": 428713099264,
+          "fingerprint": "a0e799b03bceb4bf",
+          "quant_format": "nvfp4_b12x",
+          "source_model_path": "$HOME/models/models/glm-5.3/source/ce67b36f3669",
+          "external_artifacts": []
+        },
+        "platform": {
+          "checks": [
+            {
+              "detail": "SparkLab's supported runtime is Linux-only.",
+              "expected": "Linux / DGX OS",
+              "name": "operating_system",
+              "observed": "Linux",
+              "status": "pass"
+            },
+            {
+              "detail": "GB10 pairs the Blackwell GPU with a Grace ARM64 CPU.",
+              "expected": "aarch64",
+              "name": "cpu_architecture",
+              "observed": "aarch64",
+              "status": "pass"
+            },
+            {
+              "detail": "CUDA must be visible to the Python runtime.",
+              "expected": "CUDA 13.x available",
+              "name": "cuda",
+              "observed": "13.0",
+              "status": "pass"
+            },
+            {
+              "detail": "SparkLab's GB10 kernel contract targets CUDA 13.",
+              "expected": "13.x",
+              "name": "cuda_version",
+              "observed": "13.0",
+              "status": "pass"
+            },
+            {
+              "detail": "Architecture-specific kernels must fail closed on a different GPU.",
+              "expected": "SM121 (12.1)",
+              "name": "compute_capability",
+              "observed": [
+                12,
+                1
+              ],
+              "status": "pass"
+            },
+            {
+              "detail": "SM121 is authoritative; the device name is retained as supporting evidence.",
+              "expected": "NVIDIA GB10",
+              "name": "gpu_identity",
+              "observed": "NVIDIA GB10",
+              "status": "pass"
+            },
+            {
+              "detail": "The 128 GB product profile exposes roughly 119 GiB to Linux.",
+              "expected": ">= 123480309760 bytes",
+              "name": "unified_memory",
+              "observed": 130663591936,
+              "status": "pass"
+            },
+            {
+              "detail": "Model recipes consume only memory above the operational reserve.",
+              "expected": ">= 12884901888 bytes safety reserve",
+              "name": "available_memory",
+              "observed": 126078672896,
+              "status": "pass"
+            },
+            {
+              "detail": "Swap is never counted as model capacity.",
+              "expected": "0 bytes used",
+              "name": "swap_usage",
+              "observed": 687865856,
+              "status": "fail"
+            },
+            {
+              "detail": "Device-mapper filesystems may require manual NVMe verification.",
+              "expected": "local NVMe-backed filesystem",
+              "name": "nvme_storage",
+              "observed": "/dev/nvme0n1p2",
+              "status": "pass"
+            },
+            {
+              "detail": "Large FTW and Kimi K3 workflows require substantial local capacity.",
+              "expected": ">= 549755813888 bytes free",
+              "name": "storage_capacity",
+              "observed": 1840911843328,
+              "status": "pass"
+            },
+            {
+              "detail": "The prebuilt CUDA kernels must come from the same SparkLab release and, when stamped, the same source build.",
+              "expected": "same release and build stamp",
+              "name": "kernel_cache_version",
+              "observed": {
+                "sparklab": "0.1.2",
+                "sparklab-kernel-cache": "0.1.0+cu130"
+              },
+              "status": "fail"
+            }
+          ],
+          "failures": [
+            "swap_usage",
+            "kernel_cache_version"
+          ],
+          "memory": {
+            "available_bytes": 126078672896,
+            "cuda_free_bytes": 99701248000,
+            "physical_bytes": 130663591936,
+            "safe_available_bytes": 113193771008,
+            "safety_reserve_bytes": 12884901888,
+            "swap_total_bytes": 17179865088,
+            "swap_used_bytes": 687865856
+          },
+          "platform_failures": [],
+          "product": "SparkLab",
+          "profile": "gb10",
+          "ready": false,
+          "recommendations": [
+            "Resolve failed platform checks before loading a model.",
+            "Finish active workloads and return swap usage to zero before starting a certified recipe.",
+            "Reinstall sparklab and sparklab-kernel-cache as a matched wheel pair before loading a model."
+          ],
+          "runtime": {
+            "compute_capability": [
+              12,
+              1
+            ],
+            "cuda": "13.0",
+            "dependencies": {
+              "flashinfer-python": "0.6.15.post1",
+              "sglang-kernel": "0.4.5",
+              "sparklab": "0.1.2",
+              "sparklab-kernel-cache": "0.1.0+cu130",
+              "torch": "2.11.0+cu130",
+              "triton": "3.6.0"
+            },
+            "gpu": "NVIDIA GB10",
+            "integrated_gpu": true
+          },
+          "schema_version": "1.0",
+          "snapshot": {
+            "block_device": "/dev/nvme0n1p2",
+            "compute_capability": [
+              12,
+              1
+            ],
+            "cuda_available": true,
+            "cuda_free_bytes": 99701248000,
+            "cuda_version": "13.0",
+            "dependencies": {
+              "flashinfer-python": "0.6.15.post1",
+              "sglang-kernel": "0.4.5",
+              "sparklab": "0.1.2",
+              "sparklab-kernel-cache": "0.1.0+cu130",
+              "torch": "2.11.0+cu130",
+              "triton": "3.6.0"
+            },
+            "filesystem": "ext4",
+            "gpu_name": "NVIDIA GB10",
+            "gpu_total_bytes": 130663591936,
+            "integrated_gpu": true,
+            "machine": "aarch64",
+            "memory_available_bytes": 126078672896,
+            "memory_total_bytes": 130663591936,
+            "nvme": true,
+            "os_name": "Linux",
+            "storage_free_bytes": 1840911843328,
+            "storage_path": "$HOME/models/models/glm-5.3/prepared/0.1.0-b12x",
+            "storage_total_bytes": 4031871553536,
+            "swap_free_bytes": 16491999232,
+            "swap_total_bytes": 17179865088
+          },
+          "status": "supported_not_ready",
+          "storage": {
+            "block_device": "/dev/nvme0n1p2",
+            "filesystem": "ext4",
+            "free_bytes": 1840911843328,
+            "nvme": true,
+            "path": "$HOME/models/models/glm-5.3/prepared/0.1.0-b12x",
+            "total_bytes": 4031871553536
+          },
+          "supported": true,
+          "warnings": [],
+          "exit_code": 1
+        },
+        "configuration": {
+          "storage": "disk",
+          "attention_backend": "auto",
+          "qsa_fused_selection": true,
+          "page_size": 1,
+          "cache_type": "radix",
+          "max_seq_len": 8256,
+          "nvfp4_backend": "flashinfer",
+          "host_cache_gb": 0,
+          "requested_cache_size": 2700,
+          "requested_cache_rate": null,
+          "memory_ratio": 0.9,
+          "requested_num_tokens": 2048,
+          "speculative_method": "auto",
+          "speculative_tokens": 0,
+          "speculative_draft_model": null,
+          "draft_sample_method": "greedy",
+          "dspark_confidence_threshold": 0,
+          "dspark_draft_cache_slots": 0,
+          "dspark_draft_cache_quotas": "",
+          "dsv4_kv_storage": "bf16",
+          "dsv4_index_storage": "bf16",
+          "qwen4_dense_storage": "bf16",
+          "qwen4_draft_vocab_size": 0,
+          "mamba_ssm_dtype": "float32",
+          "cpu_threads": 0,
+          "hybrid_fetch": -1,
+          "disk_read_workers": 20,
+          "cache_policy": "layer_lru",
+          "prefill_overlap": false,
+          "preload_all": false,
+          "prefill_hit_d2d": false,
+          "prefill_sparse_max_tokens": 256,
+          "shared_expert_overlap": true,
+          "startup_prefill_warmup": true,
+          "cuda_graph": false,
+          "request_timeout_s": 1800,
+          "prompt_padding_repeats": 0
+        },
+        "cache_geometry": {
+          "num_pages": 2048,
+          "page_size": 1,
+          "moe_cache_size": 2700,
+          "num_mamba_slots": 0,
+          "num_experts": 256,
+          "num_moe_layers": 75,
+          "moe_cache_policy": "layer_lru",
+          "unit_bytes": {
+            "kv_per_token": 95232,
+            "moe_per_expert": 21233664,
+            "mamba_per_slot": 0,
+            "swa_per_token": 0
+          },
+          "swa_full_tokens_ratio": 0,
+          "swa_page_size": 0,
+          "num_swa_pages": 0,
+          "cache_budget_bytes": 65581077708,
+          "reasoning": null,
+          "limits": {
+            "kv_tokens": {
+              "min": 1,
+              "max": 688645
+            },
+            "moe_experts": {
+              "min": 256,
+              "max": 3088
+            },
+            "mamba_slots": {
+              "min": 0,
+              "max": 0
+            },
+            "swa_tokens": {
+              "min": 0,
+              "max": 0
+            }
+          }
+        },
+        "problem": 0,
+        "prompt_tokens": 54,
+        "first_request_ttft_ms": 26079.58870899165,
+        "first_request_completion_tokens": 64,
+        "first_request_finish_reason": "length",
+        "decode_steps": 63,
+        "decode_tok_s": 1.1107494145856398,
+        "ms_per_token": 900.2930695876584,
+        "event_ms_p50": 907.0741650066338,
+        "event_ms_p99": 1172.2852729726583,
+        "ttft_ms": 2113.3181679761037,
+        "events": 64,
+        "completion_tokens": 64,
+        "finish_reason": "length",
+        "vram_gib": 73.9609375,
+        "sampling": {
+          "temperature": 0,
+          "top_p": 1,
+          "top_k": -1
+        },
+        "output_sha1": "e04fe1589d9a",
+        "expected_answer": "70",
+        "extracted_answer": null,
+        "answer_correct": null,
+        "server_log": "/tmp/bench-serve-offload-s178r2r4.log",
+        "gpu_telemetry": {
+          "samples": 57,
+          "duration_s": 58.83374026796082,
+          "swap_start_bytes": 687865856,
+          "memory_guard_gib": 0,
+          "memory_guard_triggered": false,
+          "swap_end_bytes": 687865856,
+          "swap_growth_bytes": 0,
+          "cgroup": {
+            "start": {
+              "path": "/user.slice/user-1000.slice/user@1000.service/tmux-spawn-4412f8c4-65fa-456d-867b-c3415fc39811.scope",
+              "swap_max": "max",
+              "swap_current_bytes": 86851584,
+              "swap_peak_bytes": 1533071360,
+              "oom_kill": 0
+            },
+            "end": {
+              "path": "/user.slice/user-1000.slice/user@1000.service/tmux-spawn-4412f8c4-65fa-456d-867b-c3415fc39811.scope",
+              "swap_max": "max",
+              "swap_current_bytes": 86851584,
+              "swap_peak_bytes": 1533071360,
+              "oom_kill": 0
+            },
+            "delta": {
+              "oom_kill": 0,
+              "swap_current_bytes": 0
+            }
+          },
+          "power_w_avg": 16.74280701754386,
+          "power_w_peak": 17.72,
+          "temperature_c_peak": 44,
+          "utilization_pct_avg": 36.1578947368421,
+          "request_energy_j_est": 985.0419594267672,
+          "mem_available_gib_min": 33.19923400878906,
+          "nvme_temperature_c_peak": 45.85,
+          "swap_in_pages_delta": 1,
+          "swap_out_pages_delta": 0,
+          "page_faults_delta": 500810,
+          "major_faults_delta": 1,
+          "oom_kill_delta": 0
+        },
+        "lifecycle_telemetry": {
+          "samples": 186,
+          "duration_s": 192.7011232880177,
+          "swap_start_bytes": 687865856,
+          "memory_guard_gib": 12,
+          "memory_guard_triggered": false,
+          "swap_end_bytes": 687865856,
+          "swap_growth_bytes": 0,
+          "cgroup": {
+            "start": {
+              "path": "/user.slice/user-1000.slice/user@1000.service/tmux-spawn-4412f8c4-65fa-456d-867b-c3415fc39811.scope",
+              "swap_max": "max",
+              "swap_current_bytes": 86851584,
+              "swap_peak_bytes": 1533071360,
+              "oom_kill": 0
+            },
+            "end": {
+              "path": "/user.slice/user-1000.slice/user@1000.service/tmux-spawn-4412f8c4-65fa-456d-867b-c3415fc39811.scope",
+              "swap_max": "max",
+              "swap_current_bytes": 86851584,
+              "swap_peak_bytes": 1533071360,
+              "oom_kill": 0
+            },
+            "delta": {
+              "oom_kill": 0,
+              "swap_current_bytes": 0
+            }
+          },
+          "power_w_avg": 15.605,
+          "power_w_peak": 22.98,
+          "temperature_c_peak": 44,
+          "utilization_pct_avg": 31.77956989247312,
+          "request_energy_j_est": 3007.101028909516,
+          "mem_available_gib_min": 32.861061096191406,
+          "nvme_temperature_c_peak": 45.85,
+          "swap_in_pages_delta": 2,
+          "swap_out_pages_delta": 0,
+          "page_faults_delta": 11567070,
+          "major_faults_delta": 2,
+          "oom_kill_delta": 0
+        },
+        "oom_markers": 0,
+        "provenance": {
+          "git_revision": "c6d4956c06f64a1ef9a9e52efd01fa693992fd58",
+          "git_tracked_dirty": true,
+          "python": "3.11.15",
+          "platform": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+          "packages": {
+            "torch": "2.11.0+cu130",
+            "triton": "3.6.0",
+            "flashinfer-python": "0.6.15.post1",
+            "sglang-kernel": "0.4.5",
+            "transformers": "5.16.1"
+          },
+          "gpu_driver": "NVIDIA GB10, 580.126.09"
+        },
+        "output_text": "We need to find integer bases $b > 9$ such that $17_b$ divides $97_b$.\n\nIn base $b$:\n- $17_b = 1 \\cdot b + 7 = b + 7$\n- $97_b = 9 \\cdot b + 7 = ",
+        "moe": {
+          "active": 37800,
+          "missing": 17117,
+          "fetched": 0,
+          "calls": 4725,
+          "sparse_prefill_layers": 75,
+          "sparse_prefill_routes": 600,
+          "sparse_prefill_unique_rows": 600,
+          "sparse_prefill_fallback_layers": 0,
+          "shared_expert_overlap_calls": 4800,
+          "active_per_layer": 8,
+          "missing_per_layer": 3.6226455026455024,
+          "miss_rate": 0.4528306878306878,
+          "fetched_per_layer": 0,
+          "fetch_rate": 0,
+          "per_layer": [
+            {
+              "layer": 0,
+              "steps": 63,
+              "active": 504,
+              "missing": 0,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 0,
+              "miss_rate": 0,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 1,
+              "steps": 63,
+              "active": 504,
+              "missing": 37,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 0.5873015873015873,
+              "miss_rate": 0.07341269841269842,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 2,
+              "steps": 63,
+              "active": 504,
+              "missing": 50,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 0.7936507936507936,
+              "miss_rate": 0.0992063492063492,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 3,
+              "steps": 63,
+              "active": 504,
+              "missing": 248,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.9365079365079363,
+              "miss_rate": 0.49206349206349204,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 4,
+              "steps": 63,
+              "active": 504,
+              "missing": 217,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.4444444444444446,
+              "miss_rate": 0.4305555555555556,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 5,
+              "steps": 63,
+              "active": 504,
+              "missing": 198,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.142857142857143,
+              "miss_rate": 0.39285714285714285,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 6,
+              "steps": 63,
+              "active": 504,
+              "missing": 300,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.761904761904762,
+              "miss_rate": 0.5952380952380952,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 7,
+              "steps": 63,
+              "active": 504,
+              "missing": 297,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.714285714285714,
+              "miss_rate": 0.5892857142857143,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 8,
+              "steps": 63,
+              "active": 504,
+              "missing": 286,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.5396825396825395,
+              "miss_rate": 0.5674603174603174,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 9,
+              "steps": 63,
+              "active": 504,
+              "missing": 233,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.6984126984126986,
+              "miss_rate": 0.4623015873015873,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 10,
+              "steps": 63,
+              "active": 504,
+              "missing": 303,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.809523809523809,
+              "miss_rate": 0.6011904761904762,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 11,
+              "steps": 63,
+              "active": 504,
+              "missing": 275,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.365079365079365,
+              "miss_rate": 0.5456349206349206,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 12,
+              "steps": 63,
+              "active": 504,
+              "missing": 227,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.6031746031746033,
+              "miss_rate": 0.4503968253968254,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 13,
+              "steps": 63,
+              "active": 504,
+              "missing": 226,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.5873015873015874,
+              "miss_rate": 0.44841269841269843,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 14,
+              "steps": 63,
+              "active": 504,
+              "missing": 193,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.0634920634920637,
+              "miss_rate": 0.38293650793650796,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 15,
+              "steps": 63,
+              "active": 504,
+              "missing": 172,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 2.7301587301587302,
+              "miss_rate": 0.3412698412698413,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 16,
+              "steps": 63,
+              "active": 504,
+              "missing": 148,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 2.3492063492063493,
+              "miss_rate": 0.29365079365079366,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 17,
+              "steps": 63,
+              "active": 504,
+              "missing": 125,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 1.9841269841269842,
+              "miss_rate": 0.24801587301587302,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 18,
+              "steps": 63,
+              "active": 504,
+              "missing": 154,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 2.4444444444444446,
+              "miss_rate": 0.3055555555555556,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 19,
+              "steps": 63,
+              "active": 504,
+              "missing": 207,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.2857142857142856,
+              "miss_rate": 0.4107142857142857,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 20,
+              "steps": 63,
+              "active": 504,
+              "missing": 303,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.809523809523809,
+              "miss_rate": 0.6011904761904762,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 21,
+              "steps": 63,
+              "active": 504,
+              "missing": 307,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.873015873015873,
+              "miss_rate": 0.6091269841269841,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 22,
+              "steps": 63,
+              "active": 504,
+              "missing": 324,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.142857142857143,
+              "miss_rate": 0.6428571428571429,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 23,
+              "steps": 63,
+              "active": 504,
+              "missing": 287,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.555555555555555,
+              "miss_rate": 0.5694444444444444,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 24,
+              "steps": 63,
+              "active": 504,
+              "missing": 251,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.984126984126984,
+              "miss_rate": 0.498015873015873,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 25,
+              "steps": 63,
+              "active": 504,
+              "missing": 256,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.063492063492063,
+              "miss_rate": 0.5079365079365079,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 26,
+              "steps": 63,
+              "active": 504,
+              "missing": 280,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.444444444444445,
+              "miss_rate": 0.5555555555555556,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 27,
+              "steps": 63,
+              "active": 504,
+              "missing": 274,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.349206349206349,
+              "miss_rate": 0.5436507936507936,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 28,
+              "steps": 63,
+              "active": 504,
+              "missing": 194,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.0793650793650795,
+              "miss_rate": 0.38492063492063494,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 29,
+              "steps": 63,
+              "active": 504,
+              "missing": 192,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.0476190476190474,
+              "miss_rate": 0.38095238095238093,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 30,
+              "steps": 63,
+              "active": 504,
+              "missing": 216,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.4285714285714284,
+              "miss_rate": 0.42857142857142855,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 31,
+              "steps": 63,
+              "active": 504,
+              "missing": 220,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.492063492063492,
+              "miss_rate": 0.4365079365079365,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 32,
+              "steps": 63,
+              "active": 504,
+              "missing": 210,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.3333333333333335,
+              "miss_rate": 0.4166666666666667,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 33,
+              "steps": 63,
+              "active": 504,
+              "missing": 219,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.4761904761904763,
+              "miss_rate": 0.43452380952380953,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 34,
+              "steps": 63,
+              "active": 504,
+              "missing": 241,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.8253968253968256,
+              "miss_rate": 0.4781746031746032,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 35,
+              "steps": 63,
+              "active": 504,
+              "missing": 225,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.5714285714285716,
+              "miss_rate": 0.44642857142857145,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 36,
+              "steps": 63,
+              "active": 504,
+              "missing": 258,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.095238095238095,
+              "miss_rate": 0.5119047619047619,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 37,
+              "steps": 63,
+              "active": 504,
+              "missing": 223,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.5396825396825395,
+              "miss_rate": 0.44246031746031744,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 38,
+              "steps": 63,
+              "active": 504,
+              "missing": 259,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.111111111111111,
+              "miss_rate": 0.5138888888888888,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 39,
+              "steps": 63,
+              "active": 504,
+              "missing": 253,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.015873015873016,
+              "miss_rate": 0.501984126984127,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 40,
+              "steps": 63,
+              "active": 504,
+              "missing": 266,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.222222222222222,
+              "miss_rate": 0.5277777777777778,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 41,
+              "steps": 63,
+              "active": 504,
+              "missing": 239,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.7936507936507935,
+              "miss_rate": 0.4742063492063492,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 42,
+              "steps": 63,
+              "active": 504,
+              "missing": 202,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.2063492063492065,
+              "miss_rate": 0.4007936507936508,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 43,
+              "steps": 63,
+              "active": 504,
+              "missing": 216,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.4285714285714284,
+              "miss_rate": 0.42857142857142855,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 44,
+              "steps": 63,
+              "active": 504,
+              "missing": 261,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.142857142857143,
+              "miss_rate": 0.5178571428571429,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 45,
+              "steps": 63,
+              "active": 504,
+              "missing": 262,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.158730158730159,
+              "miss_rate": 0.5198412698412699,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 46,
+              "steps": 63,
+              "active": 504,
+              "missing": 238,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.7777777777777777,
+              "miss_rate": 0.4722222222222222,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 47,
+              "steps": 63,
+              "active": 504,
+              "missing": 234,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.7142857142857144,
+              "miss_rate": 0.4642857142857143,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 48,
+              "steps": 63,
+              "active": 504,
+              "missing": 242,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.8412698412698414,
+              "miss_rate": 0.4801587301587302,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 49,
+              "steps": 63,
+              "active": 504,
+              "missing": 222,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.5238095238095237,
+              "miss_rate": 0.44047619047619047,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 50,
+              "steps": 63,
+              "active": 504,
+              "missing": 234,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.7142857142857144,
+              "miss_rate": 0.4642857142857143,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 51,
+              "steps": 63,
+              "active": 504,
+              "missing": 266,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.222222222222222,
+              "miss_rate": 0.5277777777777778,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 52,
+              "steps": 63,
+              "active": 504,
+              "missing": 212,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.365079365079365,
+              "miss_rate": 0.42063492063492064,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 53,
+              "steps": 63,
+              "active": 504,
+              "missing": 190,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.015873015873016,
+              "miss_rate": 0.376984126984127,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 54,
+              "steps": 63,
+              "active": 504,
+              "missing": 191,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.0317460317460316,
+              "miss_rate": 0.37896825396825395,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 55,
+              "steps": 63,
+              "active": 504,
+              "missing": 233,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.6984126984126986,
+              "miss_rate": 0.4623015873015873,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 56,
+              "steps": 63,
+              "active": 504,
+              "missing": 254,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.031746031746032,
+              "miss_rate": 0.503968253968254,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 57,
+              "steps": 63,
+              "active": 504,
+              "missing": 201,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.1904761904761907,
+              "miss_rate": 0.39880952380952384,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 58,
+              "steps": 63,
+              "active": 504,
+              "missing": 222,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.5238095238095237,
+              "miss_rate": 0.44047619047619047,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 59,
+              "steps": 63,
+              "active": 504,
+              "missing": 257,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.079365079365079,
+              "miss_rate": 0.5099206349206349,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 60,
+              "steps": 63,
+              "active": 504,
+              "missing": 240,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.8095238095238093,
+              "miss_rate": 0.47619047619047616,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 61,
+              "steps": 63,
+              "active": 504,
+              "missing": 225,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.5714285714285716,
+              "miss_rate": 0.44642857142857145,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 62,
+              "steps": 63,
+              "active": 504,
+              "missing": 251,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.984126984126984,
+              "miss_rate": 0.498015873015873,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 63,
+              "steps": 63,
+              "active": 504,
+              "missing": 241,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.8253968253968256,
+              "miss_rate": 0.4781746031746032,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 64,
+              "steps": 63,
+              "active": 504,
+              "missing": 209,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.3174603174603177,
+              "miss_rate": 0.4146825396825397,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 65,
+              "steps": 63,
+              "active": 504,
+              "missing": 222,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.5238095238095237,
+              "miss_rate": 0.44047619047619047,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 66,
+              "steps": 63,
+              "active": 504,
+              "missing": 249,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.9523809523809526,
+              "miss_rate": 0.49404761904761907,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 67,
+              "steps": 63,
+              "active": 504,
+              "missing": 238,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.7777777777777777,
+              "miss_rate": 0.4722222222222222,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 68,
+              "steps": 63,
+              "active": 504,
+              "missing": 222,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.5238095238095237,
+              "miss_rate": 0.44047619047619047,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 69,
+              "steps": 63,
+              "active": 504,
+              "missing": 195,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.0952380952380953,
+              "miss_rate": 0.3869047619047619,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 70,
+              "steps": 63,
+              "active": 504,
+              "missing": 255,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.0476190476190474,
+              "miss_rate": 0.5059523809523809,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 71,
+              "steps": 63,
+              "active": 504,
+              "missing": 267,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.238095238095238,
+              "miss_rate": 0.5297619047619048,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 72,
+              "steps": 63,
+              "active": 504,
+              "missing": 262,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.158730158730159,
+              "miss_rate": 0.5198412698412699,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 73,
+              "steps": 63,
+              "active": 504,
+              "missing": 245,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.888888888888889,
+              "miss_rate": 0.4861111111111111,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 74,
+              "steps": 63,
+              "active": 504,
+              "missing": 266,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.222222222222222,
+              "miss_rate": 0.5277777777777778,
+              "fetched_per_step": 0
+            }
+          ],
+          "disk": {
+            "cache_hits": 0,
+            "cache_misses": 17493,
+            "cache_evictions": 0,
+            "cache_bypasses": 376,
+            "read_ops": 69972,
+            "logical_bytes": 371440484352,
+            "physical_bytes": 371440484352,
+            "read_seconds": 34.89355509309098,
+            "cache_capacity_entries": 0,
+            "cache_capacity_bytes": 0,
+            "cache_allocated_bytes": 0,
+            "cache_occupancy_entries": 0,
+            "cache_occupancy_bytes": 0,
+            "staging_allocated_bytes": 5435817984,
+            "host_allocated_bytes": 5435817984,
+            "read_workers": 20,
+            "cache_policy": "layer_lru",
+            "staging_buffers": 1
+          }
+        }
+      }
+    },
+    {
+      "cache_slots": 2850,
+      "measurement": {
+        "schema_version": "1.0",
+        "model": "$HOME/models/models/glm-5.3/prepared/0.1.0-b12x",
+        "backend": "offload",
+        "recipe": {
+          "slug": "glm-5.3",
+          "recipe_version": "0.1.0",
+          "model": "Inferact/GLM-5.3-NVFP4",
+          "revision": "ce67b36f3669192b5bb233819f0fda6c8a9837f8",
+          "intended_tier": "research",
+          "status_at_run": "experimental",
+          "deployment": {
+            "backend": "native",
+            "backend_api": "1.0",
+            "source_format": "safetensors",
+            "runtime_format": "ftw-nvfp4",
+            "quantization": "nvfp4",
+            "execution_policy": "nvme-moe",
+            "backend_options": {}
+          }
+        },
+        "checkpoint": {
+          "path": "$HOME/models/models/glm-5.3/prepared/0.1.0-b12x",
+          "format": "ftw",
+          "bytes": 428713099264,
+          "fingerprint": "a0e799b03bceb4bf",
+          "quant_format": "nvfp4_b12x",
+          "source_model_path": "$HOME/models/models/glm-5.3/source/ce67b36f3669",
+          "external_artifacts": []
+        },
+        "platform": {
+          "checks": [
+            {
+              "detail": "SparkLab's supported runtime is Linux-only.",
+              "expected": "Linux / DGX OS",
+              "name": "operating_system",
+              "observed": "Linux",
+              "status": "pass"
+            },
+            {
+              "detail": "GB10 pairs the Blackwell GPU with a Grace ARM64 CPU.",
+              "expected": "aarch64",
+              "name": "cpu_architecture",
+              "observed": "aarch64",
+              "status": "pass"
+            },
+            {
+              "detail": "CUDA must be visible to the Python runtime.",
+              "expected": "CUDA 13.x available",
+              "name": "cuda",
+              "observed": "13.0",
+              "status": "pass"
+            },
+            {
+              "detail": "SparkLab's GB10 kernel contract targets CUDA 13.",
+              "expected": "13.x",
+              "name": "cuda_version",
+              "observed": "13.0",
+              "status": "pass"
+            },
+            {
+              "detail": "Architecture-specific kernels must fail closed on a different GPU.",
+              "expected": "SM121 (12.1)",
+              "name": "compute_capability",
+              "observed": [
+                12,
+                1
+              ],
+              "status": "pass"
+            },
+            {
+              "detail": "SM121 is authoritative; the device name is retained as supporting evidence.",
+              "expected": "NVIDIA GB10",
+              "name": "gpu_identity",
+              "observed": "NVIDIA GB10",
+              "status": "pass"
+            },
+            {
+              "detail": "The 128 GB product profile exposes roughly 119 GiB to Linux.",
+              "expected": ">= 123480309760 bytes",
+              "name": "unified_memory",
+              "observed": 130663591936,
+              "status": "pass"
+            },
+            {
+              "detail": "Model recipes consume only memory above the operational reserve.",
+              "expected": ">= 12884901888 bytes safety reserve",
+              "name": "available_memory",
+              "observed": 126088863744,
+              "status": "pass"
+            },
+            {
+              "detail": "Swap is never counted as model capacity.",
+              "expected": "0 bytes used",
+              "name": "swap_usage",
+              "observed": 687865856,
+              "status": "fail"
+            },
+            {
+              "detail": "Device-mapper filesystems may require manual NVMe verification.",
+              "expected": "local NVMe-backed filesystem",
+              "name": "nvme_storage",
+              "observed": "/dev/nvme0n1p2",
+              "status": "pass"
+            },
+            {
+              "detail": "Large FTW and Kimi K3 workflows require substantial local capacity.",
+              "expected": ">= 549755813888 bytes free",
+              "name": "storage_capacity",
+              "observed": 1840910213120,
+              "status": "pass"
+            },
+            {
+              "detail": "The prebuilt CUDA kernels must come from the same SparkLab release and, when stamped, the same source build.",
+              "expected": "same release and build stamp",
+              "name": "kernel_cache_version",
+              "observed": {
+                "sparklab": "0.1.2",
+                "sparklab-kernel-cache": "0.1.0+cu130"
+              },
+              "status": "fail"
+            }
+          ],
+          "failures": [
+            "swap_usage",
+            "kernel_cache_version"
+          ],
+          "memory": {
+            "available_bytes": 126088863744,
+            "cuda_free_bytes": 99701325824,
+            "physical_bytes": 130663591936,
+            "safe_available_bytes": 113203961856,
+            "safety_reserve_bytes": 12884901888,
+            "swap_total_bytes": 17179865088,
+            "swap_used_bytes": 687865856
+          },
+          "platform_failures": [],
+          "product": "SparkLab",
+          "profile": "gb10",
+          "ready": false,
+          "recommendations": [
+            "Resolve failed platform checks before loading a model.",
+            "Finish active workloads and return swap usage to zero before starting a certified recipe.",
+            "Reinstall sparklab and sparklab-kernel-cache as a matched wheel pair before loading a model."
+          ],
+          "runtime": {
+            "compute_capability": [
+              12,
+              1
+            ],
+            "cuda": "13.0",
+            "dependencies": {
+              "flashinfer-python": "0.6.15.post1",
+              "sglang-kernel": "0.4.5",
+              "sparklab": "0.1.2",
+              "sparklab-kernel-cache": "0.1.0+cu130",
+              "torch": "2.11.0+cu130",
+              "triton": "3.6.0"
+            },
+            "gpu": "NVIDIA GB10",
+            "integrated_gpu": true
+          },
+          "schema_version": "1.0",
+          "snapshot": {
+            "block_device": "/dev/nvme0n1p2",
+            "compute_capability": [
+              12,
+              1
+            ],
+            "cuda_available": true,
+            "cuda_free_bytes": 99701325824,
+            "cuda_version": "13.0",
+            "dependencies": {
+              "flashinfer-python": "0.6.15.post1",
+              "sglang-kernel": "0.4.5",
+              "sparklab": "0.1.2",
+              "sparklab-kernel-cache": "0.1.0+cu130",
+              "torch": "2.11.0+cu130",
+              "triton": "3.6.0"
+            },
+            "filesystem": "ext4",
+            "gpu_name": "NVIDIA GB10",
+            "gpu_total_bytes": 130663591936,
+            "integrated_gpu": true,
+            "machine": "aarch64",
+            "memory_available_bytes": 126088863744,
+            "memory_total_bytes": 130663591936,
+            "nvme": true,
+            "os_name": "Linux",
+            "storage_free_bytes": 1840910213120,
+            "storage_path": "$HOME/models/models/glm-5.3/prepared/0.1.0-b12x",
+            "storage_total_bytes": 4031871553536,
+            "swap_free_bytes": 16491999232,
+            "swap_total_bytes": 17179865088
+          },
+          "status": "supported_not_ready",
+          "storage": {
+            "block_device": "/dev/nvme0n1p2",
+            "filesystem": "ext4",
+            "free_bytes": 1840910213120,
+            "nvme": true,
+            "path": "$HOME/models/models/glm-5.3/prepared/0.1.0-b12x",
+            "total_bytes": 4031871553536
+          },
+          "supported": true,
+          "warnings": [],
+          "exit_code": 1
+        },
+        "configuration": {
+          "storage": "disk",
+          "attention_backend": "auto",
+          "qsa_fused_selection": true,
+          "page_size": 1,
+          "cache_type": "radix",
+          "max_seq_len": 8256,
+          "nvfp4_backend": "flashinfer",
+          "host_cache_gb": 0,
+          "requested_cache_size": 2850,
+          "requested_cache_rate": null,
+          "memory_ratio": 0.9,
+          "requested_num_tokens": 2048,
+          "speculative_method": "auto",
+          "speculative_tokens": 0,
+          "speculative_draft_model": null,
+          "draft_sample_method": "greedy",
+          "dspark_confidence_threshold": 0,
+          "dspark_draft_cache_slots": 0,
+          "dspark_draft_cache_quotas": "",
+          "dsv4_kv_storage": "bf16",
+          "dsv4_index_storage": "bf16",
+          "qwen4_dense_storage": "bf16",
+          "qwen4_draft_vocab_size": 0,
+          "mamba_ssm_dtype": "float32",
+          "cpu_threads": 0,
+          "hybrid_fetch": -1,
+          "disk_read_workers": 20,
+          "cache_policy": "layer_lru",
+          "prefill_overlap": false,
+          "preload_all": false,
+          "prefill_hit_d2d": false,
+          "prefill_sparse_max_tokens": 256,
+          "shared_expert_overlap": true,
+          "startup_prefill_warmup": true,
+          "cuda_graph": false,
+          "request_timeout_s": 1800,
+          "prompt_padding_repeats": 0
+        },
+        "cache_geometry": {
+          "num_pages": 2048,
+          "page_size": 1,
+          "moe_cache_size": 2850,
+          "num_mamba_slots": 0,
+          "num_experts": 256,
+          "num_moe_layers": 75,
+          "moe_cache_policy": "layer_lru",
+          "unit_bytes": {
+            "kv_per_token": 95232,
+            "moe_per_expert": 21233664,
+            "mamba_per_slot": 0,
+            "swa_per_token": 0
+          },
+          "swa_full_tokens_ratio": 0,
+          "swa_page_size": 0,
+          "num_swa_pages": 0,
+          "cache_budget_bytes": 65424736665,
+          "reasoning": null,
+          "limits": {
+            "kv_tokens": {
+              "min": 1,
+              "max": 687003
+            },
+            "moe_experts": {
+              "min": 256,
+              "max": 3081
+            },
+            "mamba_slots": {
+              "min": 0,
+              "max": 0
+            },
+            "swa_tokens": {
+              "min": 0,
+              "max": 0
+            }
+          }
+        },
+        "problem": 0,
+        "prompt_tokens": 54,
+        "first_request_ttft_ms": 26089.101823978126,
+        "first_request_completion_tokens": 64,
+        "first_request_finish_reason": "length",
+        "decode_steps": 63,
+        "decode_tok_s": 1.1135217403323914,
+        "ms_per_token": 898.0516174758252,
+        "event_ms_p50": 913.2006819709204,
+        "event_ms_p99": 1181.0185690410435,
+        "ttft_ms": 2089.2167650163174,
+        "events": 64,
+        "completion_tokens": 64,
+        "finish_reason": "length",
+        "vram_gib": 76.9296875,
+        "sampling": {
+          "temperature": 0,
+          "top_p": 1,
+          "top_k": -1
+        },
+        "output_sha1": "e19ef21a678b",
+        "expected_answer": "70",
+        "extracted_answer": null,
+        "answer_correct": null,
+        "server_log": "/tmp/bench-serve-offload-j8anel3r.log",
+        "gpu_telemetry": {
+          "samples": 57,
+          "duration_s": 58.66741303901654,
+          "swap_start_bytes": 687865856,
+          "memory_guard_gib": 0,
+          "memory_guard_triggered": false,
+          "swap_end_bytes": 687865856,
+          "swap_growth_bytes": 0,
+          "cgroup": {
+            "start": {
+              "path": "/user.slice/user-1000.slice/user@1000.service/tmux-spawn-4412f8c4-65fa-456d-867b-c3415fc39811.scope",
+              "swap_max": "max",
+              "swap_current_bytes": 86851584,
+              "swap_peak_bytes": 1533071360,
+              "oom_kill": 0
+            },
+            "end": {
+              "path": "/user.slice/user-1000.slice/user@1000.service/tmux-spawn-4412f8c4-65fa-456d-867b-c3415fc39811.scope",
+              "swap_max": "max",
+              "swap_current_bytes": 86851584,
+              "swap_peak_bytes": 1533071360,
+              "oom_kill": 0
+            },
+            "delta": {
+              "oom_kill": 0,
+              "swap_current_bytes": 0
+            }
+          },
+          "power_w_avg": 17.00982456140351,
+          "power_w_peak": 18.28,
+          "temperature_c_peak": 46,
+          "utilization_pct_avg": 35.36842105263158,
+          "request_energy_j_est": 997.9224032650679,
+          "mem_available_gib_min": 30.153446197509766,
+          "nvme_temperature_c_peak": 48.85,
+          "swap_in_pages_delta": 1,
+          "swap_out_pages_delta": 0,
+          "page_faults_delta": 519472,
+          "major_faults_delta": 1,
+          "oom_kill_delta": 0
+        },
+        "lifecycle_telemetry": {
+          "samples": 186,
+          "duration_s": 193.06395530700684,
+          "swap_start_bytes": 687865856,
+          "memory_guard_gib": 12,
+          "memory_guard_triggered": false,
+          "swap_end_bytes": 687865856,
+          "swap_growth_bytes": 0,
+          "cgroup": {
+            "start": {
+              "path": "/user.slice/user-1000.slice/user@1000.service/tmux-spawn-4412f8c4-65fa-456d-867b-c3415fc39811.scope",
+              "swap_max": "max",
+              "swap_current_bytes": 86851584,
+              "swap_peak_bytes": 1533071360,
+              "oom_kill": 0
+            },
+            "end": {
+              "path": "/user.slice/user-1000.slice/user@1000.service/tmux-spawn-4412f8c4-65fa-456d-867b-c3415fc39811.scope",
+              "swap_max": "max",
+              "swap_current_bytes": 86851584,
+              "swap_peak_bytes": 1533071360,
+              "oom_kill": 0
+            },
+            "delta": {
+              "oom_kill": 0,
+              "swap_current_bytes": 0
+            }
+          },
+          "power_w_avg": 16.142258064516128,
+          "power_w_peak": 24,
+          "temperature_c_peak": 46,
+          "utilization_pct_avg": 32.376344086021504,
+          "request_energy_j_est": 3116.4881895219123,
+          "mem_available_gib_min": 29.89889144897461,
+          "nvme_temperature_c_peak": 48.85,
+          "swap_in_pages_delta": 2,
+          "swap_out_pages_delta": 0,
+          "page_faults_delta": 11584700,
+          "major_faults_delta": 2,
+          "oom_kill_delta": 0
+        },
+        "oom_markers": 0,
+        "provenance": {
+          "git_revision": "c6d4956c06f64a1ef9a9e52efd01fa693992fd58",
+          "git_tracked_dirty": true,
+          "python": "3.11.15",
+          "platform": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+          "packages": {
+            "torch": "2.11.0+cu130",
+            "triton": "3.6.0",
+            "flashinfer-python": "0.6.15.post1",
+            "sglang-kernel": "0.4.5",
+            "transformers": "5.16.1"
+          },
+          "gpu_driver": "NVIDIA GB10, 580.126.09"
+        },
+        "output_text": "We need to find integer bases $b > 9$ such that $17_b$ divides $97_b$.\n\nFirst, convert to base 10:\n- $17_b = 1 \\cdot b + 7 = b + 7$\n- $97_b = 9 \\cdot b + 7",
+        "moe": {
+          "active": 37800,
+          "missing": 17118,
+          "fetched": 0,
+          "calls": 4725,
+          "sparse_prefill_layers": 75,
+          "sparse_prefill_routes": 600,
+          "sparse_prefill_unique_rows": 600,
+          "sparse_prefill_fallback_layers": 0,
+          "shared_expert_overlap_calls": 4800,
+          "active_per_layer": 8,
+          "missing_per_layer": 3.6228571428571428,
+          "miss_rate": 0.45285714285714285,
+          "fetched_per_layer": 0,
+          "fetch_rate": 0,
+          "per_layer": [
+            {
+              "layer": 0,
+              "steps": 63,
+              "active": 504,
+              "missing": 0,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 0,
+              "miss_rate": 0,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 1,
+              "steps": 63,
+              "active": 504,
+              "missing": 40,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 0.6349206349206349,
+              "miss_rate": 0.07936507936507936,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 2,
+              "steps": 63,
+              "active": 504,
+              "missing": 51,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 0.8095238095238095,
+              "miss_rate": 0.10119047619047619,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 3,
+              "steps": 63,
+              "active": 504,
+              "missing": 239,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.7936507936507935,
+              "miss_rate": 0.4742063492063492,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 4,
+              "steps": 63,
+              "active": 504,
+              "missing": 216,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.4285714285714284,
+              "miss_rate": 0.42857142857142855,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 5,
+              "steps": 63,
+              "active": 504,
+              "missing": 193,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.0634920634920637,
+              "miss_rate": 0.38293650793650796,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 6,
+              "steps": 63,
+              "active": 504,
+              "missing": 285,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.523809523809524,
+              "miss_rate": 0.5654761904761905,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 7,
+              "steps": 63,
+              "active": 504,
+              "missing": 302,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.7936507936507935,
+              "miss_rate": 0.5992063492063492,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 8,
+              "steps": 63,
+              "active": 504,
+              "missing": 287,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.555555555555555,
+              "miss_rate": 0.5694444444444444,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 9,
+              "steps": 63,
+              "active": 504,
+              "missing": 259,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.111111111111111,
+              "miss_rate": 0.5138888888888888,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 10,
+              "steps": 63,
+              "active": 504,
+              "missing": 292,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.634920634920635,
+              "miss_rate": 0.5793650793650794,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 11,
+              "steps": 63,
+              "active": 504,
+              "missing": 274,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.349206349206349,
+              "miss_rate": 0.5436507936507936,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 12,
+              "steps": 63,
+              "active": 504,
+              "missing": 227,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.6031746031746033,
+              "miss_rate": 0.4503968253968254,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 13,
+              "steps": 63,
+              "active": 504,
+              "missing": 218,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.4603174603174605,
+              "miss_rate": 0.43253968253968256,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 14,
+              "steps": 63,
+              "active": 504,
+              "missing": 199,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.1587301587301586,
+              "miss_rate": 0.3948412698412698,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 15,
+              "steps": 63,
+              "active": 504,
+              "missing": 126,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 2,
+              "miss_rate": 0.25,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 16,
+              "steps": 63,
+              "active": 504,
+              "missing": 157,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 2.492063492063492,
+              "miss_rate": 0.3115079365079365,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 17,
+              "steps": 63,
+              "active": 504,
+              "missing": 112,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 1.7777777777777777,
+              "miss_rate": 0.2222222222222222,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 18,
+              "steps": 63,
+              "active": 504,
+              "missing": 143,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 2.2698412698412698,
+              "miss_rate": 0.2837301587301587,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 19,
+              "steps": 63,
+              "active": 504,
+              "missing": 203,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.2222222222222223,
+              "miss_rate": 0.4027777777777778,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 20,
+              "steps": 63,
+              "active": 504,
+              "missing": 307,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.873015873015873,
+              "miss_rate": 0.6091269841269841,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 21,
+              "steps": 63,
+              "active": 504,
+              "missing": 317,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 5.031746031746032,
+              "miss_rate": 0.628968253968254,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 22,
+              "steps": 63,
+              "active": 504,
+              "missing": 310,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.920634920634921,
+              "miss_rate": 0.6150793650793651,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 23,
+              "steps": 63,
+              "active": 504,
+              "missing": 290,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.603174603174603,
+              "miss_rate": 0.5753968253968254,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 24,
+              "steps": 63,
+              "active": 504,
+              "missing": 251,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.984126984126984,
+              "miss_rate": 0.498015873015873,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 25,
+              "steps": 63,
+              "active": 504,
+              "missing": 232,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.6825396825396823,
+              "miss_rate": 0.4603174603174603,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 26,
+              "steps": 63,
+              "active": 504,
+              "missing": 275,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.365079365079365,
+              "miss_rate": 0.5456349206349206,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 27,
+              "steps": 63,
+              "active": 504,
+              "missing": 275,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.365079365079365,
+              "miss_rate": 0.5456349206349206,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 28,
+              "steps": 63,
+              "active": 504,
+              "missing": 187,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 2.9682539682539684,
+              "miss_rate": 0.37103174603174605,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 29,
+              "steps": 63,
+              "active": 504,
+              "missing": 206,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.2698412698412698,
+              "miss_rate": 0.4087301587301587,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 30,
+              "steps": 63,
+              "active": 504,
+              "missing": 212,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.365079365079365,
+              "miss_rate": 0.42063492063492064,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 31,
+              "steps": 63,
+              "active": 504,
+              "missing": 230,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.6507936507936507,
+              "miss_rate": 0.45634920634920634,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 32,
+              "steps": 63,
+              "active": 504,
+              "missing": 209,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.3174603174603177,
+              "miss_rate": 0.4146825396825397,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 33,
+              "steps": 63,
+              "active": 504,
+              "missing": 238,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.7777777777777777,
+              "miss_rate": 0.4722222222222222,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 34,
+              "steps": 63,
+              "active": 504,
+              "missing": 234,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.7142857142857144,
+              "miss_rate": 0.4642857142857143,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 35,
+              "steps": 63,
+              "active": 504,
+              "missing": 223,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.5396825396825395,
+              "miss_rate": 0.44246031746031744,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 36,
+              "steps": 63,
+              "active": 504,
+              "missing": 265,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.2063492063492065,
+              "miss_rate": 0.5257936507936508,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 37,
+              "steps": 63,
+              "active": 504,
+              "missing": 243,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.857142857142857,
+              "miss_rate": 0.48214285714285715,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 38,
+              "steps": 63,
+              "active": 504,
+              "missing": 260,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.126984126984127,
+              "miss_rate": 0.5158730158730159,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 39,
+              "steps": 63,
+              "active": 504,
+              "missing": 261,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.142857142857143,
+              "miss_rate": 0.5178571428571429,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 40,
+              "steps": 63,
+              "active": 504,
+              "missing": 286,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.5396825396825395,
+              "miss_rate": 0.5674603174603174,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 41,
+              "steps": 63,
+              "active": 504,
+              "missing": 250,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.9682539682539684,
+              "miss_rate": 0.49603174603174605,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 42,
+              "steps": 63,
+              "active": 504,
+              "missing": 193,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.0634920634920637,
+              "miss_rate": 0.38293650793650796,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 43,
+              "steps": 63,
+              "active": 504,
+              "missing": 222,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.5238095238095237,
+              "miss_rate": 0.44047619047619047,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 44,
+              "steps": 63,
+              "active": 504,
+              "missing": 259,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.111111111111111,
+              "miss_rate": 0.5138888888888888,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 45,
+              "steps": 63,
+              "active": 504,
+              "missing": 269,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.26984126984127,
+              "miss_rate": 0.5337301587301587,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 46,
+              "steps": 63,
+              "active": 504,
+              "missing": 241,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.8253968253968256,
+              "miss_rate": 0.4781746031746032,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 47,
+              "steps": 63,
+              "active": 504,
+              "missing": 246,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.9047619047619047,
+              "miss_rate": 0.4880952380952381,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 48,
+              "steps": 63,
+              "active": 504,
+              "missing": 230,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.6507936507936507,
+              "miss_rate": 0.45634920634920634,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 49,
+              "steps": 63,
+              "active": 504,
+              "missing": 217,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.4444444444444446,
+              "miss_rate": 0.4305555555555556,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 50,
+              "steps": 63,
+              "active": 504,
+              "missing": 232,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.6825396825396823,
+              "miss_rate": 0.4603174603174603,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 51,
+              "steps": 63,
+              "active": 504,
+              "missing": 262,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.158730158730159,
+              "miss_rate": 0.5198412698412699,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 52,
+              "steps": 63,
+              "active": 504,
+              "missing": 200,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.1746031746031744,
+              "miss_rate": 0.3968253968253968,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 53,
+              "steps": 63,
+              "active": 504,
+              "missing": 203,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.2222222222222223,
+              "miss_rate": 0.4027777777777778,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 54,
+              "steps": 63,
+              "active": 504,
+              "missing": 187,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 2.9682539682539684,
+              "miss_rate": 0.37103174603174605,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 55,
+              "steps": 63,
+              "active": 504,
+              "missing": 236,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.746031746031746,
+              "miss_rate": 0.46825396825396826,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 56,
+              "steps": 63,
+              "active": 504,
+              "missing": 260,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.126984126984127,
+              "miss_rate": 0.5158730158730159,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 57,
+              "steps": 63,
+              "active": 504,
+              "missing": 222,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.5238095238095237,
+              "miss_rate": 0.44047619047619047,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 58,
+              "steps": 63,
+              "active": 504,
+              "missing": 240,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.8095238095238093,
+              "miss_rate": 0.47619047619047616,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 59,
+              "steps": 63,
+              "active": 504,
+              "missing": 241,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.8253968253968256,
+              "miss_rate": 0.4781746031746032,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 60,
+              "steps": 63,
+              "active": 504,
+              "missing": 233,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.6984126984126986,
+              "miss_rate": 0.4623015873015873,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 61,
+              "steps": 63,
+              "active": 504,
+              "missing": 214,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.3968253968253967,
+              "miss_rate": 0.4246031746031746,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 62,
+              "steps": 63,
+              "active": 504,
+              "missing": 252,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4,
+              "miss_rate": 0.5,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 63,
+              "steps": 63,
+              "active": 504,
+              "missing": 235,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.7301587301587302,
+              "miss_rate": 0.4662698412698413,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 64,
+              "steps": 63,
+              "active": 504,
+              "missing": 231,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.6666666666666665,
+              "miss_rate": 0.4583333333333333,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 65,
+              "steps": 63,
+              "active": 504,
+              "missing": 214,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.3968253968253967,
+              "miss_rate": 0.4246031746031746,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 66,
+              "steps": 63,
+              "active": 504,
+              "missing": 255,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.0476190476190474,
+              "miss_rate": 0.5059523809523809,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 67,
+              "steps": 63,
+              "active": 504,
+              "missing": 230,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.6507936507936507,
+              "miss_rate": 0.45634920634920634,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 68,
+              "steps": 63,
+              "active": 504,
+              "missing": 222,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.5238095238095237,
+              "miss_rate": 0.44047619047619047,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 69,
+              "steps": 63,
+              "active": 504,
+              "missing": 192,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 3.0476190476190474,
+              "miss_rate": 0.38095238095238093,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 70,
+              "steps": 63,
+              "active": 504,
+              "missing": 260,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.126984126984127,
+              "miss_rate": 0.5158730158730159,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 71,
+              "steps": 63,
+              "active": 504,
+              "missing": 259,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.111111111111111,
+              "miss_rate": 0.5138888888888888,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 72,
+              "steps": 63,
+              "active": 504,
+              "missing": 253,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.015873015873016,
+              "miss_rate": 0.501984126984127,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 73,
+              "steps": 63,
+              "active": 504,
+              "missing": 257,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.079365079365079,
+              "miss_rate": 0.5099206349206349,
+              "fetched_per_step": 0
+            },
+            {
+              "layer": 74,
+              "steps": 63,
+              "active": 504,
+              "missing": 267,
+              "fetched": 0,
+              "active_per_step": 8,
+              "missing_per_step": 4.238095238095238,
+              "miss_rate": 0.5297619047619048,
+              "fetched_per_step": 0
+            }
+          ],
+          "disk": {
+            "cache_hits": 0,
+            "cache_misses": 17479,
+            "cache_evictions": 0,
+            "cache_bypasses": 361,
+            "read_ops": 69916,
+            "logical_bytes": 371143213056,
+            "physical_bytes": 371143213056,
+            "read_seconds": 34.86309778149007,
+            "cache_capacity_entries": 0,
+            "cache_capacity_bytes": 0,
+            "cache_allocated_bytes": 0,
+            "cache_occupancy_entries": 0,
+            "cache_occupancy_bytes": 0,
+            "staging_allocated_bytes": 5435817984,
+            "host_allocated_bytes": 5435817984,
+            "read_workers": 20,
+            "cache_policy": "layer_lru",
+            "staging_buffers": 1
+          }
+        }
+      }
+    }
+  ]
+}

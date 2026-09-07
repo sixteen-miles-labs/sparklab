@@ -183,6 +183,70 @@ def test_layer_lru_supports_exact_per_layer_quotas_cpu():
     assert cache.layer_quotas.tolist() == [4, 4, 7, 5]
 
 
+def _exercise_layer_lru_above_quota(cache):
+    # Kimi's top-16 routing exceeds its default 9-10 slots/layer. Model this
+    # with a full cache, two protected slots/layer, and four simultaneous routes.
+    for layer in range(3):
+        cache.ensure_experts(
+            layer, torch.tensor([0, 1], dtype=torch.int32, device=cache.device)
+        )
+    for layer in (0, 1, 2, 0):
+        raw = torch.tensor([0, 1, 2, 3, 0], dtype=torch.int32, device=cache.device)
+        slots = raw.clone()
+        cache.ensure_experts(layer, slots)
+        assert slots.unique().numel() == 4
+        assert torch.equal(cache.id_of_slot[slots.long()], layer * 4 + raw)
+        assert torch.equal(cache.slot_for_id[layer, raw.long()], slots)
+        assert int(cache.layer_counts.sum()) == cache.cache_size
+        owners = cache.id_of_slot // cache.num_experts
+        assert torch.equal(
+            torch.bincount(owners.long(), minlength=cache.num_layers).int(),
+            cache.layer_counts,
+        )
+
+
+def test_layer_lru_above_quota_keeps_every_current_route_cpu():
+    from sparklab.moe.offload_cache import OffloadMoeCache
+
+    cache = OffloadMoeCache(3, 4, 6, torch.device("cpu"), cache_policy="layer_lru")
+    _exercise_layer_lru_above_quota(cache)
+
+
+def test_layer_lru_cuda_dispatch_does_not_sync_for_unique(monkeypatch):
+    from types import SimpleNamespace
+
+    from sparklab.moe import offload_kernels
+    from sparklab.moe.offload_cache import OffloadMoeCache
+
+    cache = OffloadMoeCache(3, 4, 6, torch.device("cpu"), cache_policy="layer_lru")
+    query = SimpleNamespace(is_cuda=True, numel=lambda: 4)
+    calls = []
+
+    class FakeKernel:
+        def __getitem__(self, grid):
+            return lambda *args, **kwargs: calls.append((grid, args, kwargs))
+
+    monkeypatch.setattr(offload_kernels, "_layer_lru_ensure_kernel", FakeKernel())
+    monkeypatch.setattr(
+        torch, "unique", lambda *_: pytest.fail("decode admission must not call unique")
+    )
+    offload_kernels.layer_lru_ensure(cache, 0, query)
+    assert len(calls) == 1
+    assert calls[0][1][0] is query
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
+def test_layer_lru_above_quota_cuda_matches_cpu():
+    from sparklab.moe.offload_cache import OffloadMoeCache
+
+    cpu = OffloadMoeCache(3, 4, 6, torch.device("cpu"), cache_policy="layer_lru")
+    gpu = OffloadMoeCache(3, 4, 6, torch.device("cuda"), cache_policy="layer_lru")
+    _exercise_layer_lru_above_quota(cpu)
+    _exercise_layer_lru_above_quota(gpu)
+    for name in ("slot_for_id", "id_of_slot", "usage", "layer_counts"):
+        assert torch.equal(getattr(cpu, name), getattr(gpu, name).cpu())
+
+
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
 def test_layer_lru_cuda_matches_cpu_reference():
     from sparklab.moe.offload_cache import OffloadMoeCache
@@ -195,6 +259,43 @@ def test_layer_lru_cuda_matches_cpu_reference():
     assert torch.equal(gpu.id_of_slot.cpu(), cpu.id_of_slot)
     assert torch.equal(gpu.usage.cpu(), cpu.usage)
     assert torch.equal(gpu.layer_counts.cpu(), cpu.layer_counts)
+
+
+@pytest.mark.parametrize("device_type", ["cpu", "cuda"])
+def test_materialize_routed_layer_preserves_inverse_maps_and_payload(device_type):
+    from sparklab.moe.offload_cache import OffloadMoeCache
+
+    if device_type == "cuda" and not torch.cuda.is_available():
+        pytest.skip("needs CUDA")
+    device = torch.device(device_type)
+    cache = OffloadMoeCache(3, 4, 6, device, cache_policy="layer_lru")
+    for layer, routes in ((0, [3, 2, 1]), (1, [0, 1]), (2, [1])):
+        cache.ensure_experts(layer, torch.tensor(routes, dtype=torch.int32, device=device))
+    payload = cache.id_of_slot.clone()
+    for layer, routes in ((0, [0, 2]), (1, [0, 3]), (2, [1, 2]), (2, [0, 1, 3])):
+        ids = torch.tensor(routes, dtype=torch.int32, device=device)
+        cache.materialize_routed_layer(layer, ids)
+        n = int(cache.num_indices.item())
+        assert n == len(routes)
+        assert torch.equal(cache.src_indices[:n], ids)
+        assert torch.equal(cache.evict_slots[:n], ids)
+        # Stand in for bank copying: an expert's payload is its flat logical id.
+        payload[cache.evict_slots[:n].long()] = layer * 4 + cache.src_indices[:n]
+        valid = cache.id_of_slot >= 0
+        owners = cache.id_of_slot[valid]
+        assert torch.equal(payload[valid], owners)
+        slots = torch.arange(cache.cache_size, device=device)[valid]
+        assert torch.equal(cache.slot_for_id.view(-1)[owners.long()].long(), slots)
+        mapped = cache.slot_for_id.view(-1) >= 0
+        assert torch.equal(
+            cache.id_of_slot[cache.slot_for_id.view(-1)[mapped].long()].long(),
+            torch.arange(12, device=device)[mapped],
+        )
+        assert torch.equal(cache.slot_for_id[layer, ids.long()], ids)
+        assert torch.equal(
+            torch.bincount((owners // 4).long(), minlength=3).int(), cache.layer_counts,
+        )
+        assert cache._pending_src_layer == layer and cache._pending_is_prefill
 
 
 def test_layer_lru_rejects_prefill_buffer_slot_borrowing():
@@ -410,6 +511,56 @@ def test_offload_moe_layer_sparse_prefill_routes_through_persistent_cache(monkey
     assert cache.sparse_prefill_routes == 2
     assert cache.sparse_prefill_unique_rows == 2
     assert int(cache.num_indices.item()) == 2
+
+
+@pytest.mark.parametrize("quant_format", ["bf16", "nvfp4", "fp8_block", "nvfp4_b12x"])
+def test_sparse_prefill_above_layer_quota_loads_only_routes(monkeypatch, quant_format):
+    from sparklab.moe.offload_cache import OffloadMoeCache
+
+    layer, _ = _make_layer_and_cache()
+    cache = OffloadMoeCache(
+        3, 4, 6, torch.device("cpu"), cache_policy="layer_lru",
+        quant_format=quant_format, prefill_sparse_max_tokens=4,
+    )
+    layer.offload_cache = cache
+    for lid in range(3):
+        cache.ensure_experts(lid, torch.tensor([0, 1], dtype=torch.int32))
+    raw = torch.tensor([[0, 2], [2, 3]], dtype=torch.int32)
+    weights = torch.tensor([[0.7, 0.3], [0.4, 0.6]])
+    hidden = torch.randn(2, 8)
+    copied = []
+    monkeypatch.setattr(
+        cache, "materialize_layer",
+        lambda *_: pytest.fail("above-quota routes must not scan the whole layer"),
+    )
+    monkeypatch.setattr(
+        cache, "copy_missing",
+        lambda: copied.extend(cache.src_indices[:int(cache.num_indices.item())].tolist()),
+    )
+    monkeypatch.setattr(cache, "alphas_for_slots", lambda *_: None)
+    monkeypatch.setattr(cache, "alphas_for_layer", lambda *_: None)
+    # This test exercises admission and routing dispatch, not quantized GEMMs.
+    monkeypatch.setattr(cache, "bank_views", lambda *args: ())
+
+    def fake_gemm(got_cache, got_hidden, got_weights, ids, **kwargs):
+        assert got_cache is cache and got_hidden is hidden and got_weights is weights
+        assert kwargs["is_prefill"]
+        if quant_format in ("nvfp4", "fp8_block"):
+            assert torch.equal(ids, raw)
+            slots = kwargs["prefill_slot_map"][ids.long()]
+        else:
+            assert kwargs.get("prefill_slot_map") is None
+            slots = ids
+        assert torch.equal(cache.id_of_slot[slots.long()], raw)
+        return hidden
+
+    monkeypatch.setattr(layer, "_expert_gemm", fake_gemm)
+    assert layer._prefill_routed(hidden, weights, raw.clone()) is hidden
+    assert copied == ([0, 2, 3] if quant_format == "nvfp4_b12x" else [2, 3])
+    assert cache.sparse_prefill_layers == 1
+    assert cache.sparse_prefill_unique_rows == 3
+    assert cache.sparse_prefill_routes == 4
+    assert cache.sparse_prefill_fallback_layers == 0
 
 
 def test_native_nvfp4_sparse_prefill_sorts_logical_ids_and_maps_slots(monkeypatch):

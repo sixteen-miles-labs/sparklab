@@ -1,0 +1,159 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-GLM53-RESEARCH-OPT-002",
+  "status": "measured",
+  "recipe": {
+    "slug": "glm-5.3",
+    "recipe_version": "0.1.0",
+    "revision": "ce67b36f3669192b5bb233819f0fda6c8a9837f8"
+  },
+  "engine": {
+    "git_revision": "c6d4956c06f64a1ef9a9e52efd01fa693992fd58",
+    "git_tracked_dirty": true,
+    "note": "Measured on the base revision with the cache/backend and benchmark changes in this PR; not a clean-base measurement."
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "cuda": "13.0"
+  },
+  "checkpoint": {
+    "full_model": true,
+    "format": "ftw-nvfp4-b12x",
+    "fingerprint": "a0e799b03bceb4bf",
+    "bytes": 428713099264,
+    "source_bytes": 464867183339
+  },
+  "configuration": {
+    "storage": "disk",
+    "attention_backend": "auto",
+    "qsa_fused_selection": true,
+    "page_size": 1,
+    "cache_type": "radix",
+    "max_seq_len": 8448,
+    "nvfp4_backend": "flashinfer",
+    "host_cache_gb": 0,
+    "requested_cache_size": 2850,
+    "requested_cache_rate": null,
+    "memory_ratio": 0.9,
+    "requested_num_tokens": 2048,
+    "speculative_method": "auto",
+    "speculative_tokens": 0,
+    "speculative_draft_model": null,
+    "draft_sample_method": "greedy",
+    "dspark_confidence_threshold": 0,
+    "dspark_draft_cache_slots": 0,
+    "dspark_draft_cache_quotas": "",
+    "dsv4_kv_storage": "bf16",
+    "dsv4_index_storage": "bf16",
+    "qwen4_dense_storage": "bf16",
+    "qwen4_draft_vocab_size": 0,
+    "mamba_ssm_dtype": "float32",
+    "cpu_threads": 0,
+    "hybrid_fetch": -1,
+    "disk_read_workers": 20,
+    "cache_policy": "layer_lru",
+    "prefill_overlap": false,
+    "preload_all": false,
+    "prefill_hit_d2d": false,
+    "prefill_sparse_max_tokens": 256,
+    "shared_expert_overlap": true,
+    "startup_prefill_warmup": true,
+    "cuda_graph": false,
+    "request_timeout_s": 1800,
+    "prompt_padding_repeats": 0
+  },
+  "metrics": {
+    "decode_tokens_per_second": 1.108134249894042,
+    "decode_milliseconds_per_token": 902.4177351215508,
+    "warm_ttft_seconds": 1.9577306060236879,
+    "first_request_ttft_seconds": 25.857733732962515,
+    "latency_p50_milliseconds": 900.7886429899372,
+    "latency_p99_milliseconds": 1194.7393250302412,
+    "expert_cache_miss_rate_percent": 44.611111111111114,
+    "physical_io_gib": 1356.888427734375,
+    "minimum_mem_available_gib": 29.69037628173828,
+    "swap_growth_bytes": 0
+  },
+  "stability": {
+    "requested_completion_tokens": 256,
+    "returned_completion_tokens": 256,
+    "timed_decode_steps": 255,
+    "swap_in_pages": 5,
+    "swap_out_pages": 0,
+    "swap_growth_bytes": 0,
+    "oom_count": 0
+  },
+  "validation": {
+    "output_correctness": false,
+    "output_correctness_evaluated": true,
+    "output_hash_algorithm": "sha1-prefix",
+    "output_hash": "5b69d85cc226",
+    "output_hash_probe_tokens": 256,
+    "matched_native_control": false,
+    "memory_bounded": true,
+    "nvme_behavior": "bounded",
+    "reasoning_parser": false,
+    "tool_parser": false,
+    "coding_agent_task": false
+  },
+  "quality_checks": {
+    "scope": "Two normal-EOS AIME smoke checks, not certification; 1024-token cap. Separate from the length-capped performance measurement.",
+    "candidate": [
+      {
+        "problem": 0,
+        "correct": true,
+        "expected": "70",
+        "answer": "70",
+        "completion_tokens": 841,
+        "finish_reason": "stop",
+        "decode_tokens_per_second": 1.0909148006551304,
+        "output_hash": "4bb42da2c07f"
+      },
+      {
+        "problem": 1,
+        "correct": false,
+        "expected": "588",
+        "answer": null,
+        "completion_tokens": 1024,
+        "finish_reason": "length",
+        "decode_tokens_per_second": 1.0862605696737095,
+        "output_hash": "ec60faef3dd1"
+      }
+    ],
+    "control": [
+      {
+        "problem": 0,
+        "cache_slots": 675,
+        "correct": true,
+        "completion_tokens": 844,
+        "finish_reason": "stop",
+        "decode_tokens_per_second": 0.8154427770982812,
+        "output_hash": "0afcf524b5d1"
+      }
+    ]
+  },
+  "admission": {
+    "tier": "research",
+    "passed": false,
+    "reasons": [
+      "AIME problem 1 reached its token cap without a final answer; broader quality is not established.",
+      "Reasoning-parser, tool-parser, and coding-agent certification gates were not run."
+    ]
+  },
+  "source_report": "exps/exp_research_cache_optimization.md",
+  "raw_evidence": [
+    "GB10-GLM53-RESEARCH-OPT-002-baseline64.json",
+    "GB10-GLM53-RESEARCH-OPT-002-short-sweep.json",
+    "GB10-GLM53-RESEARCH-OPT-002-candidate256.json",
+    "GB10-GLM53-RESEARCH-OPT-002-aime2850.json",
+    "GB10-GLM53-RESEARCH-OPT-002-aime675.json"
+  ],
+  "limitations": [
+    "Portfolio metrics come from one 256-token run, not the longer normal-EOS quality requests.",
+    "Greedy text differs across cache layouts; bit-exact parity is not claimed.",
+    "Pre-existing swap use was present, although there was no scoped swap-out or OOM.",
+    "Prepared weights are unchanged; routed experts are NVFP4 and large resident projections are per-row W8A16 FP8.",
+    "Kimi K3 acquisition and end-to-end optimization have not started."
+  ]
+}

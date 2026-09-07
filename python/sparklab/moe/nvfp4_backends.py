@@ -702,6 +702,9 @@ def _b12x_small_workspace(device: torch.device) -> torch.Tensor:
     return ws
 
 
+_B12X_MAX_FLAT_INT32_ELEMENTS = 2**31 - 1
+
+
 def b12x_fused_experts(
     hidden_states: torch.Tensor,
     gate_up_q: torch.Tensor,
@@ -738,6 +741,40 @@ def b12x_fused_experts(
 
     assert activation == "silu", "b12x backend supports gated silu only"
     assert not apply_router_weight_on_input
+    if any(
+        bank.numel() * bank.element_size() // 4 > _B12X_MAX_FLAT_INT32_ELEMENTS
+        for bank in (gate_up_q, gate_up_s, down_q, down_s)
+    ):
+        # The donor's flattened packed-weight descriptors use int32 extents.
+        # GLM's gate/up bank crosses that limit at 683 cache slots. Keep the
+        # large persistent cache, but gather just this call's routed rows into
+        # a bounded compute bank. All copies remain on-device; weights and
+        # router weights are unchanged. For decode, avoid dynamic torch.unique
+        # and its host synchronization by gathering one row per route.
+        if hidden_states.size(0) == 1:
+            slots = topk_ids.reshape(-1).long()
+            topk_ids = torch.arange(
+                slots.numel(), dtype=torch.int32, device=topk_ids.device,
+            ).view_as(topk_ids)
+        else:
+            slots, inverse = torch.unique(topk_ids.reshape(-1), return_inverse=True)
+            slots = slots.long()
+            topk_ids = inverse.to(torch.int32).view_as(topk_ids)
+        if any(
+            slots.numel() * (bank.numel() // bank.size(0)) * bank.element_size() // 4
+            > _B12X_MAX_FLAT_INT32_ELEMENTS
+            for bank in (gate_up_q, gate_up_s, down_q, down_s)
+        ):
+            raise ValueError(
+                "b12x routed expert bank still exceeds its int32 descriptor limit; "
+                "reduce the prefill chunk size"
+            )
+        gate_up_q = gate_up_q.index_select(0, slots)
+        gate_up_s = gate_up_s.index_select(0, slots)
+        gate_up_alpha = gate_up_alpha.index_select(0, slots)
+        down_q = down_q.index_select(0, slots)
+        down_s = down_s.index_select(0, slots)
+        down_alpha = down_alpha.index_select(0, slots)
     num_experts = gate_up_q.size(0)
     hidden_size = hidden_states.size(-1)
     # down bank is the prepared w2 == [E, K_tiles, ...] with K_tiles == intermediate//16.
