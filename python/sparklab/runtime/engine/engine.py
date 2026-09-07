@@ -130,6 +130,10 @@ def _required_attn_types(model_config) -> frozenset[AttnType]:
         return frozenset({AttnType.FULL})
     types = frozenset(
         spec.attn_type for spec in specs_fn() if spec.attn_type.backend_driven
+        # GLM DFlash computes its own noncausal SDPA; this group is storage only.
+        and not (getattr(model_config, "glm_dsa_args", None) is not None
+                 and getattr(model_config, "dflash2_args", None) is not None
+                 and spec.name == "dflash2")
     )
     return types or frozenset({AttnType.FULL})
 
@@ -294,12 +298,17 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
     qwen4_mtp = getattr(model_config, "qwen4_exp_args", None) is not None
     qwen35_mtp = bool(
         getattr(model_config, "glm5_next_args", None) is None
+        and getattr(model_config, "glm_dsa_args", None) is None
         and int(getattr(model_config, "mtp_num_hidden_layers", 0) or 0) > 0
     )
     qwen_mtp = qwen4_mtp or qwen35_mtp
     glm5_mtp = bool(
         getattr(model_config, "glm5_next_args", None) is not None
         and int(getattr(model_config, "mtp_num_hidden_layers", 0) or 0) > 0
+    )
+    glm_dsa_mtp = bool(
+        getattr(model_config, "glm_dsa_args", None) is not None
+        and int(getattr(model_config, "mtp_num_hidden_layers", 0) or 0) == 1
     )
     dsv4_args = getattr(model_config, "dsv4_args", None)
     dsv4_dspark = bool(
@@ -318,7 +327,7 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
             else "dspark"
             if dsv4_dspark
             else "mtp"
-            if (qwen_mtp or glm5_mtp)
+            if (qwen_mtp or glm5_mtp or glm_dsa_mtp)
             else "none"
         )
     else:
@@ -408,13 +417,23 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
             raise ValueError("Qwen3.8 DFlash2 block size must be between 2 and 16")
         if getattr(config, "draft_sample_method", "greedy") != "greedy":
             raise ValueError("native DFlash2 currently supports greedy decoding only")
-        if model_config.moe_enabled or model_config.num_layers != 64:
-            raise ValueError("native DFlash2 currently requires dense 64-layer Qwen3.8")
+        full_glm = getattr(model_config, "glm_dsa_args", None) is not None
+        if full_glm and getattr(getattr(config, "tp_info", None), "size", 1) != 1:
+            raise ValueError("full GLM DFlash2 currently supports TP=1 only")
+        if not full_glm and (model_config.moe_enabled or model_config.num_layers != 64):
+            raise ValueError("native DFlash2 requires dense 64-layer Qwen3.8 or full GLM")
         from sparklab.models.config import FullAttentionGroupConfig
         from sparklab.models.qwen3_5_moe.dflash2 import parse_dflash2_args
 
         draft_hf = cached_load_hf_config(draft_model)
         args = parse_dflash2_args(draft_hf, draft_model)
+        if full_glm:
+            if getattr(draft_hf, "quantization_config", None):
+                raise ValueError("full GLM DFlash2 currently requires the original BF16 draft")
+            if getattr(draft_hf, "num_target_layers", None) != model_config.num_layers:
+                raise ValueError("DFlash2 target layer count does not match full GLM")
+            if not 2 <= speculative_tokens <= args.checkpoint_block_size:
+                raise ValueError("GLM DFlash2 block size exceeds the trained checkpoint block")
         if (
             args.hidden_size != model_config.hidden_size
             or args.vocab_size != model_config.vocab_size
@@ -441,12 +460,46 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
         override("speculative_method", "dflash2")
         override("speculative_draft_model", draft_model)
         object.__setattr__(model_config, "mtp_cuda_graph", (
-            getattr(config, "attention_backend", None) == "triton"
+            not full_glm and getattr(config, "attention_backend", None) == "triton"
             and os.getenv(
                 "SPARKLAB_DFLASH2_VERIFY_GRAPH",
                 "0" if getattr(config, "cuda_graph_max_bs", None) == 0 else "1",
             ) == "1"
         ))
+        override("max_running_req", 1)
+        override("cache_type", "radix")
+        override("cuda_graph_bs", [])
+        override("cuda_graph_max_bs", 0)
+        return
+
+    if method == "mtp" and glm_dsa_mtp:
+        if getattr(getattr(config, "tp_info", None), "size", 1) != 1:
+            raise ValueError("full GLM MTP currently supports TP=1 only")
+        from sparklab.models.config import FullAttentionGroupConfig
+
+        if speculative_tokens > 7:
+            raise ValueError("full GLM MTP supports at most 7 speculative tokens")
+        if getattr(config, "draft_sample_method", "greedy") != "greedy":
+            raise ValueError("full GLM MTP currently requires greedy draft sampling")
+        lid = model_config.num_layers
+        args = model_config.glm_dsa_args
+        # The native draft has its own full DSA indexer and latent KV rows.
+        # Keep the target layer/expert counts unchanged; the draft is resident.
+        object.__setattr__(model_config, "glm_dsa_args", replace(
+            args, indexer_types=(*args.indexer_types[:lid], "full"),
+        ))
+        groups = []
+        for group in model_config.attention_groups:
+            if isinstance(group, FullAttentionGroupConfig) and lid not in group.layer_ids:
+                group = replace(
+                    group, layer_ids=(*group.layer_ids, lid),
+                    num_index_layers=group.num_index_layers + int(group.index_head_dim > 0),
+                )
+            groups.append(group)
+        object.__setattr__(model_config, "attention_groups", tuple(groups))
+        object.__setattr__(model_config, "speculative_method", "mtp")
+        object.__setattr__(model_config, "speculative_tokens", speculative_tokens)
+        override("speculative_method", "mtp")
         override("max_running_req", 1)
         override("cache_type", "radix")
         override("cuda_graph_bs", [])
@@ -1395,6 +1448,11 @@ class Engine:
             self.mtp_stats["target_forwards"] += 1
         state_snapshots: list[tuple[int, int]] = []
         kv_snapshot = None
+        append_only_speculation = (
+            getattr(self.config, "speculative_method", None) in {"mtp", "dflash2"}
+            and getattr(getattr(self.config, "model_config", None), "glm_dsa_args", None) is not None
+            and self.linear_state_pool is None
+        )
         if batch.is_verify:
             if self.config.speculative_method == "dspark":
                 if batch.size != 1:
@@ -1406,6 +1464,12 @@ class Engine:
                 self.kv_cache.begin_speculative_carry_capture(
                     all_prefixes=os.getenv("SPARKLAB_DSPARK_PREFIX_COMMIT", "1") == "1"
                 )
+            elif append_only_speculation:
+                # Full GLM has append-only latent/index KV, not recurrent state.
+                # Causal verification leaves every retained prefix row valid.
+                # Rejected suffix rows stay allocated but are masked by length
+                # and overwritten on continuation; never replay the target here.
+                pass
             else:
                 pool = self.linear_state_pool
                 if pool is None:
@@ -1475,12 +1539,13 @@ class Engine:
                     )
                     if dspark_prefix_committed:
                         self.mtp_stats["fast_carry_commits"] += 1
-                elif not batch.cache_verify_states:
+                elif not batch.cache_verify_states and not append_only_speculation:
                     live, scratch = state_snapshots[0]
                     self.linear_state_pool.copy_from(scratch, live)
                 if (
                     self.config.speculative_method != "dspark"
                     and not batch.cache_verify_states
+                    and not append_only_speculation
                 ) or (
                     self.config.speculative_method == "dspark"
                     and not dspark_prefix_committed
@@ -1493,14 +1558,16 @@ class Engine:
                 prefix_proposer = getattr(self.model, "propose_mtp_prefix", None)
                 if (
                     self.config.speculative_method == "mtp"
-                    and batch.cache_verify_states
                     and prefix_proposer is not None
-                    and os.getenv("SPARKLAB_QWEN4_REJECT_DRAFT", "0") == "1"
+                    and (append_only_speculation or (
+                        batch.cache_verify_states
+                        and os.getenv("SPARKLAB_QWEN4_REJECT_DRAFT", "0") == "1"
+                    ))
                 ):
                     req.speculative_drafts = prefix_proposer(batch, chosen[-1:], accepted + 1)
                 if (
                     self.config.speculative_method == "dflash2"
-                    and batch.cache_verify_states
+                    and (batch.cache_verify_states or append_only_speculation)
                     and os.getenv("SPARKLAB_DFLASH2_REJECT_DRAFT", "1") == "1"
                 ):
                     # DFlash consumes cached target features for the accepted

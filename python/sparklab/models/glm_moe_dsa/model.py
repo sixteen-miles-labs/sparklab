@@ -76,12 +76,19 @@ class GlmMoeDsaModel(BaseOP):
             [GlmMoeDsaDecoderLayer(config, layer_id) for layer_id in range(config.num_layers)]
         )
         self.norm = RMSNormFused(size=config.hidden_size, eps=config.rms_norm_eps)
+        draft_args = getattr(config, "dflash2_args", None)
+        self._dflash_capture_ids = frozenset(draft_args.target_layer_ids) if draft_args else frozenset()
+        self._dflash_captures = []
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
         x = self.embed_tokens.forward(input_ids)
         residual: torch.Tensor | None = None
-        for layer in self.layers.op_list:
+        captures = []
+        for layer_id, layer in enumerate(self.layers.op_list):
             x, residual = layer.forward(x, residual)
+            if layer_id in self._dflash_capture_ids:
+                captures.append(x + residual)
+        self._dflash_captures = captures
         return self.norm.forward(x, residual)[0]
 
 
@@ -100,7 +107,65 @@ class GlmMoeDsaForCausalLM(BaseLLMModel):
                 tie_word_embeddings=config.tie_word_embeddings,
                 tied_embedding=self.model.embed_tokens if config.tie_word_embeddings else None,
             )
+        self._mtp_steps = int(getattr(config, "speculative_tokens", 0) or 0)
+        self._mtp = None
+        self._mtp_path = None
+        self._mtp_target_hidden = None
+        self._dflash = None
+        if getattr(config, "speculative_method", "none") == "dflash2":
+            from sparklab.models.qwen3_5_moe.dflash2 import Qwen38DFlash2
+
+            self._dflash = Qwen38DFlash2(
+                config.dflash2_args, config.num_layers, self._mtp_steps, bf16=True
+            )
+        elif self._mtp_steps:
+            from .mtp import GlmDsaMultiTokenPredictor
+
+            self._mtp = GlmDsaMultiTokenPredictor(config)
         super().__init__()
+
+    def prepare_for_weight_load(self, model_path: str, *, dummy: bool = False):
+        if self._mtp is None or dummy:
+            return
+        import os
+        from pathlib import Path
+
+        path = Path(os.environ.get("SPARKLAB_GLM_DSA_MTP_PATH", str(Path(model_path) / "mtp")))
+        if not (path / "model.safetensors.index.json").is_file():
+            raise FileNotFoundError("Full GLM MTP needs its original indexed BF16 draft shards; "
+                                    "set SPARKLAB_GLM_DSA_MTP_PATH")
+        self._mtp_path = str(path)
+
+    def load_speculative_weights(self, model_path, device, *, dummy=False):
+        if self._mtp is not None:
+            self._mtp.load_shards(self._mtp_path, device, dummy=dummy)
+        if self._dflash is not None:
+            from .dflash2 import load_bf16_draft
+
+            load_bf16_draft(self._dflash, device, dummy=dummy)
+
+    def project_draft_logits(self, hidden):
+        # Do not apply prefill last-row selection to an already-selected draft.
+        if isinstance(self.lm_head, GlmFp8LMHead):
+            from sparklab.kernels.triton.fp8_pertensor_linear import fp8_pertensor_linear
+
+            return fp8_pertensor_linear(hidden, self.lm_head.weight, self.lm_head.weight_scale)
+        from sparklab.layers.linear import _linear_forward
+
+        head = self.lm_head.tied_embedding or self.lm_head
+        return _linear_forward(hidden, head.weight, self.lm_head.bias)
+
+    def propose_mtp(self, batch, next_token):
+        if self._dflash is not None:
+            return self._dflash.propose(self, batch, next_token)
+        from .mtp import propose_nextn
+
+        return propose_nextn(self, batch, next_token)
+
+    def propose_mtp_prefix(self, batch, correction, prefix_tokens):
+        from .mtp import propose_nextn
+
+        return propose_nextn(self, batch, correction, prefix_tokens=prefix_tokens)
 
     def prepare_for_runtime(self) -> None:
         """Post-load, pre-KV-sizing hook (engine calls it before the pool family's solve_num_pages):
@@ -111,10 +176,19 @@ class GlmMoeDsaForCausalLM(BaseLLMModel):
 
         for layer in self.model.layers.op_list:
             layer.self_attn.prepare_for_runtime()
+        if self._mtp is not None:
+            self._mtp.layer.self_attn.prepare_for_runtime()
         torch.cuda.empty_cache()
 
     def forward(self) -> torch.Tensor:
-        output = self.model.forward(get_global_ctx().batch.input_ids)
+        batch = get_global_ctx().batch
+        output = self.model.forward(batch.input_ids)
+        if self._dflash is not None:
+            self._dflash.materialize_target_hidden(
+                self.model._dflash_captures, batch.positions, batch.out_loc
+            )
+        if self._mtp is not None:
+            self._mtp_target_hidden = output
         return self.lm_head.forward(output)
 
 

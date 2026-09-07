@@ -1,0 +1,56 @@
+{
+  "target_fingerprint": "a0e799b03bceb4bf",
+  "sources": [
+    {
+      "repo_id": "Inferact/GLM-5.3-NVFP4",
+      "revision": "ce67b36f3669192b5bb233819f0fda6c8a9837f8",
+      "local_directory": "$HOME/models/speculative/glm-5.3/mtp-bf16-ce67b36f3669",
+      "files": [
+        {
+          "filename": "mtp_bf16-00001-of-00005.safetensors",
+          "bytes": 4479575624,
+          "tensors": 176
+        },
+        {
+          "filename": "mtp_bf16-00002-of-00005.safetensors",
+          "bytes": 4479539088,
+          "tensors": 178
+        },
+        {
+          "filename": "mtp_bf16-00003-of-00005.safetensors",
+          "bytes": 4479539088,
+          "tensors": 178
+        },
+        {
+          "filename": "mtp_bf16-00004-of-00005.safetensors",
+          "bytes": 4479538912,
+          "tensors": 178
+        },
+        {
+          "filename": "mtp_bf16-00005-of-00005.safetensors",
+          "bytes": 1987748128,
+          "tensors": 81
+        }
+      ],
+      "weight_bytes": 19905940840,
+      "tensor_count": 791
+    },
+    {
+      "repo_id": "incoai/GLM-5.3-DFlash2",
+      "revision": "425aa615ce320caac34400208b30808c8f14f76c",
+      "local_directory": "$HOME/models/speculative/glm-5.3/dflash2-425aa615ce32",
+      "files": [
+        {
+          "filename": "model.safetensors",
+          "bytes": 4918859112,
+          "tensors": 96
+        }
+      ],
+      "weight_bytes": 4918859112,
+      "tensor_count": 96
+    }
+  ],
+  "acquisition": "snapshot_download with exact revision and filename allowlist",
+  "license_note": "DFlash2 CC BY-NC-ND 4.0; local research/evaluation only, no draft publication",
+  "integrity_note": "Pinned Hub acquisition and local safetensors header/shape validation; no independent full-file SHA audit in this probe."
+}

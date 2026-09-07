@@ -38,6 +38,7 @@ class MLAKVCache(BaseKVCachePool):
         dtype: torch.dtype,
         device: torch.device,
         layer_ids: tuple[int, ...] | None = None,
+        draft_groups: tuple = (),
     ) -> None:
         self._latent_dim = latent_dim
         self._layer_ids = layer_ids or tuple(range(num_layers))
@@ -46,6 +47,8 @@ class MLAKVCache(BaseKVCachePool):
         self._page_size = page_size
         self._dtype = dtype
         self._device = device
+        self._draft_groups = draft_groups
+        self._draft_pools = {}
         self._alloc(num_pages)
 
     def _alloc(self, num_pages: int) -> None:
@@ -55,15 +58,34 @@ class MLAKVCache(BaseKVCachePool):
             device=self._device,
             dtype=self._dtype,
         )
+        from .mha_pool import MHAKVCache
+
+        self._draft_pools = {}
+        for group in self._draft_groups:
+            if set(group.layer_ids) & set(self._layer_ids):
+                raise ValueError("draft KV layer ids overlap the MLA target")
+            pool = MHAKVCache(
+                num_kv_heads=group.num_kv_heads, num_layers=max(group.layer_ids) + 1,
+                head_dim=group.head_dim, num_pages=num_pages, page_size=self._page_size,
+                dtype=self._dtype, device=self._device, layer_ids=group.layer_ids,
+            )
+            for lid in group.layer_ids:
+                if lid in self._draft_pools:
+                    raise ValueError("duplicate draft KV layer id")
+                self._draft_pools[lid] = pool
 
     # -- views ------------------------------------------------------------------
     def k_cache(self, layer_id: int) -> torch.Tensor:
         """Paged latent view ``[num_pages, page_size, latent_dim]``."""
+        if layer_id in self._draft_pools:
+            return self._draft_pools[layer_id].k_cache(layer_id)
         return self._kv_buffer[0, self._local_index[layer_id]].view(
             self._num_pages, self._page_size, -1
         )
 
     def v_cache(self, layer_id: int) -> torch.Tensor:
+        if layer_id in self._draft_pools:
+            return self._draft_pools[layer_id].v_cache(layer_id)
         # MLA: K == V (single latent); same buffer, dsv4_paged_pool precedent.
         return self.k_cache(layer_id)
 
@@ -85,6 +107,9 @@ class MLAKVCache(BaseKVCachePool):
         v0: two narrow ``index_put_`` scatters. TODO: generalize kernel/csrc
         store.cu to a two-width fused store and route this through it.
         """
+        if layer_id in self._draft_pools:
+            self._draft_pools[layer_id].store_kv(c_kv, k_rope, out_loc, layer_id)
+            return
         rows = self.latent_rows(layer_id)
         split = rows.shape[1] - k_rope.shape[-1]
         rows[out_loc, :split] = c_kv
@@ -94,6 +119,7 @@ class MLAKVCache(BaseKVCachePool):
         """In-place resize (frees the old slab first; object identity preserved --
         callers re-derive views per forward, same contract as MHAKVCache.rebuild)."""
         self._kv_buffer = None
+        self._draft_pools = {}
         if self._device.type == "cuda":
             torch.cuda.synchronize(self._device)
             torch.cuda.empty_cache()
@@ -116,7 +142,8 @@ class MLAKVCache(BaseKVCachePool):
 
     def unit_bytes(self) -> tuple[int, int]:
         buf = self._kv_buffer
-        return int(buf.numel() * buf.element_size()) // (self._num_pages * self._page_size), 0
+        draft_bytes = sum(pool.unit_bytes()[0] for pool in set(self._draft_pools.values()))
+        return int(buf.numel() * buf.element_size()) // (self._num_pages * self._page_size) + draft_bytes, 0
 
     # -- pool properties ----------------------------------------------------------
     @property
@@ -147,11 +174,13 @@ class DSAKVCache(MLAKVCache):
         index_head_dim: int,
         num_index_layers: int,
         layer_ids: tuple[int, ...] | None = None,
+        draft_groups: tuple = (),
     ) -> None:
         self._index_head_dim = index_head_dim
         self._num_index_layers = num_index_layers
         super().__init__(
-            latent_dim, num_layers, num_pages, page_size, dtype, device, layer_ids=layer_ids
+            latent_dim, num_layers, num_pages, page_size, dtype, device,
+            layer_ids=layer_ids, draft_groups=draft_groups,
         )
 
     def _alloc(self, num_pages: int) -> None:
