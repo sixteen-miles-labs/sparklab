@@ -1,6 +1,6 @@
-"""Native DFlash2 block drafter for dense Qwen3.8.
+"""Native DFlash2 block drafter shared by dense Qwen3.8 and full GLM-5.3.
 
-The draft has no embedding or language-model head.  It consumes five captured
+The draft has no embedding or language-model head.  It consumes captured
 target-layer features, reuses the target embedding/head, and predicts a masked
 block in parallel.  The architecture follows the MIT-licensed DGX Spark
 DFlash2 reference; the runtime integration and cache layout are SparkLab-native.
@@ -145,7 +145,7 @@ class DFlashGroupedConv(BaseOP):
 
 
 class DFlashAttention(BaseOP):
-    def __init__(self, args: DFlash2Args, layer_id: int):
+    def __init__(self, args: DFlash2Args, layer_id: int, *, bf16: bool = False):
         self.layer_id = layer_id
         self.num_q = args.num_attention_heads
         self.num_kv = args.num_key_value_heads
@@ -153,10 +153,14 @@ class DFlashAttention(BaseOP):
         self.q_size = self.num_q * self.head_dim
         self.kv_size = self.num_kv * self.head_dim
         self.sliding_window = args.sliding_window
-        self.qkv_proj = Nvfp4DenseColMerged(
-            args.hidden_size, [self.q_size, self.kv_size, self.kv_size]
+        self.qkv_proj = (
+            LinearReplicated(args.hidden_size, self.q_size + 2 * self.kv_size, has_bias=False)
+            if bf16 else Nvfp4DenseColMerged(
+                args.hidden_size, [self.q_size, self.kv_size, self.kv_size]
+            )
         )
-        self.o_proj = Nvfp4DenseLinear(self.q_size, args.hidden_size)
+        self.o_proj = (LinearReplicated(self.q_size, args.hidden_size, has_bias=False)
+                       if bf16 else Nvfp4DenseLinear(self.q_size, args.hidden_size))
         self.q_norm = RMSNorm(self.head_dim, args.rms_norm_eps)
         self.k_norm = RMSNorm(self.head_dim, args.rms_norm_eps)
         self.rotary = get_rope(
@@ -226,22 +230,28 @@ class DFlashAttention(BaseOP):
 
 
 class DFlashMLP(BaseOP):
-    def __init__(self, args: DFlash2Args):
-        self.gate_up_proj = Nvfp4DenseColMerged(
-            args.hidden_size, [args.intermediate_size, args.intermediate_size]
+    def __init__(self, args: DFlash2Args, *, bf16: bool = False):
+        self.gate_up_proj = (
+            LinearReplicated(args.hidden_size, 2 * args.intermediate_size, has_bias=False)
+            if bf16 else Nvfp4DenseColMerged(
+                args.hidden_size, [args.intermediate_size, args.intermediate_size]
+            )
         )
-        self.down_proj = Nvfp4DenseLinear(args.intermediate_size, args.hidden_size)
+        self.down_proj = (
+            LinearReplicated(args.intermediate_size, args.hidden_size, has_bias=False)
+            if bf16 else Nvfp4DenseLinear(args.intermediate_size, args.hidden_size)
+        )
 
     def forward(self, hidden: torch.Tensor) -> torch.Tensor:
         return self.down_proj.forward(silu_and_mul(self.gate_up_proj.forward(hidden)))
 
 
 class DFlashDecoderLayer(BaseOP):
-    def __init__(self, args: DFlash2Args, layer_id: int, block_size: int):
+    def __init__(self, args: DFlash2Args, layer_id: int, block_size: int, *, bf16: bool = False):
         self.input_layernorm = RMSNorm(args.hidden_size, args.rms_norm_eps)
-        self.self_attn = DFlashAttention(args, layer_id)
+        self.self_attn = DFlashAttention(args, layer_id, bf16=bf16)
         self.post_attention_layernorm = RMSNorm(args.hidden_size, args.rms_norm_eps)
-        self.mlp = DFlashMLP(args)
+        self.mlp = DFlashMLP(args, bf16=bf16)
         self.attention_conv = DFlashGroupedConv(args, block_size)
         self.mlp_conv = DFlashGroupedConv(args, block_size)
 
@@ -303,7 +313,12 @@ class CandidateSelector(BaseOP):
 
 
 class Qwen38DFlash2(BaseOP):
-    def __init__(self, args: DFlash2Args, target_num_layers: int, block_size: int):
+    """Shared block architecture; the historical name preserves Qwen callers.
+
+    Qwen uses native NVFP4 projections. Full GLM opts into original BF16 draft
+    projections and supplies its own scale-aware target-head projection.
+    """
+    def __init__(self, args: DFlash2Args, target_num_layers: int, block_size: int, *, bf16: bool = False):
         if args.hidden_size <= 0 or args.selector_rank <= 0:
             raise ValueError("invalid DFlash2 checkpoint geometry")
         if any(layer < 0 or layer >= target_num_layers for layer in args.target_layer_ids):
@@ -313,7 +328,7 @@ class Qwen38DFlash2(BaseOP):
         first_layer_id = target_num_layers
         self.layers = OPList(
             [
-                DFlashDecoderLayer(args, first_layer_id + i, block_size)
+                DFlashDecoderLayer(args, first_layer_id + i, block_size, bf16=bf16)
                 for i in range(args.num_layers)
             ]
         )
@@ -401,9 +416,13 @@ class Qwen38DFlash2(BaseOP):
                 hidden, residual = layer.forward(hidden, residual)
             hidden = self.norm.forward(hidden + residual)
             predictive = hidden[1:]
-            selector_head = self._selector_lm_head or target.lm_head
-            project = getattr(selector_head, "forward_all", selector_head.forward)
-            logits = project(predictive)
+            if self._selector_lm_head is None and hasattr(target, "project_draft_logits"):
+                # Full GLM's FP8 head needs its row scales, without prefill indexing.
+                logits = target.project_draft_logits(predictive)
+            else:
+                selector_head = self._selector_lm_head or target.lm_head
+                project = getattr(selector_head, "forward_all", selector_head.forward)
+                logits = project(predictive)
             unary, candidates = _selector_topk(
                 logits.float(), self.candidate_selector.top_k
             )

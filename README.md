@@ -144,10 +144,10 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
     <tr>
       <td><a href="https://huggingface.co/oakmindai/GLM-5.3-NVFP4-FTW">GLM-5.3</a></td>
       <td>753B total / 40B active</td>
-      <td>NVFP4 + resident FP8 · FTW</td>
+      <td>NVFP4 + resident FP8 · FTW + optional DFlash2-4</td>
       <td>Experimental</td>
-      <td align="right">1.11</td>
-      <td align="right">1.958</td>
+      <td align="right">1.29</td>
+      <td align="right">2.085</td>
       <td><a href="docs/models/glm-5.3.md">Instructions</a></td>
     </tr>
     <tr>

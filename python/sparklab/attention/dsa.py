@@ -122,7 +122,11 @@ class DSAAttnBackend(DSAIndexerMixin, BaseAttnBackend):
                 lead = None
                 # Capped to the SERVED layer count (dev num_layers overrides must not
                 # index slots past the pool the factory sized from the same cap).
-                for lid, kind in enumerate(args.indexer_types[: config.num_layers]):
+                served_layers = config.num_layers
+                if (getattr(config, "glm_dsa_args", None) is not None
+                        and getattr(config, "speculative_method", None) == "mtp"):
+                    served_layers += int(getattr(config, "mtp_num_hidden_layers", 0))
+                for lid, kind in enumerate(args.indexer_types[:served_layers]):
                     if kind == "full":
                         lead = lid
                         self._idx_slot[lid] = len(self._idx_slot)

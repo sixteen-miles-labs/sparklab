@@ -197,10 +197,12 @@ def create_kvcache_pool(
             layer_ids=spec.layer_ids,
         )
 
-    if len(kv_specs) == 1 and kv_specs[0].mla:
+    mla_specs = [spec for spec in kv_specs if spec.mla]
+    draft_specs = tuple(spec for spec in kv_specs if spec.name == "dflash2" and not spec.mla)
+    if len(mla_specs) == 1 and len(mla_specs) + len(draft_specs) == len(kv_specs):
         from .dsa_pool import DSAKVCache, MLAKVCache
 
-        spec = kv_specs[0]
+        spec = mla_specs[0]
         if spec.index_head_dim > 0 and spec.num_index_layers > 0:
             return DSAKVCache(
                 latent_dim=spec.head_dim,
@@ -212,6 +214,7 @@ def create_kvcache_pool(
                 index_head_dim=spec.index_head_dim,
                 num_index_layers=spec.num_index_layers,
                 layer_ids=spec.layer_ids,
+                draft_groups=draft_specs,
             )
         return MLAKVCache(
             latent_dim=spec.head_dim,
@@ -221,6 +224,7 @@ def create_kvcache_pool(
             dtype=dtype,
             device=device,
             layer_ids=spec.layer_ids,
+            draft_groups=draft_specs,
         )
 
     return MHAKVCache(

@@ -131,6 +131,7 @@ def parse_config(hf_config: Any) -> ModelConfig:
         dense_quant="fp8_pertensor" if _MLP_FP8 else "none",
         lm_head_quant="fp8_pertensor" if _MLP_FP8 else "none",
         glm_dsa_args=args,
+        mtp_num_hidden_layers=int(getattr(hf_config, "num_nextn_predict_layers", 0) or 0),
     )
 
 

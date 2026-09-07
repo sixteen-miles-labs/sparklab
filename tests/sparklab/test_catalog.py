@@ -216,10 +216,12 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     assert glm53.deployment.quantization == "nvfp4"
     assert glm53.deployment.runtime_format == "ftw-nvfp4"
     assert glm53.performance.decode_tokens_per_second == pytest.approx(
-        1.108134249894042
+        1.289519231337817
     )
-    assert glm53.performance.warm_ttft_seconds == pytest.approx(1.9577306060236879)
-    assert glm53.evidence == ("GB10-GLM53-RESEARCH-001", "GB10-GLM53-RESEARCH-OPT-002")
+    assert glm53.performance.warm_ttft_seconds == pytest.approx(2.0847351090051234)
+    assert glm53.evidence == (
+        "GB10-GLM53-RESEARCH-001", "GB10-GLM53-RESEARCH-OPT-002", "GB10-GLM53-SPEC-003"
+    )
     assert glm53.deployment.backend_options["moe_cache_size"] == 2850
     assert glm53.deployment.backend_options["moe_cache_policy"] == "layer_lru"
     assert glm53.deployment.backend_options["nvfp4_backend"] == "flashinfer"
@@ -347,23 +349,23 @@ def test_glm53_full_recipe_points_to_measured_failed_research_evidence():
     )
     assert recipe.runtime_artifact.bytes == 428713099264
     assert recipe.runtime_artifact.fingerprint == "a0e799b03bceb4bf"
-    assert recipe.performance.evidence == "GB10-GLM53-RESEARCH-OPT-002"
+    assert recipe.performance.evidence == "GB10-GLM53-SPEC-003"
     assert recipe.performance.evidence in recipe.evidence
     root = Path(__file__).resolve().parents[2]
     result = json.loads(
         (root / "benchmarks/gb10/results/GB10-GLM53-RESEARCH-OPT-002.json").read_text()
     )
-    assert result["result_id"] == recipe.performance.evidence
+    assert result["result_id"] in recipe.evidence
     assert result["status"] == "measured"
     assert result["recipe"]["recipe_version"] == recipe.recipe_version
     assert result["recipe"]["revision"] == recipe.revision
     assert result["checkpoint"]["fingerprint"] == "a0e799b03bceb4bf"
     assert result["checkpoint"]["bytes"] == recipe.prepared_bytes
     assert result["metrics"]["decode_tokens_per_second"] == pytest.approx(
-        recipe.performance.decode_tokens_per_second
+        1.108134249894042
     )
     assert result["metrics"]["warm_ttft_seconds"] == pytest.approx(
-        recipe.performance.warm_ttft_seconds
+        1.9577306060236879
     )
     assert result["stability"]["oom_count"] == 0
     assert result["stability"]["swap_out_pages"] == 0
@@ -373,6 +375,29 @@ def test_glm53_full_recipe_points_to_measured_failed_research_evidence():
     assert result["quality_checks"]["candidate"][1]["finish_reason"] == "length"
     evaluation = evaluate_tier(recipe, result, "research")
     assert not evaluation.passed
+
+
+def test_glm53_speculative_portfolio_is_opt_in_and_matches_evidence():
+    recipe = get_recipe("glm-5.3")
+    root = Path(__file__).resolve().parents[2]
+    result = json.loads(
+        (root / "benchmarks/gb10/results/GB10-GLM53-SPEC-003.json").read_text()
+    )
+    assert result["experiment_id"] == recipe.performance.evidence
+    assert result["target_fingerprint"] == recipe.runtime_artifact.fingerprint
+    assert result["status"] == "experimental_not_promoted"
+    assert result["decision"]["keep_target_only_default"] is True
+    assert result["decision"]["portfolio_status"] == "experimental_opt_in"
+    selected = next(run for run in result["runs"]
+                    if run["name"] == result["decision"]["portfolio_reported_run"])
+    assert selected["output_tokens"] == 256
+    assert selected["decode_tok_s"] == pytest.approx(recipe.performance.decode_tokens_per_second)
+    assert selected["warm_ttft_s"] == pytest.approx(recipe.performance.warm_ttft_seconds)
+    assert selected["swap_out_pages"] == selected["oom_kill_delta"] == 0
+    assert result["quality"]["exact_greedy_parity_established"] is False
+    assert result["quality"]["completed_answer_quality_pass"] is False
+    assert "speculative_method" not in recipe.deployment.backend_options
+    assert "DFlash2-4" in recipe.performance.note
 
 
 def test_glm53_portfolio_numbers_match_recipe():

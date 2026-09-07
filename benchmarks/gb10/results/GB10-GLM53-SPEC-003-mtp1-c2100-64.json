@@ -1,0 +1,1300 @@
+{
+  "schema_version": "1.0",
+  "model": "$HOME/models/models/glm-5.3/prepared/0.1.0-b12x",
+  "backend": "offload",
+  "recipe": {
+    "slug": "glm-5.3",
+    "recipe_version": "0.1.0",
+    "model": "Inferact/GLM-5.3-NVFP4",
+    "revision": "ce67b36f3669192b5bb233819f0fda6c8a9837f8",
+    "intended_tier": "research",
+    "status_at_run": "experimental",
+    "deployment": {
+      "backend": "native",
+      "backend_api": "1.0",
+      "source_format": "safetensors",
+      "runtime_format": "ftw-nvfp4",
+      "quantization": "nvfp4",
+      "execution_policy": "nvme-moe",
+      "backend_options": {
+        "moe_backend": "offload",
+        "moe_storage": "disk",
+        "moe_host_cache_gb": 0,
+        "memory_ratio": 0.9,
+        "moe_cache_size": 2850,
+        "moe_cache_policy": "layer_lru",
+        "nvfp4_backend": "flashinfer",
+        "moe_prefill_sparse_max_tokens": 256,
+        "moe_prefill_overlap": false,
+        "moe_shared_expert_overlap": true,
+        "cuda_graph_max_bs": 0,
+        "cache_type": "radix",
+        "page_size": 1,
+        "max_running_req": 1,
+        "num_tokens": 2048
+      }
+    }
+  },
+  "checkpoint": {
+    "path": "$HOME/models/models/glm-5.3/prepared/0.1.0-b12x",
+    "format": "ftw",
+    "bytes": 428713099264,
+    "fingerprint": "a0e799b03bceb4bf",
+    "quant_format": "nvfp4_b12x",
+    "source_model_path": "$HOME/models/models/glm-5.3/source/ce67b36f3669",
+    "external_artifacts": []
+  },
+  "platform": {
+    "checks": [
+      {
+        "detail": "SparkLab's supported runtime is Linux-only.",
+        "expected": "Linux / DGX OS",
+        "name": "operating_system",
+        "observed": "Linux",
+        "status": "pass"
+      },
+      {
+        "detail": "GB10 pairs the Blackwell GPU with a Grace ARM64 CPU.",
+        "expected": "aarch64",
+        "name": "cpu_architecture",
+        "observed": "aarch64",
+        "status": "pass"
+      },
+      {
+        "detail": "CUDA must be visible to the Python runtime.",
+        "expected": "CUDA 13.x available",
+        "name": "cuda",
+        "observed": "13.0",
+        "status": "pass"
+      },
+      {
+        "detail": "SparkLab's GB10 kernel contract targets CUDA 13.",
+        "expected": "13.x",
+        "name": "cuda_version",
+        "observed": "13.0",
+        "status": "pass"
+      },
+      {
+        "detail": "Architecture-specific kernels must fail closed on a different GPU.",
+        "expected": "SM121 (12.1)",
+        "name": "compute_capability",
+        "observed": [
+          12,
+          1
+        ],
+        "status": "pass"
+      },
+      {
+        "detail": "SM121 is authoritative; the device name is retained as supporting evidence.",
+        "expected": "NVIDIA GB10",
+        "name": "gpu_identity",
+        "observed": "NVIDIA GB10",
+        "status": "pass"
+      },
+      {
+        "detail": "The 128 GB product profile exposes roughly 119 GiB to Linux.",
+        "expected": ">= 123480309760 bytes",
+        "name": "unified_memory",
+        "observed": 130663591936,
+        "status": "pass"
+      },
+      {
+        "detail": "Model recipes consume only memory above the operational reserve.",
+        "expected": ">= 12884901888 bytes safety reserve",
+        "name": "available_memory",
+        "observed": 125890715648,
+        "status": "pass"
+      },
+      {
+        "detail": "Swap is never counted as model capacity.",
+        "expected": "0 bytes used",
+        "name": "swap_usage",
+        "observed": 686903296,
+        "status": "fail"
+      },
+      {
+        "detail": "Device-mapper filesystems may require manual NVMe verification.",
+        "expected": "local NVMe-backed filesystem",
+        "name": "nvme_storage",
+        "observed": "/dev/nvme0n1p2",
+        "status": "pass"
+      },
+      {
+        "detail": "Large FTW and Kimi K3 workflows require substantial local capacity.",
+        "expected": ">= 549755813888 bytes free",
+        "name": "storage_capacity",
+        "observed": 1816002678784,
+        "status": "pass"
+      },
+      {
+        "detail": "The prebuilt CUDA kernels must come from the same SparkLab release and, when stamped, the same source build.",
+        "expected": "same release and build stamp",
+        "name": "kernel_cache_version",
+        "observed": {
+          "sparklab": "0.1.2",
+          "sparklab-kernel-cache": "0.1.0+cu130"
+        },
+        "status": "fail"
+      }
+    ],
+    "failures": [
+      "swap_usage",
+      "kernel_cache_version"
+    ],
+    "memory": {
+      "available_bytes": 125890715648,
+      "cuda_free_bytes": 73871126528,
+      "physical_bytes": 130663591936,
+      "safe_available_bytes": 113005813760,
+      "safety_reserve_bytes": 12884901888,
+      "swap_total_bytes": 17179865088,
+      "swap_used_bytes": 686903296
+    },
+    "platform_failures": [],
+    "product": "SparkLab",
+    "profile": "gb10",
+    "ready": false,
+    "recommendations": [
+      "Resolve failed platform checks before loading a model.",
+      "Finish active workloads and return swap usage to zero before starting a certified recipe.",
+      "Reinstall sparklab and sparklab-kernel-cache as a matched wheel pair before loading a model."
+    ],
+    "runtime": {
+      "compute_capability": [
+        12,
+        1
+      ],
+      "cuda": "13.0",
+      "dependencies": {
+        "flashinfer-python": "0.6.15.post1",
+        "sglang-kernel": "0.4.5",
+        "sparklab": "0.1.2",
+        "sparklab-kernel-cache": "0.1.0+cu130",
+        "torch": "2.11.0+cu130",
+        "triton": "3.6.0"
+      },
+      "gpu": "NVIDIA GB10",
+      "integrated_gpu": true
+    },
+    "schema_version": "1.0",
+    "snapshot": {
+      "block_device": "/dev/nvme0n1p2",
+      "compute_capability": [
+        12,
+        1
+      ],
+      "cuda_available": true,
+      "cuda_free_bytes": 73871126528,
+      "cuda_version": "13.0",
+      "dependencies": {
+        "flashinfer-python": "0.6.15.post1",
+        "sglang-kernel": "0.4.5",
+        "sparklab": "0.1.2",
+        "sparklab-kernel-cache": "0.1.0+cu130",
+        "torch": "2.11.0+cu130",
+        "triton": "3.6.0"
+      },
+      "filesystem": "ext4",
+      "gpu_name": "NVIDIA GB10",
+      "gpu_total_bytes": 130663591936,
+      "integrated_gpu": true,
+      "machine": "aarch64",
+      "memory_available_bytes": 125890715648,
+      "memory_total_bytes": 130663591936,
+      "nvme": true,
+      "os_name": "Linux",
+      "storage_free_bytes": 1816002678784,
+      "storage_path": "$HOME/models/models/glm-5.3/prepared/0.1.0-b12x",
+      "storage_total_bytes": 4031871553536,
+      "swap_free_bytes": 16492961792,
+      "swap_total_bytes": 17179865088
+    },
+    "status": "supported_not_ready",
+    "storage": {
+      "block_device": "/dev/nvme0n1p2",
+      "filesystem": "ext4",
+      "free_bytes": 1816002678784,
+      "nvme": true,
+      "path": "$HOME/models/models/glm-5.3/prepared/0.1.0-b12x",
+      "total_bytes": 4031871553536
+    },
+    "supported": true,
+    "warnings": [],
+    "exit_code": 1
+  },
+  "configuration": {
+    "storage": "disk",
+    "attention_backend": "auto",
+    "qsa_fused_selection": true,
+    "page_size": 1,
+    "cache_type": "radix",
+    "max_seq_len": 8256,
+    "nvfp4_backend": "flashinfer",
+    "host_cache_gb": 0,
+    "requested_cache_size": 2100,
+    "requested_cache_rate": null,
+    "memory_ratio": 0.9,
+    "requested_num_tokens": 2048,
+    "speculative_method": "mtp",
+    "speculative_tokens": 1,
+    "speculative_draft_model": null,
+    "draft_sample_method": "greedy",
+    "dspark_confidence_threshold": 0,
+    "dspark_draft_cache_slots": 0,
+    "dspark_draft_cache_quotas": "",
+    "dsv4_kv_storage": "bf16",
+    "dsv4_index_storage": "bf16",
+    "qwen4_dense_storage": "bf16",
+    "qwen4_draft_vocab_size": 0,
+    "mamba_ssm_dtype": "float32",
+    "cpu_threads": 0,
+    "hybrid_fetch": -1,
+    "disk_read_workers": 20,
+    "cache_policy": "layer_lru",
+    "prefill_overlap": false,
+    "preload_all": false,
+    "prefill_hit_d2d": false,
+    "prefill_sparse_max_tokens": 256,
+    "shared_expert_overlap": true,
+    "startup_prefill_warmup": true,
+    "cuda_graph": false,
+    "request_timeout_s": 1800,
+    "prompt_padding_repeats": 0
+  },
+  "cache_geometry": {
+    "num_pages": 2048,
+    "page_size": 1,
+    "moe_cache_size": 2100,
+    "num_mamba_slots": 0,
+    "num_experts": 256,
+    "num_moe_layers": 75,
+    "moe_cache_policy": "layer_lru",
+    "unit_bytes": {
+      "kv_per_token": 96640,
+      "moe_per_expert": 21233664,
+      "mamba_per_slot": 0,
+      "swa_per_token": 0
+    },
+    "swa_full_tokens_ratio": 0,
+    "swa_page_size": 0,
+    "num_swa_pages": 0,
+    "cache_budget_bytes": 43014986137,
+    "reasoning": null,
+    "limits": {
+      "kv_tokens": {
+        "min": 1,
+        "max": 445105
+      },
+      "moe_experts": {
+        "min": 256,
+        "max": 2025
+      },
+      "mamba_slots": {
+        "min": 0,
+        "max": 0
+      },
+      "swa_tokens": {
+        "min": 0,
+        "max": 0
+      }
+    }
+  },
+  "problem": 0,
+  "prompt_tokens": 54,
+  "first_request_ttft_ms": 23401.54084400274,
+  "first_request_completion_tokens": 64,
+  "first_request_finish_reason": "length",
+  "decode_steps": 63,
+  "decode_tok_s": 0.9916263531894843,
+  "ms_per_token": 1008.4443568725079,
+  "event_ms_p50": 1539.148637035396,
+  "event_ms_p99": 2086.9337400072254,
+  "ttft_ms": 1183.3439909969456,
+  "events": 64,
+  "completion_tokens": 64,
+  "finish_reason": "length",
+  "vram_gib": 81.03125,
+  "sampling": {
+    "temperature": 0,
+    "top_p": 1,
+    "top_k": -1
+  },
+  "output_sha1": "e19ef21a678b",
+  "expected_answer": "70",
+  "extracted_answer": null,
+  "answer_correct": null,
+  "server_log": "/tmp/bench-serve-offload-_sh8f73l.log",
+  "gpu_telemetry": {
+    "samples": 63,
+    "duration_s": 64.71625720703742,
+    "swap_start_bytes": 686919680,
+    "memory_guard_gib": 0,
+    "memory_guard_triggered": false,
+    "swap_end_bytes": 686919680,
+    "swap_growth_bytes": 0,
+    "cgroup": {
+      "start": {
+        "path": "/user.slice/user-1000.slice/user@1000.service/tmux-spawn-4412f8c4-65fa-456d-867b-c3415fc39811.scope",
+        "swap_max": "max",
+        "swap_current_bytes": 86691840,
+        "swap_peak_bytes": 1533071360,
+        "oom_kill": 0
+      },
+      "end": {
+        "path": "/user.slice/user-1000.slice/user@1000.service/tmux-spawn-4412f8c4-65fa-456d-867b-c3415fc39811.scope",
+        "swap_max": "max",
+        "swap_current_bytes": 86691840,
+        "swap_peak_bytes": 1533071360,
+        "oom_kill": 0
+      },
+      "delta": {
+        "oom_kill": 0,
+        "swap_current_bytes": 0
+      }
+    },
+    "power_w_avg": 16.19111111111111,
+    "power_w_peak": 17.2,
+    "temperature_c_peak": 45,
+    "utilization_pct_avg": 30.285714285714285,
+    "request_energy_j_est": 1047.8281111343879,
+    "mem_available_gib_min": 25.904495239257812,
+    "nvme_temperature_c_peak": 46.85,
+    "swap_in_pages_delta": 0,
+    "swap_out_pages_delta": 0,
+    "page_faults_delta": 690402,
+    "major_faults_delta": 0,
+    "oom_kill_delta": 0
+  },
+  "lifecycle_telemetry": {
+    "samples": 248,
+    "duration_s": 256.2469037050032,
+    "swap_start_bytes": 686903296,
+    "memory_guard_gib": 12,
+    "memory_guard_triggered": false,
+    "swap_end_bytes": 686919680,
+    "swap_growth_bytes": 16384,
+    "cgroup": {
+      "start": {
+        "path": "/user.slice/user-1000.slice/user@1000.service/tmux-spawn-4412f8c4-65fa-456d-867b-c3415fc39811.scope",
+        "swap_max": "max",
+        "swap_current_bytes": 86695936,
+        "swap_peak_bytes": 1533071360,
+        "oom_kill": 0
+      },
+      "end": {
+        "path": "/user.slice/user-1000.slice/user@1000.service/tmux-spawn-4412f8c4-65fa-456d-867b-c3415fc39811.scope",
+        "swap_max": "max",
+        "swap_current_bytes": 86691840,
+        "swap_peak_bytes": 1533071360,
+        "oom_kill": 0
+      },
+      "delta": {
+        "oom_kill": 0,
+        "swap_current_bytes": -4096
+      }
+    },
+    "power_w_avg": 14.448145161290322,
+    "power_w_peak": 23.45,
+    "temperature_c_peak": 45,
+    "utilization_pct_avg": 22.375,
+    "request_energy_j_est": 3702.292461861069,
+    "mem_available_gib_min": 25.4560546875,
+    "nvme_temperature_c_peak": 46.85,
+    "swap_in_pages_delta": 1,
+    "swap_out_pages_delta": 5,
+    "page_faults_delta": 25774775,
+    "major_faults_delta": 79,
+    "oom_kill_delta": 0
+  },
+  "oom_markers": 0,
+  "provenance": {
+    "git_revision": "cf7408b297ebf09c978089562660d4e46e82b1c4",
+    "git_tracked_dirty": true,
+    "python": "3.11.15",
+    "platform": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+    "packages": {
+      "torch": "2.11.0+cu130",
+      "triton": "3.6.0",
+      "flashinfer-python": "0.6.15.post1",
+      "sglang-kernel": "0.4.5",
+      "transformers": "5.16.1"
+    },
+    "gpu_driver": "NVIDIA GB10, 580.126.09"
+  },
+  "output_text": "We need to find integer bases $b > 9$ such that $17_b$ divides $97_b$.\n\nFirst, convert to base 10:\n- $17_b = 1 \\cdot b + 7 = b + 7$\n- $97_b = 9 \\cdot b + 7",
+  "speculative": {
+    "steps": 1,
+    "accepted": 27,
+    "drafted": 35,
+    "acceptance_rate": 0.7709999999999999,
+    "outputs": 64,
+    "target_forwards": 37,
+    "outputs_per_target_forward": 1.73,
+    "replay_calls": 0,
+    "replay_tokens": 0,
+    "fast_carry_commits": 0
+  },
+  "moe": {
+    "active": 37429,
+    "missing": 21406,
+    "fetched": 0,
+    "calls": 2700,
+    "sparse_prefill_layers": 75,
+    "sparse_prefill_routes": 600,
+    "sparse_prefill_unique_rows": 600,
+    "sparse_prefill_fallback_layers": 0,
+    "shared_expert_overlap_calls": 2775,
+    "active_per_layer": 13.862592592592593,
+    "missing_per_layer": 7.928148148148148,
+    "miss_rate": 0.5719094819524967,
+    "fetched_per_layer": 0,
+    "fetch_rate": 0,
+    "per_layer": [
+      {
+        "layer": 0,
+        "steps": 36,
+        "active": 402,
+        "missing": 8,
+        "fetched": 0,
+        "active_per_step": 11.166666666666666,
+        "missing_per_step": 0.2222222222222222,
+        "miss_rate": 0.01990049751243781,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 1,
+        "steps": 36,
+        "active": 450,
+        "missing": 77,
+        "fetched": 0,
+        "active_per_step": 12.5,
+        "missing_per_step": 2.138888888888889,
+        "miss_rate": 0.1711111111111111,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 2,
+        "steps": 36,
+        "active": 433,
+        "missing": 73,
+        "fetched": 0,
+        "active_per_step": 12.027777777777779,
+        "missing_per_step": 2.0277777777777777,
+        "miss_rate": 0.16859122401847576,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 3,
+        "steps": 36,
+        "active": 519,
+        "missing": 306,
+        "fetched": 0,
+        "active_per_step": 14.416666666666666,
+        "missing_per_step": 8.5,
+        "miss_rate": 0.5895953757225434,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 4,
+        "steps": 36,
+        "active": 503,
+        "missing": 293,
+        "fetched": 0,
+        "active_per_step": 13.972222222222221,
+        "missing_per_step": 8.13888888888889,
+        "miss_rate": 0.5825049701789264,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 5,
+        "steps": 36,
+        "active": 492,
+        "missing": 251,
+        "fetched": 0,
+        "active_per_step": 13.666666666666666,
+        "missing_per_step": 6.972222222222222,
+        "miss_rate": 0.5101626016260162,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 6,
+        "steps": 36,
+        "active": 502,
+        "missing": 346,
+        "fetched": 0,
+        "active_per_step": 13.944444444444445,
+        "missing_per_step": 9.61111111111111,
+        "miss_rate": 0.6892430278884463,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 7,
+        "steps": 36,
+        "active": 522,
+        "missing": 356,
+        "fetched": 0,
+        "active_per_step": 14.5,
+        "missing_per_step": 9.88888888888889,
+        "miss_rate": 0.6819923371647509,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 8,
+        "steps": 36,
+        "active": 523,
+        "missing": 340,
+        "fetched": 0,
+        "active_per_step": 14.527777777777779,
+        "missing_per_step": 9.444444444444445,
+        "miss_rate": 0.6500956022944551,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 9,
+        "steps": 36,
+        "active": 516,
+        "missing": 316,
+        "fetched": 0,
+        "active_per_step": 14.333333333333334,
+        "missing_per_step": 8.777777777777779,
+        "miss_rate": 0.6124031007751938,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 10,
+        "steps": 36,
+        "active": 506,
+        "missing": 332,
+        "fetched": 0,
+        "active_per_step": 14.055555555555555,
+        "missing_per_step": 9.222222222222221,
+        "miss_rate": 0.6561264822134387,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 11,
+        "steps": 36,
+        "active": 513,
+        "missing": 323,
+        "fetched": 0,
+        "active_per_step": 14.25,
+        "missing_per_step": 8.972222222222221,
+        "miss_rate": 0.6296296296296297,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 12,
+        "steps": 36,
+        "active": 514,
+        "missing": 284,
+        "fetched": 0,
+        "active_per_step": 14.277777777777779,
+        "missing_per_step": 7.888888888888889,
+        "miss_rate": 0.5525291828793775,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 13,
+        "steps": 36,
+        "active": 509,
+        "missing": 261,
+        "fetched": 0,
+        "active_per_step": 14.13888888888889,
+        "missing_per_step": 7.25,
+        "miss_rate": 0.5127701375245579,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 14,
+        "steps": 36,
+        "active": 491,
+        "missing": 257,
+        "fetched": 0,
+        "active_per_step": 13.63888888888889,
+        "missing_per_step": 7.138888888888889,
+        "miss_rate": 0.5234215885947047,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 15,
+        "steps": 36,
+        "active": 486,
+        "missing": 208,
+        "fetched": 0,
+        "active_per_step": 13.5,
+        "missing_per_step": 5.777777777777778,
+        "miss_rate": 0.4279835390946502,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 16,
+        "steps": 36,
+        "active": 479,
+        "missing": 214,
+        "fetched": 0,
+        "active_per_step": 13.305555555555555,
+        "missing_per_step": 5.944444444444445,
+        "miss_rate": 0.44676409185803756,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 17,
+        "steps": 36,
+        "active": 487,
+        "missing": 181,
+        "fetched": 0,
+        "active_per_step": 13.527777777777779,
+        "missing_per_step": 5.027777777777778,
+        "miss_rate": 0.37166324435318276,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 18,
+        "steps": 36,
+        "active": 481,
+        "missing": 213,
+        "fetched": 0,
+        "active_per_step": 13.36111111111111,
+        "missing_per_step": 5.916666666666667,
+        "miss_rate": 0.44282744282744285,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 19,
+        "steps": 36,
+        "active": 498,
+        "missing": 270,
+        "fetched": 0,
+        "active_per_step": 13.833333333333334,
+        "missing_per_step": 7.5,
+        "miss_rate": 0.5421686746987951,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 20,
+        "steps": 36,
+        "active": 522,
+        "missing": 363,
+        "fetched": 0,
+        "active_per_step": 14.5,
+        "missing_per_step": 10.083333333333334,
+        "miss_rate": 0.6954022988505747,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 21,
+        "steps": 36,
+        "active": 520,
+        "missing": 372,
+        "fetched": 0,
+        "active_per_step": 14.444444444444445,
+        "missing_per_step": 10.333333333333334,
+        "miss_rate": 0.7153846153846154,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 22,
+        "steps": 36,
+        "active": 517,
+        "missing": 355,
+        "fetched": 0,
+        "active_per_step": 14.36111111111111,
+        "missing_per_step": 9.86111111111111,
+        "miss_rate": 0.6866537717601547,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 23,
+        "steps": 36,
+        "active": 518,
+        "missing": 354,
+        "fetched": 0,
+        "active_per_step": 14.38888888888889,
+        "missing_per_step": 9.833333333333334,
+        "miss_rate": 0.6833976833976834,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 24,
+        "steps": 36,
+        "active": 509,
+        "missing": 303,
+        "fetched": 0,
+        "active_per_step": 14.13888888888889,
+        "missing_per_step": 8.416666666666666,
+        "miss_rate": 0.5952848722986247,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 25,
+        "steps": 36,
+        "active": 496,
+        "missing": 293,
+        "fetched": 0,
+        "active_per_step": 13.777777777777779,
+        "missing_per_step": 8.13888888888889,
+        "miss_rate": 0.5907258064516129,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 26,
+        "steps": 36,
+        "active": 502,
+        "missing": 312,
+        "fetched": 0,
+        "active_per_step": 13.944444444444445,
+        "missing_per_step": 8.666666666666666,
+        "miss_rate": 0.6215139442231076,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 27,
+        "steps": 36,
+        "active": 512,
+        "missing": 327,
+        "fetched": 0,
+        "active_per_step": 14.222222222222221,
+        "missing_per_step": 9.083333333333334,
+        "miss_rate": 0.638671875,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 28,
+        "steps": 36,
+        "active": 492,
+        "missing": 243,
+        "fetched": 0,
+        "active_per_step": 13.666666666666666,
+        "missing_per_step": 6.75,
+        "miss_rate": 0.49390243902439024,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 29,
+        "steps": 36,
+        "active": 494,
+        "missing": 266,
+        "fetched": 0,
+        "active_per_step": 13.722222222222221,
+        "missing_per_step": 7.388888888888889,
+        "miss_rate": 0.5384615384615384,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 30,
+        "steps": 36,
+        "active": 497,
+        "missing": 262,
+        "fetched": 0,
+        "active_per_step": 13.805555555555555,
+        "missing_per_step": 7.277777777777778,
+        "miss_rate": 0.5271629778672032,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 31,
+        "steps": 36,
+        "active": 517,
+        "missing": 294,
+        "fetched": 0,
+        "active_per_step": 14.36111111111111,
+        "missing_per_step": 8.166666666666666,
+        "miss_rate": 0.5686653771760155,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 32,
+        "steps": 36,
+        "active": 494,
+        "missing": 249,
+        "fetched": 0,
+        "active_per_step": 13.722222222222221,
+        "missing_per_step": 6.916666666666667,
+        "miss_rate": 0.5040485829959515,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 33,
+        "steps": 36,
+        "active": 514,
+        "missing": 294,
+        "fetched": 0,
+        "active_per_step": 14.277777777777779,
+        "missing_per_step": 8.166666666666666,
+        "miss_rate": 0.5719844357976653,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 34,
+        "steps": 36,
+        "active": 517,
+        "missing": 295,
+        "fetched": 0,
+        "active_per_step": 14.36111111111111,
+        "missing_per_step": 8.194444444444445,
+        "miss_rate": 0.5705996131528046,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 35,
+        "steps": 36,
+        "active": 500,
+        "missing": 266,
+        "fetched": 0,
+        "active_per_step": 13.88888888888889,
+        "missing_per_step": 7.388888888888889,
+        "miss_rate": 0.532,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 36,
+        "steps": 36,
+        "active": 516,
+        "missing": 313,
+        "fetched": 0,
+        "active_per_step": 14.333333333333334,
+        "missing_per_step": 8.694444444444445,
+        "miss_rate": 0.6065891472868217,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 37,
+        "steps": 36,
+        "active": 508,
+        "missing": 305,
+        "fetched": 0,
+        "active_per_step": 14.11111111111111,
+        "missing_per_step": 8.472222222222221,
+        "miss_rate": 0.6003937007874016,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 38,
+        "steps": 36,
+        "active": 519,
+        "missing": 321,
+        "fetched": 0,
+        "active_per_step": 14.416666666666666,
+        "missing_per_step": 8.916666666666666,
+        "miss_rate": 0.6184971098265896,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 39,
+        "steps": 36,
+        "active": 503,
+        "missing": 309,
+        "fetched": 0,
+        "active_per_step": 13.972222222222221,
+        "missing_per_step": 8.583333333333334,
+        "miss_rate": 0.614314115308151,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 40,
+        "steps": 36,
+        "active": 518,
+        "missing": 331,
+        "fetched": 0,
+        "active_per_step": 14.38888888888889,
+        "missing_per_step": 9.194444444444445,
+        "miss_rate": 0.638996138996139,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 41,
+        "steps": 36,
+        "active": 494,
+        "missing": 294,
+        "fetched": 0,
+        "active_per_step": 13.722222222222221,
+        "missing_per_step": 8.166666666666666,
+        "miss_rate": 0.5951417004048583,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 42,
+        "steps": 36,
+        "active": 498,
+        "missing": 256,
+        "fetched": 0,
+        "active_per_step": 13.833333333333334,
+        "missing_per_step": 7.111111111111111,
+        "miss_rate": 0.5140562248995983,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 43,
+        "steps": 36,
+        "active": 508,
+        "missing": 279,
+        "fetched": 0,
+        "active_per_step": 14.11111111111111,
+        "missing_per_step": 7.75,
+        "miss_rate": 0.5492125984251969,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 44,
+        "steps": 36,
+        "active": 509,
+        "missing": 327,
+        "fetched": 0,
+        "active_per_step": 14.13888888888889,
+        "missing_per_step": 9.083333333333334,
+        "miss_rate": 0.6424361493123772,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 45,
+        "steps": 36,
+        "active": 514,
+        "missing": 338,
+        "fetched": 0,
+        "active_per_step": 14.277777777777779,
+        "missing_per_step": 9.38888888888889,
+        "miss_rate": 0.6575875486381323,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 46,
+        "steps": 36,
+        "active": 503,
+        "missing": 297,
+        "fetched": 0,
+        "active_per_step": 13.972222222222221,
+        "missing_per_step": 8.25,
+        "miss_rate": 0.5904572564612326,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 47,
+        "steps": 36,
+        "active": 507,
+        "missing": 293,
+        "fetched": 0,
+        "active_per_step": 14.083333333333334,
+        "missing_per_step": 8.13888888888889,
+        "miss_rate": 0.5779092702169625,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 48,
+        "steps": 36,
+        "active": 498,
+        "missing": 295,
+        "fetched": 0,
+        "active_per_step": 13.833333333333334,
+        "missing_per_step": 8.194444444444445,
+        "miss_rate": 0.5923694779116466,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 49,
+        "steps": 36,
+        "active": 494,
+        "missing": 289,
+        "fetched": 0,
+        "active_per_step": 13.722222222222221,
+        "missing_per_step": 8.027777777777779,
+        "miss_rate": 0.5850202429149798,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 50,
+        "steps": 36,
+        "active": 501,
+        "missing": 295,
+        "fetched": 0,
+        "active_per_step": 13.916666666666666,
+        "missing_per_step": 8.194444444444445,
+        "miss_rate": 0.5888223552894212,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 51,
+        "steps": 36,
+        "active": 509,
+        "missing": 333,
+        "fetched": 0,
+        "active_per_step": 14.13888888888889,
+        "missing_per_step": 9.25,
+        "miss_rate": 0.6542239685658153,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 52,
+        "steps": 36,
+        "active": 499,
+        "missing": 277,
+        "fetched": 0,
+        "active_per_step": 13.86111111111111,
+        "missing_per_step": 7.694444444444445,
+        "miss_rate": 0.5551102204408818,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 53,
+        "steps": 36,
+        "active": 470,
+        "missing": 239,
+        "fetched": 0,
+        "active_per_step": 13.055555555555555,
+        "missing_per_step": 6.638888888888889,
+        "miss_rate": 0.5085106382978724,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 54,
+        "steps": 36,
+        "active": 484,
+        "missing": 247,
+        "fetched": 0,
+        "active_per_step": 13.444444444444445,
+        "missing_per_step": 6.861111111111111,
+        "miss_rate": 0.5103305785123967,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 55,
+        "steps": 36,
+        "active": 495,
+        "missing": 298,
+        "fetched": 0,
+        "active_per_step": 13.75,
+        "missing_per_step": 8.277777777777779,
+        "miss_rate": 0.602020202020202,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 56,
+        "steps": 36,
+        "active": 502,
+        "missing": 308,
+        "fetched": 0,
+        "active_per_step": 13.944444444444445,
+        "missing_per_step": 8.555555555555555,
+        "miss_rate": 0.6135458167330677,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 57,
+        "steps": 36,
+        "active": 486,
+        "missing": 276,
+        "fetched": 0,
+        "active_per_step": 13.5,
+        "missing_per_step": 7.666666666666667,
+        "miss_rate": 0.5679012345679012,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 58,
+        "steps": 36,
+        "active": 495,
+        "missing": 283,
+        "fetched": 0,
+        "active_per_step": 13.75,
+        "missing_per_step": 7.861111111111111,
+        "miss_rate": 0.5717171717171717,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 59,
+        "steps": 36,
+        "active": 485,
+        "missing": 314,
+        "fetched": 0,
+        "active_per_step": 13.472222222222221,
+        "missing_per_step": 8.722222222222221,
+        "miss_rate": 0.6474226804123712,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 60,
+        "steps": 36,
+        "active": 500,
+        "missing": 306,
+        "fetched": 0,
+        "active_per_step": 13.88888888888889,
+        "missing_per_step": 8.5,
+        "miss_rate": 0.612,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 61,
+        "steps": 36,
+        "active": 488,
+        "missing": 285,
+        "fetched": 0,
+        "active_per_step": 13.555555555555555,
+        "missing_per_step": 7.916666666666667,
+        "miss_rate": 0.5840163934426229,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 62,
+        "steps": 36,
+        "active": 507,
+        "missing": 315,
+        "fetched": 0,
+        "active_per_step": 14.083333333333334,
+        "missing_per_step": 8.75,
+        "miss_rate": 0.621301775147929,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 63,
+        "steps": 36,
+        "active": 494,
+        "missing": 298,
+        "fetched": 0,
+        "active_per_step": 13.722222222222221,
+        "missing_per_step": 8.277777777777779,
+        "miss_rate": 0.6032388663967612,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 64,
+        "steps": 36,
+        "active": 491,
+        "missing": 273,
+        "fetched": 0,
+        "active_per_step": 13.63888888888889,
+        "missing_per_step": 7.583333333333333,
+        "miss_rate": 0.5560081466395111,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 65,
+        "steps": 36,
+        "active": 496,
+        "missing": 291,
+        "fetched": 0,
+        "active_per_step": 13.777777777777779,
+        "missing_per_step": 8.083333333333334,
+        "miss_rate": 0.5866935483870968,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 66,
+        "steps": 36,
+        "active": 500,
+        "missing": 320,
+        "fetched": 0,
+        "active_per_step": 13.88888888888889,
+        "missing_per_step": 8.88888888888889,
+        "miss_rate": 0.64,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 67,
+        "steps": 36,
+        "active": 503,
+        "missing": 290,
+        "fetched": 0,
+        "active_per_step": 13.972222222222221,
+        "missing_per_step": 8.055555555555555,
+        "miss_rate": 0.5765407554671969,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 68,
+        "steps": 36,
+        "active": 485,
+        "missing": 281,
+        "fetched": 0,
+        "active_per_step": 13.472222222222221,
+        "missing_per_step": 7.805555555555555,
+        "miss_rate": 0.5793814432989691,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 69,
+        "steps": 36,
+        "active": 484,
+        "missing": 249,
+        "fetched": 0,
+        "active_per_step": 13.444444444444445,
+        "missing_per_step": 6.916666666666667,
+        "miss_rate": 0.5144628099173554,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 70,
+        "steps": 36,
+        "active": 491,
+        "missing": 325,
+        "fetched": 0,
+        "active_per_step": 13.63888888888889,
+        "missing_per_step": 9.027777777777779,
+        "miss_rate": 0.6619144602851323,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 71,
+        "steps": 36,
+        "active": 504,
+        "missing": 325,
+        "fetched": 0,
+        "active_per_step": 14,
+        "missing_per_step": 9.027777777777779,
+        "miss_rate": 0.6448412698412699,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 72,
+        "steps": 36,
+        "active": 495,
+        "missing": 318,
+        "fetched": 0,
+        "active_per_step": 13.75,
+        "missing_per_step": 8.833333333333334,
+        "miss_rate": 0.6424242424242425,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 73,
+        "steps": 36,
+        "active": 503,
+        "missing": 321,
+        "fetched": 0,
+        "active_per_step": 13.972222222222221,
+        "missing_per_step": 8.916666666666666,
+        "miss_rate": 0.6381709741550696,
+        "fetched_per_step": 0
+      },
+      {
+        "layer": 74,
+        "steps": 36,
+        "active": 526,
+        "missing": 335,
+        "fetched": 0,
+        "active_per_step": 14.61111111111111,
+        "missing_per_step": 9.305555555555555,
+        "miss_rate": 0.6368821292775665,
+        "fetched_per_step": 0
+      }
+    ],
+    "disk": {
+      "cache_hits": 0,
+      "cache_misses": 21797,
+      "cache_evictions": 0,
+      "cache_bypasses": 391,
+      "read_ops": 87188,
+      "logical_bytes": 462830174208,
+      "physical_bytes": 462830174208,
+      "read_seconds": 43.34302084095543,
+      "cache_capacity_entries": 0,
+      "cache_capacity_bytes": 0,
+      "cache_allocated_bytes": 0,
+      "cache_occupancy_entries": 0,
+      "cache_occupancy_bytes": 0,
+      "staging_allocated_bytes": 5435817984,
+      "host_allocated_bytes": 5435817984,
+      "read_workers": 20,
+      "cache_policy": "layer_lru",
+      "staging_buffers": 1
+    }
+  }
+}
