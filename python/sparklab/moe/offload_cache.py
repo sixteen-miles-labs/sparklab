@@ -1018,6 +1018,49 @@ class OffloadMoeCache:
                 torch.bincount(owners.long(), minlength=self.num_layers).to(torch.int32)
             )
 
+    def materialize_routed_layer(self, layer_id: int, expert_ids: torch.Tensor) -> None:
+        """Stage unique routed rows at their logical expert-id positions.
+
+        Unlike persistent-slot admission, this retains the E-row GEMM geometry
+        of full-layer prefill. Only selected rows are read/copied. This matters
+        for b12x, whose launch geometry depends on the weight-bank extent and
+        whose persistent-cache view can produce different rounding in prefill.
+        Non-routed rows in that view must never be used by the following GEMM.
+        The caller supplies unique, valid layer-local ids (normally torch.unique).
+        Prefill-only: dynamic indexing here is not CUDA-graph capture safe.
+        """
+        assert not self.fully_resident
+        assert expert_ids.ndim == 1 and expert_ids.numel() <= self.num_experts
+        ids = expert_ids.long()
+        self._pending_src_layer = layer_id
+        self._pending_is_prefill = True
+        self._pending_disk_stage_layer = None
+
+        # Snapshot before invalidating: source and destination slots can overlap,
+        # including cycles where a selected expert occupies another's target slot.
+        previous = self.slot_for_id[layer_id]
+        previous_slots = previous[previous >= 0].long()
+        displaced = self.id_of_slot[ids].clone()
+        other = displaced[(displaced >= 0) & (displaced // self.num_experts != layer_id)]
+        self.id_of_slot[previous_slots] = -1
+        self.usage[previous_slots] = 0
+        previous.fill_(-1)
+        self.slot_for_id.view(-1)[other.long()] = -1
+
+        self.step.add_(1)
+        self.id_of_slot[ids] = (layer_id * self.num_experts + ids).int()
+        self.slot_for_id[layer_id, ids] = ids.int()
+        self.usage[ids] = self.step
+        n = expert_ids.numel()
+        self.src_indices[:n].copy_(expert_ids)
+        self.evict_slots[:n].copy_(expert_ids)
+        self.num_indices.fill_(n)
+        if self.cache_policy == "layer_lru":
+            owners = self.id_of_slot[self.id_of_slot >= 0] // self.num_experts
+            self.layer_counts.copy_(
+                torch.bincount(owners.long(), minlength=self.num_layers).to(torch.int32)
+            )
+
     def reset(self) -> None:
         if self.fully_resident:
             # Weight ownership is immutable. Warmup/graph teardown may reset dynamic

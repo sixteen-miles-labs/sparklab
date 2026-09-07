@@ -216,10 +216,16 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     assert glm53.deployment.quantization == "nvfp4"
     assert glm53.deployment.runtime_format == "ftw-nvfp4"
     assert glm53.performance.decode_tokens_per_second == pytest.approx(
-        0.8126153861203544
+        1.108134249894042
     )
-    assert glm53.performance.warm_ttft_seconds == pytest.approx(2.530337787233293)
-    assert glm53.evidence == ("GB10-GLM53-RESEARCH-001",)
+    assert glm53.performance.warm_ttft_seconds == pytest.approx(1.9577306060236879)
+    assert glm53.evidence == ("GB10-GLM53-RESEARCH-001", "GB10-GLM53-RESEARCH-OPT-002")
+    assert glm53.deployment.backend_options["moe_cache_size"] == 2850
+    assert glm53.deployment.backend_options["moe_cache_policy"] == "layer_lru"
+    assert glm53.deployment.backend_options["nvfp4_backend"] == "flashinfer"
+    assert glm53.deployment.backend_options["num_tokens"] == 2048
+    assert glm53.deployment.backend_options["cuda_graph_max_bs"] == 0
+    assert glm53.runtime_memory["total_bytes"] == 96 * 2**30
     assert deepseek.source_bytes == 166878536440
     assert deepseek.prepared_bytes == 168424579072
     assert qwen.execution_policy == glm.execution_policy == "nvme-moe"
@@ -341,11 +347,11 @@ def test_glm53_full_recipe_points_to_measured_failed_research_evidence():
     )
     assert recipe.runtime_artifact.bytes == 428713099264
     assert recipe.runtime_artifact.fingerprint == "a0e799b03bceb4bf"
-    assert recipe.performance.evidence == "GB10-GLM53-RESEARCH-001"
+    assert recipe.performance.evidence == "GB10-GLM53-RESEARCH-OPT-002"
     assert recipe.performance.evidence in recipe.evidence
     root = Path(__file__).resolve().parents[2]
     result = json.loads(
-        (root / "benchmarks/gb10/results/GB10-GLM53-RESEARCH-001.json").read_text()
+        (root / "benchmarks/gb10/results/GB10-GLM53-RESEARCH-OPT-002.json").read_text()
     )
     assert result["result_id"] == recipe.performance.evidence
     assert result["status"] == "measured"
@@ -361,9 +367,28 @@ def test_glm53_full_recipe_points_to_measured_failed_research_evidence():
     )
     assert result["stability"]["oom_count"] == 0
     assert result["stability"]["swap_out_pages"] == 0
-    assert result["validation"]["output_correctness_evaluated"] is False
+    assert result["validation"]["output_correctness_evaluated"] is True
+    assert result["validation"]["output_correctness"] is False
+    assert result["quality_checks"]["candidate"][0]["correct"] is True
+    assert result["quality_checks"]["candidate"][1]["finish_reason"] == "length"
     evaluation = evaluate_tier(recipe, result, "research")
     assert not evaluation.passed
+
+
+def test_glm53_portfolio_numbers_match_recipe():
+    import re
+
+    root = Path(__file__).resolve().parents[2]
+    recipe = get_recipe("glm-5.3")
+    expected = [
+        f"{recipe.performance.decode_tokens_per_second:.2f}",
+        f"{recipe.performance.warm_ttft_seconds:.3f}",
+    ]
+    readme_row = (root / "README.md").read_text().split(">GLM-5.3</a>", 1)[1].split("</tr>", 1)[0]
+    assert re.findall(r'<td align="right">([^<]+)</td>', readme_row) == expected
+    models_row = next(line for line in (root / "docs/models.md").read_text().splitlines()
+                      if line.startswith("| [GLM-5.3]("))
+    assert [cell.strip() for cell in models_row.split("|")[-3:-1]] == expected
 
 
 def test_historical_qwen_nvfp4_evidence_does_not_transfer_to_new_checkpoint():

@@ -92,6 +92,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--cpu-threads", type=int, default=8)
     p.add_argument("--mem-ratio", type=float, default=0.9)
     p.add_argument(
+        "--min-memory-gib", type=float, default=0.0,
+        help="terminate the server if system MemAvailable drops below this floor",
+    )
+    p.add_argument(
         "--num-tokens",
         type=int,
         default=0,
@@ -393,6 +397,7 @@ def summarize(
             "prefill_sparse_max_tokens": args.prefill_sparse_max_tokens,
             "shared_expert_overlap": args.shared_expert_overlap,
             "memory_ratio": args.mem_ratio,
+            "min_memory_gib": args.min_memory_gib,
             "cuda_graph": not args.no_graph,
             "minimum_duration_minutes": args.minimum_duration_minutes,
         },
@@ -476,6 +481,10 @@ def main() -> int:
         proc = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True
         )
+        lifecycle = GpuTelemetry(
+            min_available_gib=args.min_memory_gib, abort_process_group=proc.pid,
+        )
+        lifecycle.start()
         pump = threading.Thread(target=pump_output, args=(proc.stdout, log_file), daemon=True)
         pump.start()
         try:
@@ -511,8 +520,11 @@ def main() -> int:
                 )
             serving_seconds = time.monotonic() - serving_started
         finally:
-            stop_server(proc)
-            pump.join(timeout=10)
+            try:
+                stop_server(proc)
+                pump.join(timeout=10)
+            finally:
+                lifecycle_telemetry = lifecycle.stop()
     stability = stability_summary(
         log_path=log_path,
         serving_seconds=serving_seconds,
@@ -527,6 +539,7 @@ def main() -> int:
         ),
     )
     summary = summarize(args, results, sampling, stability)
+    summary["lifecycle_telemetry"] = lifecycle_telemetry
     summary["server_log"] = log_path
     append_jsonl(args.json_out, summary)
     print(json.dumps(summary, indent=2), flush=True)

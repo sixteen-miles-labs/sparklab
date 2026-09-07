@@ -45,6 +45,25 @@ def test_decode_benchmark_defaults_to_gpu_first_unified_memory_residency():
     assert "--disable-moe-prefill-overlap" in command
 
 
+def test_aime_suite_can_use_shared_server_launcher(monkeypatch):
+    from pathlib import Path
+    import sys
+
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[1] / "benchmarks"))
+    from benchmarks import bench_aime_suite
+
+    monkeypatch.setattr(sys, "argv", [
+        "bench_aime_suite.py", "--model", "/tmp/model", "--json", "/tmp/result.jsonl",
+        "--min-memory-gib", "12",
+    ])
+    args = bench_aime_suite.parse_args()
+    command = serve_cmd(args, "offload", 12345)
+    assert args.normal_eos and args.min_memory_gib == 12
+    assert command[command.index("--speculative-method") + 1] == "auto"
+    assert command[command.index("--speculative-tokens") + 1] == "0"
+    assert command[command.index("--dsv4-kv-storage") + 1] == "bf16"
+
+
 def test_decode_benchmark_keeps_overlap_with_an_explicit_host_cache():
     args = parse_args([
         "--model", "/tmp/model",

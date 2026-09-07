@@ -645,17 +645,19 @@ def serve_cmd(args: argparse.Namespace, backend: str, port: int) -> list[str]:
         "--cuda-graph-max-bs", "0" if args.no_graph else "1",
         "--moe-hybrid-max-fetch", str(args.hybrid_fetch),
         "--moe-cache-policy", args.cache_policy,
-        "--speculative-method", args.speculative_method,
-        "--speculative-tokens", str(args.speculative_tokens),
-        "--draft-sample-method", args.draft_sample_method,
-        "--dspark-confidence-threshold", str(args.dspark_confidence_threshold),
-        "--dspark-draft-cache-slots", str(args.dspark_draft_cache_slots),
-        "--dspark-draft-cache-quotas", args.dspark_draft_cache_quotas,
-        "--dsv4-kv-storage", args.dsv4_kv_storage,
-        "--dsv4-index-storage", args.dsv4_index_storage,
-        "--qwen4-dense-storage", args.qwen4_dense_storage,
+        # The AIME/context/capability suites share this launcher but do not
+        # expose the decode probe's speculative and model-specific CLI knobs.
+        "--speculative-method", getattr(args, "speculative_method", "auto"),
+        "--speculative-tokens", str(getattr(args, "speculative_tokens", 0)),
+        "--draft-sample-method", getattr(args, "draft_sample_method", "greedy"),
+        "--dspark-confidence-threshold", str(getattr(args, "dspark_confidence_threshold", 0.0)),
+        "--dspark-draft-cache-slots", str(getattr(args, "dspark_draft_cache_slots", 0)),
+        "--dspark-draft-cache-quotas", getattr(args, "dspark_draft_cache_quotas", ""),
+        "--dsv4-kv-storage", getattr(args, "dsv4_kv_storage", "bf16"),
+        "--dsv4-index-storage", getattr(args, "dsv4_index_storage", "bf16"),
+        "--qwen4-dense-storage", getattr(args, "qwen4_dense_storage", "bf16"),
     ]
-    if args.speculative_draft_model:
+    if getattr(args, "speculative_draft_model", None):
         cmd += ["--speculative-draft-model", args.speculative_draft_model]
     if args.num_tokens > 0:
         cmd += ["--num-tokens", str(args.num_tokens)]

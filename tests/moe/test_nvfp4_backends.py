@@ -513,7 +513,7 @@ def test_nvfp4_backend_selection():
 
 
 @cuda
-def test_b12x_decode_matches_dequant_reference():
+def test_b12x_decode_matches_dequant_reference(monkeypatch):
     """sm_120 + CUDA>=13 only: the flashinfer b12x W4A16 fused MoE over the slot cache
     vs the dequant reference (skipped on hardware/toolkits where b12x cannot run)."""
     from sparklab.moe.nvfp4_backends import (
@@ -554,6 +554,19 @@ def test_b12x_decode_matches_dequant_reference():
         hidden, gu_p, gu_s, g1, dn_p, dn_s, g2, topk_weights, ids, "silu", False
     )
     _assert_close(out, ref)
+    # Exercise the large-cache descriptor workaround without allocating tens of
+    # GiB in a unit test. Two routed rows fit; the original eight-row bank does not.
+    import sparklab.moe.nvfp4_backends as backends
+
+    row_elements = max(
+        bank[0].numel() * bank.element_size() // 4
+        for bank in (gu_p, gu_s, dn_p, dn_s)
+    )
+    monkeypatch.setattr(backends, "_B12X_MAX_FLAT_INT32_ELEMENTS", TOPK * row_elements)
+    compact = b12x_fused_experts(
+        hidden, gu_p, gu_s, g1, dn_p, dn_s, g2, topk_weights, ids, "silu", False
+    )
+    torch.testing.assert_close(compact, out, rtol=0, atol=0)
 
 
 @cuda
@@ -604,6 +617,52 @@ def test_b12x_sparse_prefill_slot_ids_match_dequant_reference():
 
     assert int(cache.num_indices.item()) == 4
     _assert_close(out, ref)
+
+
+@cuda
+def test_b12x_routed_materialization_matches_full_prefill_exactly():
+    """Sparse I/O with the original logical E-row GEMM layout, above quota."""
+    from sparklab.moe.nvfp4_backends import (
+        _b12x_unusable_reason, b12x_fused_experts, b12x_repack_sources_inplace,
+    )
+    from sparklab.moe.offload_cache import OffloadMoeCache
+
+    device = torch.device("cuda")
+    reason = _b12x_unusable_reason(torch.cuda.get_device_capability(device))
+    if reason is not None:
+        pytest.skip(reason)
+    sources = _make_native_sources(device, seed=17)
+    cfg = types.SimpleNamespace(hidden_size=H, moe_intermediate_size=I)
+    packed = b12x_repack_sources_inplace(sources, cfg, device, chunk=6)
+    cache = OffloadMoeCache(
+        L, E, 12, device, cache_policy="layer_lru", quant_format="nvfp4_b12x",
+    )
+    cache.set_bank_sources({name: packed[name] for name in cache.bank_schema})
+    cache.set_alphas(packed["gate_up_alpha"], packed["down_alpha"])
+    torch.manual_seed(17)
+    hidden = torch.randn(54, H, dtype=torch.bfloat16, device=device) / 4
+    weights = torch.rand(54, TOPK, dtype=torch.float32, device=device)
+    raw = (torch.arange(54 * TOPK, device=device).reshape(54, TOPK) % 7).int()
+
+    def run():
+        gu_p, gu_s, dn_p, dn_s = cache.bank_views(E)
+        g1, g2 = cache.alphas_for_layer(0)
+        return b12x_fused_experts(
+            hidden, gu_p, gu_s, g1, dn_p, dn_s, g2, weights, raw, "silu", False,
+        ).clone()
+
+    cache.materialize_layer(0)
+    cache.copy_missing()
+    reference = run()
+    # Overwrite with another layer so a missing staged row cannot pass by luck.
+    cache.materialize_layer(1)
+    cache.copy_missing()
+    unique_ids = torch.unique(raw).int()
+    cache.materialize_routed_layer(0, unique_ids)
+    cache.copy_missing()
+    actual = run()
+    assert int(cache.num_indices.item()) == 7 < E
+    torch.testing.assert_close(actual, reference, rtol=0, atol=0)
 
 
 @cuda

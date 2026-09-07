@@ -456,10 +456,31 @@ class OffloadMoELayer(MoELayer):
             # K. Prefill can have hundreds of repeated routes, so compact to <= E ids
             # first, then map the original route matrix through slot_for_id.
             unique_ids = torch.unique(raw_ids).to(torch.int32).contiguous()
-            quota = cache.cache_size // cache.num_layers + (
-                self.layer_id < cache.cache_size % cache.num_layers
-            )
-            if cache.cache_policy != "layer_lru" or unique_ids.numel() <= quota:
+            if (
+                cache.quant_format == "nvfp4_b12x"
+                and cache.cache_policy == "layer_lru"
+                and unique_ids.numel() > int(cache.layer_quotas[self.layer_id].item())
+            ):
+                # Keep the original full-layer GEMM's E-row view and logical ids,
+                # but fetch only routed rows. Passing the larger persistent-cache
+                # extent to b12x changes its launch geometry and can change output.
+                cache.materialize_routed_layer(self.layer_id, unique_ids)
+                cache.sparse_prefill_layers += 1
+                cache.sparse_prefill_routes += raw_ids.numel()
+                cache.sparse_prefill_unique_rows += unique_ids.numel()
+                cache.copy_missing()
+                return self._expert_gemm(
+                    cache, hidden_states, topk_weights, raw_ids,
+                    views=cache.bank_views(self.num_experts),
+                    n=self.num_experts,
+                    alphas=cache.alphas_for_layer(self.layer_id),
+                    is_prefill=True,
+                )
+            # Layer quotas are a reuse policy, not the simultaneous-route limit:
+            # layer-LRU can borrow slots while pinning every route in this query.
+            # Using the quota here forces even one-token Kimi top-16 prefills to
+            # scan all 896 experts when the protected quota is only 9-10 slots.
+            if unique_ids.numel() <= cache.cache_size:
                 cache.ensure_experts(self.layer_id, unique_ids, is_prefill=True)
                 cache.sparse_prefill_layers += 1
                 cache.sparse_prefill_routes += raw_ids.numel()
