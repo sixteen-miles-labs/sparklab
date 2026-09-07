@@ -94,6 +94,8 @@ class QSAAttnBackend(BaseAttnBackend):
         self._fused_selection = os.getenv(
             "SPARKLAB_DISABLE_QSA_FUSED_SELECTION", "0"
         ).lower() not in {"1", "true", "yes"}
+        self._fast_metadata = os.getenv("SPARKLAB_QWEN4_FAST_QSA_METADATA", "0") == "1"
+        self._single_query_id: torch.Tensor | None = None
         self.capture: QSACaptureData | None = None
         self.capture_bs: List[int] = []
         self.max_graph_bs = 0
@@ -119,15 +121,35 @@ class QSAAttnBackend(BaseAttnBackend):
         # rather than one segment per request. ``paged_attention`` uses this tensor
         # to index ``indptr``, so it must map query N to segment N even when several
         # queries belong to the same request.
-        q_to_req = torch.arange(
-            offsets[-1], dtype=torch.int32, device=self.device
-        )
         dense = all(
             (req.cached_len + req.extend_len) // self.args.index_compress_ratio
             <= self.args.index_block_topk
             for req in reqs
         )
         dense_indptr = dense_indices = dense_q_positions = None
+        if dense and len(reqs) == 1 and lengths[0] == 1 and getattr(self, "_fast_metadata", False):
+            # One-query dense attention reads a contiguous page-table prefix.
+            # Avoid concatenating a copy and launching cumsum/arange kernels.
+            # These views are consumed on the engine stream before the request's
+            # page-table row can be repointed or freed.
+            req = reqs[0]
+            rows = get_global_ctx().page_table[
+                req.table_idx, : req.device_len
+            ].to(torch.int32)[: req.cached_len + 1]
+            if self._single_query_id is None:
+                self._single_query_id = torch.zeros(1, dtype=torch.int32, device=self.device)
+            packed = torch.tensor(
+                [0, rows.numel(), rows.numel() - 1], dtype=torch.int64, device=self.device
+            )
+            batch.attn_metadata = QSAMetadata(
+                qo_indptr=(0, 1), last_indices=self._single_query_id,
+                q_to_req=self._single_query_id, dense_indptr=packed[:2],
+                dense_indices=rows, dense_q_positions=packed[2:],
+            )
+            return
+        q_to_req = torch.arange(
+            offsets[-1], dtype=torch.int32, device=self.device
+        )
         if dense:
             # Before the sparse threshold QSA selection is layer-independent: every
             # visible physical row is selected. Build this packed metadata once per
@@ -157,6 +179,35 @@ class QSAAttnBackend(BaseAttnBackend):
             dense_indptr=dense_indptr,
             dense_indices=dense_indices,
             dense_q_positions=dense_q_positions,
+        )
+
+    def prepare_prefix_metadata(self, source: Batch, prefix: Batch) -> None:
+        """Reuse dense accepted-prefix addressing without changing draft arithmetic."""
+        md = source.attn_metadata
+        count = prefix.reqs[0].extend_len
+        if (
+            not getattr(self, "_fast_metadata", False)
+            or len(source.reqs) != 1 or len(prefix.reqs) != 1
+            or not isinstance(md, QSAMetadata) or md.dense_indices is None
+        ):
+            self.prepare_metadata(prefix)
+            return
+        req, original = prefix.reqs[0], source.reqs[0]
+        if (
+            req.table_idx != original.table_idx or req.cached_len != original.cached_len
+            or not 1 <= count <= md.q_to_req.numel()
+        ):
+            raise ValueError("QSA metadata reuse requires an unchanged accepted-prefix origin")
+        total = count * req.cached_len + count * (count + 1) // 2
+        prefix.attn_metadata = QSAMetadata(
+            qo_indptr=(0, count), last_indices=md.q_to_req[count - 1:count],
+            q_to_req=md.q_to_req[:count],
+            # Eager metadata uses int64 even when its source is an int32 capture.
+            dense_indptr=md.dense_indptr[:count + 1].to(torch.int64),
+            dense_indices=md.dense_indices[:total],
+            dense_q_positions=md.dense_q_positions[:count],
+            # Keep the same eager pooling implementation as fresh prefix metadata.
+            capture_decode=False,
         )
 
     @staticmethod
@@ -416,10 +467,11 @@ class QSAAttnBackend(BaseAttnBackend):
             dense_limit,
             self.device,
             max_bs=max(bs_list),
-            # Qwen MTP verification packs one target row and up to three
-            # draft rows into one request. Ordinary decode still consumes only
-            # the leading max_bs query slots from these same buffers.
-            max_queries_per_req=4,
+            # Verification packs one target row plus the configured draft
+            # width. Ordinary decode consumes only the leading max_bs slots.
+            max_queries_per_req=max(
+                4, 1 + int(getattr(self.config, "speculative_tokens", 0) or 0)
+            ),
         )
         self.capture_bs = sorted(bs_list)
         self.max_graph_bs = max(bs_list)

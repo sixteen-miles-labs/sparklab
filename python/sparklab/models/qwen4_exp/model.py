@@ -122,6 +122,7 @@ class Qwen4ExpForCausalLM(BaseLLMModel):
         self._mtp_path: str | None = None
         self._mtp_target_hidden: torch.Tensor | None = None
         self._draft_vocab = None
+        self._draft_fp8_head = None
         self._draft_required_ids: list[int] = []
         super().__init__()
 
@@ -145,6 +146,9 @@ class Qwen4ExpForCausalLM(BaseLLMModel):
 
     def prepare_for_runtime(self) -> None:
         if self._mtp is not None:
+            draft_head = os.getenv("SPARKLAB_QWEN4_DRAFT_HEAD", "bf16")
+            if draft_head not in {"bf16", "fp8"}:
+                raise ValueError("SPARKLAB_QWEN4_DRAFT_HEAD must be bf16 or fp8")
             if self._mtp_path is None:
                 raise RuntimeError("Qwen4 MTP sidecar path was not prepared")
             self._mtp.load_sidecar(self._mtp_path, self.model.embed_tokens.weight.device)
@@ -157,12 +161,32 @@ class Qwen4ExpForCausalLM(BaseLLMModel):
                     raise ValueError("reduced Qwen4 draft vocabulary requires TP=1")
                 ids = draft_token_ids(head.weight.shape[0], budget, self._draft_required_ids)
                 self._draft_vocab = DraftVocabulary(head.weight, self.lm_head.bias, ids)
+            if draft_head == "fp8":
+                from .weight import _quant_fp8_per_row
+
+                head = self.lm_head.tied_embedding or self.lm_head
+                if head.tp_size != 1 or budget or head.weight.dtype != torch.bfloat16:
+                    raise ValueError("FP8 Qwen4 draft head requires TP=1, BF16 source, and full vocabulary")
+                # Separate proposal-only copy: never replace the target head or
+                # tied embeddings. Chunking bounds temporary FP32 quantization memory.
+                weight = torch.empty_like(head.weight, dtype=torch.float8_e4m3fn)
+                scale = torch.empty(head.weight.shape[0], dtype=torch.float32, device=head.weight.device)
+                for start in range(0, head.weight.shape[0], 4096):
+                    part, part_scale = _quant_fp8_per_row(head.weight[start:start + 4096])
+                    weight[start:start + 4096] = part
+                    scale[start:start + 4096] = part_scale
+                self._draft_fp8_head = (weight, scale)
 
     def _select_draft_token(self, hidden: torch.Tensor) -> torch.Tensor:
         from sparklab.layers.linear import _linear_forward
 
         if self._draft_vocab is not None:
             return self._draft_vocab.select(hidden)
+        if self._draft_fp8_head is not None:
+            from sparklab.kernels.triton.fp8_pertensor_linear import fp8_pertensor_linear
+
+            weight, scale = self._draft_fp8_head
+            return fp8_pertensor_linear(hidden, weight, scale, self.lm_head.bias).argmax(-1)
         head = self.lm_head.tied_embedding or self.lm_head
         return _linear_forward(hidden, head.weight, self.lm_head.bias).argmax(-1)
 
@@ -190,6 +214,35 @@ class Qwen4ExpForCausalLM(BaseLLMModel):
         )
         self._mtp_target_hidden = multi
         return self.lm_head.forward(hidden)
+
+    def propose_mtp_prefix(self, batch, correction: torch.Tensor, accepted_inputs: int):
+        """Draft after rejection using only verified target features and tokens."""
+        from copy import copy
+
+        if not 1 <= accepted_inputs <= batch.input_ids.numel():
+            raise ValueError("accepted MTP prefix is outside the verification block")
+        if self._mtp_target_hidden is None:
+            return None
+        req = copy(batch.reqs[0])
+        req.device_len = req.cached_len + accepted_inputs
+        prefix = copy(batch)
+        prefix.reqs = [req]
+        prefix.padded_reqs = prefix.reqs
+        prefix.input_ids = batch.input_ids[:accepted_inputs]
+        prefix.positions = batch.positions[:accepted_inputs]
+        prefix.out_loc = batch.out_loc[:accepted_inputs]
+        backend = get_global_ctx().attn_backend
+        prepare_prefix = getattr(backend, "prepare_prefix_metadata", None)
+        if prepare_prefix is None:
+            backend.prepare_metadata(prefix)
+        else:
+            prepare_prefix(batch, prefix)
+        original_hidden = self._mtp_target_hidden
+        try:
+            self._mtp_target_hidden = original_hidden[:accepted_inputs]
+            return self.propose_mtp(prefix, correction)
+        finally:
+            self._mtp_target_hidden = original_hidden
 
     def propose_mtp(self, batch, next_token: torch.Tensor) -> torch.Tensor | None:
         """Greedily propose up to the configured MTP width for one request.

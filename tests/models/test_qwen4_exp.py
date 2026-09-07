@@ -1083,9 +1083,10 @@ def test_ple_consumes_prelaunched_lookup_without_sync_fallback():
     torch.testing.assert_close(ple._capture_embed[:1], rows)
 
 
-def test_ple_stages_smaller_batch_into_stable_graph_input_prefix():
+@pytest.mark.parametrize("num_rows", [3, 5])
+def test_ple_stages_smaller_batch_into_stable_graph_input_prefix(num_rows):
     ple = Qwen4PLE.__new__(Qwen4PLE)
-    rows = torch.arange(24, dtype=torch.bfloat16).view(3, 8)
+    rows = torch.arange(num_rows * 8, dtype=torch.bfloat16).view(num_rows, 8)
     ple.embedding = SimpleNamespace(forward=lambda _batch: rows)
     ple.key_proj = SimpleNamespace(weight=torch.empty(4, 8, dtype=torch.bfloat16))
     ple._capture_embed = None
@@ -1154,15 +1155,15 @@ def test_ple_verification_updates_dynamic_state_slot(monkeypatch):
     torch.testing.assert_close(states[2], original[2])
 
 
-@pytest.mark.parametrize("accepted_inputs", [1, 2, 3, 4])
+@pytest.mark.parametrize("num_inputs,accepted_inputs", [(n, a) for n in (4, 5) for a in range(1, n + 1)])
 @pytest.mark.parametrize("state_len", [2, 9])
-def test_ple_verify_prefix_commits_only_accepted_history(monkeypatch, accepted_inputs, state_len):
+def test_ple_verify_prefix_commits_only_accepted_history(monkeypatch, num_inputs, accepted_inputs, state_len):
     from sparklab.runtime.kvcache.linear_state_pool import LinearStatePool
 
     config = parse_config(_config())
     pool = LinearStatePool(config.linear_attention_group(), 3, torch.float32,
                            torch.device("cpu"), tp_size=1)
-    pool.enable_verify_transactions(4)
+    pool.enable_verify_transactions(num_inputs)
     states = pool.ensure_aux_state("qwen4_ple_0_conv", (2, state_len), torch.float32)
     states[1].copy_(torch.arange(2 * state_len).view(2, state_len))
     pool.copy_from(1, 2)
@@ -1172,7 +1173,7 @@ def test_ple_verify_prefix_commits_only_accepted_history(monkeypatch, accepted_i
     ple = Qwen4PLE.__new__(Qwen4PLE)
     ple.layer_id, ple.width, ple.state_len, ple.dilation = 0, 2, state_len, 1
     ple.conv1d = SimpleNamespace(weight=torch.ones(2, 1, state_len + 1))
-    x = torch.arange(8, dtype=torch.float32).view(4, 2) + 20
+    x = torch.arange(num_inputs * 2, dtype=torch.float32).view(num_inputs, 2) + 20
     batch = SimpleNamespace(is_verify=True, cache_verify_states=True,
         padded_reqs=[SimpleNamespace()],
         fla_metadata=SimpleNamespace(cache_indices=torch.tensor([1], dtype=torch.int32)))
@@ -1186,8 +1187,9 @@ def test_ple_verify_prefix_commits_only_accepted_history(monkeypatch, accepted_i
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
-@pytest.mark.parametrize("accepted_inputs", [1, 2, 3, 4])
-def test_qwen4_gdn_verify_prefix_matches_replay(monkeypatch, accepted_inputs):
+@pytest.mark.parametrize("num_inputs,accepted_inputs", [(n, a) for n in (4, 5) for a in range(1, n + 1)])
+@pytest.mark.parametrize("light_snapshot", [False, True])
+def test_qwen4_gdn_verify_prefix_matches_replay(monkeypatch, num_inputs, accepted_inputs, light_snapshot):
     from sparklab.models.qwen3_5_moe import gdn as module
     from sparklab.runtime.kvcache.linear_state_pool import LinearStatePool
     from sparklab.runtime.distributed import info
@@ -1209,13 +1211,13 @@ def test_qwen4_gdn_verify_prefix_matches_replay(monkeypatch, accepted_inputs):
     block.load_state_dict({name: torch.randn_like(value, device="cuda") * 0.05
                           for name, value in block.state_dict().items()})
     pool = LinearStatePool(group, 3, torch.bfloat16, torch.device("cuda"), tp_size=1)
-    pool.enable_verify_transactions(4)
+    pool.enable_verify_transactions(num_inputs)
     pool.conv_states.normal_(std=0.1)
     pool.recurrent_states.normal_(std=0.1)
     pool.copy_from(1, 2)
     context = SimpleNamespace(linear_state_pool=pool)
     monkeypatch.setattr(module, "get_global_ctx", lambda: context)
-    hidden = torch.randn(5, config.hidden_size, device="cuda", dtype=torch.bfloat16)
+    hidden = torch.randn(num_inputs + 1, config.hidden_size, device="cuda", dtype=torch.bfloat16)
 
     def run(x, capture=False):
         context.batch = SimpleNamespace(is_verify=capture, is_speculative_replay=not capture,
@@ -1229,14 +1231,19 @@ def test_qwen4_gdn_verify_prefix_matches_replay(monkeypatch, accepted_inputs):
     expected_output = run(hidden[:accepted_inputs])
     expected_conv = pool.conv_states[:, 1].clone()
     expected_rec = pool.recurrent_states[:, 1].clone()
-    expected_next = run(hidden[4:])
+    expected_next = run(hidden[num_inputs:])
     pool.copy_from(2, 1)
-    actual = run(hidden[:4], True)
+    if light_snapshot:
+        pool.snapshot_verify_inputs(1, 2)
+        pool.recurrent_states[:, 2].fill_(float("nan"))
+    original_recurrent = pool.recurrent_states[:, 1].clone()
+    actual = run(hidden[:num_inputs], True)
+    assert torch.equal(pool.recurrent_states[:, 1], original_recurrent)
     pool.commit_verify_prefix(2, 1, accepted_inputs)
     torch.testing.assert_close(pool.conv_states[:, 1], expected_conv)
     torch.testing.assert_close(pool.recurrent_states[:, 1], expected_rec, atol=1e-5, rtol=1e-4)
     torch.testing.assert_close(actual[:accepted_inputs], expected_output)
-    torch.testing.assert_close(run(hidden[4:]), expected_next)
+    torch.testing.assert_close(run(hidden[num_inputs:]), expected_next)
 
 
 def test_ple_prefill_checkpoint_includes_convolution_history(monkeypatch):
