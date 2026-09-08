@@ -125,3 +125,34 @@ def test_layer_load_marks_uniform_scale_and_optional_input_scale():
     # a reload must not trip over the input_scale it kept from the first load
     single.load_state_dict({"weight": w8, "weight_scale": flat})
     assert single.input_scale is None
+
+
+@pytest.mark.parametrize("rows", [1, 4, 5, 8])
+@pytest.mark.parametrize("uniform", [False, True])
+def test_vllm_skinny_fp8_preserves_scales_and_graph_replay(monkeypatch, rows, uniform):
+    pytest.importorskip("vllm")
+    from sparklab.kernels.triton.fp8_pertensor_linear import _scaled_mm
+
+    torch.manual_seed(63)
+    n, k = 512, 256
+    w = torch.randn(n, k, device="cuda").to(torch.float8_e4m3fn)
+    scales = torch.full((n,), .02, device="cuda", dtype=torch.float32)
+    if not uniform:
+        scales[n // 2:] = .07
+    input_scale = torch.tensor(.013, device="cuda", dtype=torch.float32)
+    x = torch.randn(rows, k, device="cuda", dtype=torch.bfloat16)
+    monkeypatch.setenv("SPARKLAB_FP8_MM_BACKEND", "vllm")
+    stream = torch.cuda.Stream()
+    stream.wait_stream(torch.cuda.current_stream())
+    with torch.cuda.stream(stream):
+        _scaled_mm(x, w, scales, input_scale, uniform, x.dtype)
+    graph = torch.cuda.CUDAGraph()
+    with torch.cuda.graph(graph, stream=stream):
+        actual = _scaled_mm(x, w, scales, input_scale, uniform, x.dtype)
+    torch.cuda.current_stream().wait_stream(stream)
+    monkeypatch.setenv("SPARKLAB_FP8_MM_BACKEND", "torch")
+    for _ in range(2):
+        x.normal_()
+        graph.replay()
+        expected = _scaled_mm(x, w, scales, input_scale, uniform, x.dtype)
+        torch.testing.assert_close(actual, expected, atol=2e-3, rtol=2e-3)

@@ -765,3 +765,62 @@ def test_b12x_pack_is_byte_compatible_with_native_banks():
     assert sum(t.shape[0] for t in packed["gate_up_packed"]) == total
     assert packed["gate_up_alpha"].shape == (total,)
     assert packed["down_packed"][0].dtype == torch.int32
+
+
+@cuda
+@marlin
+@pytest.mark.parametrize('tokens,is_prefill,physical_ids', [(1, False, False), (3, False, True), (16, True, False)])
+def test_marlin_fully_resident_layer_views_match_reference(monkeypatch, tokens, is_prefill, physical_ids):
+    """Immutable cache slices preserve routing and scales for a nonzero layer.
+
+    Also bounds the donor's expert domain to E instead of the entire L*E cache,
+    which determines Marlin's token padding and grouped-GEMM tile selection.
+    """
+    from sparklab.layers.moe import OffloadMoELayer
+    from sparklab.moe import nvfp4_backends as backends
+    from sparklab.moe.offload_cache import OffloadMoeCache
+    from sparklab.runtime.distributed import set_tp_info, try_get_tp_info
+
+    if try_get_tp_info() is None:
+        set_tp_info(rank=0, size=1)
+    device = torch.device('cuda')
+    cache, sources = _marlin_cache(device, cache_size=L * E)
+    for bank_source, bank_cache in cache.banks:
+        for layer_id, source in enumerate(bank_source):
+            bank_cache[layer_id * E:(layer_id + 1) * E].copy_(source)
+    cache.fully_resident = True
+    layer = OffloadMoELayer(layer_id=1, num_experts=E, top_k=TOPK,
+                           hidden_size=H, intermediate_size=I)
+    layer.offload_cache = cache
+    torch.manual_seed(73)
+    hidden = torch.randn(tokens, H, device=device, dtype=torch.bfloat16) / 4
+    weights = torch.rand(tokens, TOPK, device=device)
+    ids = torch.randint(E, (tokens, TOPK), device=device, dtype=torch.int32)
+    ref = _ref_moe(sources, 1, hidden, weights, ids)
+    original = backends.marlin_fused_experts
+
+    def bounded_forward(hidden, gu, gs, ga, dn, ds, da, weights, ids, *args):
+        assert gu.size(0) == dn.size(0) == ga.numel() == da.numel() == E
+        assert gu.data_ptr() == cache.bank_caches['gate_up_packed'][E].data_ptr()
+        return original(hidden, gu, gs, ga, dn, ds, da, weights, ids, *args)
+
+    monkeypatch.setattr(backends, 'marlin_fused_experts', bounded_forward)
+    if is_prefill:
+        out = layer._prefill_routed(hidden, weights, ids.clone())
+    else:
+        routed = ids + E if physical_ids else ids.clone()
+        out = layer._decode_routed(hidden, weights, routed, ids_are_slots=physical_ids)
+    _assert_close(out, ref)
+    if not is_prefill:
+        # The donor must also work with stable layer views during CUDA capture,
+        # including a multi-row verification-shaped call. Change input values
+        # after capture to detect accidentally frozen host-side computation.
+        static_ids = ids + E if physical_ids else ids.clone()
+        graph = torch.cuda.CUDAGraph()
+        with torch.cuda.graph(graph):
+            graphed = layer._decode_routed(
+                hidden, weights, static_ids.clone(), ids_are_slots=physical_ids
+            )
+        hidden.mul_(0.5)
+        graph.replay()
+        _assert_close(graphed, _ref_moe(sources, 1, hidden, weights, ids))

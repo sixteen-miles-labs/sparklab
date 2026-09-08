@@ -800,6 +800,24 @@ def test_offload_moe_cache_marlin_rejects_slot_count_beyond_kernel_limit():
         )
 
 
+def test_marlin_full_preload_uses_per_layer_limit():
+    from sparklab.moe.offload_cache import OffloadMoeCache
+
+    cache = OffloadMoeCache(
+        num_layers=40, num_experts=256, cache_size=10240,
+        device=torch.device("cpu"), quant_format="nvfp4_marlin", preload_all=True,
+    )
+    assert not cache.fully_resident  # allocation is not proof of a completed preload
+    cache.validate_rebuild(10240)
+    with pytest.raises(ValueError, match="every expert slot"):
+        cache.validate_rebuild(992)
+    with pytest.raises(ValueError, match="per-layer expert limit"):
+        OffloadMoeCache(
+            num_layers=2, num_experts=1024, cache_size=2048,
+            device=torch.device("cpu"), quant_format="nvfp4_marlin", preload_all=True,
+        )
+
+
 def test_prefill_overlap_prefetch_invalidates_borrowed_unified_cache_slots():
     from sparklab.moe.offload_cache import OffloadMoeCache
 

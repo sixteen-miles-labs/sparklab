@@ -53,16 +53,18 @@ def fused_topk(
     # k to 16 and slicing is not valid because the fused result is not contractually
     # sorted by score.
     non_power_of_two = topk <= 0 or (topk & (topk - 1)) != 0
+    force_torch = os.getenv("SPARKLAB_FORCE_TORCH_TOPK") == "1"
     # Qwen3.8 uses renormalized top-10 routing. The upstream triton_kernels router
     # only compiles for power-of-two k, but SparkLab's local fused router supports
     # arbitrary k and avoids the eager softmax/topk/divide/cast sequence on every
     # MoE layer. Padded-token masking is kept on the established generic paths.
     if (
-        non_power_of_two
+        (non_power_of_two or os.getenv("SPARKLAB_FUSED_TOPK", "0") == "1")
         and renormalize
         and num_token_non_padded is None
         and gating_output.is_cuda
-        and os.getenv("SPARKLAB_FORCE_TORCH_TOPK") != "1"
+        and gating_output.shape[1] <= 1024
+        and not force_torch
     ):
         try:
             from sparklab.kernels import fused_softmax_topk
@@ -71,7 +73,7 @@ def fused_topk(
             pass
         else:
             return fused_softmax_topk(gating_output, topk, id_base=id_base)
-    if not is_triton_kernels_installed() or non_power_of_two:
+    if force_torch or not is_triton_kernels_installed() or non_power_of_two:
         global _warned_torch_topk
         if not _warned_torch_topk:
             _warned_torch_topk = True
@@ -80,7 +82,7 @@ def fused_topk(
             # visible without giving up the fallback that Windows needs.
             logger.warning_rank0(
                 "fused_topk: using the pure-torch router fallback "
-                f"({'top-k is not a power of two' if non_power_of_two else 'triton_kernels is not installed'}) "
+                f"({'explicit override' if force_torch else 'top-k is not a power of two' if non_power_of_two else 'triton_kernels is not installed'}) "
                 "(numerically equivalent, slower)."
             )
         weights, ids = _torch_fused_topk(

@@ -33,7 +33,11 @@ def causal_conv1d_varlen(
         )
 
         return triton_causal_conv1d_varlen(
-            x, weight, conv_states, cu_seqlens, cache_indices, has_initial_state
+            x, weight, conv_states, cu_seqlens, cache_indices, has_initial_state,
+            # Single-request verification already knows its length from shape.
+            # Reading cu_seqlens.max().item() would synchronize every GDN layer
+            # and invalidate CUDA graph capture.
+            max_seq_len=x.shape[1] if cu_seqlens.numel() == 2 else None,
         )
 
     from sgl_kernel import causal_conv1d_fwd

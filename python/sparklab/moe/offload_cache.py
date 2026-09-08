@@ -129,6 +129,9 @@ class OffloadMoeCache:
     # pcie_bw / cpu_bw ratio so the PCIe fetch and the CPU overflow GEMV take equal
     # time (perfect overlap): fetched : cpu = pcie : cpu - pcie.
     hybrid_fetch_fraction: float = 0.0
+    # Full preload permits Marlin caches larger than its grouped-sort domain:
+    # immutable layer-major slices expose only num_experts rows to the donor.
+    preload_all: bool = False
 
     def __post_init__(self) -> None:
         policy_ids = {"lru": 0, "layer_lru": 1}
@@ -421,6 +424,12 @@ class OffloadMoeCache:
         """
         if cache_size < self.num_experts:
             raise ValueError(f"cache_size {cache_size} < num_experts {self.num_experts}")
+        if self.quant_format == "nvfp4_marlin" and self.preload_all:
+            if cache_size != self.num_layers * self.num_experts:
+                raise ValueError("Marlin full preload requires every expert slot")
+            if self.num_experts > MARLIN_MAX_CACHE_SIZE:
+                raise ValueError("Marlin full preload exceeds the per-layer expert limit")
+            return
         if self.quant_format == "nvfp4_marlin" and cache_size > MARLIN_MAX_CACHE_SIZE:
             raise ValueError(
                 f"moe_cache_size={cache_size} exceeds the marlin backend's slot limit of "

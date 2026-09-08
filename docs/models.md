@@ -31,7 +31,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | Model | Parameter | Quantization | Recipe | Status | tok/s | TTFT(s) |
 |---|---|---|---|---|---:|---:|
 | **Fast — routine chat, editing, and short agent loops** |  |  |  |  |  |  |
-| [Qwen3.6-35B-A3B](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW) | 35B total / 3B active | NVFP4 · FTW + optional MTP2 | `qwen3.6-35b-a3b` | Experimental | 80.55 | 0.367 |
+| [Qwen3.6-35B-A3B](https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4) | 35B total / 3B active | NVFP4 · Marlin + MTP4 container | `qwen3.6-35b-a3b` | Preview | 112.08 | 1.436 |
 | [Qwen3.8-27B](https://huggingface.co/oakmindai/Qwen3.8-27B-NVFP4-FTW) | 27B dense | NVFP4 · FTW + optional DFlash2-12 | `qwen3.8-27b` | Experimental | 45.88 | 0.152 |
 | **Frontier — hard coding, reasoning, and long agent work** |  |  |  |  |  |  |
 | [Qwen3.8-Flash-Next](https://huggingface.co/oakmindai/Qwen3.8-Flash-Next-NVFP4-FTW) | 125B LM + 55B auxiliary / 6B active | NVFP4 · FTW + optional MTP3 | `qwen3.8-flash-next` | Experimental | 31.97 | 0.260 |
@@ -41,8 +41,9 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | [GLM-5.3](https://huggingface.co/oakmindai/GLM-5.3-NVFP4-FTW) | 753B total / 40B active | NVFP4 + resident FP8 · FTW + optional DFlash2-4 | `glm-5.3` | Experimental fallback | 1.29 | 2.085 |
 | [Kimi K3](https://huggingface.co/oakmindai/Kimi-K3-NVFP4-FTW) | 2.8T total / 16 of 896 experts | ModelOpt NVFP4/FP8 · FTW | `kimi-k3` | Experimental | 0.16 | 395.405 |
 
-Model links point to the selected source or published FTW checkpoint. Qwen3.6, GLM-5.3,
+Model links point to the selected source or published FTW checkpoint. GLM-5.3
 and Kimi K3 use pinned prebuilt artifacts with reproducible source-conversion paths.
+Qwen3.6 converts its pinned NVIDIA source into a separate Marlin FTW inside its container.
 The current Qwen3.8-Flash-Next recipe requires a
 [source installation](install.md#method-2-install-from-source); the released 0.1.2 wheel
 lacks its required runtime support.
@@ -52,11 +53,10 @@ evidence attached to each recipe. Certification applies only to that exact check
 and recipe version. Portfolio performance and warm-TTFT columns use the selected
 single-stream profile; concurrent-serving results remain in model-specific evidence.
 
-Qwen3.6's published FTW artifact includes its native BF16 MTP weights. The portfolio
-row reports the opt-in MTP2 profile: 80.55 tok/s with 0.367 s warm TTFT on a 256-token
-GB10 probe, matching the fresh eager target-only output on that prompt. Full MTP
-certification remains pending; the certified target-only profile measured 67.79 tok/s
-and 0.329 s warm TTFT.
+Qwen3.6 recipe 0.6.0 defaults to the Marlin/MTP4 container. The portfolio row uses
+the two-repeat 8K-input/256-output C1 mean: 112.08 tok/s and 1.436 s TTFT. A one-hour
+zero-swap run passed, but the profile remains Preview because the fixed quality
+screen found differences from the previous native target-only reference.
 
 GLM-5.3 Flash's selected opt-in MTP3 profile measured a three-trial median of 7.77 tok/s
 and 6.395 s warm TTFT after eliminating rejection replay. All three trials reproduced
@@ -71,7 +71,7 @@ to the current NVIDIA checkpoint. Its selected MTP3 metric is batch-one.
 
 | Model | Current result | Evidence |
 |---|---|---|
-| Qwen3.6-35B-A3B | Fast-certified target-only profile, including exact 32K recall and a 60-minute zero-swap run. Replay-free native MTP2 reached 80.55 tok/s and matched the eager target-only output on the focused prompt; it remains opt-in pending full certification. | [GB10-QWEN36-FAST-002](../benchmarks/gb10/results/GB10-QWEN36-FAST-002.json), [original MTP sweep](../benchmarks/gb10/results/GB10-QWEN36-MTP-003.json), [optimized MTP](../benchmarks/gb10/results/GB10-QWEN36-MTP-004.json), [replay-free MTP](../benchmarks/gb10/results/GB10-QWEN36-MTP-005.json) |
+| Qwen3.6-35B-A3B | Default Marlin/MTP4 container: 112.08 tok/s, 28 serving checks and 1,411 requests over one zero-swap hour. Preview with documented quality differences; previous native artifact remains available. | [GB10-QWEN36-MARLIN-001](../benchmarks/gb10/results/GB10-QWEN36-MARLIN-001.json), [qualification](../benchmarks/qwen36_marlin/QUALIFICATION.md) |
 | Qwen3.8-27B | The opt-in DFlash2-12 profile reached 45.88 tok/s with exact target-output parity on the 128-token probe. Longer math, coding, and prose probes improved; their complete traces can differ with verification grouping. Full Fast certification remains pending. | [target-only](../benchmarks/gb10/results/GB10-QWEN38-27B-001.json), [DFlash2-12](../benchmarks/gb10/results/GB10-QWEN38-DFLASH-004.json) |
 | Qwen3.8-Flash-Next | NVIDIA MTP3 with accepted-prefix state commits measured 31.97 tok/s and 0.260 s warm TTFT, 13.9% above its baseline with zero rejection replay. Output differs from target-only; prior Inferact certification evidence does not transfer. | [NVIDIA baseline](../benchmarks/gb10/results/GB10-QWENNVIDIA-001.json), [accepted-prefix commits](../benchmarks/gb10/results/GB10-QWENNVIDIA-002.json) |
 | DeepSeek V4 Flash | The selected three-trial DSpark5 burst profile reaches 14.02 tok/s with replay-free compressor-prefix commits. This fixes the previous first-rejection carry shortcut; target-only remains the default and full certification is pending. | [GB10-DSV4-PREFIX-006](../benchmarks/gb10/results/GB10-DSV4-PREFIX-006.json) |

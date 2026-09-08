@@ -308,3 +308,42 @@ def test_fused_experts_decode_activation_and_router_weight_modes(
     torch.cuda.synchronize()
 
     torch.testing.assert_close(output, expected, rtol=5e-2, atol=5e-2)
+
+
+def test_force_torch_topk_is_independent_of_donor_imports(monkeypatch):
+    from sparklab.moe.fused import fused_topk
+
+    monkeypatch.setenv("SPARKLAB_FORCE_TORCH_TOPK", "1")
+    monkeypatch.setattr("sparklab.kernels.backend.is_triton_kernels_installed", lambda: True)
+    logits = torch.tensor([[3., 1., 4., 2.]])
+    weights, ids = fused_topk(torch.zeros(1, 8), logits, 2, True)
+    assert ids.tolist() == [[2, 0]]
+    torch.testing.assert_close(weights, torch.softmax(torch.tensor([[4., 3.]]), dim=-1))
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA required")
+@pytest.mark.parametrize("rows", [1, 5, 257])
+@pytest.mark.parametrize("dtype", [torch.float32, torch.bfloat16])
+def test_opt_in_fused_top8_matches_reference_under_graph(monkeypatch, rows, dtype):
+    import sparklab.moe.fused as module
+    monkeypatch.setenv("SPARKLAB_FUSED_TOPK", "1")
+    monkeypatch.setenv("SPARKLAB_FORCE_TORCH_TOPK", "0")
+    logits = torch.empty(rows, 256, device="cuda", dtype=dtype)
+    hidden = torch.empty(rows, 2048, device="cuda", dtype=torch.bfloat16)
+    # Unique, exactly representable values avoid imposing PyTorch's undefined
+    # boundary-tie choice on a different valid top-k implementation.
+    logits.copy_(torch.arange(256, device="cuda")[None].expand(rows, -1))
+    stream = torch.cuda.Stream()
+    stream.wait_stream(torch.cuda.current_stream())
+    with torch.cuda.stream(stream):
+        module.fused_topk(hidden, logits, 8, True, id_base=1024)
+    torch.cuda.current_stream().wait_stream(stream)
+    graph = torch.cuda.CUDAGraph()
+    with torch.cuda.graph(graph, stream=stream):
+        weights, ids = module.fused_topk(hidden, logits, 8, True, id_base=1024)
+    for _ in range(2):
+        logits.copy_(logits[:, torch.randperm(256, device="cuda")])
+        graph.replay()
+        expected_weights, expected_ids = module._torch_fused_topk(logits, 8, True, None)
+        torch.testing.assert_close(ids, expected_ids + 1024, atol=0, rtol=0)
+        torch.testing.assert_close(weights, expected_weights, atol=1e-6, rtol=1e-6)

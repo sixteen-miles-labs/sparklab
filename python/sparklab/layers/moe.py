@@ -270,7 +270,10 @@ class OffloadMoELayer(MoELayer):
         router_logits: torch.Tensor | None = None,
     ):
         cache = self.offload_cache
-        ids_are_slots = bool(cache is not None and cache.fully_resident)
+        ids_are_slots = bool(
+            cache is not None and cache.fully_resident
+            and cache.quant_format != "nvfp4_marlin"
+        )
         route_kwargs = dict(
             hidden_states=hidden_states,
             gating_output=router_logits,
@@ -332,6 +335,12 @@ class OffloadMoELayer(MoELayer):
         if cache.decode_target == "hybrid":
             return self._decode_hybrid(cache, hidden_states, topk_weights, topk_ids)
         if cache.fully_resident:
+            if cache.quant_format == "nvfp4_marlin":
+                if ids_are_slots:
+                    topk_ids.sub_(self.layer_id * cache.num_experts)
+                return self._resident_marlin_routed(
+                    hidden_states, topk_weights, topk_ids, is_prefill=False
+                )
             # Qwen's fused router emits the layer-major slot id directly. External
             # routers still arrive with logical ids and need this one mapping add.
             if not ids_are_slots:
@@ -412,6 +421,27 @@ class OffloadMoELayer(MoELayer):
         cpu_routed = cpu_routed_early if not _HYBRID_OVERLAP else executor.decode_sync(pending)
         return gpu_routed + cpu_routed
 
+    def _resident_marlin_routed(
+        self, hidden_states, topk_weights, topk_ids, *, is_prefill: bool
+    ) -> torch.Tensor:
+        """Expose one immutable layer, with logical expert IDs, to Marlin.
+
+        Its grouped-GEMM tiling and token padding depend on the expert count.
+        Passing the entire model cache inflates that count from E to L*E even
+        though this forward can only route to one layer. These slices are views;
+        no weights move and the global scales use the same layer offset.
+        """
+        cache = self.offload_cache
+        lo = self.layer_id * cache.num_experts
+        hi = lo + cache.num_experts
+        return self._expert_gemm(
+            cache, hidden_states, topk_weights, topk_ids,
+            views=tuple(bank[lo:hi] for bank in cache.bank_views()),
+            n=cache.num_experts,
+            alphas=cache.alphas_for_layer(self.layer_id),
+            is_prefill=is_prefill,
+        )
+
     def _prefill_routed(
         self,
         hidden_states: torch.Tensor,
@@ -425,6 +455,10 @@ class OffloadMoELayer(MoELayer):
         cache = self.offload_cache
         assert cache is not None
         if cache.fully_resident:
+            if cache.quant_format == "nvfp4_marlin":
+                return self._resident_marlin_routed(
+                    hidden_states, topk_weights, topk_ids, is_prefill=True
+                )
             # Native quantized grouped kernels sort in the logical E-wide expert
             # domain, then translate each group through this layer's static map.
             # Other formats consume physical slot ids directly.

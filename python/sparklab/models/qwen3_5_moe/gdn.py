@@ -227,6 +227,9 @@ class Qwen3_5GatedDeltaNet(BaseOP):
                 disable_state_update=cache_verify,
                 intermediate_states_buffer=intermediate,
                 intermediate_state_indices=intermediate_indices,
+                cached_initial_state_step=(
+                    pool.cached_initial_state_step if cache_verify else None
+                ),
             )
         elif not batch.uses_prefill_kernels:
             # Fused fla decode kernel: gating + in-kernel l2norm + recurrent update +

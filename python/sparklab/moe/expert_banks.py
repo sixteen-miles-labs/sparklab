@@ -52,6 +52,21 @@ class ExpertBanks:
 _PARALLEL_CHUNK = 8 << 20  # default O_DIRECT chunk for the parallel reader
 
 
+def validate_nvfp4_bank_backend(quant_format: str, requested: str) -> None:
+    """A prepared artifact owns its layout; explicit backend flags must agree."""
+    formats = {"triton": "nvfp4", "marlin": "nvfp4_marlin", "flashinfer": "nvfp4_b12x"}
+    if quant_format not in formats.values() or requested == "auto":
+        return
+    expected = formats[requested]
+    if quant_format != expected:
+        raise ValueError(
+            f"Prepared expert banks use {quant_format}, but --nvfp4-backend {requested} "
+            f"requires {expected}. Convert the original checkpoint with "
+            f"nvfp4_backend={requested!r} into a separate FTW artifact, or select "
+            "the backend matching this artifact."
+        )
+
+
 def _v4_unsupported(quant):
     raise NotImplementedError(
         f"parallel expert reader not implemented for quant {quant!r} yet; "
@@ -416,6 +431,9 @@ def load_expert_banks(
             model_path, num_layers=model_config.num_moe_layers, workers=workers, chunk=chunk
         )
         if banks is not None:
+            validate_nvfp4_bank_backend(
+                banks.quant_format, getattr(model_config, "nvfp4_backend", "auto")
+            )
             logger.info_rank0(f"expert banks: FTW fast path (FTW checkpoint {model_path})")
             return banks
 

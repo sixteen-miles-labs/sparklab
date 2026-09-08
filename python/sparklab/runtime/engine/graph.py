@@ -372,6 +372,7 @@ class MTPVerificationGraphRunner:
             self._target_hidden = getattr(self.model, "_mtp_target_hidden", None)
         finally:
             self.model._mtp_target_hidden = prior_mtp_hidden
+        logger.info(f"Captured MTP target verification CUDA graph: {self.rows} rows")
 
     def can_use_cuda_graph(self, batch: Batch) -> bool:
         return (

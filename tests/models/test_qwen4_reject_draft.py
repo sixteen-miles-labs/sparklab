@@ -46,9 +46,11 @@ def test_optimizations_keep_supported_draft_width_limit(
 
 @pytest.mark.parametrize("accepted", [1, 2, 3, 4])
 @pytest.mark.parametrize("raises", [False, True])
+@pytest.mark.parametrize("family", ["qwen4_exp", "qwen3_5_moe"])
 def test_prefix_proposal_hides_rejected_tokens_and_restores_features(
-    monkeypatch, accepted, raises
+    monkeypatch, accepted, raises, family
 ):
+    from sparklab.models.qwen3_5_moe.model import Qwen3_5MoEForCausalLM
     req = SimpleNamespace(cached_len=7, device_len=11, max_device_len=64)
     batch = SimpleNamespace(
         reqs=[req],
@@ -56,13 +58,14 @@ def test_prefix_proposal_hides_rejected_tokens_and_restores_features(
         positions=torch.arange(7, 11),
         out_loc=torch.arange(17, 21),
     )
-    model = Qwen4ExpForCausalLM.__new__(Qwen4ExpForCausalLM)
+    cls = Qwen4ExpForCausalLM if family == "qwen4_exp" else Qwen3_5MoEForCausalLM
+    model = cls.__new__(cls)
     hidden = torch.arange(24).reshape(4, 6)
     model._mtp_target_hidden = hidden
     prepared = []
     backend = SimpleNamespace(prepare_metadata=lambda b: prepared.append(b))
     monkeypatch.setattr(
-        "sparklab.models.qwen4_exp.model.get_global_ctx",
+        f"sparklab.models.{family}.model.get_global_ctx",
         lambda: SimpleNamespace(attn_backend=backend),
     )
     correction = torch.tensor([99])
@@ -164,18 +167,21 @@ def test_mtp_proposal_does_not_override_sampled_requests(monkeypatch):
 )
 @pytest.mark.parametrize("mode", ["enabled", "disabled", "missing_hook", "replay"])
 @pytest.mark.parametrize("light_snapshot", [False, True])
+@pytest.mark.parametrize("qwen3", [False, True])
 def test_engine_redraft_preserves_verified_outputs_and_state(
-    monkeypatch, width, accepted, mode, light_snapshot
+    monkeypatch, width, accepted, mode, light_snapshot, qwen3
 ):
     """Exercise the real verifier/engine branch, stubbing only device execution."""
     from sparklab.runtime.engine.engine import Engine
 
     monkeypatch.setenv(
-        "SPARKLAB_QWEN4_REJECT_DRAFT", "0" if mode == "disabled" else "1"
+        "SPARKLAB_QWEN4_REJECT_DRAFT", "0" if mode == "disabled" or qwen3 else "1"
     )
+    monkeypatch.setenv("SPARKLAB_MTP_REJECT_DRAFT", "0" if mode == "disabled" else "1")
     monkeypatch.setenv(
         "SPARKLAB_QWEN4_LIGHT_VERIFY_SNAPSHOT", "1" if light_snapshot else "0"
     )
+    monkeypatch.setenv("SPARKLAB_MTP_LIGHT_VERIFY_SNAPSHOT", "1" if light_snapshot else "0")
     engine = Engine.__new__(Engine)
     engine.stream = object()
     monkeypatch.setattr(torch.cuda, "current_stream", lambda: engine.stream)
@@ -185,7 +191,7 @@ def test_engine_redraft_preserves_verified_outputs_and_state(
     engine.config = SimpleNamespace(
         speculative_tokens=width,
         speculative_method="mtp",
-        model_config=SimpleNamespace(qwen4_exp_args=object()),
+        model_config=SimpleNamespace(qwen4_exp_args=None if qwen3 else object()),
     )
     engine.ctx = SimpleNamespace(forward_batch=lambda _: nullcontext())
     engine.cpu_moe_executor = None
@@ -242,7 +248,9 @@ def test_engine_redraft_preserves_verified_outputs_and_state(
         return proposals
 
     engine.model = SimpleNamespace(
-        begin_external_inputs=lambda _: None, forward=lambda: logits
+        begin_external_inputs=lambda _: None, forward=lambda: logits,
+        supports_mtp_prefix_recovery=qwen3,
+        supports_mtp_light_snapshot=qwen3,
     )
     if mode != "missing_hook":
         engine.model.propose_mtp_prefix = prefix_propose

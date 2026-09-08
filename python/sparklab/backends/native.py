@@ -15,6 +15,7 @@ from .base import (
     RuntimeRequest,
 )
 from .native_artifacts import validate_ftw
+from . import container
 
 _VALUE_OPTIONS: dict[str, tuple[str, type | tuple[type, ...]]] = {
     "attention_backend": ("--attention-backend", str),
@@ -202,6 +203,7 @@ class NativeBackend(RuntimeBackend):
         unknown = set(deployment.backend_options) - set(_OPTION_ORDER) - {
             "convert_expert_quantization",
             "convert_kda_quantization",
+            "container",
         }
         if unknown:
             raise BackendError(f"unknown native backend options: {sorted(unknown)}")
@@ -217,6 +219,7 @@ class NativeBackend(RuntimeBackend):
                 "'fp8_pertensor'"
             )
         _compile_options(deployment.backend_options)
+        container.settings(deployment)
 
     def migrate_v1_recipe(self, value: Mapping[str, Any]) -> dict[str, Any]:
         migrated = dict(value)
@@ -242,6 +245,9 @@ class NativeBackend(RuntimeBackend):
     def accepts_artifact(self, path: Path, deployment: DeploymentConfig) -> bool:
         if not path.is_dir() or not (path / "config.json").is_file():
             return False
+        config = container.settings(deployment)
+        if config is not None and not container.accepts(path, config):
+            return False
         if deployment.runtime_format.startswith("ftw"):
             from sparklab.checkpoint import is_ftw_checkpoint
 
@@ -252,6 +258,9 @@ class NativeBackend(RuntimeBackend):
         self, path: Path, deployment: DeploymentConfig
     ) -> ArtifactValidation:
         self.validate_deployment(deployment)
+        config = container.settings(deployment)
+        if config is not None and not container.accepts(path, config):
+            raise BackendError("artifact does not match the container recipe configuration/layout; prepare the separate Marlin artifact")
         if deployment.runtime_format.startswith("ftw"):
             return validate_ftw(path, runtime_format=deployment.runtime_format)
         if not self.accepts_artifact(path, deployment):
@@ -277,6 +286,9 @@ class NativeBackend(RuntimeBackend):
             raise BackendError(
                 f"native preparation for {deployment.runtime_format!r} is not required"
             )
+        if implementation is None and container.settings(deployment) is not None:
+            container.prepare(source, destination, deployment)
+            return self.validate_artifact(destination, deployment)
         if implementation is None:
             from sparklab.checkpoint import convert_checkpoint
 
@@ -308,9 +320,10 @@ class NativeBackend(RuntimeBackend):
                 f"{request.recipe} requires a valid {deployment.runtime_format} "
                 f"artifact for backend {self.backend_id}"
             )
+        config = container.settings(deployment)
         arguments = [
             "--model",
-            str(request.checkpoint),
+            "/artifact" if config else str(request.checkpoint),
             "--served-model-name",
             request.model,
         ]
@@ -323,10 +336,17 @@ class NativeBackend(RuntimeBackend):
             checkpoint=str(request.checkpoint),
             served_model=request.model,
             arguments=tuple(arguments),
+            command=container.serve_command(config, request.checkpoint, arguments) if config else (),
+            environment=dict(config["environment"]) if config else {},
             capabilities=self.capabilities().api_protocols,
         )
 
     def launch(self, plan: BackendLaunchPlan, *, prog: str) -> None:
+        if plan.command:
+            import os
+
+            os.execvp(plan.command[0], list(plan.command))
+            return
         from sparklab.serving import launch_server
 
         launch_server(argv=list(plan.arguments), prog=prog)

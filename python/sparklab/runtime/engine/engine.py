@@ -511,7 +511,11 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
             "--speculative-method mtp requires a supported checkpoint-native MTP head"
         )
     qwen4_mtp4 = qwen4_mtp and os.getenv("SPARKLAB_QWEN4_MTP4", "0") == "1"
-    max_tokens = 4 if glm5_mtp or qwen4_mtp4 else 3
+    qwen35_mtp4 = (
+        qwen35_mtp and not qwen4_mtp
+        and os.getenv("SPARKLAB_QWEN3_MTP4", "0") == "1"
+    )
+    max_tokens = 4 if glm5_mtp or qwen4_mtp4 or qwen35_mtp4 else 3
     if speculative_tokens > max_tokens:
         family = "GLM-5.3 Flash" if glm5_mtp else "Qwen"
         raise ValueError(f"{family} MTP supports at most {max_tokens} speculative tokens")
@@ -553,13 +557,18 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
         object.__setattr__(model_config, "mtp_cuda_graph", graph_enabled)
     if glm_args is not None:
         object.__setattr__(model_config, "glm5_next_args", glm_args)
+    if qwen_mtp and args is None and getattr(config, "attention_backend", None) == "fi":
+        # FlashInfer's causal prefill wrapper captures anchor + draft rows.
+        # Keep an explicit switch while validating the complete Qwen3.5/3.6 path.
+        object.__setattr__(model_config, "mtp_cuda_graph",
+                           os.getenv("SPARKLAB_QWEN3_MTP_GRAPH", "0") == "1")
     object.__setattr__(model_config, "attention_groups", tuple(groups))
     object.__setattr__(model_config, "speculative_method", "mtp")
     object.__setattr__(model_config, "speculative_tokens", speculative_tokens)
     override("speculative_method", "mtp")
-    # Transactional bookkeeping remains eager and batch-one. Qwen4 captures the
-    # fixed-width target verification forward; Qwen3.5/3.6 keep their established
-    # eager path until their attention backends gain multi-row capture metadata.
+    # Transactional bookkeeping remains eager and batch-one. Qwen4 and the
+    # opt-in Qwen3.5/3.6 FlashInfer path capture fixed-width verification in a
+    # dedicated runner, separate from request-batch decode graphs.
     override("max_running_req", 1)
     # GLM-5.3 intentionally keeps naive prefix caching because its KDA chunk
     # snapshots are not implemented. Its verifier uses one dedicated rollback
@@ -779,6 +788,12 @@ class Engine:
                 self.linear_state_pool.enable_verify_transactions(
                     transaction_steps
                 )
+                if (
+                    os.getenv("SPARKLAB_MTP_DEFER_STATE_COMMIT", "0") == "1"
+                    and config.speculative_method == "mtp"
+                    and config.model_config.model_type in {"qwen3_5", "qwen3_5_moe"}
+                ):
+                    self.linear_state_pool.enable_deferred_verify_commits()
         else:
             self.linear_state_pool = None
 
@@ -978,6 +993,7 @@ class Engine:
             kv_reserve_tokens=max(config.kv_reserve_tokens, min_reserve),
             page_size=page_tokens,
             quant_format=banks.quant_format,
+            preload_all=getattr(config, "moe_preload_all", False),
         )
 
     def _init_offload_moe_cache(self, config: EngineConfig) -> OffloadMoeCache:
@@ -1063,6 +1079,10 @@ class Engine:
                     parallel=expert_parallel,
                     decode_target=("cpu" if decode_target in ("cpu", "hybrid") else "gpu"),
                 )
+            from sparklab.moe.expert_banks import validate_nvfp4_bank_backend
+
+            validate_nvfp4_bank_backend(banks.quant_format, config.nvfp4_backend)
+            logger.info_rank0(f"Resolved expert bank layout: {banks.quant_format}")
             if config.moe_cache_auto:
                 size, pages, overlap = self._resolve_auto_moe_cache_size(
                     config, banks, disk_source
@@ -1098,6 +1118,7 @@ class Engine:
                 quant_format=banks.quant_format,
                 decode_target=decode_target,
                 hybrid_max_fetch=config.moe_hybrid_max_fetch,
+                preload_all=config.moe_preload_all,
             )
             cache.set_bank_sources(banks.sources, layer_residency=banks.layer_residency)
             cache.set_alphas(banks.gate_up_alpha, banks.down_alpha)
@@ -1366,6 +1387,9 @@ class Engine:
         # pools start being freed. A failure BEFORE this flag flips leaves the engine serving
         # untouched (no rollback needed); after it, only a rebuild restores service.
         self.rebuild_teardown_started = True
+        destroy_draft_graphs = getattr(self.model, "destroy_mtp_draft_graphs", None)
+        if destroy_draft_graphs is not None:
+            destroy_draft_graphs()
         # 1. Tear down CUDA graphs + backend capture scratch (free-before-alloc).
         if self.mtp_graph_runner is not None:
             self.mtp_graph_runner.destroy_cuda_graphs()
@@ -1431,6 +1455,14 @@ class Engine:
 
     def forward_batch(self, batch: Batch, args: BatchSamplingArgs) -> ForwardOutput:
         assert torch.cuda.current_stream() == self.stream
+        pool = self.linear_state_pool
+        if pool is not None and getattr(pool, "cached_initial_state_step", None) is not None:
+            if batch.is_verify and batch.size == 1:
+                req = batch.reqs[0]
+                live = req.linear_slot_idx if req.linear_slot_idx is not None else req.table_idx
+                pool.prepare_verify_state(live)
+            else:
+                pool.materialize_verify_state()
         # Launch history-only external inputs as early as possible. Qwen4 uses
         # this window to read all PLE layers concurrently while target-state
         # snapshots and the first transformer layers execute.
@@ -1487,8 +1519,16 @@ class Engine:
                     if (
                         getattr(pool, "verify_steps", 0)
                         and self.config.speculative_method == "mtp"
-                        and getattr(getattr(self.config, "model_config", None), "qwen4_exp_args", None) is not None
-                        and os.getenv("SPARKLAB_QWEN4_LIGHT_VERIFY_SNAPSHOT", "0") == "1"
+                        and (
+                            (
+                                getattr(getattr(self.config, "model_config", None), "qwen4_exp_args", None) is not None
+                                and os.getenv("SPARKLAB_QWEN4_LIGHT_VERIFY_SNAPSHOT", "0") == "1"
+                            )
+                            or (
+                                getattr(self.model, "supports_mtp_light_snapshot", False)
+                                and os.getenv("SPARKLAB_MTP_LIGHT_VERIFY_SNAPSHOT", "1") == "1"
+                            )
+                        )
                     ):
                         pool.snapshot_verify_inputs(live, scratch)
                     else:
@@ -1561,7 +1601,13 @@ class Engine:
                     and prefix_proposer is not None
                     and (append_only_speculation or (
                         batch.cache_verify_states
-                        and os.getenv("SPARKLAB_QWEN4_REJECT_DRAFT", "0") == "1"
+                        and (
+                            os.getenv("SPARKLAB_QWEN4_REJECT_DRAFT", "0") == "1"
+                            or (
+                                getattr(self.model, "supports_mtp_prefix_recovery", False)
+                                and os.getenv("SPARKLAB_MTP_REJECT_DRAFT", "1") == "1"
+                            )
+                        )
                     ))
                 ):
                     req.speculative_drafts = prefix_proposer(batch, chosen[-1:], accepted + 1)
@@ -1611,6 +1657,9 @@ class Engine:
 
         if self.config.speculative_tokens:
             self.mtp_stats["outputs"] += int(next_tokens_gpu.numel())
+            # Another request's prefill can reset global counters before this
+            # batch drains under overlap scheduling.
+            batch.speculative_stats_snapshot = dict(self.mtp_stats)
 
         batch.can_decode_after_forward = tuple(req.can_decode for req in batch.reqs)
         next_tokens_cpu = next_tokens_gpu.to("cpu", non_blocking=True)
@@ -1776,6 +1825,9 @@ class Engine:
         )
 
     def shutdown(self) -> None:
+        destroy_draft_graphs = getattr(self.model, "destroy_mtp_draft_graphs", None)
+        if destroy_draft_graphs is not None:
+            destroy_draft_graphs()
         if self.mtp_graph_runner is not None:
             self.mtp_graph_runner.destroy_cuda_graphs()
         self.graph_runner.destroy_cuda_graphs()

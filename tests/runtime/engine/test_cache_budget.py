@@ -133,6 +133,16 @@ def test_resolve_auto_marlin_caps_slots():
     assert size == 992
 
 
+def test_resolve_auto_marlin_full_preload_can_fund_all_layers():
+    size, _, _ = resolve_moe_cache_auto(
+        baseline_free=10_000_000, weights_bytes=0, memory_ratio=1.0,
+        cache_per_page=10, fixed_cache_size=0, per_expert_bytes=100,
+        num_experts=256, total_experts=10240, prefill_overlap=False,
+        kv_reserve_tokens=0, page_size=1, quant_format="nvfp4_marlin", preload_all=True,
+    )
+    assert size == 10240
+
+
 def _dsv4_adjust_cfg(**over):
     # A DSV4 _adjust_config stub mirroring the real checkpoint (ds_fp4 experts, dsv4_sparse
     # attention, offload MoE backend).

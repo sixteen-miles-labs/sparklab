@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 
 from typing import TYPE_CHECKING, List, NamedTuple, NoReturn, Set, Tuple, TypeAlias
 
@@ -282,7 +283,12 @@ class Scheduler(SchedulerIOMixin):
         # backend's per-batch SNAPSHOT (staged in prepare_for_replay right before the replay, on
         # the same stream, like the generic out_loc copy_from), not the live slot maps -- so the
         # next batch's allocate_paged cannot corrupt the in-flight graph replay. DSV4 overlaps.
-        if ENV.DISABLE_OVERLAP_SCHEDULING or self.config.speculative_tokens:
+        mtp_overlap = (
+            getattr(self.config, "speculative_method", None) == "mtp"
+            and getattr(self.engine.model, "supports_mtp_prefix_recovery", False)
+            and os.getenv("SPARKLAB_MTP_OVERLAP", "0") == "1"
+        )
+        if ENV.DISABLE_OVERLAP_SCHEDULING or (self.config.speculative_tokens and not mtp_overlap):
             with self.engine_stream_ctx:
                 self.engine.stream.wait_stream(self.stream)
                 while True:
@@ -383,14 +389,13 @@ class Scheduler(SchedulerIOMixin):
                         stop_strs=req.sampling_params.stop_strs or None,
                     ))
                     if finished:
-                        if token_index + 1 < count:
-                            req.cached_len = min(
-                                req.cached_len, req.input_ids.numel()
-                            )
-                            # One trailing token is the unprocessed bonus or
-                            # correction. Two or more means target state also
-                            # consumed a token beyond the terminal boundary.
-                            req.state_overadvanced = token_index + 2 < count
+                        # A following speculative block may already have run
+                        # under overlap. Never donate recurrent state past the
+                        # client-visible terminal token, even when EOS was the
+                        # last token of the block being drained.
+                        if req.cached_len > req.input_ids.numel():
+                            req.state_overadvanced = True
+                        req.cached_len = min(req.cached_len, req.input_ids.numel())
                         break
 
                 # NOTE: overlap scheduling may make the request freed twice, skip second free
@@ -412,7 +417,7 @@ class Scheduler(SchedulerIOMixin):
         self.finished_reqs = new_finished_reqs
         speculative_tokens = int(getattr(self.config, "speculative_tokens", 0) or 0)
         if new_finished_reqs and speculative_tokens:
-            stats = self.engine.mtp_stats
+            stats = getattr(batch, "speculative_stats_snapshot", self.engine.mtp_stats)
             drafted = stats["drafted"]
             rate = stats["accepted"] / drafted if drafted else 0.0
             logger.info_rank0(
@@ -660,6 +665,14 @@ class Scheduler(SchedulerIOMixin):
         # slots to two later requests. table_idx == -1 marks an already-freed request.
         if req.table_idx == -1:
             return
+        # Cancellation can discard a verified block before its tokens reach the
+        # host history. Never donate the later recurrent state under that shorter
+        # prefix key: radix insertion would own fewer pages than cached_len and
+        # strand the difference. Keep allocated_len intact so cleanup returns all
+        # speculative lookahead pages, including any page-alignment padding.
+        if req.cached_len > req.input_ids.numel():
+            req.state_overadvanced = True
+            req.cached_len = req.input_ids.numel()
         # Polymorphic free: the DSV4 manager returns the request's window pages + cmp/idx blocks
         # to their tier free-lists; the generic manager frees its KV pages (it reads
         # page_table[req.table_idx], so free the table entry after).

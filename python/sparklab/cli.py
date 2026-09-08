@@ -331,7 +331,9 @@ def _run_recipe(argv: list[str]) -> int:
         if args.json:
             print(json.dumps(invocation.to_dict(), indent=2, sort_keys=True))
         else:
-            print("sparklab serve " + " ".join(invocation.arguments))
+            import shlex
+
+            print(shlex.join(invocation.plan.command or ("sparklab", "serve", *invocation.arguments)))
         return 0
 
     from sparklab.backends import get_backend

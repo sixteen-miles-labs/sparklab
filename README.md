@@ -91,12 +91,12 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
       <th colspan="7" align="left">Fast — routine chat, editing, and short agent loops</th>
     </tr>
     <tr>
-      <td><a href="https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW">Qwen3.6-35B-A3B</a></td>
+      <td><a href="https://huggingface.co/nvidia/Qwen3.6-35B-A3B-NVFP4">Qwen3.6-35B-A3B</a></td>
       <td>35B total / 3B active</td>
-      <td>NVFP4 · FTW + optional MTP2</td>
-      <td>Experimental</td>
-      <td align="right">80.55</td>
-      <td align="right">0.367</td>
+      <td>NVFP4 · Marlin + MTP4 container</td>
+      <td>Preview</td>
+      <td align="right">112.08</td>
+      <td align="right">1.436</td>
       <td><a href="docs/models/qwen3.6-35b-a3b.md">Instructions</a></td>
     </tr>
     <tr>
@@ -161,6 +161,10 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
     </tr>
   </tbody>
 </table>
+
+Qwen3.6 uses the default Marlin/MTP4 container; its values are from the fixed
+8K-input/256-output benchmark. See the model instructions for quality limitations
+and the previous native profile.
 
 Status meanings:
 

@@ -907,6 +907,7 @@ class Nvfp4LMHead(BaseOP):
         self.weight_scale = torch.empty(num_embeddings, embedding_dim // 16, dtype=FP8)
         self.weight_global = torch.empty(num_embeddings, dtype=torch.float16)
         self._transposed = False
+        self._marlin = None
 
     def load_state_dict(self, state_dict, *, prefix: str = "", _internal: bool = False) -> None:
         w = state_dict.pop(_concat_prefix(prefix, "weight"))
@@ -915,6 +916,10 @@ class Nvfp4LMHead(BaseOP):
         self.weight, self.weight_scale = nvfp4_transpose_resident(w, s)
         self.weight_global = state_dict.pop(_concat_prefix(prefix, "weight_global"))
         self._transposed = True
+        if os.getenv("SPARKLAB_NVFP4_LM_HEAD_BACKEND", "triton") == "marlin":
+            from sparklab.layers.marlin_linear import MarlinNVFP4Linear
+
+            self._marlin = MarlinNVFP4Linear(w, s, self.weight_global)
         if not _internal and state_dict:
             raise RuntimeError(f"Unexpected keys in state_dict: {list(state_dict.keys())}")
 
@@ -933,6 +938,8 @@ class Nvfp4LMHead(BaseOP):
         Native MTP already selects its one draft row while the surrounding
         target-shaped batch can still be a multi-token prefill.
         """
+        if self._marlin is not None:
+            return self._marlin.forward(x)
         if self._transposed:
             return nvfp4_dense_linear_t(x, self.weight, self.weight_scale, self.weight_global)
         return nvfp4_dense_linear(x, self.weight, self.weight_scale, self.weight_global)

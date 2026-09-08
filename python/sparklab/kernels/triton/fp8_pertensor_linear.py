@@ -236,6 +236,16 @@ def _scaled_mm(
     and eat the precision loss. Row-wise costs ~4% here (5.56 ms vs 5.39 ms per step)."""
     qa = _static_quant(a, input_scale)
     wt = weight.t()  # [N, K] row-major -> [K, N] column-major, stride-only
+    if os.getenv("SPARKLAB_FP8_MM_BACKEND", "torch") == "vllm" and a.shape[0] <= 8:
+        from vllm import _custom_ops as ops
+
+        # Preserve the checkpoint's activation scale and every output-row
+        # weight scale, including fused projections with different scales.
+        # The donor's skinny CUTLASS dispatch avoids torch's generic row-wise
+        # GEMM at the small verification shapes; quantization is unchanged.
+        return ops.cutlass_scaled_mm(
+            qa, wt, input_scale.reshape(1), weight_scale.reshape(1, -1), out_dtype,
+        )
     if uniform_scale:
         return torch._scaled_mm(
             qa, wt, scale_a=input_scale.reshape(()), scale_b=weight_scale[0].reshape(()),

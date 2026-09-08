@@ -141,7 +141,12 @@ def plan_runtime(recipe: ModelRecipe, snapshot: GB10Snapshot) -> RuntimePlan:
         required = components["total_bytes"]
     else:
         required = sum(components.values())
-    if swap_used:
+    # Container recipes enforce zero swap in their own cgroup; unrelated host
+    # swap usage is still reported and never counted as usable capacity.
+    from sparklab.backends.container import settings as container_settings
+
+    isolated_swap = recipe.backend == "native" and container_settings(recipe.deployment) is not None
+    if swap_used and not isolated_swap:
         reasons.append(f"swap is in use ({swap_used} bytes); certified recipes require zero")
     if required is not None and required > usable:
         reasons.append(f"runtime memory shortfall: need {required} bytes, have {usable} usable")
