@@ -59,6 +59,8 @@ class LinearStatePool:
         self.verify_recurrent_states: torch.Tensor | None = None
         self.verify_conv_inputs: torch.Tensor | None = None
         self.verify_state_indices: torch.Tensor | None = None
+        self.cached_initial_state_step: torch.Tensor | None = None
+        self._pending_verify_state: tuple[int, int] | None = None
 
         n_layers, local_conv_dim, local_v_heads = _linear_local_dims(group, tp_size)
 
@@ -110,6 +112,33 @@ class LinearStatePool:
         )
         self._verify_steps = steps
 
+    def enable_deferred_verify_commits(self) -> None:
+        """Let the next batch-one GDN verify read its accepted state in place.
+
+        Each GDN CTA loads its own disjoint value tile before writing intermediate
+        states, so the next verification may safely reuse the same state buffer.
+        Canonical live state is materialized before other consumers or slot reuse.
+        """
+        if not self._verify_steps:
+            raise RuntimeError("deferred commits require verify transactions")
+        self.cached_initial_state_step = torch.full(
+            (1,), -1, dtype=torch.int32, device=self._device
+        )
+
+    def materialize_verify_state(self) -> None:
+        if self._pending_verify_state is None:
+            return
+        slot, step = self._pending_verify_state
+        self.recurrent_states[:, slot].copy_(self.verify_recurrent_states[:, 0, step])
+        self._pending_verify_state = None
+        self.cached_initial_state_step.fill_(-1)
+
+    def prepare_verify_state(self, live_slot: int) -> None:
+        # There is one intermediate lane shared by all requests. A new owner
+        # must preserve the previous owner's accepted state before overwriting it.
+        if self._pending_verify_state is not None and self._pending_verify_state[0] != live_slot:
+            self.materialize_verify_state()
+
     def commit_verify_prefix(self, snapshot_slot: int, live_slot: int, length: int) -> None:
         """Commit GDN state after ``length`` verified inputs from cached intermediates."""
         if (
@@ -118,9 +147,15 @@ class LinearStatePool:
             or not 1 <= length <= self._verify_steps
         ):
             raise RuntimeError("GDN verify transaction is not initialized for this length")
-        self.recurrent_states[:, live_slot].copy_(
-            self.verify_recurrent_states[:, 0, length - 1]
-        )
+        if self.cached_initial_state_step is not None:
+            if self._pending_verify_state is not None and self._pending_verify_state[0] != live_slot:
+                raise RuntimeError("verification changed owners without preparing its state")
+            self._pending_verify_state = (live_slot, length - 1)
+            self.cached_initial_state_step.fill_(length - 1)
+        else:
+            self.recurrent_states[:, live_slot].copy_(
+                self.verify_recurrent_states[:, 0, length - 1]
+            )
         history = self.conv_states.shape[-1]
         if length >= history:
             conv = self.verify_conv_inputs[:, length - history : length].transpose(1, 2)
@@ -175,6 +210,7 @@ class LinearStatePool:
         """Restore the free-list to all non-padding slots. Idle-only: the caller (e.g. a
         CacheManager rebuild that discards the tree owning donated snapshots) must guarantee no
         running request holds a slot, otherwise live state would be handed out twice."""
+        self.materialize_verify_state()
         self._free_slots = list(range(1, self._num_slots))
 
     def rebuild(self, num_slots: int) -> None:
@@ -186,6 +222,7 @@ class LinearStatePool:
         live/snapshot state is dropped, so the caller must guarantee no running request
         holds a slot and the radix tree owning donated snapshots is discarded too.
         """
+        self.materialize_verify_state()
         n_layers, _, local_conv_dim, km1 = self.conv_states.shape
         _, _, local_v_heads, key_head_dim, value_head_dim = self.recurrent_states.shape
         conv_dtype, rec_dtype = self.conv_states.dtype, self.recurrent_states.dtype
@@ -214,6 +251,7 @@ class LinearStatePool:
 
     def free(self, slots) -> None:
         """Return slot ids to the free-list. Accepts an int, list, or 1-D tensor."""
+        self.materialize_verify_state()
         if isinstance(slots, torch.Tensor):
             slots = slots.flatten().tolist()
         elif isinstance(slots, int):
@@ -222,6 +260,7 @@ class LinearStatePool:
 
     def clear_slots(self, slots) -> None:
         """Zero conv + recurrent state at ``slots`` across all linear layers (fresh sequence)."""
+        self.materialize_verify_state()
         if isinstance(slots, (list, tuple)):
             slots = torch.as_tensor(slots, dtype=torch.long, device=self._device)
         self.conv_states[:, slots] = 0
@@ -232,6 +271,7 @@ class LinearStatePool:
     def copy_from(self, src: int, dst: int) -> None:
         """Copy a whole-sequence snapshot (conv + recurrent, all layers) from slot ``src`` to
         ``dst``. Used for COW-on-restore (donated snapshot -> fresh live slot)."""
+        self.materialize_verify_state()
         self.conv_states[:, dst].copy_(self.conv_states[:, src])
         self.recurrent_states[:, dst].copy_(self.recurrent_states[:, src])
         for state in self._aux_states.values():
@@ -279,10 +319,12 @@ class LinearStatePool:
         return self.conv_states[self._local_index[layer_id], table_idx]
 
     def recurrent_state(self, layer_id: int, table_idx: int) -> torch.Tensor:
+        self.materialize_verify_state()
         return self.recurrent_states[self._local_index[layer_id], table_idx]
 
     def reset(self, table_idx: int) -> None:
         """Zero a slot across all linear layers (new request takes this table_idx)."""
+        self.materialize_verify_state()
         self.conv_states[:, table_idx].zero_()
         self.recurrent_states[:, table_idx].zero_()
         for name, state in self._aux_states.items():

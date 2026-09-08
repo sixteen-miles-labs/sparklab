@@ -1,0 +1,1139 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWEN36-MARLIN-001",
+  "status": "measured",
+  "platform": {
+    "device": "NVIDIA GB10",
+    "memory_gib": 128,
+    "machine": "aarch64",
+    "cuda": "13.0",
+    "driver": "580.126.09",
+    "date": "2026-09-08",
+    "local_date": "2026-09-08",
+    "timezone": "America/Toronto"
+  },
+  "model": {
+    "repository": "nvidia/Qwen3.6-35B-A3B-NVFP4",
+    "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce",
+    "checkpoint_format": "FTW nvfp4_marlin (experimental)",
+    "fingerprint": "9e48171e436f5ef5",
+    "recipe_version": "0.5.0",
+    "source_shard_verification": [
+      {
+        "file": "model-00001-of-00003.safetensors",
+        "sha256": "07141c2db92e47bc08777132cd1a0323faf300eab3a7d7c111bc2bf075fda050",
+        "bytes": 10006877608,
+        "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce"
+      },
+      {
+        "file": "model-00002-of-00003.safetensors",
+        "sha256": "6dea9c759a0f941cf9e1cc1501216b0e107966a66c90425050e212efbd053f02",
+        "bytes": 10003595752,
+        "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce"
+      },
+      {
+        "file": "model-00003-of-00003.safetensors",
+        "sha256": "9758875fc55e49561165f4a44342b654c123c3e25c6811b34abb83553fb1a164",
+        "bytes": 3413864960,
+        "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce"
+      }
+    ],
+    "marlin_artifact_fingerprint": "9e48171e436f5ef5",
+    "experimental_artifact": "$HOME/.sparklab/models/qwen3.6-35b-a3b/prepared/experimental-marlin-vllm028",
+    "converted_artifact_shards": [
+      {
+        "file": "freetoken-00000.ftw",
+        "bytes": 8475422720,
+        "sha256": "01a297d01954302c91f43db38b2979457c8e53bf143265f5ee507efc95c2059e"
+      },
+      {
+        "file": "freetoken-00001.ftw",
+        "bytes": 8589934592,
+        "sha256": "29f4e12beba2447d44af0de53f6127fc72c66d4a3497949f0b0f26f190c82bf2"
+      },
+      {
+        "file": "freetoken-00002.ftw",
+        "bytes": 5452677120,
+        "sha256": "7d6c92fb6ac0bbc8756ce438d7fca4098a4612362c2980186c481ef0df95a5f7"
+      }
+    ],
+    "converted_artifact_index_sha256": "d95df70b041526a97a72f8298a12cbc798d249fca8b73e05326c9a904baafbf8"
+  },
+  "engine": {
+    "name": "SparkLab with vLLM Marlin donor",
+    "revision": "8ee23cf7cd158118104999fa1a01fb8e5cfa631b",
+    "image_id": "sha256:a563337b36f29e11803737bca3c8833d6ed8d66a2efd244348cc9dc1bd53ba5e",
+    "base_image_digest": [
+      "vllm/vllm-openai@sha256:61fc8a896b0a4fbbbdc063bc4b0dbc25ce98e02b5050c24aeb7830ac02039b14"
+    ],
+    "runtime_packages": {
+      "sparklab": "0.1.2",
+      "torch": "2.13.0+cu130",
+      "triton": "3.7.1",
+      "vllm": "0.28.0",
+      "flashinfer-python": "0.6.16.post3",
+      "transformers": "5.15.1",
+      "flashlib": "0.3.0",
+      "apache-tvm-ffi": "0.1.11",
+      "gguf": "0.19.0",
+      "prompt_toolkit": "3.0.53",
+      "wcwidth": "0.8.3"
+    },
+    "runtime_source_files_verified": 411,
+    "all_runtime_source_hashes_match": true,
+    "source_mount": false,
+    "working_tree_patch_sha256": "31ce51ef33db7192a6b19123e80d6d11c51ad3a1aad10e9f9f8bc0fd4a1bfb66"
+  },
+  "profile": {
+    "environment_file": "benchmarks/qwen36_marlin/gb10.env",
+    "launcher": "benchmarks/qwen36_marlin/serve.py",
+    "max_sequence_tokens": 32832,
+    "kv_dtype": "bfloat16",
+    "recurrent_state_dtype": "float32",
+    "speculative_tokens": 4,
+    "greedy_speculative_only": true,
+    "active_decode_requests": 1,
+    "container_memory_limit_bytes": 103079215104,
+    "container_swap_limit_bytes": 0,
+    "modality": "text"
+  },
+  "quality": {
+    "native_comparison": {
+      "corpus_sha256": "989733d71627b09134c9e7c81c37262df9b5e4422f12350d6983d7723d89ff47",
+      "candidate": {
+        "cases": {
+          "arithmetic-0": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 4
+          },
+          "arithmetic-1": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 3
+          },
+          "arithmetic-2": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 4
+          },
+          "arithmetic-3": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 4
+          },
+          "arithmetic-4": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 3
+          },
+          "arithmetic-5": {
+            "passed": false,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 3
+          },
+          "reasoning-0": {
+            "passed": true,
+            "kind": "reasoning",
+            "finish_reason": "stop",
+            "completion_tokens": 1309
+          },
+          "reasoning-1": {
+            "passed": true,
+            "kind": "reasoning",
+            "finish_reason": "stop",
+            "completion_tokens": 2612
+          },
+          "reasoning-2": {
+            "passed": true,
+            "kind": "reasoning",
+            "finish_reason": "stop",
+            "completion_tokens": 5541
+          },
+          "reasoning-3": {
+            "passed": true,
+            "kind": "reasoning",
+            "finish_reason": "stop",
+            "completion_tokens": 2244
+          },
+          "json-0": {
+            "passed": true,
+            "kind": "json",
+            "finish_reason": "stop",
+            "completion_tokens": 14
+          },
+          "json-1": {
+            "passed": false,
+            "kind": "json",
+            "finish_reason": "stop",
+            "completion_tokens": 14
+          },
+          "json-2": {
+            "passed": false,
+            "kind": "json",
+            "finish_reason": "stop",
+            "completion_tokens": 7
+          },
+          "json-3": {
+            "passed": true,
+            "kind": "json",
+            "finish_reason": "stop",
+            "completion_tokens": 10
+          },
+          "code-clamp": {
+            "passed": true,
+            "kind": "code",
+            "finish_reason": "stop",
+            "completion_tokens": 1282
+          },
+          "code-sign": {
+            "passed": true,
+            "kind": "code",
+            "finish_reason": "stop",
+            "completion_tokens": 1021
+          },
+          "code-absolute_difference": {
+            "passed": true,
+            "kind": "code",
+            "finish_reason": "stop",
+            "completion_tokens": 1126
+          },
+          "code-is_leap_year": {
+            "passed": true,
+            "kind": "code",
+            "finish_reason": "stop",
+            "completion_tokens": 2010
+          },
+          "tool-0": {
+            "passed": true,
+            "kind": "tool",
+            "finish_reason": "tool_calls",
+            "completion_tokens": 120
+          },
+          "tool-0-roundtrip": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 4
+          },
+          "tool-1": {
+            "passed": true,
+            "kind": "tool",
+            "finish_reason": "tool_calls",
+            "completion_tokens": 210
+          },
+          "tool-1-roundtrip": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 4
+          },
+          "aime25-0": {
+            "passed": false,
+            "kind": "aime",
+            "finish_reason": "length",
+            "completion_tokens": 16384
+          },
+          "aime25-1": {
+            "passed": false,
+            "kind": "aime",
+            "finish_reason": "length",
+            "completion_tokens": 16384
+          },
+          "aime25-2": {
+            "passed": false,
+            "kind": "aime",
+            "finish_reason": "length",
+            "completion_tokens": 16384
+          },
+          "aime25-3": {
+            "passed": false,
+            "kind": "aime",
+            "finish_reason": "length",
+            "completion_tokens": 16384
+          },
+          "aime25-4": {
+            "passed": false,
+            "kind": "aime",
+            "finish_reason": "length",
+            "completion_tokens": 16384
+          }
+        },
+        "by_kind": {
+          "exact": {
+            "correct": 7,
+            "total": 8,
+            "truncated": 0
+          },
+          "reasoning": {
+            "correct": 4,
+            "total": 4,
+            "truncated": 0
+          },
+          "json": {
+            "correct": 2,
+            "total": 4,
+            "truncated": 0
+          },
+          "code": {
+            "correct": 4,
+            "total": 4,
+            "truncated": 0
+          },
+          "tool": {
+            "correct": 2,
+            "total": 2,
+            "truncated": 0
+          },
+          "aime": {
+            "correct": 0,
+            "total": 5,
+            "truncated": 5
+          }
+        },
+        "missing_cases": []
+      },
+      "baseline": {
+        "cases": {
+          "arithmetic-0": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 4
+          },
+          "arithmetic-1": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 3
+          },
+          "arithmetic-2": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 4
+          },
+          "arithmetic-3": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 4
+          },
+          "arithmetic-4": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 3
+          },
+          "arithmetic-5": {
+            "passed": false,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 3
+          },
+          "reasoning-0": {
+            "passed": true,
+            "kind": "reasoning",
+            "finish_reason": "stop",
+            "completion_tokens": 1691
+          },
+          "reasoning-1": {
+            "passed": true,
+            "kind": "reasoning",
+            "finish_reason": "stop",
+            "completion_tokens": 6284
+          },
+          "reasoning-2": {
+            "passed": true,
+            "kind": "reasoning",
+            "finish_reason": "stop",
+            "completion_tokens": 4692
+          },
+          "reasoning-3": {
+            "passed": true,
+            "kind": "reasoning",
+            "finish_reason": "stop",
+            "completion_tokens": 3227
+          },
+          "json-0": {
+            "passed": true,
+            "kind": "json",
+            "finish_reason": "stop",
+            "completion_tokens": 14
+          },
+          "json-1": {
+            "passed": false,
+            "kind": "json",
+            "finish_reason": "stop",
+            "completion_tokens": 14
+          },
+          "json-2": {
+            "passed": true,
+            "kind": "json",
+            "finish_reason": "stop",
+            "completion_tokens": 6
+          },
+          "json-3": {
+            "passed": true,
+            "kind": "json",
+            "finish_reason": "stop",
+            "completion_tokens": 10
+          },
+          "code-clamp": {
+            "passed": true,
+            "kind": "code",
+            "finish_reason": "stop",
+            "completion_tokens": 1236
+          },
+          "code-sign": {
+            "passed": true,
+            "kind": "code",
+            "finish_reason": "stop",
+            "completion_tokens": 1377
+          },
+          "code-absolute_difference": {
+            "passed": true,
+            "kind": "code",
+            "finish_reason": "stop",
+            "completion_tokens": 1410
+          },
+          "code-is_leap_year": {
+            "passed": true,
+            "kind": "code",
+            "finish_reason": "stop",
+            "completion_tokens": 2287
+          },
+          "tool-0": {
+            "passed": true,
+            "kind": "tool",
+            "finish_reason": "tool_calls",
+            "completion_tokens": 166
+          },
+          "tool-0-roundtrip": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 4
+          },
+          "tool-1": {
+            "passed": true,
+            "kind": "tool",
+            "finish_reason": "tool_calls",
+            "completion_tokens": 175
+          },
+          "tool-1-roundtrip": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 4
+          },
+          "aime25-0": {
+            "passed": true,
+            "kind": "aime",
+            "finish_reason": "stop",
+            "completion_tokens": 13290
+          },
+          "aime25-1": {
+            "passed": false,
+            "kind": "aime",
+            "finish_reason": "length",
+            "completion_tokens": 16384
+          },
+          "aime25-2": {
+            "passed": false,
+            "kind": "aime",
+            "finish_reason": "length",
+            "completion_tokens": 16384
+          },
+          "aime25-3": {
+            "passed": false,
+            "kind": "aime",
+            "finish_reason": "length",
+            "completion_tokens": 16384
+          },
+          "aime25-4": {
+            "passed": false,
+            "kind": "aime",
+            "finish_reason": "length",
+            "completion_tokens": 16384
+          }
+        },
+        "by_kind": {
+          "exact": {
+            "correct": 7,
+            "total": 8,
+            "truncated": 0
+          },
+          "reasoning": {
+            "correct": 4,
+            "total": 4,
+            "truncated": 0
+          },
+          "json": {
+            "correct": 3,
+            "total": 4,
+            "truncated": 0
+          },
+          "code": {
+            "correct": 4,
+            "total": 4,
+            "truncated": 0
+          },
+          "tool": {
+            "correct": 2,
+            "total": 2,
+            "truncated": 0
+          },
+          "aime": {
+            "correct": 1,
+            "total": 5,
+            "truncated": 4
+          }
+        },
+        "missing_cases": []
+      },
+      "introduced_failures": [
+        "aime25-0",
+        "json-2"
+      ],
+      "improvements": [],
+      "no_observed_quality_regression": false,
+      "limitation": "A small fixed regression set, not a statistical non-inferiority study. Greedy AIME outcomes with token caps are reported separately from serving correctness."
+    },
+    "vllm_comparison": {
+      "corpus_sha256": "989733d71627b09134c9e7c81c37262df9b5e4422f12350d6983d7723d89ff47",
+      "candidate": {
+        "cases": {
+          "arithmetic-0": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 4
+          },
+          "arithmetic-1": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 3
+          },
+          "arithmetic-2": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 4
+          },
+          "arithmetic-3": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 4
+          },
+          "arithmetic-4": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 3
+          },
+          "arithmetic-5": {
+            "passed": false,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 3
+          },
+          "reasoning-0": {
+            "passed": true,
+            "kind": "reasoning",
+            "finish_reason": "stop",
+            "completion_tokens": 1309
+          },
+          "reasoning-1": {
+            "passed": true,
+            "kind": "reasoning",
+            "finish_reason": "stop",
+            "completion_tokens": 2612
+          },
+          "reasoning-2": {
+            "passed": true,
+            "kind": "reasoning",
+            "finish_reason": "stop",
+            "completion_tokens": 5541
+          },
+          "reasoning-3": {
+            "passed": true,
+            "kind": "reasoning",
+            "finish_reason": "stop",
+            "completion_tokens": 2244
+          },
+          "json-0": {
+            "passed": true,
+            "kind": "json",
+            "finish_reason": "stop",
+            "completion_tokens": 14
+          },
+          "json-1": {
+            "passed": false,
+            "kind": "json",
+            "finish_reason": "stop",
+            "completion_tokens": 14
+          },
+          "json-2": {
+            "passed": false,
+            "kind": "json",
+            "finish_reason": "stop",
+            "completion_tokens": 7
+          },
+          "json-3": {
+            "passed": true,
+            "kind": "json",
+            "finish_reason": "stop",
+            "completion_tokens": 10
+          },
+          "code-clamp": {
+            "passed": true,
+            "kind": "code",
+            "finish_reason": "stop",
+            "completion_tokens": 1282
+          },
+          "code-sign": {
+            "passed": true,
+            "kind": "code",
+            "finish_reason": "stop",
+            "completion_tokens": 1021
+          },
+          "code-absolute_difference": {
+            "passed": true,
+            "kind": "code",
+            "finish_reason": "stop",
+            "completion_tokens": 1126
+          },
+          "code-is_leap_year": {
+            "passed": true,
+            "kind": "code",
+            "finish_reason": "stop",
+            "completion_tokens": 2010
+          },
+          "tool-0": {
+            "passed": true,
+            "kind": "tool",
+            "finish_reason": "tool_calls",
+            "completion_tokens": 120
+          },
+          "tool-0-roundtrip": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 4
+          },
+          "tool-1": {
+            "passed": true,
+            "kind": "tool",
+            "finish_reason": "tool_calls",
+            "completion_tokens": 210
+          },
+          "tool-1-roundtrip": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 4
+          },
+          "aime25-0": {
+            "passed": false,
+            "kind": "aime",
+            "finish_reason": "length",
+            "completion_tokens": 16384
+          },
+          "aime25-1": {
+            "passed": false,
+            "kind": "aime",
+            "finish_reason": "length",
+            "completion_tokens": 16384
+          },
+          "aime25-2": {
+            "passed": false,
+            "kind": "aime",
+            "finish_reason": "length",
+            "completion_tokens": 16384
+          },
+          "aime25-3": {
+            "passed": false,
+            "kind": "aime",
+            "finish_reason": "length",
+            "completion_tokens": 16384
+          },
+          "aime25-4": {
+            "passed": false,
+            "kind": "aime",
+            "finish_reason": "length",
+            "completion_tokens": 16384
+          }
+        },
+        "by_kind": {
+          "exact": {
+            "correct": 7,
+            "total": 8,
+            "truncated": 0
+          },
+          "reasoning": {
+            "correct": 4,
+            "total": 4,
+            "truncated": 0
+          },
+          "json": {
+            "correct": 2,
+            "total": 4,
+            "truncated": 0
+          },
+          "code": {
+            "correct": 4,
+            "total": 4,
+            "truncated": 0
+          },
+          "tool": {
+            "correct": 2,
+            "total": 2,
+            "truncated": 0
+          },
+          "aime": {
+            "correct": 0,
+            "total": 5,
+            "truncated": 5
+          }
+        },
+        "missing_cases": []
+      },
+      "baseline": {
+        "cases": {
+          "arithmetic-0": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 4
+          },
+          "arithmetic-1": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 3
+          },
+          "arithmetic-2": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 4
+          },
+          "arithmetic-3": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 4
+          },
+          "arithmetic-4": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 3
+          },
+          "arithmetic-5": {
+            "passed": false,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 3
+          },
+          "reasoning-0": {
+            "passed": true,
+            "kind": "reasoning",
+            "finish_reason": "stop",
+            "completion_tokens": 1210
+          },
+          "reasoning-1": {
+            "passed": true,
+            "kind": "reasoning",
+            "finish_reason": "stop",
+            "completion_tokens": 2098
+          },
+          "reasoning-2": {
+            "passed": true,
+            "kind": "reasoning",
+            "finish_reason": "stop",
+            "completion_tokens": 4746
+          },
+          "reasoning-3": {
+            "passed": true,
+            "kind": "reasoning",
+            "finish_reason": "stop",
+            "completion_tokens": 2050
+          },
+          "json-0": {
+            "passed": true,
+            "kind": "json",
+            "finish_reason": "stop",
+            "completion_tokens": 14
+          },
+          "json-1": {
+            "passed": false,
+            "kind": "json",
+            "finish_reason": "stop",
+            "completion_tokens": 14
+          },
+          "json-2": {
+            "passed": false,
+            "kind": "json",
+            "finish_reason": "stop",
+            "completion_tokens": 7
+          },
+          "json-3": {
+            "passed": true,
+            "kind": "json",
+            "finish_reason": "stop",
+            "completion_tokens": 10
+          },
+          "code-clamp": {
+            "passed": true,
+            "kind": "code",
+            "finish_reason": "stop",
+            "completion_tokens": 696
+          },
+          "code-sign": {
+            "passed": true,
+            "kind": "code",
+            "finish_reason": "stop",
+            "completion_tokens": 1835
+          },
+          "code-absolute_difference": {
+            "passed": true,
+            "kind": "code",
+            "finish_reason": "stop",
+            "completion_tokens": 1227
+          },
+          "code-is_leap_year": {
+            "passed": true,
+            "kind": "code",
+            "finish_reason": "stop",
+            "completion_tokens": 2187
+          },
+          "tool-0": {
+            "passed": true,
+            "kind": "tool",
+            "finish_reason": "tool_calls",
+            "completion_tokens": 223
+          },
+          "tool-0-roundtrip": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 4
+          },
+          "tool-1": {
+            "passed": true,
+            "kind": "tool",
+            "finish_reason": "tool_calls",
+            "completion_tokens": 186
+          },
+          "tool-1-roundtrip": {
+            "passed": true,
+            "kind": "exact",
+            "finish_reason": "stop",
+            "completion_tokens": 4
+          },
+          "aime25-0": {
+            "passed": true,
+            "kind": "aime",
+            "finish_reason": "stop",
+            "completion_tokens": 14490
+          },
+          "aime25-1": {
+            "passed": false,
+            "kind": "aime",
+            "finish_reason": "length",
+            "completion_tokens": 16384
+          },
+          "aime25-2": {
+            "passed": false,
+            "kind": "aime",
+            "finish_reason": "length",
+            "completion_tokens": 16384
+          },
+          "aime25-3": {
+            "passed": false,
+            "kind": "aime",
+            "finish_reason": "length",
+            "completion_tokens": 16384
+          },
+          "aime25-4": {
+            "passed": false,
+            "kind": "aime",
+            "finish_reason": "length",
+            "completion_tokens": 16384
+          }
+        },
+        "by_kind": {
+          "exact": {
+            "correct": 7,
+            "total": 8,
+            "truncated": 0
+          },
+          "reasoning": {
+            "correct": 4,
+            "total": 4,
+            "truncated": 0
+          },
+          "json": {
+            "correct": 2,
+            "total": 4,
+            "truncated": 0
+          },
+          "code": {
+            "correct": 4,
+            "total": 4,
+            "truncated": 0
+          },
+          "tool": {
+            "correct": 2,
+            "total": 2,
+            "truncated": 0
+          },
+          "aime": {
+            "correct": 1,
+            "total": 5,
+            "truncated": 4
+          }
+        },
+        "missing_cases": []
+      },
+      "introduced_failures": [
+        "aime25-0"
+      ],
+      "improvements": [],
+      "no_observed_quality_regression": false,
+      "limitation": "A small fixed regression set, not a statistical non-inferiority study. Greedy AIME outcomes with token caps are reported separately from serving correctness."
+    },
+    "promotion_to_default": false,
+    "reason": "Observed capped reasoning and JSON instruction regressions versus the native reference; quality equivalence not established."
+  },
+  "regressions": {
+    "runtime_kernel_tests": {
+      "passed": 775,
+      "skipped": 1,
+      "log": "release-regressions.log"
+    },
+    "grader_tests": {
+      "passed": 14,
+      "log": "grader-tests.log"
+    },
+    "cancellation_before": {
+      "failed": 8,
+      "log": "cancellation-regression-before.log"
+    },
+    "cancellation_after_focused": {
+      "passed": 39,
+      "log": "cancellation-regression-after.log"
+    }
+  },
+  "workload": {
+    "dataset": "nvidia/SPEED-Bench",
+    "split": "throughput_8k",
+    "dataset_revision": "487aa718444e816458d1a0a52bfce7a454285cf4",
+    "measured_requests_per_profile": 30,
+    "warmup_requests_per_profile": 3,
+    "concurrency": 1,
+    "seed": 20260907,
+    "selection": "11 random prompts per entropy tier after excluding gated cais/hle; one per tier for warmup, ten per tier measured; interleaved tiers",
+    "prompt_tokens_mean": 8511.133333333333,
+    "prompt_tokens_min": 7866,
+    "prompt_tokens_max": 8941,
+    "max_completion_tokens": 256,
+    "temperature": 0,
+    "ignore_eos": true,
+    "thinking": "checkpoint default enabled",
+    "client": "AIPerf 0.12.0, streaming chat, server token counts",
+    "measured_dataset_sha256": "293c1a311471f5c79e1c4b36b3e8133e57fe360285c1496e4d3b4b32083fd1b2",
+    "metric_definitions": {
+      "decode_tok_s_mean": "Arithmetic mean of AIPerf output_token_throughput_per_user; includes reasoning tokens",
+      "ttft_s_mean": "Mean client-observed time to first token",
+      "e2e_s_mean": "Mean client-observed request latency",
+      "prefill_tok_s_input_over_ttft": "Total input tokens divided by summed client TTFT; includes API/template/scheduling/first-token overhead, not isolated kernel throughput",
+      "telemetry": "Host-wide counters bracketed to measured first-request start and last-request end; approximately one-second resolution"
+    },
+    "full_profiles": [
+      "release-1",
+      "vllm-final-1",
+      "release-2",
+      "vllm-final-2"
+    ],
+    "settings_shared": [
+      "same fixed 30 prompts",
+      "same pinned checkpoint",
+      "concurrency one",
+      "256 output tokens",
+      "three distinct warmups"
+    ],
+    "verification_cuda_graph": "Enabled for final SparkLab profile, with four draft tokens"
+  },
+  "source": {
+    "raw_artifact": "results/qwen36-final-validation-20260908",
+    "qualification": "benchmarks/qwen36_marlin/QUALIFICATION.md",
+    "reproduction": "benchmarks/qwen36_marlin/README.md",
+    "previous_speed_result": "GB10-QWENSPEED-005",
+    "implementation_patch": "release-implementation.patch",
+    "environment_sha256": "0c1fb2e442c4e33ec5b3e8b3e9d08900eaa09349fa0574b8ee279f073752f121"
+  },
+  "stability": {
+    "duration_seconds": 3600.096832145995,
+    "duration_gate_passed": true,
+    "runtime_checks_passed": true,
+    "errors": [],
+    "one_healthy_instance": true,
+    "instance_ids": [
+      "90e7608b-0daf-44a2-bf49-67e863e39dff"
+    ],
+    "soak_requests": 1411,
+    "scored_requests_during_stability_run": 0,
+    "all_soak_requests_passed": true,
+    "scored_requests_completed_without_transport_error": true,
+    "peak_reported_gpu_reserved_gib": 24.658203125,
+    "min_available_host_gib": 89.02030181884766,
+    "cgroup_peak_swap_bytes": 0,
+    "cgroup_oom_events_delta": 0,
+    "cgroup_oom_kill_delta": 0,
+    "host_swap_growth_bytes": -687788032,
+    "limitation": "Host counters include other processes. CUDA reserved memory is reported by the server; it is distinct from cgroup CPU accounting. Soak throughput is not the fixed SPEED-Bench comparison.",
+    "operational_checks_passed": 28
+  },
+  "qualification_status": "completed_with_observed_quality_regressions; opt-in only",
+  "metrics": {
+    "profiles": {
+      "release-1": {
+        "requests": 30,
+        "same_inputs_and_prompt_counts": true,
+        "all_http_200": true,
+        "all_output_tokens_256": true,
+        "raw_sha256": "211b3298958f07fc94cbd578178d5032ebf9ff86c438f408f5987a3d77d28a75",
+        "metrics": {
+          "output_token_throughput_per_user": 111.92517681174624,
+          "time_to_first_token": 1460.3648358666665,
+          "request_latency": 3766.3143516666664
+        },
+        "measured_window_unix_s": [
+          1788883594.818269,
+          1788883707.8782296
+        ],
+        "telemetry_bracket_unix_s": [
+          1788883594.2430625,
+          1788883708.8767462
+        ],
+        "swap_pages": {
+          "pswpin": 11323,
+          "pswpout": 0
+        },
+        "min_available_ram_gib": 88.24924087524414
+      },
+      "vllm-final-1": {
+        "requests": 30,
+        "same_inputs_and_prompt_counts": true,
+        "all_http_200": true,
+        "all_output_tokens_256": true,
+        "raw_sha256": "fac11da6394fb57289472db64b17453f4da021b2301522f335941606edaeab97",
+        "metrics": {
+          "output_token_throughput_per_user": 110.63945727732592,
+          "time_to_first_token": 1364.6393827333334,
+          "request_latency": 3682.622088766667
+        },
+        "measured_window_unix_s": [
+          1788883822.8616166,
+          1788883933.4259396
+        ],
+        "telemetry_bracket_unix_s": [
+          1788883822.6459196,
+          1788883933.9931588
+        ],
+        "swap_pages": {
+          "pswpin": 503,
+          "pswpout": 0
+        },
+        "min_available_ram_gib": 72.38956069946289
+      },
+      "release-2": {
+        "requests": 30,
+        "same_inputs_and_prompt_counts": true,
+        "all_http_200": true,
+        "all_output_tokens_256": true,
+        "raw_sha256": "71f98962207941c3ebf86774e6a3439fcce0c7b0f5f303a620177ae5e0e9d71f",
+        "metrics": {
+          "output_token_throughput_per_user": 112.23934968607163,
+          "time_to_first_token": 1412.4225004333334,
+          "request_latency": 3703.8874210999998
+        },
+        "measured_window_unix_s": [
+          1788883971.0681636,
+          1788884082.2638874
+        ],
+        "telemetry_bracket_unix_s": [
+          1788883970.8808062,
+          1788884082.373592
+        ],
+        "swap_pages": {
+          "pswpin": 258,
+          "pswpout": 0
+        },
+        "min_available_ram_gib": 88.35272216796875
+      },
+      "vllm-final-2": {
+        "requests": 30,
+        "same_inputs_and_prompt_counts": true,
+        "all_http_200": true,
+        "all_output_tokens_256": true,
+        "raw_sha256": "3e72b36db2bccc10f8fd94c11c19cd27cafafd0c1176fe94bfbe54f1fccbc469",
+        "metrics": {
+          "output_token_throughput_per_user": 112.56472353917212,
+          "time_to_first_token": 1369.4603803333332,
+          "request_latency": 3644.430137433333
+        },
+        "measured_window_unix_s": [
+          1788884198.4382281,
+          1788884307.8497381
+        ],
+        "telemetry_bracket_unix_s": [
+          1788884198.0978205,
+          1788884308.3313227
+        ],
+        "swap_pages": {
+          "pswpin": 110,
+          "pswpout": 0
+        },
+        "min_available_ram_gib": 72.59565353393555
+      }
+    },
+    "equal_weight_repeat_means": {
+      "sparklab": {
+        "output_token_throughput_per_user": 112.08226324890893,
+        "time_to_first_token": 1436.39366815,
+        "request_latency": 3735.100886383333
+      },
+      "vllm": {
+        "output_token_throughput_per_user": 111.60209040824901,
+        "time_to_first_token": 1367.0498815333333,
+        "request_latency": 3663.5261130999997
+      }
+    },
+    "comparison_percent": {
+      "output_token_throughput_per_user": 0.4302543428204686,
+      "time_to_first_token": 5.072513267686185,
+      "request_latency": 1.9537126547944261
+    },
+    "interpretation": "Two restarts per engine on one fixed workload; no statistical equivalence or general quality claim."
+  },
+  "validation": {
+    "all_120_measured_requests_http_200": true,
+    "all_outputs_exactly_256_tokens": true,
+    "identical_messages_and_prompt_counts": true,
+    "raw_validation": "performance/validated-profiles.json",
+    "release-1_configuration_verified": true,
+    "release-2_configuration_verified": true
+  }
+}

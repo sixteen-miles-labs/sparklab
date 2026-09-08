@@ -70,6 +70,7 @@ class BackendLaunchPlan:
     arguments: tuple[str, ...]
     environment: Mapping[str, str] = field(default_factory=dict)
     capabilities: tuple[str, ...] = ()
+    command: tuple[str, ...] = ()
     health_path: str = "/health"
     metrics_path: str = "/v1/stats"
 

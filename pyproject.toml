@@ -84,11 +84,11 @@ fi = ["flashinfer-python[cu13]>=0.6,<0.7"]
 # renamed from sgl-kernel at 0.4; still imports as `sgl_kernel`, so never co-install both
 sgl = ["sglang-kernel==0.4.5"]
 accel = ["sparklab[fi,sgl]"]
-# NOTE: the Marlin W4A16 NVFP4 expert-GEMM path (sm_80-99) borrows vLLM's AOT wheel
-# (vllm>=0.14,<0.15), which pins transformers>=4.56,<5 and so is INCOMPATIBLE with the
-# core transformers>=5.5 requirement. It is therefore not a lockable extra and is left
-# out of the default resolution — install it separately (`pip install 'vllm>=0.14,<0.15'`)
-# in a dedicated environment when you specifically need the Marlin path.
+# Marlin borrows vLLM's compiled ops together with its matching weight transforms.
+# The adapter supports the legacy API and vLLM 0.28 (including forced GB10 use).
+# vLLM 0.28's image uses torch 2.13, outside this package's torch 2.11 contract;
+# legacy vLLM 0.14 instead conflicts with transformers>=5.5. Neither is a default
+# extra. The isolated GB10 experiment is documented in benchmarks/qwen36_marlin/.
 
 # uv-only provenance pins — pip ignores this section and resolves from PyPI, which
 # works: PyPI's torch 2.11.0 and sglang-kernel 0.4.5 are the same cu130 builds these

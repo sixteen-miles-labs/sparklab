@@ -1,0 +1,311 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWENSPEED-001",
+  "status": "measured",
+  "platform": {
+    "device": "NVIDIA GB10",
+    "memory_gib": 128,
+    "machine": "aarch64",
+    "cuda": "13.0",
+    "driver": "580.126.09",
+    "date": "2026-09-07"
+  },
+  "engine": {
+    "name": "SparkLab vs vLLM",
+    "revision": "8ee23cf7cd158118104999fa1a01fb8e5cfa631b",
+    "sparklab": {
+      "python": "3.11.15 (main, Mar 11 2026, 17:11:19) [GCC 14.3.0]",
+      "source_version": "0.1.2",
+      "packages": {
+        "sparklab": "0.1.1",
+        "torch": "2.11.0+cu130",
+        "transformers": "5.16.1",
+        "triton": "3.6.0",
+        "flashinfer-python": "0.6.15.post1",
+        "sparklab-kernel-cache": "0.1.0+cu130"
+      }
+    },
+    "vllm": {
+      "vllm": "0.28.0",
+      "torch": "2.13.0+cu130",
+      "transformers": "5.15.1",
+      "flashinfer-python": "0.6.16.post3",
+      "triton": "3.7.1"
+    },
+    "vllm_image_digest": [
+      "vllm/vllm-openai@sha256:61fc8a896b0a4fbbbdc063bc4b0dbc25ce98e02b5050c24aeb7830ac02039b14"
+    ]
+  },
+  "model": {
+    "repository": "nvidia/Qwen3.6-35B-A3B-NVFP4",
+    "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce",
+    "checkpoint_format": "NVFP4 safetensors (vLLM), FTW NVFP4 (SparkLab)",
+    "fingerprint": "bda7268c3e0afd7b",
+    "recipe_version": "0.5.0",
+    "source_shard_verification": [
+      {
+        "file": "model-00001-of-00003.safetensors",
+        "sha256": "07141c2db92e47bc08777132cd1a0323faf300eab3a7d7c111bc2bf075fda050",
+        "bytes": 10006877608,
+        "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce"
+      },
+      {
+        "file": "model-00002-of-00003.safetensors",
+        "sha256": "6dea9c759a0f941cf9e1cc1501216b0e107966a66c90425050e212efbd053f02",
+        "bytes": 10003595752,
+        "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce"
+      },
+      {
+        "file": "model-00003-of-00003.safetensors",
+        "sha256": "9758875fc55e49561165f4a44342b654c123c3e25c6811b34abb83553fb1a164",
+        "bytes": 3413864960,
+        "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce"
+      }
+    ]
+  },
+  "workload": {
+    "dataset": "nvidia/SPEED-Bench",
+    "split": "throughput_8k",
+    "dataset_revision": "487aa718444e816458d1a0a52bfce7a454285cf4",
+    "measured_requests_per_profile": 30,
+    "warmup_requests_per_profile": 3,
+    "concurrency": 1,
+    "seed": 20260907,
+    "selection": "11 random prompts per entropy tier after excluding gated cais/hle; one per tier for warmup, ten per tier measured; interleaved tiers",
+    "prompt_tokens_mean": 8511.133333333333,
+    "prompt_tokens_min": 7866,
+    "prompt_tokens_max": 8941,
+    "max_completion_tokens": 256,
+    "temperature": 0,
+    "ignore_eos": true,
+    "thinking": "checkpoint default enabled",
+    "client": "AIPerf 0.12.0, streaming chat, server token counts",
+    "measured_dataset_sha256": "293c1a311471f5c79e1c4b36b3e8133e57fe360285c1496e4d3b4b32083fd1b2",
+    "metric_definitions": {
+      "decode_tok_s_mean": "Arithmetic mean of AIPerf output_token_throughput_per_user; includes reasoning tokens",
+      "ttft_s_mean": "Mean client-observed time to first token",
+      "e2e_s_mean": "Mean client-observed request latency",
+      "prefill_tok_s_input_over_ttft": "Total input tokens divided by summed client TTFT; includes API/template/scheduling/first-token overhead, not isolated kernel throughput",
+      "telemetry": "Host-wide counters bracketed to measured first-request start and last-request end; approximately one-second resolution"
+    }
+  },
+  "metrics": {
+    "sparklab-default": {
+      "requests": 30,
+      "input_tokens_mean": 8511.133333333333,
+      "output_tokens_mean": 256,
+      "output_tokens_min": 256,
+      "output_tokens_max": 256,
+      "decode_tok_s_mean": 64.57245456473085,
+      "decode_tok_s_median": 64.61003858652467,
+      "ttft_s_mean": 4.4708409907333335,
+      "e2e_s_mean": 8.4199411014,
+      "prefill_tok_s_input_over_ttft": 1903.6985101850576,
+      "by_entropy": {
+        "low_entropy": {
+          "requests": 10,
+          "input_tokens_mean": 8608.6,
+          "output_tokens_mean": 256,
+          "output_tokens_min": 256,
+          "output_tokens_max": 256,
+          "decode_tok_s_mean": 64.53539749605962,
+          "decode_tok_s_median": 64.60472502907598,
+          "ttft_s_mean": 4.554294018799999,
+          "e2e_s_mean": 8.505678909299998,
+          "prefill_tok_s_input_over_ttft": 1890.2161266848245
+        },
+        "mixed": {
+          "requests": 10,
+          "input_tokens_mean": 8540.3,
+          "output_tokens_mean": 256,
+          "output_tokens_min": 256,
+          "output_tokens_max": 256,
+          "decode_tok_s_mean": 64.58173387687317,
+          "decode_tok_s_median": 64.58076700731888,
+          "ttft_s_mean": 4.5122826174,
+          "e2e_s_mean": 8.4607870502,
+          "prefill_tok_s_input_over_ttft": 1892.678434428596
+        },
+        "high_entropy": {
+          "requests": 10,
+          "input_tokens_mean": 8384.5,
+          "output_tokens_mean": 256,
+          "output_tokens_min": 256,
+          "output_tokens_max": 256,
+          "decode_tok_s_mean": 64.60023232125975,
+          "decode_tok_s_median": 64.61003858652467,
+          "ttft_s_mean": 4.345946336,
+          "e2e_s_mean": 8.2933573447,
+          "prefill_tok_s_input_over_ttft": 1929.2691054526636
+        }
+      },
+      "telemetry": {
+        "swap_start_bytes": 5382144,
+        "swap_end_bytes": 5382144,
+        "swap_in_pages": 0,
+        "swap_out_pages": 0,
+        "min_available_gib": 71.71691513061523
+      }
+    },
+    "sparklab-mtp2": {
+      "requests": 30,
+      "input_tokens_mean": 8511.133333333333,
+      "output_tokens_mean": 256,
+      "output_tokens_min": 256,
+      "output_tokens_max": 256,
+      "decode_tok_s_mean": 59.26025480171179,
+      "decode_tok_s_median": 59.47833340680494,
+      "ttft_s_mean": 4.487800858633333,
+      "e2e_s_mean": 8.801226529100001,
+      "prefill_tok_s_input_over_ttft": 1896.5042347991405,
+      "by_entropy": {
+        "low_entropy": {
+          "requests": 10,
+          "input_tokens_mean": 8608.6,
+          "output_tokens_mean": 256,
+          "output_tokens_min": 256,
+          "output_tokens_max": 256,
+          "decode_tok_s_mean": 59.77551524173289,
+          "decode_tok_s_median": 60.72365446923557,
+          "ttft_s_mean": 4.5831406552,
+          "e2e_s_mean": 8.8534841032,
+          "prefill_tok_s_input_over_ttft": 1878.3189623981411
+        },
+        "mixed": {
+          "requests": 10,
+          "input_tokens_mean": 8540.3,
+          "output_tokens_mean": 256,
+          "output_tokens_min": 256,
+          "output_tokens_max": 256,
+          "decode_tok_s_mean": 60.681994818264634,
+          "decode_tok_s_median": 61.218132085019974,
+          "ttft_s_mean": 4.5119804465,
+          "e2e_s_mean": 8.7198379757,
+          "prefill_tok_s_input_over_ttft": 1892.8051886006772
+        },
+        "high_entropy": {
+          "requests": 10,
+          "input_tokens_mean": 8384.5,
+          "output_tokens_mean": 256,
+          "output_tokens_min": 256,
+          "output_tokens_max": 256,
+          "decode_tok_s_mean": 57.32325434513785,
+          "decode_tok_s_median": 57.12388393929371,
+          "ttft_s_mean": 4.3682814742,
+          "e2e_s_mean": 8.8303575084,
+          "prefill_tok_s_input_over_ttft": 1919.4047017163707
+        }
+      },
+      "telemetry": {
+        "swap_start_bytes": 5517312,
+        "swap_end_bytes": 5517312,
+        "swap_in_pages": 0,
+        "swap_out_pages": 0,
+        "min_available_gib": 71.05464935302734
+      }
+    },
+    "vllm-mtp3": {
+      "requests": 30,
+      "input_tokens_mean": 8511.133333333333,
+      "output_tokens_mean": 256,
+      "output_tokens_min": 256,
+      "output_tokens_max": 256,
+      "decode_tok_s_mean": 112.2808347025186,
+      "decode_tok_s_median": 113.35882362199504,
+      "ttft_s_mean": 1.4436804403333332,
+      "e2e_s_mean": 3.7285623305,
+      "prefill_tok_s_input_over_ttft": 5895.441328669789,
+      "by_entropy": {
+        "low_entropy": {
+          "requests": 10,
+          "input_tokens_mean": 8608.6,
+          "output_tokens_mean": 256,
+          "output_tokens_min": 256,
+          "output_tokens_max": 256,
+          "decode_tok_s_mean": 113.39974238304785,
+          "decode_tok_s_median": 113.04574991743951,
+          "ttft_s_mean": 1.4781069279999999,
+          "e2e_s_mean": 3.7344083822,
+          "prefill_tok_s_input_over_ttft": 5824.0712068430275
+        },
+        "mixed": {
+          "requests": 10,
+          "input_tokens_mean": 8540.3,
+          "output_tokens_mean": 256,
+          "output_tokens_min": 256,
+          "output_tokens_max": 256,
+          "decode_tok_s_mean": 118.26326098303169,
+          "decode_tok_s_median": 118.16058031634608,
+          "ttft_s_mean": 1.4232542753,
+          "e2e_s_mean": 3.5802868077,
+          "prefill_tok_s_input_over_ttft": 6000.54406876792
+        },
+        "high_entropy": {
+          "requests": 10,
+          "input_tokens_mean": 8384.5,
+          "output_tokens_mean": 256,
+          "output_tokens_min": 256,
+          "output_tokens_max": 256,
+          "decode_tok_s_mean": 105.17950074147628,
+          "decode_tok_s_median": 103.94780380462298,
+          "ttft_s_mean": 1.4296801177,
+          "e2e_s_mean": 3.8709918016,
+          "prefill_tok_s_input_over_ttft": 5864.598588311193
+        }
+      },
+      "telemetry": {
+        "swap_start_bytes": 2308956160,
+        "swap_end_bytes": 2303459328,
+        "swap_in_pages": 10986,
+        "swap_out_pages": 0,
+        "min_available_gib": 66.31794738769531
+      }
+    }
+  },
+  "validation": {
+    "same_30_question_ids": true,
+    "identical_messages_and_sampling_payloads": true,
+    "identical_server_reported_prompt_counts": true,
+    "all_90_requests_successful": true,
+    "all_completions_exactly_256_tokens": true,
+    "source_shards_match_pinned_revision": true,
+    "sparklab_mtp2": {
+      "requests": 30,
+      "accepted_tokens": 4284,
+      "drafted_tokens": 5302,
+      "outputs": 7680,
+      "target_forwards": 3396,
+      "acceptance_rate": 0.8079969822708412,
+      "outputs_per_target_forward": 2.2614840989399294
+    },
+    "vllm_counter_deltas": {
+      "vllm:spec_decode_num_drafts_total": 2452.0,
+      "vllm:spec_decode_num_drafts_created": 0.0,
+      "vllm:spec_decode_num_draft_tokens_total": 7356.0,
+      "vllm:spec_decode_num_draft_tokens_created": 0.0,
+      "vllm:spec_decode_num_accepted_tokens_total": 5233.0,
+      "vllm:spec_decode_num_accepted_tokens_created": 0.0,
+      "vllm:spec_decode_num_accepted_tokens_per_pos_total": 5233.0,
+      "vllm:spec_decode_num_accepted_tokens_per_pos_created": 0.0,
+      "vllm:prefix_cache_queries_total": 255334.0,
+      "vllm:prefix_cache_hits_total": 0.0,
+      "vllm:external_prefix_cache_queries_total": 0.0,
+      "vllm:external_prefix_cache_hits_total": 0.0
+    },
+    "limitations": [
+      "30-prompt accessible subset; not full SPEED-Bench and not the unpublished exact prompt selection behind the upstream headline.",
+      "One measured pass per profile; no general quality, long-context, concurrency or endurance certification.",
+      "Serving profiles retain their own attention, KV precision, cache capacity, scheduling and speculative settings; this is a recipe comparison, not isolation of one kernel.",
+      "SparkLab runs source 0.1.2 with current-source JIT kernels; installed 0.1.0 kernel-cache wheel was disabled, not loaded with a version-check bypass.",
+      "vLLM startup grew host swap usage to roughly 2.2 GiB. Its measured window recorded 10986 host swap-in pages (about 42.9 MiB on this host), no swap-out, and at least 66.3 GiB available memory. Host counters do not attribute activity to a process.",
+      "Neither SparkLab measured window had swap I/O. All warmup and initialization timings are excluded from performance means.",
+      "Runtime dependency versions and driver differ from the upstream published host; no claim of exact headline reproduction."
+    ]
+  },
+  "source": {
+    "summary": "exps/exp_qwen36_speedbench_vllm_gb10.md",
+    "raw_artifact": "results/qwen36-speedbench-20260907",
+    "upstream_recipe": "https://recipes.vllm.ai/Qwen/Qwen3.6-35B-A3B",
+    "commands": "Per-profile *-server-command.json and *-command.json in raw_artifact; launch_vllm.py and run_profile.py retained alongside inputs and raw responses"
+  }
+}

@@ -286,7 +286,7 @@ def test_native_prepare_honors_resident_expert_bank_layout(tmp_path, monkeypatch
 
     assert result == expected
     assert calls[0][1]["moe_backend"] == "offload"
-    assert calls[0][1]["nvfp4_backend"] == "triton"
+    assert calls[0][1]["nvfp4_backend"] == "marlin"
 
 
 def test_native_prepare_applies_glm_kda_artifact_quantization(tmp_path, monkeypatch):

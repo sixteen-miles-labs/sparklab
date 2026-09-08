@@ -8,8 +8,8 @@ that format by compute capability and owns the matching bank layout:
 ==========  ==========================  =============================================
 backend     compute capability          kernel / weight layout
 ==========  ==========================  =============================================
-marlin      sm_80 .. sm_99              vLLM ``fused_marlin_moe`` (W4A16
-                                        dequant-in-kernel); Marlin-tiled weights
+marlin      sm_80 .. sm_99 (auto);      vLLM ``fused_marlin_moe`` (W4A16
+            also GB10 when forced     dequant-in-kernel); Marlin-tiled weights
 b12x        sm_120+ and CUDA>=13        ``flashinfer`` SM12x CuTe-DSL MoE (W4A16);
                                         b12x-packed weights
 triton      anything (fallback)         SparkLab's own Triton kernels; the native
@@ -42,6 +42,9 @@ themselves are imported, not vendored.
 from __future__ import annotations
 
 import os
+from functools import lru_cache
+from importlib import import_module
+from inspect import signature
 
 import torch
 
@@ -63,6 +66,32 @@ _POST_NVFP4_BANKS = ("gate_up_packed", "gate_up_scale", "down_packed", "down_sca
 # ---------------------------------------------------------------------------
 
 
+@lru_cache(maxsize=1)
+def _marlin_moe_api():
+    """Resolve the donor's forward API once, before any graph capture.
+
+    vLLM 0.28 moved Marlin under ``experts``, uses ``MoEActivation`` instead
+    of a string, and requires float32 global scales. Older releases also
+    require the unused ``gating_output`` arg.
+    Keep the donor's own SiLU default so both APIs receive their native type.
+    """
+    legacy = "vllm.model_executor.layers.fused_moe.fused_marlin_moe"
+    modern = False
+    try:
+        module = import_module(legacy)
+    except ModuleNotFoundError as exc:
+        if exc.name != legacy:
+            raise
+        module = import_module("vllm.model_executor.layers.fused_moe.experts.marlin_moe")
+        modern = True
+    forward = module.fused_marlin_moe
+    parameters = signature(forward).parameters
+    kwargs = {"activation": parameters["activation"].default}
+    if "gating_output" in parameters:
+        kwargs["gating_output"] = None
+    return forward, kwargs, torch.float32 if modern else torch.bfloat16
+
+
 def _donor_symbols_ok(backend: str) -> bool:
     """Probe the exact donor symbols the pack/forward paths below use.
 
@@ -73,9 +102,7 @@ def _donor_symbols_ok(backend: str) -> bool:
     try:
         if backend == "marlin":
             from vllm import _custom_ops  # noqa: F401
-            from vllm.model_executor.layers.fused_moe.fused_marlin_moe import (  # noqa: F401
-                fused_marlin_moe,
-            )
+            _marlin_moe_api()
             from vllm.model_executor.layers.quantization.utils.marlin_utils import (  # noqa: F401
                 marlin_permute_scales,
             )
@@ -347,7 +374,7 @@ def marlin_repack_layer(
 
     Returns ``({post-repack bank name -> reinterpreted tensor}, gate_up_alpha, down_alpha)``
     where the dict is keyed by the 4 ``nvfp4_marlin`` bank names and the two alphas are
-    ``[E]`` bf16 on ``device``. Staging ``.to(device, non_blocking=True)`` from the native
+    ``[E]`` in the donor's global-scale dtype on ``device``. Staging ``.to(device, non_blocking=True)`` from the native
     source works whether or not it is pinned (pageable -> synchronous copy)."""
     from sparklab.models.nvfp4_banks import _expert_hidden_size
 
@@ -365,8 +392,9 @@ def marlin_repack_layer(
     gate_up_s = gu_scale_l.view(E, H // 16, 2 * I)
     down_q = dn_packed_l.view(torch.int32).view(E, I // 16, 2 * H)
     down_s = dn_scale_l.view(E, I // 16, H)
-    gate_up_alpha = torch.empty(E, dtype=torch.bfloat16, device=device)
-    down_alpha = torch.empty(E, dtype=torch.bfloat16, device=device)
+    _, _, alpha_dtype = _marlin_moe_api()
+    gate_up_alpha = torch.empty(E, dtype=alpha_dtype, device=device)
+    down_alpha = torch.empty(E, dtype=alpha_dtype, device=device)
 
     for start in range(0, E, chunk):
         end = min(start + chunk, E)
@@ -477,10 +505,10 @@ def marlin_fused_experts(
     vLLM's implementation is device-side only (no host syncs), so the decode call is
     CUDA-graph capturable.
     """
-    from vllm.model_executor.layers.fused_moe.fused_marlin_moe import fused_marlin_moe
     from vllm.scalar_type import scalar_types
 
     assert activation == "silu", "Marlin NVFP4 backend supports gated silu only"
+    fused_marlin_moe, api_kwargs, alpha_dtype = _marlin_moe_api()
     return fused_marlin_moe(
         hidden_states,
         gate_up_q,
@@ -489,15 +517,14 @@ def marlin_fused_experts(
         None,  # bias2
         gate_up_s,
         down_s,
-        gating_output=None,
         topk_weights=topk_weights,
         topk_ids=topk_ids,
         quant_type_id=scalar_types.float4_e2m1f.id,
         apply_router_weight_on_input=apply_router_weight_on_input,
         global_num_experts=gate_up_q.size(0),
-        activation=activation,
-        global_scale1=gate_up_alpha,
-        global_scale2=down_alpha,
+        **api_kwargs,
+        global_scale1=gate_up_alpha.to(alpha_dtype),
+        global_scale2=down_alpha.to(alpha_dtype),
     )
 
 

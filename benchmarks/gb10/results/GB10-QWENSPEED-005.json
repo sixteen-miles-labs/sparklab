@@ -1,0 +1,363 @@
+{
+  "schema_version": "1.0",
+  "platform": {
+    "device": "NVIDIA GB10",
+    "memory_gib": 128,
+    "machine": "aarch64",
+    "cuda": "13.0",
+    "driver": "580.126.09",
+    "date": "2026-09-08",
+    "local_date": "2026-09-08",
+    "timezone": "America/Toronto"
+  },
+  "model": {
+    "repository": "nvidia/Qwen3.6-35B-A3B-NVFP4",
+    "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce",
+    "checkpoint_format": "FTW nvfp4_marlin (experimental)",
+    "fingerprint": "9e48171e436f5ef5",
+    "recipe_version": "0.5.0",
+    "source_shard_verification": [
+      {
+        "file": "model-00001-of-00003.safetensors",
+        "sha256": "07141c2db92e47bc08777132cd1a0323faf300eab3a7d7c111bc2bf075fda050",
+        "bytes": 10006877608,
+        "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce"
+      },
+      {
+        "file": "model-00002-of-00003.safetensors",
+        "sha256": "6dea9c759a0f941cf9e1cc1501216b0e107966a66c90425050e212efbd053f02",
+        "bytes": 10003595752,
+        "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce"
+      },
+      {
+        "file": "model-00003-of-00003.safetensors",
+        "sha256": "9758875fc55e49561165f4a44342b654c123c3e25c6811b34abb83553fb1a164",
+        "bytes": 3413864960,
+        "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce"
+      }
+    ],
+    "marlin_artifact_fingerprint": "9e48171e436f5ef5",
+    "experimental_artifact": "$HOME/.sparklab/models/qwen3.6-35b-a3b/prepared/experimental-marlin-vllm028"
+  },
+  "workload": {
+    "dataset": "nvidia/SPEED-Bench",
+    "split": "throughput_8k",
+    "dataset_revision": "487aa718444e816458d1a0a52bfce7a454285cf4",
+    "measured_requests_per_profile": 30,
+    "warmup_requests_per_profile": 3,
+    "concurrency": 1,
+    "seed": 20260907,
+    "selection": "11 random prompts per entropy tier after excluding gated cais/hle; one per tier for warmup, ten per tier measured; interleaved tiers",
+    "prompt_tokens_mean": 8511.133333333333,
+    "prompt_tokens_min": 7866,
+    "prompt_tokens_max": 8941,
+    "max_completion_tokens": 256,
+    "temperature": 0,
+    "ignore_eos": true,
+    "thinking": "checkpoint default enabled",
+    "client": "AIPerf 0.12.0, streaming chat, server token counts",
+    "measured_dataset_sha256": "293c1a311471f5c79e1c4b36b3e8133e57fe360285c1496e4d3b4b32083fd1b2",
+    "metric_definitions": {
+      "decode_tok_s_mean": "Arithmetic mean of AIPerf output_token_throughput_per_user; includes reasoning tokens",
+      "ttft_s_mean": "Mean client-observed time to first token",
+      "e2e_s_mean": "Mean client-observed request latency",
+      "prefill_tok_s_input_over_ttft": "Total input tokens divided by summed client TTFT; includes API/template/scheduling/first-token overhead, not isolated kernel throughput",
+      "telemetry": "Host-wide counters bracketed to measured first-request start and last-request end; approximately one-second resolution"
+    },
+    "full_profiles": [
+      "draft-skinny",
+      "deferred-state",
+      "fused-router",
+      "final-image",
+      "vllm-repeat",
+      "final-omp1",
+      "final-image-repeat"
+    ],
+    "settings_shared": [
+      "same fixed 30 prompts",
+      "same pinned checkpoint",
+      "concurrency one",
+      "256 output tokens",
+      "three distinct warmups"
+    ],
+    "verification_cuda_graph": "Enabled for final SparkLab profile, with four draft tokens"
+  },
+  "result_id": "GB10-QWENSPEED-005",
+  "status": "measured",
+  "engine": {
+    "name": "SparkLab with vLLM Marlin donor",
+    "revision": "8ee23cf7cd158118104999fa1a01fb8e5cfa631b",
+    "working_tree_patch_sha256": "63c58640c5c61ebffbdc0460bdfb00651b21d963c74c45c76567ee24b0785a52",
+    "runtime": {
+      "python": "3.12.3 (main, Jun 19 2026, 12:46:00) [GCC 13.3.0]",
+      "packages": {
+        "torch": "2.13.0+cu130",
+        "triton": "3.7.1",
+        "vllm": "0.28.0",
+        "flashinfer-python": "0.6.16.post3",
+        "transformers": "5.15.1",
+        "flashlib": "0.3.0",
+        "apache-tvm-ffi": "0.1.11",
+        "gguf": "0.19.0",
+        "prompt-toolkit": "3.0.53"
+      }
+    },
+    "base_image_digest": [
+      "vllm/vllm-openai@sha256:61fc8a896b0a4fbbbdc063bc4b0dbc25ce98e02b5050c24aeb7830ac02039b14"
+    ],
+    "optional_sglang_kernel_installed": false,
+    "normal_sparklab_environment_changed": false,
+    "measured_container_image": "sha256:06ac519342c002ef1e2649b973f49b1705e74117f3da5f2fb901f9d8f3ad0567",
+    "measured_source": "Final image profiles run packaged source with no source bind mount; development profiles use working-tree source",
+    "final_environment_file": "benchmarks/qwen36_marlin/gb10.env",
+    "kv_dtype": "bfloat16",
+    "ssm_dtype": "float32"
+  },
+  "metrics": {
+    "profiles": {
+      "draft-skinny": {
+        "requests": 30,
+        "same_inputs_and_prompt_counts": true,
+        "all_http_200": true,
+        "all_output_tokens_256": true,
+        "raw_sha256": "db6d94b15e7a5558c462572f71ab3246ba662e493c417f9ff4cb30c06b4666f6",
+        "metrics": {
+          "output_token_throughput_per_user": 108.54474270097712,
+          "time_to_first_token": 1418.3781807,
+          "request_latency": 3791.3615195999996
+        },
+        "measured_window_unix_s": [
+          1788838972.374571,
+          1788839086.203982
+        ],
+        "telemetry_bracket_unix_s": [
+          1788838971.559047,
+          1788839087.009898
+        ],
+        "swap_pages": {
+          "pswpin": 23,
+          "pswpout": 0
+        },
+        "min_available_ram_gib": 83.02943801879883
+      },
+      "deferred-state": {
+        "requests": 30,
+        "same_inputs_and_prompt_counts": true,
+        "all_http_200": true,
+        "all_output_tokens_256": true,
+        "raw_sha256": "59b641a9bfb4582957cc2bb9e5bb58e6de0e6ab20c4443b6d1aece963e2227f8",
+        "metrics": {
+          "output_token_throughput_per_user": 108.82237245919028,
+          "time_to_first_token": 1408.2870719,
+          "request_latency": 3778.421895233333
+        },
+        "measured_window_unix_s": [
+          1788839287.6047282,
+          1788839401.0387745
+        ],
+        "telemetry_bracket_unix_s": [
+          1788839287.1048543,
+          1788839401.555675
+        ],
+        "swap_pages": {
+          "pswpin": 1,
+          "pswpout": 0
+        },
+        "min_available_ram_gib": 83.022705078125
+      },
+      "fused-router": {
+        "requests": 30,
+        "same_inputs_and_prompt_counts": true,
+        "all_http_200": true,
+        "all_output_tokens_256": true,
+        "raw_sha256": "9e501361af208d8e794cb891f4dbad59500d735f13836266ee63dd1b1a761b96",
+        "metrics": {
+          "output_token_throughput_per_user": 110.78593060732247,
+          "time_to_first_token": 1396.7600266,
+          "request_latency": 3713.1616891999997
+        },
+        "measured_window_unix_s": [
+          1788839648.914221,
+          1788839760.38412
+        ],
+        "telemetry_bracket_unix_s": [
+          1788839647.957627,
+          1788839761.265574
+        ],
+        "swap_pages": {
+          "pswpin": 0,
+          "pswpout": 0
+        },
+        "min_available_ram_gib": 85.88822174072266
+      },
+      "final-image": {
+        "requests": 30,
+        "same_inputs_and_prompt_counts": true,
+        "all_http_200": true,
+        "all_output_tokens_256": true,
+        "raw_sha256": "2d56075623687f6da86f72fb62d9b53ec9c0d711dd3b1214519ce62ab53cc1ed",
+        "metrics": {
+          "output_token_throughput_per_user": 111.34509140195763,
+          "time_to_first_token": 1466.2923759333332,
+          "request_latency": 3780.5054683999997
+        },
+        "measured_window_unix_s": [
+          1788840106.0498228,
+          1788840219.5488937
+        ],
+        "telemetry_bracket_unix_s": [
+          1788840105.6688015,
+          1788840220.0302875
+        ],
+        "swap_pages": {
+          "pswpin": 53,
+          "pswpout": 0
+        },
+        "min_available_ram_gib": 86.00317764282227
+      },
+      "vllm-repeat": {
+        "requests": 30,
+        "same_inputs_and_prompt_counts": true,
+        "all_http_200": true,
+        "all_output_tokens_256": true,
+        "raw_sha256": "854942f72057cb0ebf0074b41c649615d3f1c008258eb3b682702038a8af29da",
+        "metrics": {
+          "output_token_throughput_per_user": 112.4241815601256,
+          "time_to_first_token": 1373.6611287666665,
+          "request_latency": 3655.0887199666668
+        },
+        "measured_window_unix_s": [
+          1788840506.5816464,
+          1788840616.3203442
+        ],
+        "telemetry_bracket_unix_s": [
+          1788840505.6554427,
+          1788840616.8580205
+        ],
+        "swap_pages": {
+          "pswpin": 0,
+          "pswpout": 0
+        },
+        "min_available_ram_gib": 70.64204025268555
+      },
+      "final-omp1": {
+        "requests": 30,
+        "same_inputs_and_prompt_counts": true,
+        "all_http_200": true,
+        "all_output_tokens_256": true,
+        "raw_sha256": "3a00c776ebe6aaff2da30cb57d527b70eef0765abd732e1c0f49e83fb5d71f6b",
+        "metrics": {
+          "output_token_throughput_per_user": 110.2732710125132,
+          "time_to_first_token": 1398.4535899999998,
+          "request_latency": 3733.3393293333334
+        },
+        "measured_window_unix_s": [
+          1788840777.0141783,
+          1788840889.105642
+        ],
+        "telemetry_bracket_unix_s": [
+          1788840776.560554,
+          1788840890.0484507
+        ],
+        "swap_pages": {
+          "pswpin": 1,
+          "pswpout": 0
+        },
+        "min_available_ram_gib": 85.62443542480469
+      },
+      "final-image-repeat": {
+        "requests": 30,
+        "same_inputs_and_prompt_counts": true,
+        "all_http_200": true,
+        "all_output_tokens_256": true,
+        "raw_sha256": "a26a3c3322dee3c10a3412308f097aa6e72872e78fb3897cb465a1fa9a8bd630",
+        "metrics": {
+          "output_token_throughput_per_user": 113.13609963089566,
+          "time_to_first_token": 1405.2150708333331,
+          "request_latency": 3684.4344474333334
+        },
+        "measured_window_unix_s": [
+          1788841041.8504848,
+          1788841152.47739
+        ],
+        "telemetry_bracket_unix_s": [
+          1788841041.1071296,
+          1788841153.3300207
+        ],
+        "swap_pages": {
+          "pswpin": 36,
+          "pswpout": 0
+        },
+        "min_available_ram_gib": 85.70571517944336
+      }
+    },
+    "selected_sparklab_profile": "final-image-repeat",
+    "vllm_reference": "vllm-repeat",
+    "final_image_repeats": [
+      "final-image",
+      "final-image-repeat"
+    ],
+    "comparison_percent": {
+      "output_token_throughput_per_user": 0.6332428316494498,
+      "time_to_first_token": 2.297068862609297,
+      "request_latency": 0.8028731917329335
+    },
+    "interpretation": "Comparable serving performance on this fixed workload; not statistical equivalence or a consistent win across metrics.",
+    "not_selected": [
+      "final-omp1"
+    ]
+  },
+  "validation": {
+    "all_210_measured_requests_http_200": true,
+    "all_outputs_exactly_256_tokens": true,
+    "identical_messages_and_prompt_counts": true,
+    "all_followup_profiles_validated": 17,
+    "all_followup_requests_validated": 510,
+    "focused_regression_suite": {
+      "passed": 483,
+      "log": "cleaned-final-tests.log"
+    },
+    "normal_host_runtime_regression": {
+      "passed": 48,
+      "log": "native-runtime-regression.log",
+      "command": "PYTHONPATH=python SPARKLAB_DISABLE_KERNEL_CACHE=1 .venv/bin/python -m pytest -q tests/models/test_qwen3_5_mtp.py tests/kernels/test_deferred_gdn_commit.py tests/runtime/kvcache/test_linear_state_pool_alloc.py tests/runtime/engine/test_speculative_attention_routing.py tests/runtime/scheduler/test_abort_inflight_prefill.py"
+    },
+    "image_source_hashes": {
+      "all_match": true,
+      "runtime_python_files": 21,
+      "record": "final-image-source-verification.json"
+    },
+    "rebuilt_image_benchmarked": true,
+    "smoke_cases_passed": 3,
+    "runtime_checks": "final-image-runtime-checks.json: eight exact output budgets and two queued EOS requests",
+    "graph_eager_checks": [
+      "fused-router-target-validation.json",
+      "fused-router-draft-validation.json"
+    ],
+    "limitations": [
+      "Two final-image runs; limited run-to-run replication and no statistical equivalence established.",
+      "First final-image run started with cold compilation caches; restart reused caches. Both had three distinct warmup requests.",
+      "Experimental Marlin and routing kernels can change numerics and equal-score expert tie choices; no full model-quality certification.",
+      "BF16 KV and FP32 recurrent state retained; unsuccessful FP8 KV/XQA changes removed from final runtime and archived.",
+      "Fully resident donor runtime differs from certified default recipe; concurrency, long-context, multimodal and endurance equivalence not measured.",
+      "Intermediate development profiles were measured before the final image build; no individual source snapshot for every intermediate profile."
+    ]
+  },
+  "source": {
+    "summary": "exps/exp_qwen36_speedbench_vllm_gb10.md",
+    "raw_artifact": "results/qwen36-decode-20260908",
+    "reproduction": "benchmarks/qwen36_marlin/README.md",
+    "previous_result": "GB10-QWENSPEED-004",
+    "client_commands": "*-command.json",
+    "server_configuration": [
+      "final-image-server-command.json",
+      "final-image-repeat-server-command.json",
+      "final-image-mounts.json",
+      "final-image.env",
+      "vllm-repeat-server-config.json",
+      "final-omp1-server-command.json"
+    ],
+    "raw_validation": "validated-profiles.json",
+    "implementation_patch": "final-implementation.patch"
+  }
+}

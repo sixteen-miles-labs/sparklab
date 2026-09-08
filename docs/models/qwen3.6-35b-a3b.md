@@ -1,43 +1,34 @@
 # Run Qwen3.6-35B-A3B
 
-Qwen3.6-35B-A3B is SparkLab's Fast-tier NVFP4 recipe. It uses a pinned, prebuilt FTW
-artifact and runs resident on one NVIDIA DGX Spark. Recipe 0.5.0 retains the Fast
-certification established by its target-only profile on
-one NVIDIA GB10: 67.79 decode tok/s, 0.329 s warm TTFT, exact 32K recall, and a stable
-60-minute zero-swap run. See the
-[versioned evidence](../../benchmarks/gb10/results/GB10-QWEN36-FAST-002.json).
+Recipe **0.6.0** makes the fast Marlin/MTP4 container the default on one 128 GiB
+NVIDIA GB10. SparkLab still runs the model and scheduler; the container supplies
+PyTorch 2.13 and vLLM 0.28's Marlin kernels. The host environment stays unchanged.
 
-## Install SparkLab
+Two fixed 8K-input/256-output benchmark repeats averaged **112.08 decode tok/s**
+versus vLLM **111.60**. Mean request latency was **3.735 versus 3.664 seconds**.
+The profile passed 28 serving checks, 775 runtime/kernel tests, and a one-hour run
+with 1,411 successful requests, zero container swap and no OOM events.
 
-Follow the [full installation guide](../install.md). On NVIDIA DGX Spark, the recommended
-package install is:
+The default is marked **preview** because quality equivalence was not established:
+the fixed core screen scored 17/20 versus the previous native profile's 18/20;
+the five-problem AIME sample capped at 16K output scored 0/5 versus 1/5 for both
+native SparkLab and vLLM. See [the qualification record](../../benchmarks/qwen36_marlin/QUALIFICATION.md).
 
-```bash
-uv venv && source .venv/bin/activate
-uv pip install "sparklab[accel]"
-sparklab --version
-```
+## Build and prepare
 
-The `sparklab` distribution provides the `sparklab` command.
-See [Install from source](../install.md#method-2-install-from-source) for a development
-checkout.
-
-## Prepare
-
-Validate the host and inspect the storage plan:
+Install SparkLab from this source checkout using the [installation guide](../install.md).
+Docker with NVIDIA GPU access is required. Build the separate runtime image from
+the repository root:
 
 ```bash
-sparklab doctor --storage-path /path/to/models
-sparklab plan qwen3.6-35b-a3b --root /path/to/models --prepare
+docker build -f benchmarks/qwen36_marlin/Dockerfile -t sparklab-qwen36:gb10-v1 .
 sparklab pull qwen3.6-35b-a3b --root /path/to/models --prepare
 ```
 
-`pull --prepare` downloads the immutable FTW revision from
-[`oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW`](https://huggingface.co/oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW)
-and validates its fingerprint before it can run. The artifact preserves the source NVFP4
-quantization and includes the upstream model's BF16 MTP layer as a fourth FTW shard; it
-does not requantize either component. Use `--from-source` only when you want to reproduce
-the complete FTW repack locally from NVIDIA's pinned source checkpoint.
+Preparation downloads NVIDIA's pinned source checkpoint and converts it inside
+the container into a separate Marlin FTW artifact under `prepared/0.6.0`.
+The previous hosted Triton artifact cannot be used with this profile. Existing
+`prepared/0.5.0` artifacts are retained.
 
 ## Run
 
@@ -45,50 +36,36 @@ the complete FTW repack locally from NVIDIA's pinned source checkpoint.
 sparklab run qwen3.6-35b-a3b --root /path/to/models
 ```
 
-## Optional speculative decoding
+The normal command now launches the container with the recipe's MTP4, graph,
+routing, and projection settings. `--dry-run` prints the complete Docker command;
+`--json` includes the command and environment in the launch plan. Override the
+port with `-- --port 1929`; the default remains 1919.
 
-SparkLab can load Qwen3.6's native MTP layer, verify its draft tokens with the target,
-and commit or roll back paged KV and GDN recurrent state at the accepted boundary. The
-[upstream vLLM profile](https://recipes.vllm.ai/Qwen/Qwen3.6-35B-A3B) uses three drafts.
-On GB10, SparkLab's measured optimum is currently two drafts with Triton attention:
+Wait until `/health` reports JSON `"status": "ok"`, then send requests using model
+`nvidia/Qwen3.6-35B-A3B-NVFP4`. HTTP 200 alone may indicate that loading is ongoing.
 
-```bash
-sparklab run qwen3.6-35b-a3b --root /path/to/models -- \
-  --speculative-method mtp \
-  --speculative-tokens 2 \
-  --attention-backend triton
-```
+The profile supports text, one actively decoded request, BF16 KV, FP32 recurrent
+state, and **32,832 total sequence tokens**. Additional requests queue. Greedy
+requests use MTP4; sampled requests use target-only decoding. Equal 96 GiB Docker
+memory and memory-plus-swap limits disable swap for the serving container.
+Unrelated host swap is reported by the planner but does not block this isolated
+profile; available RAM and the safety reserve are still checked.
 
-The optimized path sends verification and short rejection repairs through decode-sized
-MoE and recurrent kernels instead of padded prompt kernels. In the controlled 64-token
-FlashInfer sweep, target-only decode reached 49.07 tok/s and widths one, two, and three
-reached 63.46, 66.31, and 53.64 tok/s. A longer matched Triton-attention probe reached
-74.42 tok/s with width two versus 45.38 tok/s target-only: a 64.0% gain, 88.4% draft
-acceptance, and 2.49 output tokens per target forward.
+## Previous native profile
 
-Keep this profile opt-in for now. It covers one greedy request, and the multi-token
-numerical path selected a different close greedy continuation than single-token eager
-decode. The complete context, quality, agent, and endurance certification suite has not
-been rerun. See [the original sweep](../../benchmarks/gb10/results/GB10-QWEN36-MTP-003.json)
-and [the optimized result](../../benchmarks/gb10/results/GB10-QWEN36-MTP-004.json).
-
-The latest source-tree optimization saves the GDN state at each verified token and
-commits the accepted prefix directly, eliminating rejection replay. Three 256-token
-trials measured a median **80.55 tok/s** and **0.367 s warm TTFT**, versus a fresh
-75.43 tok/s MTP2 control. All three matched the fresh eager target-only output hash
-on this prompt; the old MTP control selected a different continuation. Reported
-server memory increased from 21.75 to 21.93 GiB. This focused result does not extend
-the target-only certification to MTP or establish general output parity. See
-[the replay-free evidence](../../benchmarks/gb10/results/GB10-QWEN36-MTP-005.json).
-
-MTP currently applies to one running greedy request. Sampled requests fall back to target
-decoding, and target verification runs eagerly.
-
-Wait for the API to listen on `127.0.0.1:1919`, then verify it:
+To run the retained target-only artifact in the host PyTorch 2.11 environment:
 
 ```bash
-curl http://127.0.0.1:1919/health
-curl http://127.0.0.1:1919/v1/models
+sparklab serve --model /path/to/models/models/qwen3.6-35b-a3b/prepared/0.5.0 \
+  --served-model-name nvidia/Qwen3.6-35B-A3B-NVFP4 \
+  --moe-backend offload --moe-storage ram --nvfp4-backend triton \
+  --moe-cache-rate 1.0 --num-tokens 32832 --moe-prefill-hit-d2d
 ```
 
-See the [quick start](../quickstart.md) for API and agent examples.
+Use a clean shell without the fast profile's environment flags. The previous
+profile's short-prompt certification measured 67.79 tok/s and 0.329 s TTFT;
+those numbers use a different workload from the 8K comparison above.
+[Previous certification](../../benchmarks/gb10/results/GB10-QWEN36-FAST-002.json).
+
+See [container build/conversion details](../../benchmarks/qwen36_marlin/README.md)
+and [the full optimization report](../../exps/exp_qwen36_speedbench_vllm_gb10.md).

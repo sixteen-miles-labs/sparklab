@@ -143,3 +143,31 @@ if __name__ == "__main__":
     test_clear_slots_zeros_all_layers()
     test_copy_from_snapshot()
     print("LinearStatePool allocator unit: PASS")
+
+
+@pytest.mark.parametrize("consumer", ["copy", "free", "clear", "reset", "view", "owner", "rebuild"])
+def test_deferred_commit_materializes_before_other_consumers(consumer):
+    pool = _pool()
+    pool.enable_verify_transactions(5)
+    pool.enable_deferred_verify_commits()
+    pool.verify_recurrent_states.normal_()
+    pool.verify_conv_inputs.zero_()
+    expected = pool.verify_recurrent_states[:, 0, 2].clone()
+    pool.commit_verify_prefix(2, 1, 3)
+    assert pool._pending_verify_state == (1, 2)
+    assert not torch.equal(pool.recurrent_states[:, 1], expected)
+    if consumer == "copy": pool.copy_from(1, 3)
+    elif consumer == "free": pool.free(1)
+    elif consumer == "clear": pool.clear_slots([1])
+    elif consumer == "reset": pool.reset(1)
+    elif consumer == "view": pool.recurrent_state(0, 1)
+    elif consumer == "owner": pool.prepare_verify_state(3)
+    else: pool.rebuild(10)
+    assert pool._pending_verify_state is None
+    assert pool.cached_initial_state_step.item() == -1
+    if consumer in {"clear", "reset", "rebuild"}:
+        assert pool.recurrent_states[:, 1].count_nonzero() == 0
+    else:
+        torch.testing.assert_close(pool.recurrent_states[:, 1], expected, atol=0, rtol=0)
+    if consumer == "copy":
+        torch.testing.assert_close(pool.recurrent_states[:, 3], expected, atol=0, rtol=0)

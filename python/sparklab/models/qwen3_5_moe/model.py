@@ -173,6 +173,69 @@ class Qwen3_5MoEForCausalLM(BaseLLMModel):
             return
         self._mtp.load_state_dict(state_dict)
 
+    supports_mtp_prefix_recovery = True
+    supports_mtp_light_snapshot = True
+
+    def destroy_mtp_draft_graphs(self):
+        graphs = getattr(self, "_mtp_draft_graphs", None)
+        if graphs is not None:
+            graphs.clear()
+        self._mtp_draft_graphs = None
+        self._mtp_draft_graph_backend = None
+
+    def _mtp_step(self, batch, shifted, target_hidden):
+        import os
+
+        if os.getenv("SPARKLAB_QWEN3_MTP_DRAFT_GRAPH", "0") == "1":
+            from .mtp_graph import run_mtp_draft_graph
+
+            result = run_mtp_draft_graph(self, batch, shifted, target_hidden)
+            if result is not None:
+                return result
+        project = getattr(self.lm_head, "forward_all", self.lm_head.forward)
+        original_input = batch.input_ids
+        batch.input_ids = shifted
+        try:
+            with get_global_ctx().forward_batch(batch):
+                feedback = self._mtp.forward(
+                    self.model.embed_tokens.forward(shifted), target_hidden
+                )
+                last = batch.attn_metadata.get_last_indices(1).to(torch.long)
+                feedback = feedback.index_select(0, last)
+                draft = torch.argmax(project(feedback), dim=-1)
+        finally:
+            batch.input_ids = original_input
+        return draft, feedback
+
+    def propose_mtp_prefix(self, batch, correction: torch.Tensor, accepted_inputs: int):
+        """Rebuild draft KV from accepted target features, excluding rejected rows.
+
+        The target recurrent state has already been committed by the engine.
+        The MTP layer has independent, append-only attention KV: overwriting the
+        retained prefix and masking its rejected suffix is sufficient recovery.
+        """
+        from copy import copy
+
+        if not 1 <= accepted_inputs <= batch.input_ids.numel():
+            raise ValueError("accepted MTP prefix is outside the verification block")
+        if self._mtp_target_hidden is None:
+            return None
+        req = copy(batch.reqs[0])
+        req.device_len = req.cached_len + accepted_inputs
+        prefix = copy(batch)
+        prefix.reqs = [req]
+        prefix.padded_reqs = prefix.reqs
+        prefix.input_ids = batch.input_ids[:accepted_inputs]
+        prefix.positions = batch.positions[:accepted_inputs]
+        prefix.out_loc = batch.out_loc[:accepted_inputs]
+        get_global_ctx().attn_backend.prepare_metadata(prefix)
+        original_hidden = self._mtp_target_hidden
+        try:
+            self._mtp_target_hidden = original_hidden[:accepted_inputs]
+            return self.propose_mtp(prefix, correction)
+        finally:
+            self._mtp_target_hidden = original_hidden
+
     def propose_mtp(self, batch, next_token: torch.Tensor) -> torch.Tensor | None:
         if self._dflash is not None:
             return self._dflash.propose(self, batch, next_token)
@@ -184,23 +247,13 @@ class Qwen3_5MoEForCausalLM(BaseLLMModel):
         if not req.sampling_params.is_greedy:
             return None
         ctx = get_global_ctx()
-        project_logits = getattr(self.lm_head, "forward_all", self.lm_head.forward)
         query = batch.input_ids
         shifted = torch.cat((query[1:], next_token.reshape(1)))
-        original_input = batch.input_ids
-        batch.input_ids = shifted
-        try:
-            with ctx.forward_batch(batch):
-                feedback = self._mtp.forward(
-                    self.model.embed_tokens.forward(shifted), self._mtp_target_hidden
-                )
-                last = batch.attn_metadata.get_last_indices(1).to(torch.long)
-                feedback = feedback.index_select(0, last)
-                draft = torch.argmax(project_logits(feedback), dim=-1)
-        finally:
-            batch.input_ids = original_input
+        draft, feedback = self._mtp_step(batch, shifted, self._mtp_target_hidden)
 
-        drafts = [draft.squeeze(0).to(torch.int32)]
+        # A graph's outputs are overwritten on its next replay (notably the
+        # one-row graph reused by recursive steps), so retain each token value.
+        drafts = [draft.squeeze(0).to(torch.int32, copy=True)]
 
         steps = min(
             self._mtp_steps, max(1, req.max_device_len - req.device_len)
@@ -227,12 +280,8 @@ class Qwen3_5MoEForCausalLM(BaseLLMModel):
                 draft_req.table_idx, position : position + 1
             ]
             ctx.attn_backend.prepare_metadata(draft_batch)
-            with ctx.forward_batch(draft_batch):
-                feedback = self._mtp.forward(
-                    self.model.embed_tokens.forward(draft_batch.input_ids), feedback
-                )
-                draft = torch.argmax(project_logits(feedback), dim=-1)
-            drafts.append(draft.squeeze(0).to(torch.int32))
+            draft, feedback = self._mtp_step(draft_batch, draft_batch.input_ids, feedback)
+            drafts.append(draft.squeeze(0).to(torch.int32, copy=True))
         return torch.stack(drafts)
 
 

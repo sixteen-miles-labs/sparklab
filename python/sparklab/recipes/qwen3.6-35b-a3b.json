@@ -1,21 +1,16 @@
 {
   "schema_version": "2.0",
-  "recipe_version": "0.5.0",
+  "recipe_version": "0.6.0",
   "slug": "qwen3.6-35b-a3b",
   "name": "Qwen3.6 35B A3B",
   "model": "nvidia/Qwen3.6-35B-A3B-NVFP4",
   "parameters": "35B total / 3B active",
   "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce",
   "source_bytes": 23450872529,
-  "prepared_bytes": 22605468940,
-  "runtime_artifact": {
-    "repo_id": "oakmindai/Qwen3.6-35B-A3B-NVFP4-FTW",
-    "revision": "4826bc15c0f91ab9de7c57040bda36cfc57b3974",
-    "bytes": 22605468996,
-    "fingerprint": "bda7268c3e0afd7b"
-  },
+  "prepared_bytes": 22518034432,
+  "runtime_artifact": null,
   "intended_tier": "fast",
-  "status": "certified",
+  "status": "preview",
   "implementation": "available",
   "portfolio_role": "primary",
   "deployment": {
@@ -27,34 +22,60 @@
     "execution_policy": "resident",
     "backend_options": {
       "moe_backend": "offload",
-      "moe_storage": "ram",
-      "nvfp4_backend": "triton",
+      "moe_storage": "disk",
+      "moe_preload_all": true,
+      "nvfp4_backend": "marlin",
       "moe_cache_rate": 1.0,
       "num_tokens": 32832,
-      "moe_prefill_hit_d2d": true
+      "max_seq_len_override": 32832,
+      "attention_backend": "fi",
+      "speculative_method": "mtp",
+      "speculative_tokens": 4,
+      "container": {
+        "image": "sparklab-qwen36:gb10-v1",
+        "environment": {
+          "SPARKLAB_QWEN3_MTP_GRAPH": "1",
+          "SPARKLAB_QWEN3_MTP_DRAFT_GRAPH": "1",
+          "SPARKLAB_MTP_REJECT_DRAFT": "1",
+          "SPARKLAB_MTP_LIGHT_VERIFY_SNAPSHOT": "1",
+          "SPARKLAB_NVFP4_LM_HEAD_BACKEND": "marlin",
+          "SPARKLAB_FP8_MM_BACKEND": "vllm",
+          "SPARKLAB_MTP_OVERLAP": "1",
+          "SPARKLAB_FORCE_TORCH_TOPK": "0",
+          "SPARKLAB_QWEN3_MTP4": "1",
+          "SPARKLAB_QWEN3_MTP_SKINNY": "1",
+          "SPARKLAB_MTP_DEFER_STATE_COMMIT": "1",
+          "SPARKLAB_FUSED_TOPK": "1"
+        },
+        "memory_gib": 96,
+        "quant_format": "nvfp4_marlin",
+        "config_sha256": "58aefa1c9eff7989f431d748f2ddec39446cb1fd2a69acc46e285c6a37b0cecc"
+      }
     }
   },
   "profile": "balanced",
   "runtime_memory": {
     "total_bytes": 34359738368
   },
-  "description": "Primary Fast certification target for routine chat and short agent loops.",
+  "description": "Default Fast-tier Qwen3.6 profile: resident Marlin experts and MTP4 in the pinned GB10 container.",
   "performance": {
-    "decode_tokens_per_second": 67.7870954092827,
-    "warm_ttft_seconds": 0.32882933877408504,
-    "evidence": "GB10-QWEN36-FAST-002",
-    "note": "The target-only profile passed the Fast gate with exact 32K recall, complete capability probes, bounded resident memory, and a zero-swap 60-minute endurance run. The artifact also includes an opt-in native BF16 MTP shard; the replay-free width-two GB10 profile measured 80.55 tok/s with 0.367 s warm TTFT on a 256-token probe, but has not repeated the full certification suite."
+    "decode_tokens_per_second": 112.08226324890893,
+    "warm_ttft_seconds": 1.43639366815,
+    "evidence": "GB10-QWEN36-MARLIN-001",
+    "note": "Two fixed SPEED-Bench 8K-input/256-output C1 repeats averaged 112.08 decode tok/s versus vLLM 111.60; mean latency 3.735 versus 3.664 seconds. Passed 28 serving checks and 60-minute zero-swap endurance. These metrics use a different workload from the previous short-prompt certification."
   },
   "evidence": [
     "GB10-QWEN36-FAST-001",
     "GB10-QWEN36-FAST-002",
     "GB10-QWEN36-MTP-003",
     "GB10-QWEN36-MTP-004",
-    "GB10-QWEN36-MTP-005"
+    "GB10-QWEN36-MTP-005",
+    "GB10-QWEN36-MARLIN-001"
   ],
   "limitations": [
-    "The fixed five-problem AIME sample scored 0/5 because all five sampled runs exhausted the 2,048-token reasoning budget before emitting a final answer; Fast certification establishes serving correctness and operational behavior, not benchmark-quality certification.",
-    "Certification covers text inference at batch one on one NVIDIA GB10.",
-    "Native MTP remains opt-in: replay-free width two measured 80.55 tok/s and reproduced the fresh eager target-only output hash on the focused prompt, but the full certification suite has not been rerun."
+    "Default selected for speed; quality equivalence is not established. The fixed core screen scored 17/20 versus native target-only 18/20 and vLLM 17/20; capped 16K AIME scored 0/5 versus 1/5 for both references.",
+    "Requires Docker with NVIDIA GPU access and the separately built sparklab-qwen36:gb10-v1 image (PyTorch 2.13); the host PyTorch 2.11 environment is unchanged.",
+    "Requires a separate nvfp4_marlin FTW converted from the pinned NVIDIA source; the previous hosted Triton FTW is incompatible.",
+    "Validated for text on one 128 GiB GB10, one actively decoded request, BF16 KV, FP32 recurrent state and 32,832 total sequence tokens. Sampled requests use target-only decoding."
   ]
 }

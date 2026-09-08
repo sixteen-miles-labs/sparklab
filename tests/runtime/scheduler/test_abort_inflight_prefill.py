@@ -19,6 +19,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import torch
+import pytest
 
 from sparklab.core import Batch, Req, SamplingParams
 from sparklab.runtime.kvcache.linear_state_pool import LinearStatePool
@@ -43,13 +44,13 @@ def _pool(num_slots=16):
                            device=torch.device("cpu"), tp_size=1)
 
 
-def _setup():
+def _setup(page_size=1):
     """Hybrid managers + a stub Scheduler `self` for the real unbound methods."""
     pool = _pool()
     pt = torch.zeros(4, 64, dtype=torch.int32)
-    cm = CacheManager(64, 1, pt, "hybrid_radix", linear_state_pool=pool)
+    cm = CacheManager(64, page_size, pt, "hybrid_radix", linear_state_pool=pool)
     tm = TableManager(max_running_reqs=4, page_table=pt)
-    dm = DecodeManager(page_size=1)
+    dm = DecodeManager(page_size=page_size)
     pm = PrefillManager(cm, tm, dm)
     sent = []
     stub = SimpleNamespace(
@@ -60,7 +61,7 @@ def _setup():
         finished_reqs=set(),
         eos_token_ids=set(),
         toolcall_anchor_id=None,
-        config=SimpleNamespace(page_size=1),
+        config=SimpleNamespace(page_size=page_size),
         status_reporter=SimpleNamespace(report_batch=lambda *_, **__: None),
         send_result=sent.extend,
         _kv_usage_pages=cm.page_usage,
@@ -75,13 +76,13 @@ def _setup():
     return pool, cm, tm, dm, pm, sent, stub
 
 
-def _launch_req(pool, cm, tm, prompt, *, cls=Req, track_seqlen=None):
+def _launch_req(pool, cm, tm, prompt, *, cls=Req, track_seqlen=None, output_len=4):
     """A launched (forward in flight) hybrid req: handle locked, pages allocated,
     GDN slots held, cached_len advanced -- the state _process_last_data will drain."""
     mr = cm.match_req(SimpleNamespace(input_ids=prompt, input_len=len(prompt),
                                       mm_embeds=None))
-    req = cls(input_ids=prompt, table_idx=tm.allocate(), cached_len=0, output_len=4,
-              uid=UID, sampling_params=SamplingParams(max_tokens=4),
+    req = cls(input_ids=prompt, table_idx=tm.allocate(), cached_len=0, output_len=output_len,
+              uid=UID, sampling_params=SamplingParams(max_tokens=output_len),
               cache_handle=mr.cuda_handle)
     req.linear_slot_idx = pool.alloc(1)[0]
     req.mamba_ping_pong = tuple(pool.alloc(2))
@@ -264,4 +265,65 @@ def test_overlap_length_uses_the_drained_batch_snapshot():
     assert len(messages) == 2 and messages[-1].finished
     assert messages[-1].finish_reason == "length"
     assert req.table_idx == -1
+    cm.check_integrity()
+
+
+def test_speculative_overlap_does_not_cache_state_past_terminal_token():
+    """EOS at the end of the drained block still invalidates a later block's state."""
+    from sparklab.message import DetokenizeMsg
+
+    pool, cm, tm, dm, _pm, sent, stub = _setup()
+    stub.eos_token_ids = {42}
+    req = _launch_req(pool, cm, tm, torch.arange(1, 13, dtype=torch.int32))
+    # First verification emitted [7, EOS]. The next block has already consumed
+    # all four remaining logical positions while those two tokens await drain.
+    req.device_len = req.max_device_len
+    cm.allocate_paged([req])
+    req.cached_len = req.device_len - 1
+    batch = Batch(reqs=[req], phase="verify")
+    output = SimpleNamespace(next_tokens_cpu=torch.tensor([7, 42], dtype=torch.int32),
+                             copy_done_event=SimpleNamespace(synchronize=lambda: None),
+                             token_counts=(2,))
+    Scheduler._process_last_data(stub, (SimpleNamespace(batch=batch), output))
+    assert req.state_overadvanced
+    assert req.cached_len == 14
+    messages = [m for m in sent if isinstance(m, DetokenizeMsg)]
+    assert [m.next_token for m in messages] == [7, 42]
+    assert messages[-1].finished
+    assert req.table_idx == -1
+    # Draining the overlapping block must neither emit tokens nor free twice.
+    Scheduler._process_last_data(stub, (SimpleNamespace(batch=batch), output))
+    assert [m for m in sent if isinstance(m, DetokenizeMsg)] == messages
+    cm.check_integrity()
+
+
+@pytest.mark.parametrize('inflight', [False, True])
+@pytest.mark.parametrize('ahead', [1, 4])
+@pytest.mark.parametrize('page_size', [1, 16])
+def test_abort_returns_kv_ahead_of_host_tokens(inflight, ahead, page_size):
+    """A cancelled verification must not donate state under a shorter host key.
+
+    The real streaming regression leaked four pages: the device had accepted four
+    tokens which abort deliberately did not append to the host's token history.
+    Both immediate and in-flight aborts must release the full allocated tail.
+    """
+    pool, cm, tm, dm, _pm, sent, stub = _setup(page_size=page_size)
+    req = _launch_req(pool, cm, tm, torch.arange(1, 13, dtype=torch.int32), output_len=32)
+    host_len = req.input_ids.numel()
+    req.device_len = host_len + ahead + 1
+    cm.allocate_paged([req])
+    req.cached_len = host_len + ahead
+    dm.filter_reqs([req])
+    if inflight:
+        stub._last_data = _as_last_data(Batch(reqs=[req], phase='verify'))
+    Scheduler._process_one_msg(stub, AbortBackendMsg(uid=UID))
+    if inflight:
+        assert req.aborted and req.table_idx != -1
+        Scheduler._process_last_data(stub, stub._last_data)
+    cm.check_integrity()
+    assert len(cm.free_slots) == cm.num_pages
+    assert pool.num_free_slots == pool.num_slots - 1
+    assert req.state_overadvanced and req.cached_len == host_len
+    assert req.table_idx == -1 and not sent
+    Scheduler._free_req_resources(stub, req)
     cm.check_integrity()

@@ -1,0 +1,339 @@
+{
+  "schema_version": "1.0",
+  "platform": {
+    "device": "NVIDIA GB10",
+    "memory_gib": 128,
+    "machine": "aarch64",
+    "cuda": "13.0",
+    "driver": "580.126.09",
+    "date": "2026-09-08",
+    "local_date": "2026-09-07",
+    "timezone": "America/Toronto"
+  },
+  "model": {
+    "repository": "nvidia/Qwen3.6-35B-A3B-NVFP4",
+    "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce",
+    "checkpoint_format": "FTW nvfp4_marlin (experimental), original FTW nvfp4 (control)",
+    "fingerprint": "bda7268c3e0afd7b",
+    "recipe_version": "0.5.0",
+    "source_shard_verification": [
+      {
+        "file": "model-00001-of-00003.safetensors",
+        "sha256": "07141c2db92e47bc08777132cd1a0323faf300eab3a7d7c111bc2bf075fda050",
+        "bytes": 10006877608,
+        "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce"
+      },
+      {
+        "file": "model-00002-of-00003.safetensors",
+        "sha256": "6dea9c759a0f941cf9e1cc1501216b0e107966a66c90425050e212efbd053f02",
+        "bytes": 10003595752,
+        "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce"
+      },
+      {
+        "file": "model-00003-of-00003.safetensors",
+        "sha256": "9758875fc55e49561165f4a44342b654c123c3e25c6811b34abb83553fb1a164",
+        "bytes": 3413864960,
+        "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce"
+      }
+    ],
+    "marlin_artifact_fingerprint": "9e48171e436f5ef5",
+    "experimental_artifact": "$HOME/.sparklab/models/qwen3.6-35b-a3b/prepared/experimental-marlin-vllm028"
+  },
+  "workload": {
+    "dataset": "nvidia/SPEED-Bench",
+    "split": "throughput_8k",
+    "dataset_revision": "487aa718444e816458d1a0a52bfce7a454285cf4",
+    "measured_requests_per_profile": 30,
+    "warmup_requests_per_profile": 3,
+    "concurrency": 1,
+    "seed": 20260907,
+    "selection": "11 random prompts per entropy tier after excluding gated cais/hle; one per tier for warmup, ten per tier measured; interleaved tiers",
+    "prompt_tokens_mean": 8511.133333333333,
+    "prompt_tokens_min": 7866,
+    "prompt_tokens_max": 8941,
+    "max_completion_tokens": 256,
+    "temperature": 0,
+    "ignore_eos": true,
+    "thinking": "checkpoint default enabled",
+    "client": "AIPerf 0.12.0, streaming chat, server token counts",
+    "measured_dataset_sha256": "293c1a311471f5c79e1c4b36b3e8133e57fe360285c1496e4d3b4b32083fd1b2",
+    "metric_definitions": {
+      "decode_tok_s_mean": "Arithmetic mean of AIPerf output_token_throughput_per_user; includes reasoning tokens",
+      "ttft_s_mean": "Mean client-observed time to first token",
+      "e2e_s_mean": "Mean client-observed request latency",
+      "prefill_tok_s_input_over_ttft": "Total input tokens divided by summed client TTFT; includes API/template/scheduling/first-token overhead, not isolated kernel throughput",
+      "telemetry": "Host-wide counters bracketed to measured first-request start and last-request end; approximately one-second resolution"
+    },
+    "full_profiles": [
+      "native-mtp2-control",
+      "marlin-mtp2",
+      "marlin-mtp3"
+    ],
+    "settings_shared": [
+      "FlashInfer attention",
+      "FTW disk full preload",
+      "100% expert cache",
+      "32832 KV tokens",
+      "concurrency one"
+    ],
+    "verification_cuda_graph": false
+  },
+  "result_id": "GB10-QWENSPEED-003",
+  "status": "measured",
+  "engine": {
+    "name": "SparkLab with vLLM Marlin donor",
+    "revision": "8ee23cf7cd158118104999fa1a01fb8e5cfa631b",
+    "working_tree_patch_sha256": "7296db2b53a324dfd57a8d4bf9599a48b69c011473cf61c9bff30e6bfe3ebe47",
+    "runtime": {
+      "python": "3.12.3 (main, Jun 19 2026, 12:46:00) [GCC 13.3.0]",
+      "packages": {
+        "torch": "2.13.0+cu130",
+        "triton": "3.7.1",
+        "vllm": "0.28.0",
+        "flashinfer-python": "0.6.16.post3",
+        "transformers": "5.15.1",
+        "flashlib": "0.3.0",
+        "apache-tvm-ffi": "0.1.11",
+        "gguf": "0.19.0",
+        "prompt-toolkit": "3.0.53"
+      }
+    },
+    "base_image_digest": [
+      "vllm/vllm-openai@sha256:61fc8a896b0a4fbbbdc063bc4b0dbc25ce98e02b5050c24aeb7830ac02039b14"
+    ],
+    "experimental_build_image": "sha256:eaa7da4f926767af469503a30095eb9614091603aa2c1d6527766b215b4caccb",
+    "optional_sglang_kernel_installed": false,
+    "normal_sparklab_environment_changed": false
+  },
+  "metrics": {
+    "native-mtp2-control": {
+      "requests": 30,
+      "input_tokens_mean": 8511.133333333333,
+      "output_tokens_mean": 256,
+      "decode_tok_s_mean": 69.38160730238027,
+      "ttft_s_mean": 3.4038406643333334,
+      "e2e_s_mean": 7.0868970039,
+      "prefill_tok_s_input_over_ttft": 2500.4499836070618,
+      "by_entropy": {
+        "low_entropy": {
+          "requests": 10,
+          "input_tokens_mean": 8608.6,
+          "output_tokens_mean": 256,
+          "decode_tok_s_mean": 68.4031361322958,
+          "ttft_s_mean": 3.4634106428,
+          "e2e_s_mean": 7.1975401659,
+          "prefill_tok_s_input_over_ttft": 2485.584554605504
+        },
+        "mixed": {
+          "requests": 10,
+          "input_tokens_mean": 8540.3,
+          "output_tokens_mean": 256,
+          "decode_tok_s_mean": 71.44761513839357,
+          "ttft_s_mean": 3.4154923175,
+          "e2e_s_mean": 6.9857101548000005,
+          "prefill_tok_s_input_over_ttft": 2500.4594377923095
+        },
+        "high_entropy": {
+          "requests": 10,
+          "input_tokens_mean": 8384.5,
+          "output_tokens_mean": 256,
+          "decode_tok_s_mean": 68.29407063645145,
+          "ttft_s_mean": 3.3326190327,
+          "e2e_s_mean": 7.077440691,
+          "prefill_tok_s_input_over_ttft": 2515.889130359764
+        }
+      },
+      "telemetry": {
+        "swap_in_pages": 2,
+        "swap_out_pages": 0,
+        "min_available_gib": 88.00070571899414
+      }
+    },
+    "marlin-mtp2": {
+      "requests": 30,
+      "input_tokens_mean": 8511.133333333333,
+      "output_tokens_mean": 256,
+      "decode_tok_s_mean": 66.47886867051079,
+      "ttft_s_mean": 1.4565270758333333,
+      "e2e_s_mean": 5.307345252,
+      "prefill_tok_s_input_over_ttft": 5843.443266211717,
+      "by_entropy": {
+        "low_entropy": {
+          "requests": 10,
+          "input_tokens_mean": 8608.6,
+          "output_tokens_mean": 256,
+          "decode_tok_s_mean": 66.17225191677909,
+          "ttft_s_mean": 1.502286332,
+          "e2e_s_mean": 5.3711615528,
+          "prefill_tok_s_input_over_ttft": 5730.33237181845
+        },
+        "mixed": {
+          "requests": 10,
+          "input_tokens_mean": 8540.3,
+          "output_tokens_mean": 256,
+          "decode_tok_s_mean": 68.40504511859126,
+          "ttft_s_mean": 1.4509930366,
+          "e2e_s_mean": 5.1813430744,
+          "prefill_tok_s_input_over_ttft": 5885.831140866
+        },
+        "high_entropy": {
+          "requests": 10,
+          "input_tokens_mean": 8384.5,
+          "output_tokens_mean": 256,
+          "decode_tok_s_mean": 64.85930897616203,
+          "ttft_s_mean": 1.4163018588999998,
+          "e2e_s_mean": 5.369531128799999,
+          "prefill_tok_s_input_over_ttft": 5919.995054240764
+        }
+      },
+      "telemetry": {
+        "swap_in_pages": 5,
+        "swap_out_pages": 0,
+        "min_available_gib": 87.37382507324219
+      }
+    },
+    "marlin-mtp3": {
+      "requests": 30,
+      "input_tokens_mean": 8511.133333333333,
+      "output_tokens_mean": 256,
+      "decode_tok_s_mean": 75.14989146025053,
+      "ttft_s_mean": 1.3943513215666667,
+      "e2e_s_mean": 4.808855651433333,
+      "prefill_tok_s_input_over_ttft": 6104.009227581458,
+      "by_entropy": {
+        "low_entropy": {
+          "requests": 10,
+          "input_tokens_mean": 8608.6,
+          "output_tokens_mean": 256,
+          "decode_tok_s_mean": 77.16884412678152,
+          "ttft_s_mean": 1.4152171723,
+          "e2e_s_mean": 4.734028674899999,
+          "prefill_tok_s_input_over_ttft": 6082.882661753864
+        },
+        "mixed": {
+          "requests": 10,
+          "input_tokens_mean": 8540.3,
+          "output_tokens_mean": 256,
+          "decode_tok_s_mean": 77.5710398580559,
+          "ttft_s_mean": 1.3974469524,
+          "e2e_s_mean": 4.689771177799999,
+          "prefill_tok_s_input_over_ttft": 6111.358993150143
+        },
+        "high_entropy": {
+          "requests": 10,
+          "input_tokens_mean": 8384.5,
+          "output_tokens_mean": 256,
+          "decode_tok_s_mean": 70.70979039591417,
+          "ttft_s_mean": 1.37038984,
+          "e2e_s_mean": 5.002767101599999,
+          "prefill_tok_s_input_over_ttft": 6118.331992303738
+        }
+      },
+      "telemetry": {
+        "swap_in_pages": 0,
+        "swap_out_pages": 0,
+        "min_available_gib": 86.4114761352539
+      }
+    },
+    "vllm-mtp3-reference": {
+      "requests": 30,
+      "input_tokens_mean": 8511.133333333333,
+      "output_tokens_mean": 256,
+      "output_tokens_min": 256,
+      "output_tokens_max": 256,
+      "decode_tok_s_mean": 112.2808347025186,
+      "decode_tok_s_median": 113.35882362199504,
+      "ttft_s_mean": 1.4436804403333332,
+      "e2e_s_mean": 3.7285623305,
+      "prefill_tok_s_input_over_ttft": 5895.441328669789,
+      "by_entropy": {
+        "low_entropy": {
+          "requests": 10,
+          "input_tokens_mean": 8608.6,
+          "output_tokens_mean": 256,
+          "output_tokens_min": 256,
+          "output_tokens_max": 256,
+          "decode_tok_s_mean": 113.39974238304785,
+          "decode_tok_s_median": 113.04574991743951,
+          "ttft_s_mean": 1.4781069279999999,
+          "e2e_s_mean": 3.7344083822,
+          "prefill_tok_s_input_over_ttft": 5824.0712068430275
+        },
+        "mixed": {
+          "requests": 10,
+          "input_tokens_mean": 8540.3,
+          "output_tokens_mean": 256,
+          "output_tokens_min": 256,
+          "output_tokens_max": 256,
+          "decode_tok_s_mean": 118.26326098303169,
+          "decode_tok_s_median": 118.16058031634608,
+          "ttft_s_mean": 1.4232542753,
+          "e2e_s_mean": 3.5802868077,
+          "prefill_tok_s_input_over_ttft": 6000.54406876792
+        },
+        "high_entropy": {
+          "requests": 10,
+          "input_tokens_mean": 8384.5,
+          "output_tokens_mean": 256,
+          "output_tokens_min": 256,
+          "output_tokens_max": 256,
+          "decode_tok_s_mean": 105.17950074147628,
+          "decode_tok_s_median": 103.94780380462298,
+          "ttft_s_mean": 1.4296801177,
+          "e2e_s_mean": 3.8709918016,
+          "prefill_tok_s_input_over_ttft": 5864.598588311193
+        }
+      },
+      "telemetry": {
+        "swap_start_bytes": 2308956160,
+        "swap_end_bytes": 2303459328,
+        "swap_in_pages": 10986,
+        "swap_out_pages": 0,
+        "min_available_gib": 66.31794738769531
+      }
+    }
+  },
+  "validation": {
+    "same_30_question_ids": true,
+    "identical_messages_and_sampling_payloads": true,
+    "identical_server_reported_prompt_counts": true,
+    "all_90_requests_http_200": true,
+    "all_outputs_exactly_256_tokens": true,
+    "dense_and_speculative_tensors_byte_identical": 831,
+    "actual_expert_layers_checked": 40,
+    "actual_rows_per_layer_checked": 16,
+    "max_relative_l2_error": 0.011346959508955479,
+    "min_cosine_similarity": 0.9999669194221497,
+    "numerical_thresholds": {
+      "relative_l2_less_than": 0.03,
+      "cosine_greater_than": 0.9995
+    },
+    "smoke_tests": {
+      "mtp2": 3,
+      "mtp3": 3
+    },
+    "tests": {
+      "regression_checks_passed": 79,
+      "donor_focused_checks_passed": 22,
+      "resident_graph_parametrizations_passed": 3
+    },
+    "limitations": [
+      "One measured pass per profile on the accessible fixed SPEED-Bench subset.",
+      "Marlin repacking is numerically checked but not bitwise equivalent to native expert evaluation; no broad reasoning-quality, 32K recall or endurance certification.",
+      "The donor environment runs PyTorch 2.13 and lacks the normal environment's sglang-kernel; native control uses the same donor environment.",
+      "Whole Qwen MTP verification remains eager; expert CUDA-graph tests do not establish model-level capture support.",
+      "vLLM reference is reused from GB10-QWENSPEED-001, including its host swap caveat; it was not rerun in this follow-up.",
+      "Container GPU access failed between runs, was restored by restarting only the test container, and GPU tests passed before final measurement."
+    ]
+  },
+  "source": {
+    "summary": "exps/exp_qwen36_speedbench_vllm_gb10.md",
+    "raw_artifact": "results/qwen36-marlin-20260908",
+    "reproduction": "benchmarks/qwen36_marlin/README.md",
+    "baseline_result": "GB10-QWENSPEED-001",
+    "server_commands": "*-server-command.json",
+    "client_commands": "*-command.json",
+    "numerical_validation": "actual-layer-validation.json",
+    "dense_weight_validation": "dense-weight-verification.json"
+  }
+}

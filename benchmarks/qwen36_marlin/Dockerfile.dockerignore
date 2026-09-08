@@ -1,0 +1,11 @@
+**
+!python/
+!python/**
+!pyproject.toml
+!setup.py
+!README.md
+!LICENSE
+!NOTICE
+python/**/__pycache__
+python/**/*.so
+python/**/*.egg-info

@@ -103,6 +103,13 @@ def qwen4_skinny_linear(
     """Use the measured SM121 kernel when eligible, otherwise ``F.linear``."""
     k = x.shape[-1]
     m = x.numel() // k
+    qwen3_draft_shape = (
+        os.getenv("SPARKLAB_QWEN3_MTP_SKINNY", "0") == "1"
+        and (
+            (tuple(weight.shape) == (9216, 2048) and m <= 3)
+            or (tuple(weight.shape) == (2048, 4096) and m <= 2)
+        )
+    )
     eligible = (
         os.getenv("SPARKLAB_DISABLE_QWEN4_SKINNY_GEMM", "0").lower()
         not in {"1", "true", "yes"}
@@ -112,7 +119,7 @@ def qwen4_skinny_linear(
         and weight.dtype == torch.bfloat16
         and weight.is_contiguous()
         and 1 <= m <= 3
-        and tuple(weight.shape) in _SM121_PLANS
+        and (tuple(weight.shape) in _SM121_PLANS or qwen3_draft_shape)
         and _is_sm121(x.device.index or 0)
     )
     return bf16_skinny_linear(x, weight) if eligible else F.linear(x, weight, bias)

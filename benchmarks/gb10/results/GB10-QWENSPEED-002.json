@@ -1,0 +1,225 @@
+{
+  "schema_version": "1.0",
+  "platform": {
+    "device": "NVIDIA GB10",
+    "memory_gib": 128,
+    "machine": "aarch64",
+    "cuda": "13.0",
+    "driver": "580.126.09",
+    "date": "2026-09-07"
+  },
+  "engine": {
+    "name": "SparkLab vs vLLM",
+    "revision": "8ee23cf7cd158118104999fa1a01fb8e5cfa631b",
+    "sparklab": {
+      "python": "3.11.15 (main, Mar 11 2026, 17:11:19) [GCC 14.3.0]",
+      "source_version": "0.1.2",
+      "packages": {
+        "sparklab": "0.1.1",
+        "torch": "2.11.0+cu130",
+        "transformers": "5.16.1",
+        "triton": "3.6.0",
+        "flashinfer-python": "0.6.15.post1",
+        "sparklab-kernel-cache": "0.1.0+cu130"
+      }
+    },
+    "vllm": {
+      "vllm": "0.28.0",
+      "torch": "2.13.0+cu130",
+      "transformers": "5.15.1",
+      "flashinfer-python": "0.6.16.post3",
+      "triton": "3.7.1"
+    },
+    "vllm_image_digest": [
+      "vllm/vllm-openai@sha256:61fc8a896b0a4fbbbdc063bc4b0dbc25ce98e02b5050c24aeb7830ac02039b14"
+    ],
+    "experiment": "Runtime wrapper changes prefill tile for M>=4096; production source unchanged",
+    "wrapper_sha256": "875a45a1dbf19a953eb6ec30e25e1a26416ddeb41072ad32af948a2bf862599f"
+  },
+  "model": {
+    "repository": "nvidia/Qwen3.6-35B-A3B-NVFP4",
+    "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce",
+    "checkpoint_format": "NVFP4 safetensors (vLLM), FTW NVFP4 (SparkLab)",
+    "fingerprint": "bda7268c3e0afd7b",
+    "recipe_version": "0.5.0",
+    "source_shard_verification": [
+      {
+        "file": "model-00001-of-00003.safetensors",
+        "sha256": "07141c2db92e47bc08777132cd1a0323faf300eab3a7d7c111bc2bf075fda050",
+        "bytes": 10006877608,
+        "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce"
+      },
+      {
+        "file": "model-00002-of-00003.safetensors",
+        "sha256": "6dea9c759a0f941cf9e1cc1501216b0e107966a66c90425050e212efbd053f02",
+        "bytes": 10003595752,
+        "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce"
+      },
+      {
+        "file": "model-00003-of-00003.safetensors",
+        "sha256": "9758875fc55e49561165f4a44342b654c123c3e25c6811b34abb83553fb1a164",
+        "bytes": 3413864960,
+        "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce"
+      }
+    ]
+  },
+  "workload": {
+    "dataset": "nvidia/SPEED-Bench",
+    "split": "throughput_8k",
+    "dataset_revision": "487aa718444e816458d1a0a52bfce7a454285cf4",
+    "measured_requests_per_profile": 30,
+    "warmup_requests_per_profile": 3,
+    "concurrency": 1,
+    "seed": 20260907,
+    "selection": "11 random prompts per entropy tier after excluding gated cais/hle; one per tier for warmup, ten per tier measured; interleaved tiers",
+    "prompt_tokens_mean": 8511.133333333333,
+    "prompt_tokens_min": 7866,
+    "prompt_tokens_max": 8941,
+    "max_completion_tokens": 256,
+    "temperature": 0,
+    "ignore_eos": true,
+    "thinking": "checkpoint default enabled",
+    "client": "AIPerf 0.12.0, streaming chat, server token counts",
+    "measured_dataset_sha256": "293c1a311471f5c79e1c4b36b3e8133e57fe360285c1496e4d3b4b32083fd1b2",
+    "metric_definitions": {
+      "decode_tok_s_mean": "Arithmetic mean of AIPerf output_token_throughput_per_user; includes reasoning tokens",
+      "ttft_s_mean": "Mean client-observed time to first token",
+      "e2e_s_mean": "Mean client-observed request latency",
+      "prefill_tok_s_input_over_ttft": "Total input tokens divided by summed client TTFT; includes API/template/scheduling/first-token overhead, not isolated kernel throughput",
+      "telemetry": "Host-wide counters bracketed to measured first-request start and last-request end; approximately one-second resolution"
+    },
+    "tuned_profile": "MTP2, FlashInfer attention, FTW disk full preload, Triton NVFP4",
+    "prefill_tile": {
+      "BLOCK_SIZE_M": 128,
+      "BLOCK_SIZE_N": 128,
+      "BLOCK_SIZE_KB": 32,
+      "GROUP_SIZE_M": 8,
+      "num_warps": 4,
+      "num_stages": 2,
+      "min_tokens": 4096
+    }
+  },
+  "result_id": "GB10-QWENSPEED-002",
+  "status": "measured",
+  "metrics": {
+    "quick_six_matched_prompts": {
+      "sparklab-default": {
+        "requests": 6,
+        "decode_tok_s_mean": 64.80388617758919,
+        "ttft_ms_mean": 4430.2899765,
+        "e2e_ms_mean": 8365.2431295,
+        "input_tokens_mean": 8423,
+        "output_tokens_mean": 256
+      },
+      "sparklab-mtp2": {
+        "requests": 6,
+        "decode_tok_s_mean": 58.803298458700716,
+        "ttft_ms_mean": 4413.374936333334,
+        "e2e_ms_mean": 8768.607963666667,
+        "input_tokens_mean": 8423,
+        "output_tokens_mean": 256
+      },
+      "vllm-mtp3": {
+        "requests": 6,
+        "decode_tok_s_mean": 107.43030024488678,
+        "ttft_ms_mean": 1535.416037,
+        "e2e_ms_mean": 3927.2509786666665,
+        "input_tokens_mean": 8423,
+        "output_tokens_mean": 256
+      },
+      "mtp2-fi": {
+        "requests": 6,
+        "decode_tok_s_mean": 71.44041071128143,
+        "ttft_ms_mean": 4286.494460666667,
+        "e2e_ms_mean": 7908.126696166666,
+        "input_tokens_mean": 8423,
+        "output_tokens_mean": 256
+      },
+      "mtp2-fi-resident": {
+        "requests": 6,
+        "decode_tok_s_mean": 73.33457627665916,
+        "ttft_ms_mean": 3981.4862781666666,
+        "e2e_ms_mean": 7504.183488833333,
+        "input_tokens_mean": 8423,
+        "output_tokens_mean": 256
+      }
+    },
+    "full30": {
+      "sparklab-mtp2-fi-resident-tiled": {
+        "requests": 30,
+        "decode_tok_s_mean": 74.17024461499653,
+        "ttft_ms_mean": 3018.5623483333334,
+        "e2e_ms_mean": 6479.751285833333,
+        "input_tokens_mean": 8511.133333333333,
+        "output_tokens_mean": 256,
+        "by_entropy": {
+          "low_entropy": {
+            "requests": 10,
+            "decode_tok_s_mean": 73.15793381989981,
+            "ttft_ms_mean": 3045.0228337,
+            "e2e_ms_mean": 6549.5962561999995,
+            "input_tokens_mean": 8608.6,
+            "output_tokens_mean": 256
+          },
+          "mixed": {
+            "requests": 10,
+            "decode_tok_s_mean": 78.42324934613711,
+            "ttft_ms_mean": 3004.4212734,
+            "e2e_ms_mean": 6259.1819783,
+            "input_tokens_mean": 8540.3,
+            "output_tokens_mean": 256
+          },
+          "high_entropy": {
+            "requests": 10,
+            "decode_tok_s_mean": 70.92955067895268,
+            "ttft_ms_mean": 3006.2429379,
+            "e2e_ms_mean": 6630.475622999999,
+            "input_tokens_mean": 8384.5,
+            "output_tokens_mean": 256
+          }
+        },
+        "telemetry": {
+          "swap_in_pages": 13,
+          "swap_out_pages": 0,
+          "min_available_gib": 88.23025131225586
+        }
+      }
+    },
+    "validation": {
+      "all_30_requests_complete": true,
+      "all_outputs_256_tokens": true,
+      "same_prompt_counts_as_baseline": true,
+      "identical_messages_and_sampling_payloads": true,
+      "kernel_bitwise_equal_actual_layers": 40,
+      "kernel_check_scope": "First 8192-token warmup chunk; no quality/endurance certification"
+    },
+    "measured_dataset_sha256": "293c1a311471f5c79e1c4b36b3e8133e57fe360285c1496e4d3b4b32083fd1b2"
+  },
+  "validation": {
+    "all_30_requests_complete": true,
+    "all_outputs_256_tokens": true,
+    "same_prompt_counts_as_baseline": true,
+    "identical_messages_and_sampling_payloads": true,
+    "kernel_bitwise_equal_actual_layers": 40,
+    "kernel_check_scope": "First 8192-token warmup chunk; no quality/endurance certification",
+    "limitations": [
+      "One full 30-prompt pass; six-prompt controls are exploratory and not independent repeat trials.",
+      "Tuned prefill checked bitwise on one actual 8192-token warmup chunk across all 40 layers; no broader quality, 32K recall or endurance certification.",
+      "vLLM figures reused from GB10-QWENSPEED-001 on identical fixed inputs, not rerun during this follow-up.",
+      "Requested FlashInfer expert backend on native FTW retained the original native bank layout; excluded from valid backend comparisons."
+    ]
+  },
+  "source": {
+    "summary": "exps/exp_qwen36_speedbench_vllm_gb10.md",
+    "raw_artifact": "results/qwen36-tuning-20260907",
+    "baseline_result": "GB10-QWENSPEED-001",
+    "server_command": "tuned-server-command.json",
+    "runner": "full30/run_profile.py",
+    "wrapper": "tuned_server.py",
+    "profiler": "probe_server.py",
+    "microbenchmark": [
+      "sweep_prefill.py",
+      "sweep_prefill_wide.py"
+    ]
+  }
+}

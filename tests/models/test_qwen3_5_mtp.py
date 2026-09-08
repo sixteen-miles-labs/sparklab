@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
 import torch
 from safetensors.torch import save_file
 
@@ -123,3 +124,89 @@ def test_speculative_weight_iterator_fuses_projections_and_bakes_norm(tmp_path):
         loaded["pre_fc_norm_hidden.weight"], torch.ones(h, dtype=torch.bfloat16)
     )
     assert "layers.0.mlp.experts.gate_up_proj" in loaded
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA required")
+@pytest.mark.parametrize("steps,accepted", [(s, a) for s in (3, 4) for a in range(1, s + 1)])
+@pytest.mark.parametrize("draft_graph", [False, True])
+def test_mtp_prefix_recovery_matches_clean_draft_gpu(monkeypatch, steps, accepted, draft_graph):
+    pytest.importorskip("flashinfer")
+    import sparklab.core as core
+    from sparklab.core import Batch, Context, Req, SamplingParams
+    from sparklab.attention.fi import FlashInferBackend
+    from sparklab.layers import set_rope_device
+    from sparklab.layers.rotary import get_rope
+    from sparklab.models.qwen3_5_moe.model import Qwen3_5MoEForCausalLM
+    from sparklab.models.qwen3_5_moe.mtp import Qwen3_5MultiTokenPredictor
+    from sparklab.runtime.engine.engine import _adjust_speculative_config
+    from sparklab.runtime.distributed import set_tp_info, try_get_tp_info
+    from sparklab.runtime.kvcache import create_kvcache_pool
+    from sparklab.utils import torch_dtype
+
+    if try_get_tp_info() is None:
+        set_tp_info(rank=0, size=1)
+    hf = _config()
+    hf.text_config.head_dim = 64
+    config = parse_config(hf)
+    monkeypatch.setenv("SPARKLAB_QWEN3_MTP4", "1")
+    options = SimpleNamespace(model_config=config, speculative_tokens=steps,
+                              cuda_graph_bs=[], cuda_graph_max_bs=0)
+    _adjust_speculative_config(options, lambda n, v: setattr(options, n, v))
+    device = torch.device("cuda")
+    get_rope.cache_clear()
+    set_rope_device(device)
+    ctx = Context(page_size=1)
+    monkeypatch.setattr(core, "_GLOBAL_CTX", ctx)
+    ctx.kv_cache = create_kvcache_pool(config, 128, 1, torch.bfloat16, device)
+    ctx.page_table = torch.arange(128, device=device, dtype=torch.int32)[None]
+    ctx.attn_backend = FlashInferBackend(config)
+    with torch.device("meta"), torch_dtype(torch.bfloat16):
+        mtp = Qwen3_5MultiTokenPredictor(config)
+    torch.manual_seed(31)
+    mtp.load_state_dict({name: (
+        torch.ones(tuple(t.shape), device=device, dtype=t.dtype)
+        if "norm.weight" in name else
+        torch.randn(tuple(t.shape), device=device, dtype=t.dtype) * 0.03
+    ) for name, t in mtp.state_dict().items()})
+    model = Qwen3_5MoEForCausalLM.__new__(Qwen3_5MoEForCausalLM)
+    model._mtp, model._mtp_steps, model._dflash = mtp, steps, None
+    embedding = torch.randn(256, 64, device=device, dtype=torch.bfloat16)
+    head = torch.randn_like(embedding)
+    model.model = SimpleNamespace(embed_tokens=SimpleNamespace(
+        forward=lambda ids: torch.nn.functional.embedding(ids.long(), embedding)))
+    model.lm_head = SimpleNamespace(forward=lambda h: torch.nn.functional.linear(h, head))
+    lid = config.num_layers
+    ctx.kv_cache.k_cache(lid).normal_()
+    ctx.kv_cache.v_cache(lid).normal_()
+    initial_k = ctx.kv_cache.k_cache(lid).clone()
+    initial_v = ctx.kv_cache.v_cache(lid).clone()
+    hidden = torch.randn(steps + 1, 64, device=device, dtype=torch.bfloat16)
+
+    def batch_for(rows):
+        req = Req(torch.arange(7 + rows), 0, 7, 16, 1, SamplingParams(), None)
+        batch = Batch(reqs=[req], phase="verify")
+        batch.padded_reqs = batch.reqs
+        batch.input_ids = torch.arange(7, 7 + rows, dtype=torch.int32, device=device)
+        batch.positions = batch.input_ids.clone()
+        batch.out_loc = ctx.page_table[0, 7:7 + rows]
+        ctx.attn_backend.prepare_metadata(batch)
+        return batch
+
+    model._mtp_target_hidden = hidden
+    correction = torch.tensor([19], device=device, dtype=torch.int32)
+    monkeypatch.setenv("SPARKLAB_QWEN3_MTP_DRAFT_GRAPH", "1" if draft_graph else "0")
+    recovered = model.propose_mtp_prefix(batch_for(steps + 1), correction, accepted)
+    recovered_k = ctx.kv_cache.k_cache(lid).clone()
+    recovered_v = ctx.kv_cache.v_cache(lid).clone()
+    ctx.kv_cache.k_cache(lid).copy_(initial_k)
+    ctx.kv_cache.v_cache(lid).copy_(initial_v)
+    model._mtp_target_hidden = hidden[:accepted]
+    monkeypatch.setenv("SPARKLAB_QWEN3_MTP_DRAFT_GRAPH", "0")
+    expected = model.propose_mtp(batch_for(accepted), correction)
+    torch.testing.assert_close(recovered, expected, atol=0, rtol=0)
+    torch.testing.assert_close(recovered_k, ctx.kv_cache.k_cache(lid), atol=0, rtol=0)
+    torch.testing.assert_close(recovered_v, ctx.kv_cache.v_cache(lid), atol=0, rtol=0)
+    model.destroy_mtp_draft_graphs()
+    assert model._mtp_draft_graphs is None
+    assert model._mtp_draft_graph_backend is None
+    get_rope.cache_clear()

@@ -46,6 +46,9 @@ def test_runtime_routes_resident_recipe_through_selected_backend(tmp_path):
         runtime_artifact=None,
         runtime_memory={"total_bytes": 64 * GIB},
     )
+    options = dict(recipe.deployment.backend_options)
+    options["container"] = dict(options["container"], config_sha256=__import__("hashlib").sha256(b"{}").hexdigest())
+    recipe = replace(recipe, deployment=replace(recipe.deployment, backend_options=options))
     checkpoint = prepared_path(recipe, str(tmp_path))
     checkpoint.mkdir(parents=True)
     (checkpoint / "config.json").write_text("{}", encoding="utf-8")
@@ -53,8 +56,8 @@ def test_runtime_routes_resident_recipe_through_selected_backend(tmp_path):
     writer.add_tensor("weight", torch.ones(1))
     writer.finalize(
         {
-            "fingerprint": "local-test",
-            "quant_format": "nvfp4",
+            "fingerprint": "9e48171e436f5ef5",
+            "quant_format": "nvfp4_marlin",
             "counts": {"weight": 1},
         }
     )
@@ -83,6 +86,15 @@ def test_runtime_routes_resident_recipe_through_selected_backend(tmp_path):
     assert invocation.checkpoint == str(checkpoint.resolve())
     assert invocation.arguments[-2:] == ("--port", "1919")
     assert invocation.to_dict()["backend_version"]
+    command = invocation.plan.command
+    assert command[:4] == ("docker", "run", "--rm", "--gpus")
+    assert command[command.index("--memory") + 1] == "96g"
+    assert command[command.index("--memory-swap") + 1] == "96g"
+    assert f"{checkpoint.resolve()}:/artifact:ro" in command
+    assert invocation.arguments[1] == "/artifact"
+    assert "--speculative-tokens" in invocation.arguments
+    assert invocation.plan.environment["SPARKLAB_QWEN3_MTP4"] == "1"
+
 
 
 def test_runtime_rejects_prebuilt_artifact_with_wrong_fingerprint(tmp_path):

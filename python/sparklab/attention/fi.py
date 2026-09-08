@@ -140,6 +140,7 @@ class FlashInferBackend(BaseAttnBackend):
         self.capture_bs: List[int] = []
         self.max_graph_bs = 0
         self.graph_wrappers: Dict[int, CUDAGraphBatchDecodeWithPagedKVCacheWrapper] = {}
+        self.verify_graph_wrappers = {}
         self.capture: FICaptureData | None = None
         self.last_event = torch.cuda.Event()
         self.last_event.record()
@@ -273,6 +274,7 @@ class FlashInferBackend(BaseAttnBackend):
         # long-lived workspace buffers. Lets init_capture_graph re-run after a cache rebuild.
         super().reset_capture()
         self.graph_wrappers = {}
+        self.verify_graph_wrappers = {}
 
     def init_capture_graph(self, max_seq_len: int, bs_list: List[int]) -> None:
         assert self.capture is None, "Capture already initialized."
@@ -293,6 +295,28 @@ class FlashInferBackend(BaseAttnBackend):
 
     def prepare_for_capture(self, batch: Batch) -> None:
         from flashinfer import CUDAGraphBatchDecodeWithPagedKVCacheWrapper
+
+        if batch.is_verify:
+            from flashinfer import BatchPrefillWithPagedKVCacheWrapper
+
+            assert batch.size == 1 and self.capture is not None
+            rows = batch.input_ids.numel()
+            capture = self.capture
+            wrapper = BatchPrefillWithPagedKVCacheWrapper(
+                self.float_workspace_buffer,
+                kv_layout="NHD",
+                use_cuda_graph=True,
+                qo_indptr_buf=torch.tensor([0, rows], dtype=torch.int32, device=self.device),
+                paged_kv_indptr_buf=capture.cu_seqlens_k[:2],
+                paged_kv_indices_buf=capture.indices,
+                paged_kv_last_page_len_buf=capture.one_tensor[:1],
+                backend="fa2",
+            )
+            self.verify_graph_wrappers[rows] = wrapper
+            self.prepare_metadata(batch)
+            batch.attn_metadata.wrapper = wrapper
+            self._initialize_metadata_once(batch.attn_metadata)
+            return
 
         bs = batch.size
         assert bs in self.capture_bs and bs not in self.graph_wrappers and self.capture
@@ -317,5 +341,8 @@ class FlashInferBackend(BaseAttnBackend):
         metadata, bs = batch.attn_metadata, batch.padded_size
         assert isinstance(metadata, FIMetadata) and not metadata.initialized
         assert self.capture is not None and bs in self.capture_bs
-        metadata.wrapper = self.graph_wrappers[bs]
+        metadata.wrapper = (
+            self.verify_graph_wrappers[batch.input_ids.numel()]
+            if batch.is_verify else self.graph_wrappers[bs]
+        )
         self._initialize_metadata_once(metadata)
