@@ -162,10 +162,6 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
   </tbody>
 </table>
 
-Qwen3.6 uses the default Marlin/MTP4 container; its values are from the fixed
-8K-input/256-output benchmark. See the model instructions for quality limitations
-and the previous native profile.
-
 Status meanings:
 
 - **Experimental:** implementation or measured evidence exists, but required gates remain
