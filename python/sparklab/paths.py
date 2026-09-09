@@ -30,4 +30,10 @@ def manifest_path(recipe: ModelRecipe, root: str | os.PathLike[str] | None = Non
     return state_root(root) / "models" / recipe.slug / "manifest.json"
 
 
-__all__ = ["manifest_path", "prepared_path", "source_path", "state_root"]
+def draft_path(recipe: ModelRecipe, root: str | os.PathLike[str] | None = None) -> Path:
+    if recipe.draft_model is None:
+        raise ValueError(f"{recipe.slug} has no pinned draft model")
+    return state_root(root) / "models" / recipe.slug / "draft" / recipe.draft_model.revision[:12]
+
+
+__all__ = ["draft_path", "manifest_path", "prepared_path", "source_path", "state_root"]

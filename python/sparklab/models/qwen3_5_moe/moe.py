@@ -46,10 +46,14 @@ class _SharedExpert(BaseOP):
             # NVFP4 checkpoint: keep the shared expert's NVFP4 weights native (W4A16).
             from sparklab.kernels.triton.nvfp4_linear import Nvfp4DenseColMerged, Nvfp4DenseLinear
 
+            prefill_backend = getattr(config, "nvfp4_prefill_backend", "w4a16")
             self.gate_up_proj = Nvfp4DenseColMerged(
-                hidden_size, [intermediate_size, intermediate_size], has_bias=False
+                hidden_size, [intermediate_size, intermediate_size], has_bias=False,
+                prefill_backend=prefill_backend,
             )
-            self.down_proj = Nvfp4DenseLinear(intermediate_size, hidden_size, has_bias=False)
+            self.down_proj = Nvfp4DenseLinear(
+                intermediate_size, hidden_size, has_bias=False, prefill_backend=prefill_backend,
+            )
         else:
             self.gate_up_proj = LinearColParallelMerged(
                 hidden_size, [intermediate_size, intermediate_size], has_bias=False

@@ -221,6 +221,30 @@ class PerformanceSummary:
 
 
 @dataclass(frozen=True)
+class DraftModel:
+    """Pinned, separately acquired speculative draft snapshot."""
+
+    repo_id: str
+    revision: str
+    bytes: int
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "DraftModel":
+        draft = cls(str(value["repo_id"]), str(value["revision"]), int(value["bytes"]))
+        draft.validate()
+        return draft
+
+    def validate(self) -> None:
+        if not self.repo_id or self.bytes <= 0:
+            raise ValueError("draft_model requires a repository and positive bytes")
+        if len(self.revision) != 40 or any(c not in "0123456789abcdef" for c in self.revision):
+            raise ValueError("draft_model revision must be a full hexadecimal commit")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"repo_id": self.repo_id, "revision": self.revision, "bytes": self.bytes}
+
+
+@dataclass(frozen=True)
 class ModelRecipe:
     schema_version: str
     recipe_version: str
@@ -236,6 +260,7 @@ class ModelRecipe:
     profile: str
     description: str
     runtime_artifact: RuntimeArtifact | None = None
+    draft_model: DraftModel | None = None
     revision: str | None = None
     source_bytes: int | None = None
     prepared_bytes: int | None = None
@@ -276,6 +301,7 @@ class ModelRecipe:
                 else None
             ),
             revision=(str(value["revision"]) if value.get("revision") else None),
+            draft_model=(DraftModel.from_dict(value["draft_model"]) if value.get("draft_model") else None),
             source_bytes=(
                 int(value["source_bytes"]) if value.get("source_bytes") else None
             ),
@@ -341,6 +367,13 @@ class ModelRecipe:
                 "recipe slug, model, parameters, and recipe_version are required"
             )
         self.deployment.validate()
+        draft_reference = self.deployment.backend_options.get("speculative_draft_model")
+        if self.draft_model is not None:
+            self.draft_model.validate()
+            if self.backend != "native" or draft_reference != "@draft":
+                raise ValueError("draft_model requires native speculative_draft_model='@draft'")
+        elif draft_reference == "@draft":
+            raise ValueError("speculative_draft_model='@draft' requires draft_model metadata")
         for name in ("source_bytes", "prepared_bytes", "minimum_free_bytes"):
             value = getattr(self, name)
             if value is not None and value <= 0:
@@ -406,6 +439,7 @@ class ModelRecipe:
                 else None
             ),
             "revision": self.revision,
+            "draft_model": self.draft_model.to_dict() if self.draft_model is not None else None,
             "source_bytes": self.source_bytes,
             "prepared_bytes": self.prepared_bytes,
             "minimum_free_bytes": self.minimum_free_bytes,

@@ -1,0 +1,2963 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWEN38-27B-FAST-001",
+  "status": "measured",
+  "date": "2026-09-09",
+  "recipe": {
+    "slug": "qwen3.8-27b",
+    "recipe_version": "0.4.0",
+    "status": "experimental"
+  },
+  "native_source": {
+    "commit": "03a75bd32bc29c6fb99c34a6eee350414380d72a",
+    "status": "",
+    "files": {
+      "benchmarks/gb10/QWEN38_27B_VLLM.md": "1fa72c8690a82e1e8936e2f4ac6a6a2fe593cb08e24afbe5d53ed1435f9ce285",
+      "benchmarks/gb10/results/GB10-QWEN38-27B-OPT-001.json": "3eae2225ae16c47c484d486a792c760eeaf0fe37b7a4aa2fab9c0d8a587bfead",
+      "benchmarks/gb10/results/GB10-QWEN38-27B-VLLM-001.json": "1cc521fcf50cd8b1676e3595328e8541eeaf03f32c56ea873f58b5477ad2215f",
+      "benchmarks/qwen27_optimization/README.md": "af118a3665639ca27f99d81265b811370033e9279a9cf1a830935648d9e9b189",
+      "benchmarks/qwen27_optimization/prepare_quality.py": "1dc69c4e2f51176be6029067db2191db881f1c02a511fd946d5a2761df7f285e",
+      "benchmarks/qwen27_optimization/probe.py": "92df2cfae23e0e4681d73c8461ebd785dcd98e19bf1ae5ecc6c8654295e8f693",
+      "benchmarks/qwen27_optimization/quality_sources.json": "743cde49914ed57a37b5c94eb3e8ff550c0a105db768592ce0655032cc561188",
+      "benchmarks/qwen27_optimization/serve_probe.py": "83a1768b25086aceb65f478d3abd90b7f7fbf6f25cc0f0ba7a47da29f6c0bc6c",
+      "benchmarks/qwen27_optimization/verify_quality.py": "baa4bde97bc57ce9324332696cbc16c63848edf215b5107d83642d8d41e14647",
+      "docs/models/qwen3.8-27b-inferact.md": "f14dbe60762e504704915aa5bc0791cd003eda53577168d08f7f63cc22b544b6",
+      "python/sparklab/acquire.py": "9dc64d8ccfc38ecfa626bedf68288522c5dc0855a70d11d3af91900464ec1212",
+      "python/sparklab/backends/native.py": "7445b12b7ceac3c9c5548ab63a54b7cfb028cfaa94df5769e01c938c6a73b846",
+      "python/sparklab/catalog.py": "c22d157ed4564138fd2af20420ba3f0ddb343090d3e2560a6fe381037437ccc3",
+      "python/sparklab/deployment.py": "cbe049360cf5eeda9d2ca451b0a60675da978d2f5d7c80fcfe4fe25b6f5adaca",
+      "python/sparklab/kernels/triton/nvfp4_linear.py": "0d64fabead5a1881e7f9f69ed19c88b623f3b4fd1f4c40bf3bb0c5b8c9d48ca7",
+      "python/sparklab/kernels/triton/nvfp4_prefill.py": "e7c1f0e219616909f12edc61a8bd088a2d785ec9d329a8ec063882c2983f5def",
+      "python/sparklab/models/qwen3_5_moe/dflash2.py": "8af92dd285cb7f3ca7da5b63bdc6f770b3bcd9072ea0d81a19a1e93015f5a516",
+      "python/sparklab/models/qwen3_5_moe/model.py": "e265d707a5df4c91213bbda51d5a94275c73ee650921089057c83f21735d4c4c",
+      "python/sparklab/models/qwen3_5_moe/moe.py": "eae012c1ce244b98d39838b2238720afac1de51129bc76998a25e297428553a4",
+      "python/sparklab/paths.py": "54b35a96b2162b32057d6c4fe014fe927d782ee0a77d7ba53315857b1ad5abc5",
+      "python/sparklab/planner.py": "8be4aee1d5ee93e254ffe9a36e0d9ff1fc99c63b683c909a3740a1a6c51b1641",
+      "python/sparklab/runtime/engine/config.py": "dfd90ffbfe1b801399b0487dda191cb4010c25bb2b473870140d9ca9dd4bb2b9",
+      "python/sparklab/runtime/engine/engine.py": "ca5b109960b8fa1427fc066e25d04483cdaaaf0c3ab18897a884dfcd866eb242",
+      "python/sparklab/serving/args.py": "101317c950b33e0d60985c91c6bef164a3a84bcf9f70dedea9bc5e10d1169302",
+      "tests/kernels/test_nvfp4_prefill.py": "dd738c96d7fae398752d0730e2ca06152956ddab65d9345177500d22dd3bd09f",
+      "tests/sparklab/test_acquire.py": "cf5b80d4a2d9ca34d0f1d015292753f702c9cf5a2fa20c6ed7189b6ba82ce009",
+      "tests/sparklab/test_runtime.py": "076a747335bc04f2fd1f373478478157e33bd31a2cd8325f9df815f40b7d1c87"
+    }
+  },
+  "hardware": {
+    "gpu": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "driver": "580.126.09",
+    "native_torch": "2.11.0+cu130",
+    "native_triton": "3.6.0",
+    "native_flashinfer": "0.6.15.post1",
+    "vllm_version": "0.28.0"
+  },
+  "workload": {
+    "dataset": "SPEED-Bench throughput 8K fixed prompts",
+    "measured_requests": 30,
+    "warmup_requests": 3,
+    "output_tokens": 256,
+    "clients": 1,
+    "temperature": 0,
+    "ignore_eos": true,
+    "thinking": "checkpoint default enabled",
+    "same_messages_and_prompt_token_counts": true,
+    "prompt_hashes": [
+      "3f80984f8a20a2938af0fc9212efb683114f93668617a4b2a78c418ccd60993d",
+      "92beb4306b1316911d335986088f1bd1b0448b803d27d44cff5ebeb7b41aab15",
+      "77b71789dc34a3bc0cbe84fd1d109124a8bcfd94c7c50deea6c8f92c00d1c82e",
+      "fd01cace71d2db877133d3b34243526a3bb53ad9d43149a2ecf3467649835ba3",
+      "1082f15054d7d0b0c5358bb35ddb9bafbda3b8dd92114907edac295ec7ab2dab",
+      "4138884ebda90696de380cb40e3881207735b73c8026bc6616960835722b5c2a",
+      "1f232a6cf6bf8c3aa7c226592b19a181914afa35eac82354fd72f9d00af36387",
+      "b31ddbb838e5ab65c46d0dfa01f3e66af41f11d7ea2b71eefe069ac0a2c33228",
+      "3c7ce1e7c1a9f7a14560293e50e96008b272fd8a9982ea31947fbc858e1fbb18",
+      "c6f40a4e315da7f3279a9dadd1bac36cf2e7f9e18e378d553141b62d7790abcf",
+      "9e9933c90c31f5e8a39230390ecb3ce0c6c7b53a1d604b1d0baf4a9f4d60aa63",
+      "f7cbaf28755dcb17d68cd1587cb2bc99dc4b303ac1cbf94a2a7c1587480f0774",
+      "254ac5b6f754434be5e618550114977f7ff27ffddb81d53abaf98b3039e28185",
+      "277aab1ea27eb77170ce9b5d3fcb32b127400d6a307cb0471d542f10519b4561",
+      "3b5f14090f52de1377820cf511d5ce273d19725b0107709ba731b41513cb7f29",
+      "f0842a212864efed5477dca776c973dca256be75f0168ae359a9abd5654c0d0b",
+      "413fb17062e3289bce95d8635ae15f8a011d34ac3f35c82e5942df79f1a56c27",
+      "4e87b386470103d8a26bf983a33f0e6ba4d90cfdcccfbe652c01419d89dd4fd8",
+      "3552aaa8169e2363d4bdb331a690cdc8e2b86c134a18be9908d051358c4724a2",
+      "75f305c1929a64813b4408522f5de07ffb955c136886679cabf37e84b8cc663e",
+      "d7c66e6b91581726b4c897832c342813aee63300a2a1e7b8114ba152128416d0",
+      "33a5f2b727a7d86db888f46efa8110a7ac669963631d276c5196a02936e203b2",
+      "7e043ad4fc7ec9b9b2ec2e7711d150d3e4f382df9badd0d960a66205979bb3d6",
+      "bee258c09be7f888f1c4c7d4a4fd255b9ae6f11204746fef1c979a413b8c842b",
+      "be887bd0292c0cf0790842ee42ce540c0944a7ac924ea7dd2a5839314a8c9367",
+      "5063eb18af24bc6e02d93597330d44583d20f8c0000a8dd330957e30b2644978",
+      "90b7d5b9a0e2dae91a975a645e6f70d892823ac13f9b2f7a13b04811bba729e5",
+      "fbb85b9805944c6191f091e2c0029dc3a0e16a11c91ac40113e9d3a579a6e171",
+      "a97694efbcd283bfdf42c66d11a07d38517d9aa13a73ef4c306a1a5f228712ba",
+      "4ee9b91901f263f4d4114cda016b979597b193784c4c64157148ae29cf910b9c"
+    ],
+    "prompt_token_counts": [
+      8383,
+      8835,
+      8207,
+      8519,
+      8617,
+      8229,
+      8351,
+      8724,
+      8681,
+      8947,
+      8742,
+      8856,
+      8983,
+      8694,
+      8400,
+      8485,
+      7908,
+      8221,
+      8911,
+      8658,
+      8322,
+      8352,
+      8603,
+      8814,
+      8758,
+      8685,
+      8204,
+      8817,
+      8357,
+      8331
+    ],
+    "measured_input_sha256": "293c1a311471f5c79e1c4b36b3e8133e57fe360285c1496e4d3b4b32083fd1b2",
+    "warmup_input_sha256": "04196c5c5b2f15996671830892149bf6d75bfae0a6847c326d1c4dad22072c7b"
+  },
+  "profiles": {
+    "vllm-radix-target-c1": {
+      "requests": 30,
+      "http_200": 30,
+      "warmup_http_200_with_256_tokens": 3,
+      "output_tokens_each": 256,
+      "decode_tokens_per_second": 11.957990945395528,
+      "total_output_tokens_per_second": 10.19310485903436,
+      "ttft_seconds": {
+        "avg": 3.7861184975333333,
+        "p50": 3.74139032,
+        "p95": 3.962508791
+      },
+      "request_seconds": {
+        "avg": 25.112393481099996,
+        "p50": 24.999382565,
+        "p95": 25.693682266899998
+      },
+      "prompt_tokens": {
+        "mean": 8553.133333333333,
+        "min": 7908,
+        "max": 8983
+      },
+      "raw_sha256": "7b18a81ba4a992db56226a52c04d7c3beb2f5ec22f5ffcfe49830febb1c82e93",
+      "telemetry": {
+        "samples": 790,
+        "minimum_mem_available_bytes": 52131110912,
+        "initial_swap_used_bytes": 2232188928,
+        "final_swap_used_bytes": 2231263232,
+        "maximum_swap_used_bytes": 2232188928,
+        "pswpin_pages": 5303,
+        "pswpout_pages": 0,
+        "maximum_reported_vram_bytes": 0,
+        "raw_sha256": "8e4d3dcc267c90ca0d9b7e94d038348c08b73da5e1ca3626ed6d236bdd27ba1a"
+      },
+      "aiperf_command": [
+        "/tmp/qwen36-bench-venv/bin/aiperf",
+        "profile",
+        "--model",
+        "qwen38-bench",
+        "--tokenizer",
+        "$HOME/.sparklab/models/qwen3.8-27b/source/radix-319f741cce68",
+        "--endpoint-type",
+        "chat",
+        "--streaming",
+        "--url",
+        "http://127.0.0.1:1938",
+        "--custom-dataset-type",
+        "speed_bench_throughput_8k",
+        "--osl",
+        "256",
+        "--extra-inputs",
+        "temperature:0",
+        "ignore_eos:true",
+        "--concurrency",
+        "1",
+        "--dataset-sampling-strategy",
+        "sequential",
+        "--random-seed",
+        "20260907",
+        "--use-server-token-count",
+        "--no-server-metrics",
+        "--ui",
+        "none",
+        "--export-level",
+        "raw",
+        "--input-file",
+        "$HOME/projects/sparklab/results/qwen27-shipping-20260909/measured.jsonl",
+        "--request-count",
+        "30",
+        "--output-artifact-dir",
+        "$HOME/projects/sparklab/results/qwen27-shipping-20260909/vllm-radix-target-c1"
+      ],
+      "server": [
+        "docker",
+        "run",
+        "-e",
+        "VLLM_SERVER_DEV_MODE=1",
+        "-d",
+        "--name",
+        "qwen27-ship-vllm-radix-bf16",
+        "--gpus",
+        "all",
+        "--network",
+        "host",
+        "--shm-size",
+        "16g",
+        "--memory",
+        "96g",
+        "--memory-swap",
+        "96g",
+        "-v",
+        "$HOME/.sparklab/models/qwen3.8-27b/source/radix-319f741cce68:/model:ro",
+        "-v",
+        "/tmp/qwen38-vllm-benchmark-cache:/root/.cache",
+        "vllm/vllm-openai:v0.28.0@sha256:61fc8a896b0a4fbbbdc063bc4b0dbc25ce98e02b5050c24aeb7830ac02039b14",
+        "/model",
+        "--served-model-name",
+        "qwen38-bench",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "1938",
+        "--tensor-parallel-size",
+        "1",
+        "--max-model-len",
+        "65536",
+        "--max-num-seqs",
+        "8",
+        "--max-num-batched-tokens",
+        "8192",
+        "--gpu-memory-utilization",
+        "0.5",
+        "--kv-cache-dtype",
+        "bfloat16",
+        "--attention-backend",
+        "flashinfer",
+        "--language-model-only",
+        "--reasoning-parser",
+        "qwen3",
+        "--enable-auto-tool-choice",
+        "--tool-call-parser",
+        "qwen3_coder"
+      ],
+      "prefix_cache_hits_delta": 0.0
+    },
+    "sparklab-radix-fp4-target-c1": {
+      "requests": 30,
+      "http_200": 30,
+      "warmup_http_200_with_256_tokens": 3,
+      "output_tokens_each": 256,
+      "decode_tokens_per_second": 11.183687313004295,
+      "total_output_tokens_per_second": 9.07754108372907,
+      "ttft_seconds": {
+        "avg": 5.3969733749,
+        "p50": 5.4177867455,
+        "p95": 5.615170848449999
+      },
+      "request_seconds": {
+        "avg": 28.198076312166666,
+        "p50": 28.227106544999998,
+        "p95": 28.447353626549997
+      },
+      "prompt_tokens": {
+        "mean": 8553.133333333333,
+        "min": 7908,
+        "max": 8983
+      },
+      "raw_sha256": "8cbe6cc35fa11ca6b915625233c1b4e0b0e813b9c960ecbc7155423b63f2f4a8",
+      "telemetry": {
+        "samples": 907,
+        "minimum_mem_available_bytes": 84140806144,
+        "initial_swap_used_bytes": 2406928384,
+        "final_swap_used_bytes": 2406477824,
+        "maximum_swap_used_bytes": 2406928384,
+        "pswpin_pages": 100,
+        "pswpout_pages": 0,
+        "maximum_reported_vram_bytes": 0,
+        "raw_sha256": "f1fcc5357fa78232626a5eccb7fe215a87b33be58d37a955636c269c72e349a4"
+      },
+      "aiperf_command": [
+        "/tmp/qwen36-bench-venv/bin/aiperf",
+        "profile",
+        "--model",
+        "qwen38-bench",
+        "--tokenizer",
+        "$HOME/.sparklab/models/qwen3.8-27b/source/radix-319f741cce68",
+        "--endpoint-type",
+        "chat",
+        "--streaming",
+        "--url",
+        "http://127.0.0.1:1938",
+        "--custom-dataset-type",
+        "speed_bench_throughput_8k",
+        "--osl",
+        "256",
+        "--extra-inputs",
+        "temperature:0",
+        "ignore_eos:true",
+        "--concurrency",
+        "1",
+        "--dataset-sampling-strategy",
+        "sequential",
+        "--random-seed",
+        "20260907",
+        "--use-server-token-count",
+        "--no-server-metrics",
+        "--ui",
+        "none",
+        "--export-level",
+        "raw",
+        "--input-file",
+        "$HOME/projects/sparklab/results/qwen27-shipping-20260909/measured.jsonl",
+        "--request-count",
+        "30",
+        "--output-artifact-dir",
+        "$HOME/projects/sparklab/results/qwen27-shipping-20260909/sparklab-radix-fp4-target-c1"
+      ],
+      "server": {
+        "argv": [
+          "$HOME/projects/sparklab/.venv/bin/python",
+          "-m",
+          "sparklab",
+          "serve",
+          "--model",
+          "$HOME/projects/sparklab/results/qwen27-shipping-20260909/acquisition-root/models/qwen3.8-27b/prepared/0.4.0",
+          "--served-model-name",
+          "qwen38-bench",
+          "--nvfp4-backend",
+          "triton",
+          "--cuda-graph-max-bs",
+          "1",
+          "--cache-type",
+          "radix",
+          "--page-size",
+          "16",
+          "--max-running-requests",
+          "1",
+          "--max-seq-len-override",
+          "65536",
+          "--num-tokens",
+          "65536",
+          "--attention-backend",
+          "triton",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "1938",
+          "--nvfp4-prefill-backend",
+          "flashinfer",
+          "--max-prefill-length",
+          "2048"
+        ],
+        "env": {
+          "PYTHONPATH": "$WORKTREE/python",
+          "SPARKLAB_DISABLE_KERNEL_CACHE": "1",
+          "SPARKLAB_DFLASH2_REJECT_DRAFT": "1",
+          "SPARKLAB_DFLASH2_VERIFY_GRAPH": "1"
+        }
+      },
+      "stats_after": {
+        "instance_id": "56f3cfd3-5f65-448a-92f3-bd68afd79ed0",
+        "model": {
+          "id": "qwen38-bench",
+          "ctx": 65536,
+          "attn": "hybrid_linear",
+          "moe": false,
+          "sampling": {
+            "temperature": 1.0,
+            "top_k": 20,
+            "top_p": 0.95
+          }
+        },
+        "uptime_s": 956,
+        "kv": {
+          "used_pages": 0,
+          "total_pages": 4096,
+          "page_size": 16
+        },
+        "mamba": {
+          "used_slots": 0,
+          "total_slots": 8
+        },
+        "swa": null,
+        "vram_bytes": 36379295744,
+        "moe": null,
+        "throughput": {
+          "decode_tps": 5.2,
+          "prefill_tps": 0.0
+        },
+        "requests": {
+          "active": 0,
+          "completed": 33,
+          "p95_ms": 28486,
+          "ttft_mean_ms": 5820,
+          "prompt_tokens_total": 282581,
+          "completion_tokens_total": 8448
+        }
+      }
+    },
+    "sparklab-inferact-dflash12-c1": {
+      "requests": 30,
+      "http_200": 30,
+      "warmup_http_200_with_256_tokens": 3,
+      "output_tokens_each": 256,
+      "decode_tokens_per_second": 22.186511369782426,
+      "total_output_tokens_per_second": 13.303800904799134,
+      "ttft_seconds": {
+        "avg": 7.533418488066666,
+        "p50": 7.6293630755,
+        "p95": 7.876879571599999
+      },
+      "request_seconds": {
+        "avg": 19.239586762099997,
+        "p50": 19.441718903499996,
+        "p95": 21.033273117500002
+      },
+      "prompt_tokens": {
+        "mean": 8553.133333333333,
+        "min": 7908,
+        "max": 8983
+      },
+      "raw_sha256": "4c46cb501aba00dc1776835f5c762f49e543da08efe12369c5f40a19e116f5d4",
+      "telemetry": {
+        "samples": 615,
+        "minimum_mem_available_bytes": 82727456768,
+        "initial_swap_used_bytes": 2403344384,
+        "final_swap_used_bytes": 2403086336,
+        "maximum_swap_used_bytes": 2403344384,
+        "pswpin_pages": 71,
+        "pswpout_pages": 0,
+        "maximum_reported_vram_bytes": 0,
+        "raw_sha256": "4c84192dfbc16a7b2cd7a3c8c30c68ce7e4b97e195b9fcfbe645f430c56c29bb"
+      },
+      "aiperf_command": [
+        "/tmp/qwen36-bench-venv/bin/aiperf",
+        "profile",
+        "--model",
+        "qwen38-bench",
+        "--tokenizer",
+        "$HOME/.sparklab/models/qwen3.8-27b/source/radix-319f741cce68",
+        "--endpoint-type",
+        "chat",
+        "--streaming",
+        "--url",
+        "http://127.0.0.1:1938",
+        "--custom-dataset-type",
+        "speed_bench_throughput_8k",
+        "--osl",
+        "256",
+        "--extra-inputs",
+        "temperature:0",
+        "ignore_eos:true",
+        "--concurrency",
+        "1",
+        "--dataset-sampling-strategy",
+        "sequential",
+        "--random-seed",
+        "20260907",
+        "--use-server-token-count",
+        "--no-server-metrics",
+        "--ui",
+        "none",
+        "--export-level",
+        "raw",
+        "--input-file",
+        "$HOME/projects/sparklab/results/qwen27-shipping-20260909/measured.jsonl",
+        "--request-count",
+        "30",
+        "--output-artifact-dir",
+        "$HOME/projects/sparklab/results/qwen27-shipping-20260909/sparklab-inferact-dflash12-c1"
+      ],
+      "server": {
+        "argv": [
+          "$HOME/projects/sparklab/.venv/bin/python",
+          "-m",
+          "sparklab",
+          "serve",
+          "--model",
+          "$HOME/.sparklab/models/qwen3.8-27b/prepared/0.1.0",
+          "--served-model-name",
+          "qwen38-bench",
+          "--nvfp4-backend",
+          "triton",
+          "--cuda-graph-max-bs",
+          "1",
+          "--cache-type",
+          "radix",
+          "--page-size",
+          "16",
+          "--max-running-requests",
+          "1",
+          "--max-seq-len-override",
+          "65536",
+          "--num-tokens",
+          "65536",
+          "--attention-backend",
+          "triton",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "1938",
+          "--speculative-method",
+          "dflash2",
+          "--speculative-tokens",
+          "12",
+          "--speculative-draft-model",
+          "$HOME/projects/sparklab/results/qwen27-shipping-20260909/acquisition-root/models/qwen3.8-27b/draft/bd7a934213c4"
+        ],
+        "env": {
+          "PYTHONPATH": "$WORKTREE/python",
+          "SPARKLAB_DISABLE_KERNEL_CACHE": "1",
+          "SPARKLAB_DFLASH2_REJECT_DRAFT": "1",
+          "SPARKLAB_DFLASH2_VERIFY_GRAPH": "1"
+        }
+      },
+      "stats_after": {
+        "instance_id": "b148815a-ce0a-45bd-8b6a-03d85e563582",
+        "model": {
+          "id": "qwen38-bench",
+          "ctx": 65536,
+          "attn": "hybrid_linear",
+          "moe": false,
+          "sampling": {
+            "temperature": 1.0,
+            "top_k": 20,
+            "top_p": 0.95
+          }
+        },
+        "uptime_s": 645,
+        "kv": {
+          "used_pages": 0,
+          "total_pages": 4096,
+          "page_size": 16
+        },
+        "mamba": {
+          "used_slots": 0,
+          "total_slots": 8
+        },
+        "swa": null,
+        "vram_bytes": 38036045824,
+        "moe": null,
+        "throughput": {
+          "decode_tps": 9.1,
+          "prefill_tps": 0.0
+        },
+        "requests": {
+          "active": 0,
+          "completed": 33,
+          "p95_ms": 21090,
+          "ttft_mean_ms": 7546,
+          "prompt_tokens_total": 282581,
+          "completion_tokens_total": 8448
+        }
+      }
+    },
+    "sparklab-radix-fp4-dflash12-c1": {
+      "requests": 30,
+      "http_200": 30,
+      "warmup_http_200_with_256_tokens": 3,
+      "output_tokens_each": 256,
+      "decode_tokens_per_second": 27.467633094202384,
+      "total_output_tokens_per_second": 17.039029500499034,
+      "ttft_seconds": {
+        "avg": 5.432493594633333,
+        "p50": 5.461167661499999,
+        "p95": 5.6384848638000005
+      },
+      "request_seconds": {
+        "avg": 15.021253964733333,
+        "p50": 14.608662194999999,
+        "p95": 17.83669748775
+      },
+      "prompt_tokens": {
+        "mean": 8553.133333333333,
+        "min": 7908,
+        "max": 8983
+      },
+      "raw_sha256": "c6a900712c9294507aa0d5613366ca3c4feeb35678535f975cb4420ec19fca9f",
+      "telemetry": {
+        "samples": 497,
+        "minimum_mem_available_bytes": 78319452160,
+        "initial_swap_used_bytes": 2406477824,
+        "final_swap_used_bytes": 2405732352,
+        "maximum_swap_used_bytes": 2406477824,
+        "pswpin_pages": 200,
+        "pswpout_pages": 0,
+        "maximum_reported_vram_bytes": 0,
+        "raw_sha256": "69f9ae64674241c90aa4870df2ad1707a5bb64930e2d4f9182fc26432f84c5f9"
+      },
+      "aiperf_command": [
+        "/tmp/qwen36-bench-venv/bin/aiperf",
+        "profile",
+        "--model",
+        "qwen38-bench",
+        "--tokenizer",
+        "$HOME/.sparklab/models/qwen3.8-27b/source/radix-319f741cce68",
+        "--endpoint-type",
+        "chat",
+        "--streaming",
+        "--url",
+        "http://127.0.0.1:1938",
+        "--custom-dataset-type",
+        "speed_bench_throughput_8k",
+        "--osl",
+        "256",
+        "--extra-inputs",
+        "temperature:0",
+        "ignore_eos:true",
+        "--concurrency",
+        "1",
+        "--dataset-sampling-strategy",
+        "sequential",
+        "--random-seed",
+        "20260907",
+        "--use-server-token-count",
+        "--no-server-metrics",
+        "--ui",
+        "none",
+        "--export-level",
+        "raw",
+        "--input-file",
+        "$HOME/projects/sparklab/results/qwen27-shipping-20260909/measured.jsonl",
+        "--request-count",
+        "30",
+        "--output-artifact-dir",
+        "$HOME/projects/sparklab/results/qwen27-shipping-20260909/sparklab-radix-fp4-dflash12-c1"
+      ],
+      "server": {
+        "argv": [
+          "$HOME/projects/sparklab/.venv/bin/python",
+          "-m",
+          "sparklab",
+          "serve",
+          "--model",
+          "$HOME/projects/sparklab/results/qwen27-shipping-20260909/acquisition-root/models/qwen3.8-27b/prepared/0.4.0",
+          "--served-model-name",
+          "qwen38-bench",
+          "--nvfp4-backend",
+          "triton",
+          "--cuda-graph-max-bs",
+          "1",
+          "--cache-type",
+          "radix",
+          "--page-size",
+          "16",
+          "--max-running-requests",
+          "1",
+          "--max-seq-len-override",
+          "65536",
+          "--num-tokens",
+          "65536",
+          "--attention-backend",
+          "triton",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "1938",
+          "--nvfp4-prefill-backend",
+          "flashinfer",
+          "--max-prefill-length",
+          "2048",
+          "--speculative-method",
+          "dflash2",
+          "--speculative-tokens",
+          "12",
+          "--speculative-draft-model",
+          "$HOME/projects/sparklab/results/qwen27-shipping-20260909/acquisition-root/models/qwen3.8-27b/draft/bd7a934213c4"
+        ],
+        "env": {
+          "PYTHONPATH": "$WORKTREE/python",
+          "SPARKLAB_DISABLE_KERNEL_CACHE": "1",
+          "SPARKLAB_DFLASH2_REJECT_DRAFT": "1",
+          "SPARKLAB_DFLASH2_VERIFY_GRAPH": "1"
+        }
+      },
+      "stats_after": {
+        "instance_id": "2e31f658-021e-4998-872a-579e837d4e55",
+        "model": {
+          "id": "qwen38-bench",
+          "ctx": 65536,
+          "attn": "hybrid_linear",
+          "moe": false,
+          "sampling": {
+            "temperature": 1.0,
+            "top_k": 20,
+            "top_p": 0.95
+          }
+        },
+        "uptime_s": 520,
+        "kv": {
+          "used_pages": 0,
+          "total_pages": 4096,
+          "page_size": 16
+        },
+        "mamba": {
+          "used_slots": 0,
+          "total_slots": 8
+        },
+        "swa": null,
+        "vram_bytes": 42198892544,
+        "moe": null,
+        "throughput": {
+          "decode_tps": 9.6,
+          "prefill_tps": 0.0
+        },
+        "requests": {
+          "active": 0,
+          "completed": 33,
+          "p95_ms": 19491,
+          "ttft_mean_ms": 5911,
+          "prompt_tokens_total": 282581,
+          "completion_tokens_total": 8448
+        }
+      }
+    }
+  },
+  "quality": {
+    "vllm-radix": {
+      "passed": 68,
+      "total": 74,
+      "by_kind": {
+        "exact": {
+          "passed": 11,
+          "total": 12
+        },
+        "reasoning": {
+          "passed": 5,
+          "total": 5
+        },
+        "json": {
+          "passed": 4,
+          "total": 5
+        },
+        "code": {
+          "passed": 5,
+          "total": 5
+        },
+        "tool": {
+          "passed": 2,
+          "total": 2
+        },
+        "gsm8k": {
+          "passed": 20,
+          "total": 20
+        },
+        "humaneval": {
+          "passed": 18,
+          "total": 20
+        },
+        "aime": {
+          "passed": 3,
+          "total": 5
+        }
+      },
+      "cases": {
+        "arithmetic-0": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 30,
+          "completion_tokens": 4
+        },
+        "arithmetic-1": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 30,
+          "completion_tokens": 3
+        },
+        "arithmetic-2": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 28,
+          "completion_tokens": 4
+        },
+        "arithmetic-3": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 31,
+          "completion_tokens": 4
+        },
+        "arithmetic-4": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 34,
+          "completion_tokens": 3
+        },
+        "arithmetic-5": {
+          "passed": false,
+          "finish_reason": "stop",
+          "prompt_tokens": 35,
+          "completion_tokens": 2
+        },
+        "reasoning-0": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 108,
+          "completion_tokens": 191
+        },
+        "reasoning-1": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 98,
+          "completion_tokens": 277
+        },
+        "reasoning-2": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 79,
+          "completion_tokens": 437
+        },
+        "reasoning-3": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 86,
+          "completion_tokens": 200
+        },
+        "json-0": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 43,
+          "completion_tokens": 11
+        },
+        "json-1": {
+          "passed": false,
+          "finish_reason": "stop",
+          "prompt_tokens": 45,
+          "completion_tokens": 16
+        },
+        "json-2": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 35,
+          "completion_tokens": 6
+        },
+        "json-3": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 45,
+          "completion_tokens": 10
+        },
+        "code-clamp": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 120,
+          "completion_tokens": 421
+        },
+        "code-sign": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 119,
+          "completion_tokens": 1971
+        },
+        "code-absolute_difference": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 114,
+          "completion_tokens": 597
+        },
+        "code-is_leap_year": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 127,
+          "completion_tokens": 549
+        },
+        "tool-0": {
+          "passed": true,
+          "finish_reason": "tool_calls",
+          "prompt_tokens": 346,
+          "completion_tokens": 145
+        },
+        "tool-0-roundtrip": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 485,
+          "completion_tokens": 4
+        },
+        "tool-1": {
+          "passed": true,
+          "finish_reason": "tool_calls",
+          "prompt_tokens": 346,
+          "completion_tokens": 83
+        },
+        "tool-1-roundtrip": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 423,
+          "completion_tokens": 4
+        },
+        "long-arithmetic-1": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 7752,
+          "completion_tokens": 3
+        },
+        "long-reasoning-0": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 7830,
+          "completion_tokens": 239
+        },
+        "long-json-0": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 7765,
+          "completion_tokens": 14
+        },
+        "long-code-clamp": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 7842,
+          "completion_tokens": 1406
+        },
+        "gsm8k-5": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 125,
+          "completion_tokens": 361
+        },
+        "gsm8k-26": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 139,
+          "completion_tokens": 206
+        },
+        "gsm8k-31": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 133,
+          "completion_tokens": 293
+        },
+        "gsm8k-135": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 116,
+          "completion_tokens": 246
+        },
+        "gsm8k-185": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 110,
+          "completion_tokens": 136
+        },
+        "gsm8k-254": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 135,
+          "completion_tokens": 248
+        },
+        "gsm8k-325": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 149,
+          "completion_tokens": 620
+        },
+        "gsm8k-328": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 114,
+          "completion_tokens": 120
+        },
+        "gsm8k-400": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 106,
+          "completion_tokens": 151
+        },
+        "gsm8k-487": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 125,
+          "completion_tokens": 252
+        },
+        "gsm8k-586": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 139,
+          "completion_tokens": 230
+        },
+        "gsm8k-592": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 138,
+          "completion_tokens": 170
+        },
+        "gsm8k-742": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 117,
+          "completion_tokens": 131
+        },
+        "gsm8k-786": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 125,
+          "completion_tokens": 120
+        },
+        "gsm8k-890": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 118,
+          "completion_tokens": 226
+        },
+        "gsm8k-927": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 144,
+          "completion_tokens": 357
+        },
+        "gsm8k-966": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 178,
+          "completion_tokens": 388
+        },
+        "gsm8k-967": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 111,
+          "completion_tokens": 184
+        },
+        "gsm8k-1111": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 126,
+          "completion_tokens": 157
+        },
+        "gsm8k-1208": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 103,
+          "completion_tokens": 168
+        },
+        "HumanEval/15": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 111,
+          "completion_tokens": 92
+        },
+        "HumanEval/44": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 144,
+          "completion_tokens": 163
+        },
+        "HumanEval/50": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 136,
+          "completion_tokens": 133
+        },
+        "HumanEval/60": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 148,
+          "completion_tokens": 125
+        },
+        "HumanEval/61": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 135,
+          "completion_tokens": 156
+        },
+        "HumanEval/62": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 154,
+          "completion_tokens": 150
+        },
+        "HumanEval/79": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 191,
+          "completion_tokens": 193
+        },
+        "HumanEval/92": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 177,
+          "completion_tokens": 205
+        },
+        "HumanEval/113": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 227,
+          "completion_tokens": 270
+        },
+        "HumanEval/116": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 215,
+          "completion_tokens": 877
+        },
+        "HumanEval/120": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 273,
+          "completion_tokens": 276
+        },
+        "HumanEval/123": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 277,
+          "completion_tokens": 328
+        },
+        "HumanEval/125": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 182,
+          "completion_tokens": 95
+        },
+        "HumanEval/127": {
+          "passed": false,
+          "finish_reason": "stop",
+          "prompt_tokens": 306,
+          "completion_tokens": 465
+        },
+        "HumanEval/129": {
+          "passed": false,
+          "finish_reason": "length",
+          "prompt_tokens": 448,
+          "completion_tokens": 2048
+        },
+        "HumanEval/137": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 185,
+          "completion_tokens": 232
+        },
+        "HumanEval/142": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 211,
+          "completion_tokens": 79
+        },
+        "HumanEval/147": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 213,
+          "completion_tokens": 926
+        },
+        "HumanEval/154": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 167,
+          "completion_tokens": 188
+        },
+        "HumanEval/157": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 151,
+          "completion_tokens": 152
+        },
+        "aime25-0": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 91,
+          "completion_tokens": 673
+        },
+        "aime25-1": {
+          "passed": false,
+          "finish_reason": "length",
+          "prompt_tokens": 220,
+          "completion_tokens": 8192
+        },
+        "aime25-2": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 175,
+          "completion_tokens": 2423
+        },
+        "aime25-3": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 118,
+          "completion_tokens": 1500
+        },
+        "aime25-4": {
+          "passed": false,
+          "finish_reason": "length",
+          "prompt_tokens": 145,
+          "completion_tokens": 8192
+        },
+        "context-16384-start": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 16384,
+          "completion_tokens": 17
+        },
+        "context-32768-middle": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 32768,
+          "completion_tokens": 17
+        },
+        "context-64512-end": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 64512,
+          "completion_tokens": 17
+        }
+      },
+      "files": {
+        "vllm-radix-quality": {
+          "quality_sha256": "24da162f5d560d114a5cc2d1a083c0319561b03a6f5371c98876f332f4ee6be7",
+          "summary_sha256": "de389a985091fbbfbab576acf9d4fcdc242a88dc5369198c4c9ffaa6619ffc1e"
+        },
+        "vllm-radix-corrected-contexts": {
+          "quality_sha256": "aaf5998170745beb5dd2646a1af617a8610e4150f922fbe2bef46c927e16d992",
+          "summary_sha256": "7198484267f2a57f1fa30785f2fec374b2e346ac4e7e6cb3fb4d1883f1ab287c"
+        }
+      }
+    },
+    "sparklab-previous": {
+      "passed": 68,
+      "total": 74,
+      "by_kind": {
+        "exact": {
+          "passed": 11,
+          "total": 12
+        },
+        "reasoning": {
+          "passed": 5,
+          "total": 5
+        },
+        "json": {
+          "passed": 3,
+          "total": 5
+        },
+        "code": {
+          "passed": 5,
+          "total": 5
+        },
+        "tool": {
+          "passed": 2,
+          "total": 2
+        },
+        "gsm8k": {
+          "passed": 20,
+          "total": 20
+        },
+        "humaneval": {
+          "passed": 18,
+          "total": 20
+        },
+        "aime": {
+          "passed": 4,
+          "total": 5
+        }
+      },
+      "cases": {
+        "arithmetic-0": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 30,
+          "completion_tokens": 4
+        },
+        "arithmetic-1": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 30,
+          "completion_tokens": 3
+        },
+        "arithmetic-2": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 28,
+          "completion_tokens": 4
+        },
+        "arithmetic-3": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 31,
+          "completion_tokens": 4
+        },
+        "arithmetic-4": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 34,
+          "completion_tokens": 3
+        },
+        "arithmetic-5": {
+          "passed": false,
+          "finish_reason": "stop",
+          "prompt_tokens": 35,
+          "completion_tokens": 2
+        },
+        "reasoning-0": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 108,
+          "completion_tokens": 196
+        },
+        "reasoning-1": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 98,
+          "completion_tokens": 290
+        },
+        "reasoning-2": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 79,
+          "completion_tokens": 407
+        },
+        "reasoning-3": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 86,
+          "completion_tokens": 311
+        },
+        "json-0": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 43,
+          "completion_tokens": 11
+        },
+        "json-1": {
+          "passed": false,
+          "finish_reason": "stop",
+          "prompt_tokens": 45,
+          "completion_tokens": 16
+        },
+        "json-2": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 35,
+          "completion_tokens": 6
+        },
+        "json-3": {
+          "passed": false,
+          "finish_reason": "stop",
+          "prompt_tokens": 45,
+          "completion_tokens": 12
+        },
+        "code-clamp": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 120,
+          "completion_tokens": 1858
+        },
+        "code-sign": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 119,
+          "completion_tokens": 801
+        },
+        "code-absolute_difference": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 114,
+          "completion_tokens": 532
+        },
+        "code-is_leap_year": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 127,
+          "completion_tokens": 462
+        },
+        "tool-0": {
+          "passed": true,
+          "finish_reason": "tool_calls",
+          "prompt_tokens": 346,
+          "completion_tokens": 83
+        },
+        "tool-0-roundtrip": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 423,
+          "completion_tokens": 4
+        },
+        "tool-1": {
+          "passed": true,
+          "finish_reason": "tool_calls",
+          "prompt_tokens": 346,
+          "completion_tokens": 83
+        },
+        "tool-1-roundtrip": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 423,
+          "completion_tokens": 4
+        },
+        "long-arithmetic-1": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 7752,
+          "completion_tokens": 3
+        },
+        "long-reasoning-0": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 7830,
+          "completion_tokens": 240
+        },
+        "long-json-0": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 7765,
+          "completion_tokens": 20
+        },
+        "long-code-clamp": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 7842,
+          "completion_tokens": 229
+        },
+        "gsm8k-5": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 125,
+          "completion_tokens": 446
+        },
+        "gsm8k-26": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 139,
+          "completion_tokens": 239
+        },
+        "gsm8k-31": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 133,
+          "completion_tokens": 273
+        },
+        "gsm8k-135": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 116,
+          "completion_tokens": 275
+        },
+        "gsm8k-185": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 110,
+          "completion_tokens": 64
+        },
+        "gsm8k-254": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 135,
+          "completion_tokens": 196
+        },
+        "gsm8k-325": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 149,
+          "completion_tokens": 986
+        },
+        "gsm8k-328": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 114,
+          "completion_tokens": 178
+        },
+        "gsm8k-400": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 106,
+          "completion_tokens": 102
+        },
+        "gsm8k-487": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 125,
+          "completion_tokens": 250
+        },
+        "gsm8k-586": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 139,
+          "completion_tokens": 246
+        },
+        "gsm8k-592": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 138,
+          "completion_tokens": 198
+        },
+        "gsm8k-742": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 117,
+          "completion_tokens": 205
+        },
+        "gsm8k-786": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 125,
+          "completion_tokens": 130
+        },
+        "gsm8k-890": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 118,
+          "completion_tokens": 240
+        },
+        "gsm8k-927": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 144,
+          "completion_tokens": 332
+        },
+        "gsm8k-966": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 178,
+          "completion_tokens": 714
+        },
+        "gsm8k-967": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 111,
+          "completion_tokens": 215
+        },
+        "gsm8k-1111": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 126,
+          "completion_tokens": 162
+        },
+        "gsm8k-1208": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 103,
+          "completion_tokens": 215
+        },
+        "HumanEval/15": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 111,
+          "completion_tokens": 92
+        },
+        "HumanEval/44": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 144,
+          "completion_tokens": 194
+        },
+        "HumanEval/50": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 136,
+          "completion_tokens": 133
+        },
+        "HumanEval/60": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 148,
+          "completion_tokens": 125
+        },
+        "HumanEval/61": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 135,
+          "completion_tokens": 156
+        },
+        "HumanEval/62": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 154,
+          "completion_tokens": 150
+        },
+        "HumanEval/79": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 191,
+          "completion_tokens": 204
+        },
+        "HumanEval/92": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 177,
+          "completion_tokens": 219
+        },
+        "HumanEval/113": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 227,
+          "completion_tokens": 630
+        },
+        "HumanEval/116": {
+          "passed": false,
+          "finish_reason": "length",
+          "prompt_tokens": 215,
+          "completion_tokens": 2048
+        },
+        "HumanEval/120": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 273,
+          "completion_tokens": 276
+        },
+        "HumanEval/123": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 277,
+          "completion_tokens": 318
+        },
+        "HumanEval/125": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 182,
+          "completion_tokens": 215
+        },
+        "HumanEval/127": {
+          "passed": false,
+          "finish_reason": "stop",
+          "prompt_tokens": 306,
+          "completion_tokens": 325
+        },
+        "HumanEval/129": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 448,
+          "completion_tokens": 1714
+        },
+        "HumanEval/137": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 185,
+          "completion_tokens": 270
+        },
+        "HumanEval/142": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 211,
+          "completion_tokens": 241
+        },
+        "HumanEval/147": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 213,
+          "completion_tokens": 1142
+        },
+        "HumanEval/154": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 167,
+          "completion_tokens": 192
+        },
+        "HumanEval/157": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 151,
+          "completion_tokens": 152
+        },
+        "aime25-0": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 91,
+          "completion_tokens": 1024
+        },
+        "aime25-1": {
+          "passed": false,
+          "finish_reason": "length",
+          "prompt_tokens": 220,
+          "completion_tokens": 8192
+        },
+        "aime25-2": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 175,
+          "completion_tokens": 1160
+        },
+        "aime25-3": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 118,
+          "completion_tokens": 1779
+        },
+        "aime25-4": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 145,
+          "completion_tokens": 4859
+        },
+        "context-16384-start": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 16384,
+          "completion_tokens": 17
+        },
+        "context-32768-middle": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 32768,
+          "completion_tokens": 17
+        },
+        "context-64512-end": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 64512,
+          "completion_tokens": 17
+        }
+      },
+      "files": {
+        "sparklab-inferact-dflash12-c1-quality": {
+          "quality_sha256": "6747c47e145351875d6066800ad8b3c4316100fc6fd0a8d59b3de8ec95c7e564",
+          "summary_sha256": "18d5fd5e0dbdbf600dc56831c450f6d8bc98a99b20d7b72e87008b780abb06a1"
+        }
+      }
+    },
+    "sparklab-fast": {
+      "passed": 70,
+      "total": 74,
+      "by_kind": {
+        "exact": {
+          "passed": 11,
+          "total": 12
+        },
+        "reasoning": {
+          "passed": 5,
+          "total": 5
+        },
+        "json": {
+          "passed": 4,
+          "total": 5
+        },
+        "code": {
+          "passed": 5,
+          "total": 5
+        },
+        "tool": {
+          "passed": 2,
+          "total": 2
+        },
+        "gsm8k": {
+          "passed": 20,
+          "total": 20
+        },
+        "humaneval": {
+          "passed": 19,
+          "total": 20
+        },
+        "aime": {
+          "passed": 4,
+          "total": 5
+        }
+      },
+      "cases": {
+        "arithmetic-0": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 30,
+          "completion_tokens": 4
+        },
+        "arithmetic-1": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 30,
+          "completion_tokens": 3
+        },
+        "arithmetic-2": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 28,
+          "completion_tokens": 4
+        },
+        "arithmetic-3": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 31,
+          "completion_tokens": 4
+        },
+        "arithmetic-4": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 34,
+          "completion_tokens": 3
+        },
+        "arithmetic-5": {
+          "passed": false,
+          "finish_reason": "stop",
+          "prompt_tokens": 35,
+          "completion_tokens": 2
+        },
+        "reasoning-0": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 108,
+          "completion_tokens": 191
+        },
+        "reasoning-1": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 98,
+          "completion_tokens": 299
+        },
+        "reasoning-2": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 79,
+          "completion_tokens": 369
+        },
+        "reasoning-3": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 86,
+          "completion_tokens": 213
+        },
+        "json-0": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 43,
+          "completion_tokens": 11
+        },
+        "json-1": {
+          "passed": false,
+          "finish_reason": "stop",
+          "prompt_tokens": 45,
+          "completion_tokens": 16
+        },
+        "json-2": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 35,
+          "completion_tokens": 6
+        },
+        "json-3": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 45,
+          "completion_tokens": 10
+        },
+        "code-clamp": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 120,
+          "completion_tokens": 414
+        },
+        "code-sign": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 119,
+          "completion_tokens": 794
+        },
+        "code-absolute_difference": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 114,
+          "completion_tokens": 702
+        },
+        "code-is_leap_year": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 127,
+          "completion_tokens": 603
+        },
+        "tool-0": {
+          "passed": true,
+          "finish_reason": "tool_calls",
+          "prompt_tokens": 346,
+          "completion_tokens": 74
+        },
+        "tool-0-roundtrip": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 414,
+          "completion_tokens": 4
+        },
+        "tool-1": {
+          "passed": true,
+          "finish_reason": "tool_calls",
+          "prompt_tokens": 346,
+          "completion_tokens": 74
+        },
+        "tool-1-roundtrip": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 414,
+          "completion_tokens": 4
+        },
+        "long-arithmetic-1": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 7752,
+          "completion_tokens": 3
+        },
+        "long-reasoning-0": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 7830,
+          "completion_tokens": 227
+        },
+        "long-json-0": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 7765,
+          "completion_tokens": 14
+        },
+        "long-code-clamp": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 7842,
+          "completion_tokens": 587
+        },
+        "gsm8k-5": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 125,
+          "completion_tokens": 286
+        },
+        "gsm8k-26": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 139,
+          "completion_tokens": 212
+        },
+        "gsm8k-31": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 133,
+          "completion_tokens": 251
+        },
+        "gsm8k-135": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 116,
+          "completion_tokens": 236
+        },
+        "gsm8k-185": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 110,
+          "completion_tokens": 139
+        },
+        "gsm8k-254": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 135,
+          "completion_tokens": 198
+        },
+        "gsm8k-325": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 149,
+          "completion_tokens": 640
+        },
+        "gsm8k-328": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 114,
+          "completion_tokens": 162
+        },
+        "gsm8k-400": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 106,
+          "completion_tokens": 160
+        },
+        "gsm8k-487": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 125,
+          "completion_tokens": 222
+        },
+        "gsm8k-586": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 139,
+          "completion_tokens": 224
+        },
+        "gsm8k-592": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 138,
+          "completion_tokens": 179
+        },
+        "gsm8k-742": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 117,
+          "completion_tokens": 169
+        },
+        "gsm8k-786": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 125,
+          "completion_tokens": 126
+        },
+        "gsm8k-890": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 118,
+          "completion_tokens": 199
+        },
+        "gsm8k-927": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 144,
+          "completion_tokens": 330
+        },
+        "gsm8k-966": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 178,
+          "completion_tokens": 395
+        },
+        "gsm8k-967": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 111,
+          "completion_tokens": 202
+        },
+        "gsm8k-1111": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 126,
+          "completion_tokens": 150
+        },
+        "gsm8k-1208": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 103,
+          "completion_tokens": 165
+        },
+        "HumanEval/15": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 111,
+          "completion_tokens": 92
+        },
+        "HumanEval/44": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 144,
+          "completion_tokens": 163
+        },
+        "HumanEval/50": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 136,
+          "completion_tokens": 133
+        },
+        "HumanEval/60": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 148,
+          "completion_tokens": 125
+        },
+        "HumanEval/61": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 135,
+          "completion_tokens": 156
+        },
+        "HumanEval/62": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 154,
+          "completion_tokens": 150
+        },
+        "HumanEval/79": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 191,
+          "completion_tokens": 193
+        },
+        "HumanEval/92": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 177,
+          "completion_tokens": 231
+        },
+        "HumanEval/113": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 227,
+          "completion_tokens": 463
+        },
+        "HumanEval/116": {
+          "passed": false,
+          "finish_reason": "stop",
+          "prompt_tokens": 215,
+          "completion_tokens": 304
+        },
+        "HumanEval/120": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 273,
+          "completion_tokens": 276
+        },
+        "HumanEval/123": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 277,
+          "completion_tokens": 328
+        },
+        "HumanEval/125": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 182,
+          "completion_tokens": 95
+        },
+        "HumanEval/127": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 306,
+          "completion_tokens": 546
+        },
+        "HumanEval/129": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 448,
+          "completion_tokens": 1071
+        },
+        "HumanEval/137": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 185,
+          "completion_tokens": 246
+        },
+        "HumanEval/142": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 211,
+          "completion_tokens": 241
+        },
+        "HumanEval/147": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 213,
+          "completion_tokens": 1344
+        },
+        "HumanEval/154": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 167,
+          "completion_tokens": 194
+        },
+        "HumanEval/157": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 151,
+          "completion_tokens": 152
+        },
+        "aime25-0": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 91,
+          "completion_tokens": 622
+        },
+        "aime25-1": {
+          "passed": false,
+          "finish_reason": "length",
+          "prompt_tokens": 220,
+          "completion_tokens": 8192
+        },
+        "aime25-2": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 175,
+          "completion_tokens": 1081
+        },
+        "aime25-3": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 118,
+          "completion_tokens": 1518
+        },
+        "aime25-4": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 145,
+          "completion_tokens": 6641
+        },
+        "context-16384-start": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 16384,
+          "completion_tokens": 17
+        },
+        "context-32768-middle": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 32768,
+          "completion_tokens": 17
+        },
+        "context-64512-end": {
+          "passed": true,
+          "finish_reason": "stop",
+          "prompt_tokens": 64512,
+          "completion_tokens": 17
+        }
+      },
+      "files": {
+        "sparklab-radix-fp4-dflash12-c1-quality": {
+          "quality_sha256": "1e7a8efc9b8621f1017bc25a165721436a526b7ef3f66ed4247a349cb874de52",
+          "summary_sha256": "a01ac03e3eba1a6027279491ccf6054766dfa8b2d4c4c68211ceec71596e7887"
+        }
+      }
+    }
+  },
+  "quality_comparison": {
+    "new_failures_vs_previous": [],
+    "new_passes_vs_previous": [
+      "json-3",
+      "HumanEval/127"
+    ],
+    "fast_failures_that_vllm_passes": [
+      "HumanEval/116"
+    ]
+  },
+  "quality_corpus_sha256": "00ec1857dd4c934161f54f0326168aca5c8a8da7193e92cb223c221dc28f1e6f",
+  "context_correction": "The three oversized v1 recall cases are invalid and excluded. Their results were replaced with the corrected exact-length cases; all other vLLM payloads match the final frozen corpus.",
+  "operations": {
+    "corpus_sha256": "12979e80c0d16e9c08ed6b7b7c9baa6c0ca8c983e26b7288707602ed9bacc929",
+    "duration_seconds": 139.46317751100287,
+    "requested_duration_seconds": 0,
+    "initial_health": {
+      "status": "ok",
+      "model": "qwen38-bench",
+      "instance_id": "2e31f658-021e-4998-872a-579e837d4e55",
+      "uptime_s": 1380,
+      "maintenance": "serving",
+      "version": "0.1.2"
+    },
+    "final_health": {
+      "status": "ok",
+      "model": "qwen38-bench",
+      "instance_id": "2e31f658-021e-4998-872a-579e837d4e55",
+      "uptime_s": 1519,
+      "maintenance": "serving",
+      "version": "0.1.2"
+    },
+    "results": [
+      {
+        "id": "context-1024-middle",
+        "kind": "exact",
+        "passed": true,
+        "exact_prompt_tokens": true
+      },
+      {
+        "id": "context-8192-middle",
+        "kind": "exact",
+        "passed": true,
+        "exact_prompt_tokens": true
+      },
+      {
+        "id": "context-16384-middle",
+        "kind": "exact",
+        "passed": true,
+        "exact_prompt_tokens": true
+      },
+      {
+        "id": "context-32768-middle",
+        "kind": "exact",
+        "passed": true,
+        "exact_prompt_tokens": true
+      },
+      {
+        "id": "context-65504-middle",
+        "kind": "exact",
+        "passed": true,
+        "exact_prompt_tokens": true
+      },
+      {
+        "id": "budget-1",
+        "kind": "runtime",
+        "passed": true
+      },
+      {
+        "id": "budget-2",
+        "kind": "runtime",
+        "passed": true
+      },
+      {
+        "id": "budget-3",
+        "kind": "runtime",
+        "passed": true
+      },
+      {
+        "id": "budget-4",
+        "kind": "runtime",
+        "passed": true
+      },
+      {
+        "id": "budget-5",
+        "kind": "runtime",
+        "passed": true
+      },
+      {
+        "id": "budget-7",
+        "kind": "runtime",
+        "passed": true
+      },
+      {
+        "id": "budget-16",
+        "kind": "runtime",
+        "passed": true
+      },
+      {
+        "id": "budget-65",
+        "kind": "runtime",
+        "passed": true
+      },
+      {
+        "id": "budget-256",
+        "kind": "runtime",
+        "passed": true
+      },
+      {
+        "id": "arithmetic-3",
+        "kind": "exact",
+        "passed": true
+      },
+      {
+        "id": "arithmetic-0",
+        "kind": "exact",
+        "passed": true
+      },
+      {
+        "id": "arithmetic-2",
+        "kind": "exact",
+        "passed": true
+      },
+      {
+        "id": "arithmetic-1",
+        "kind": "exact",
+        "passed": true
+      },
+      {
+        "id": "cancel-0",
+        "kind": "runtime",
+        "passed": true
+      },
+      {
+        "id": "arithmetic-0",
+        "kind": "exact",
+        "passed": true
+      },
+      {
+        "id": "cancel-1",
+        "kind": "runtime",
+        "passed": true
+      },
+      {
+        "id": "arithmetic-1",
+        "kind": "exact",
+        "passed": true
+      },
+      {
+        "id": "cancel-2",
+        "kind": "runtime",
+        "passed": true
+      },
+      {
+        "id": "arithmetic-2",
+        "kind": "exact",
+        "passed": true
+      },
+      {
+        "id": "arithmetic-0",
+        "kind": "exact",
+        "passed": true
+      },
+      {
+        "id": "sampled-0.7",
+        "kind": "runtime",
+        "passed": true
+      },
+      {
+        "id": "sampled-1.0",
+        "kind": "runtime",
+        "passed": true
+      },
+      {
+        "id": "overlength-rejected",
+        "kind": "runtime",
+        "passed": true
+      },
+      {
+        "id": "arithmetic-1",
+        "kind": "exact",
+        "passed": true
+      }
+    ],
+    "errors": [],
+    "passed": true
+  },
+  "operations_telemetry": {
+    "samples": 28,
+    "minimum_mem_available_bytes": 79620268032,
+    "initial_swap_used_bytes": 2403606528,
+    "final_swap_used_bytes": 2403368960,
+    "maximum_swap_used_bytes": 2403606528,
+    "pswpin_pages": 43,
+    "pswpout_pages": 0,
+    "maximum_reported_vram_bytes": 42228252672,
+    "raw_sha256": "c6ff77a4070c09bd2fba4c0e0b0313bf715f87d069032b97f2f1a175a20f4c98"
+  },
+  "sources": [
+    {
+      "label": "radix",
+      "repository": "RadixArk/Qwen3.8-27B-NVFP4",
+      "revision": "319f741cce68d7914884900c138a1fbb70a42f30",
+      "published_total_bytes": 21945295265,
+      "files": [
+        {
+          "file": ".gitattributes",
+          "published_bytes": 1570,
+          "exists": true,
+          "actual_bytes": 1570,
+          "sha256": "34448b82c17d60fec9b65b1f093c115ddbaadc04beb1b0140b6bfed2e012a930",
+          "verified": true
+        },
+        {
+          "file": ".quant_summary.txt",
+          "published_bytes": 314291,
+          "exists": true,
+          "actual_bytes": 314291,
+          "sha256": "5920198f1770fc91c0f8032108e6d861ce7e0ef196eca140c9681231d8d99967",
+          "verified": true
+        },
+        {
+          "file": "LICENSE",
+          "published_bytes": 11544,
+          "exists": true,
+          "actual_bytes": 11544,
+          "sha256": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a",
+          "verified": true
+        },
+        {
+          "file": "README.md",
+          "published_bytes": 4574,
+          "exists": true,
+          "actual_bytes": 4574,
+          "sha256": "3cfd18e07422e6eff20fcdf8dcdb3c864976dcef0e1e0f2c3f8bf788603203c2",
+          "verified": true
+        },
+        {
+          "file": "chat_template.jinja",
+          "published_bytes": 8952,
+          "exists": true,
+          "actual_bytes": 8952,
+          "sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+          "verified": true
+        },
+        {
+          "file": "config.json",
+          "published_bytes": 73003,
+          "exists": true,
+          "actual_bytes": 73003,
+          "sha256": "7ff41ec6f96ad50efea3c92751cd261b63839d39936eb6e6ffc9066db8672740",
+          "verified": true
+        },
+        {
+          "file": "conversion-manifest.json",
+          "published_bytes": 23587,
+          "exists": true,
+          "actual_bytes": 23587,
+          "sha256": "c71e938cadabd25b2d6ec6b1bd15afecb618674cd8004cf1ecf04e28badbbf55",
+          "verified": true
+        },
+        {
+          "file": "generation_config.json",
+          "published_bytes": 214,
+          "exists": true,
+          "actual_bytes": 214,
+          "sha256": "a4cef85934ea1fdcb207944dbc6eee70dbbf16806874428556ae33023336c0a4",
+          "verified": true
+        },
+        {
+          "file": "hf_quant_config.json",
+          "published_bytes": 53749,
+          "exists": true,
+          "actual_bytes": 53749,
+          "sha256": "0f39e8cd23abdfb79adc89ac1b19acad990aa6ac32973f9ab0a67d1e3449535c",
+          "verified": true
+        },
+        {
+          "file": "merges.txt",
+          "published_bytes": 3353259,
+          "exists": true,
+          "actual_bytes": 3353259,
+          "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+          "verified": true
+        },
+        {
+          "file": "model-00001-of-00003.safetensors",
+          "published_bytes": 9965652544,
+          "exists": true,
+          "actual_bytes": 9965652544,
+          "sha256": "fbcdb5ba1cdda462b5f38592d071e772c4d398afea61a0aa9188b32d1a239a79",
+          "verified": true
+        },
+        {
+          "file": "model-00002-of-00003.safetensors",
+          "published_bytes": 9985757064,
+          "exists": true,
+          "actual_bytes": 9985757064,
+          "sha256": "db6146a5464fb0a891181b93c81593f0ca65c602eb14120a1c2b1b09bca11f85",
+          "verified": true
+        },
+        {
+          "file": "model-00003-of-00003.safetensors",
+          "published_bytes": 1970287672,
+          "exists": true,
+          "actual_bytes": 1970287672,
+          "sha256": "d3cfb92742e30c8b46564665791dbe0a86ed64cfc02b1275081530793c0c9581",
+          "verified": true
+        },
+        {
+          "file": "model.safetensors.index.json",
+          "published_bytes": 214866,
+          "exists": true,
+          "actual_bytes": 214866,
+          "sha256": "7aa103a2582b7d26631988de33dea19e8a308ee9c239e8e14feb374af30905e2",
+          "verified": true
+        },
+        {
+          "file": "preprocessor_config.json",
+          "published_bytes": 390,
+          "exists": true,
+          "actual_bytes": 390,
+          "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+          "verified": true
+        },
+        {
+          "file": "qualification-criteria.json",
+          "published_bytes": 1145,
+          "exists": true,
+          "actual_bytes": 1145,
+          "sha256": "8e3b57367245354acb040a133e63df8eb1f4aef787e036156b944dfda217352a",
+          "verified": true
+        },
+        {
+          "file": "qualification.json",
+          "published_bytes": 2717,
+          "exists": true,
+          "actual_bytes": 2717,
+          "sha256": "7be9d60606fc9590ca7b5717018e12050deaa6d7d93abb5e8cad0845240983a8",
+          "verified": true
+        },
+        {
+          "file": "tensor-audit.json",
+          "published_bytes": 539,
+          "exists": true,
+          "actual_bytes": 539,
+          "sha256": "8a7801e2b46298432a129689879c9e4f8c69444e0b71b4c971470c2747794679",
+          "verified": true
+        },
+        {
+          "file": "tokenizer.json",
+          "published_bytes": 12809320,
+          "exists": true,
+          "actual_bytes": 12809320,
+          "sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+          "verified": true
+        },
+        {
+          "file": "tokenizer_config.json",
+          "published_bytes": 1121,
+          "exists": true,
+          "actual_bytes": 1121,
+          "sha256": "e5d078b00e6c1223b32444db8c1001dc71d86ceef8ee706b5bf084c3a43a1f9c",
+          "verified": true
+        },
+        {
+          "file": "video_preprocessor_config.json",
+          "published_bytes": 385,
+          "exists": true,
+          "actual_bytes": 385,
+          "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13",
+          "verified": true
+        },
+        {
+          "file": "vocab.json",
+          "published_bytes": 6722759,
+          "exists": true,
+          "actual_bytes": 6722759,
+          "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003",
+          "verified": true
+        }
+      ],
+      "verified_present_files": true,
+      "all_files_present": true,
+      "time": 1788965458.1623135
+    },
+    {
+      "label": "draft",
+      "repository": "maurienne-ai/Qwen3.8-27B-DFlash2-NVFP4-RTNcal",
+      "revision": "bd7a934213c47a9e7ef69eef36bb3325f47fd1f1",
+      "published_total_bytes": 1550171194,
+      "files": [
+        {
+          "file": ".gitattributes",
+          "published_bytes": 1581,
+          "exists": true,
+          "actual_bytes": 1581,
+          "sha256": "8e63f02a5caa4dbc92838d44dddcfa2c1b76f355503fcbeaa3d6512f7fe132ef",
+          "verified": true
+        },
+        {
+          "file": "README.incoai-original.md",
+          "published_bytes": 5399,
+          "exists": true,
+          "actual_bytes": 5399,
+          "sha256": "be141ff737af8779959cb5ecaefb458ac3c214a5020aa40f69d4d1dc6f42494a",
+          "verified": true
+        },
+        {
+          "file": "README.md",
+          "published_bytes": 7576,
+          "exists": true,
+          "actual_bytes": 7576,
+          "sha256": "9941d6c50011e3e8d0e0a1319a625a5fab05d3814a19c74be05996ccee8457cb",
+          "verified": true
+        },
+        {
+          "file": "config.json",
+          "published_bytes": 2617,
+          "exists": true,
+          "actual_bytes": 2617,
+          "sha256": "6bf5936c68d432db3c8408d5836dc32e05dc3c4be538eb3e576439186262b186",
+          "verified": true
+        },
+        {
+          "file": "hf_quant_config.json",
+          "published_bytes": 773,
+          "exists": true,
+          "actual_bytes": 773,
+          "sha256": "7aa6b31ef6cde1cf7c5489f3a4920be2f5ff1cd2a56e9c5ae1096ae7c94a58bb",
+          "verified": true
+        },
+        {
+          "file": "model.safetensors",
+          "published_bytes": 1550153248,
+          "exists": true,
+          "actual_bytes": 1550153248,
+          "sha256": "2228b9b22e93a88d84556419c879448ab6c490ae65c4c0b166f4962190ddbf26",
+          "verified": true
+        }
+      ],
+      "verified_present_files": true,
+      "all_files_present": true,
+      "time": 1788965460.080223
+    },
+    {
+      "label": "inferact",
+      "repository": "Inferact/Qwen3.8-27B-NVFP4",
+      "revision": "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462",
+      "published_total_bytes": 26404418018,
+      "files": [
+        {
+          "file": ".gitattributes",
+          "published_bytes": 1570,
+          "exists": true,
+          "actual_bytes": 1570,
+          "sha256": "34448b82c17d60fec9b65b1f093c115ddbaadc04beb1b0140b6bfed2e012a930",
+          "verified": true
+        },
+        {
+          "file": "LICENSE",
+          "published_bytes": 11343,
+          "exists": true,
+          "actual_bytes": 11343,
+          "sha256": "50cbab8a892c5f2993b8c7351a99182507472def3b1374558308605d99b86b32",
+          "verified": true
+        },
+        {
+          "file": "README.md",
+          "published_bytes": 182,
+          "exists": true,
+          "actual_bytes": 182,
+          "sha256": "094de7491d7ff2ce56cd672ddd2da1bb48b62425b626d93f8638fc22b9eaf560",
+          "verified": true
+        },
+        {
+          "file": "chat_template.jinja",
+          "published_bytes": 8952,
+          "exists": true,
+          "actual_bytes": 8952,
+          "sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+          "verified": true
+        },
+        {
+          "file": "config.json",
+          "published_bytes": 19252,
+          "exists": true,
+          "actual_bytes": 19252,
+          "sha256": "267be2125ee2ec272555748c87cc636b25a96107946f05491bd6043151c7fe4e",
+          "verified": true
+        },
+        {
+          "file": "crc32.txt",
+          "published_bytes": 2393,
+          "exists": true,
+          "actual_bytes": 2393,
+          "sha256": "8d45dbf39b2f50a00926c54bff6d520403b9b7f777c5419b68a5137a090e05cd",
+          "verified": true
+        },
+        {
+          "file": "generation_config.json",
+          "published_bytes": 214,
+          "exists": true,
+          "actual_bytes": 214,
+          "sha256": "d0dbf670c6a372817b2ff92d5d47e3130d35de9c3a7164ba455fd7a88255b362",
+          "verified": true
+        },
+        {
+          "file": "hf_quant_config.json",
+          "published_bytes": 15113,
+          "exists": true,
+          "actual_bytes": 15113,
+          "sha256": "0c1004d622f835eef17ba193d8e966ecfd2d5218cbc8d25b7effff8cb4011893",
+          "verified": true
+        },
+        {
+          "file": "merges.txt",
+          "published_bytes": 3353259,
+          "exists": true,
+          "actual_bytes": 3353259,
+          "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d",
+          "verified": true
+        },
+        {
+          "file": "model-00001-of-00006.safetensors",
+          "published_bytes": 4013662656,
+          "exists": true,
+          "actual_bytes": 4013662656,
+          "sha256": "4b71c5d9d5027c88d1df9f53b93ad77b8d5e428d5d6f75ae42063704d94930b9",
+          "verified": true
+        },
+        {
+          "file": "model-00002-of-00006.safetensors",
+          "published_bytes": 4104675536,
+          "exists": true,
+          "actual_bytes": 4104675536,
+          "sha256": "d0ceb042ef003ec63e00203823eb70d4815c9fc0430ba04a5442b6b8bde19093",
+          "verified": true
+        },
+        {
+          "file": "model-00003-of-00006.safetensors",
+          "published_bytes": 4028901296,
+          "exists": true,
+          "actual_bytes": 4028901296,
+          "sha256": "b633a26c1d3b97bf061585363b99d4c01650b4e3f6d0cbb18e7c7e03ca2de1e4",
+          "verified": true
+        },
+        {
+          "file": "model-00004-of-00006.safetensors",
+          "published_bytes": 4003421984,
+          "exists": true,
+          "actual_bytes": 4003421984,
+          "sha256": "485ea312626e2d1f3a820d9f7545809cef1e2e77414e3977a61d32dacd370bd0",
+          "verified": true
+        },
+        {
+          "file": "model-00005-of-00006.safetensors",
+          "published_bytes": 4000515080,
+          "exists": true,
+          "actual_bytes": 4000515080,
+          "sha256": "2aa61bab1ed252fe3cdb479286b5b7add7e8ad567501add5f6eeef3987b03d31",
+          "verified": true
+        },
+        {
+          "file": "model-00006-of-00006.safetensors",
+          "published_bytes": 5380672368,
+          "exists": true,
+          "actual_bytes": 5380672368,
+          "sha256": "8214cd21a46832380c06be552c42d9514c6cc9f27d98e09e2a09e36a8bd6e6ce",
+          "verified": true
+        },
+        {
+          "file": "model.safetensors.index.json",
+          "published_bytes": 205647,
+          "exists": true,
+          "actual_bytes": 205647,
+          "sha256": "f9ba0436d933e2362fb1bfa0508931c28b68f1fddbd5b94e6d50712e36a0636c",
+          "verified": true
+        },
+        {
+          "file": "nvfp4_experts_mtp.safetensors",
+          "published_bytes": 849400392,
+          "exists": true,
+          "actual_bytes": 849400392,
+          "sha256": "c2b7cb6987e40f13b1ab6e552958afe47a759f86cac0c3c4a1c29f606dc080ef",
+          "verified": true
+        },
+        {
+          "file": "preprocessor_config.json",
+          "published_bytes": 390,
+          "exists": true,
+          "actual_bytes": 390,
+          "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+          "verified": true
+        },
+        {
+          "file": "safetensors-md5sum.txt",
+          "published_bytes": 0,
+          "exists": true,
+          "actual_bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "verified": true
+        },
+        {
+          "file": "tokenizer.json",
+          "published_bytes": 12809320,
+          "exists": true,
+          "actual_bytes": 12809320,
+          "sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3",
+          "verified": true
+        },
+        {
+          "file": "tokenizer_config.json",
+          "published_bytes": 17927,
+          "exists": true,
+          "actual_bytes": 17927,
+          "sha256": "5a205aa76328f59df93a9091d0496aeda4615c6b0c495cbd37e14c79c0cd0f94",
+          "verified": true
+        },
+        {
+          "file": "video_preprocessor_config.json",
+          "published_bytes": 385,
+          "exists": true,
+          "actual_bytes": 385,
+          "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13",
+          "verified": true
+        },
+        {
+          "file": "vocab.json",
+          "published_bytes": 6722759,
+          "exists": true,
+          "actual_bytes": 6722759,
+          "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003",
+          "verified": true
+        }
+      ],
+      "verified_present_files": true,
+      "all_files_present": true,
+      "time": 1788965513.900768
+    }
+  ],
+  "prepared_artifact": {
+    "role": "runtime",
+    "path": "$HOME/projects/sparklab/results/qwen27-shipping-20260909/acquisition-root/models/qwen3.8-27b/prepared/0.4.0",
+    "format": "ftw-nvfp4",
+    "backend": "native",
+    "fingerprint": "1ad54cc34ff10c49",
+    "validation": {
+      "format": "ftw-nvfp4",
+      "fingerprint": "1ad54cc34ff10c49",
+      "index": "freetoken_weight.json",
+      "shards": 3,
+      "tensors": 1185,
+      "logical_bytes": 21010947584,
+      "physical_bytes": 21012570112,
+      "external_artifacts": 0,
+      "external_bytes": 0,
+      "kind_counts": {
+        "weight": 1173,
+        "speculative_weight": 12
+      }
+    }
+  },
+  "improvements": {
+    "request_latency_reduction_vs_previous_percent": 21.925277551575817,
+    "decode_gain_vs_previous_percent": 23.803299384926003,
+    "request_latency_reduction_vs_vllm_target_percent": 40.18390172152018
+  },
+  "limitations": [
+    "Single-client latency benchmark; native requests queue behind one active generation. No new batched-throughput or endurance qualification.",
+    "RadixArk and Inferact are different quantizations. Dynamic FP4 activation prefill changes numerics; the sampled quality screen does not establish general quality equivalence.",
+    "Both engines use BF16 KV here; activation kernels, recurrent-state implementations, software versions, and memory pool sizes differ. vLLM allocates capacity for 538851 KV tokens; native allocates 65536.",
+    "Native DFlash2 only accelerates greedy requests. Model-default temperature remains 1.0; sampled requests fall back to target-only generation.",
+    "The fast native DFlash profile is compared with vLLM target-only; no vLLM DFlash result is claimed.",
+    "The host had pre-existing swap and some swap-in activity, with zero measured swap-out. CPU activity was not isolated; GPU jobs ran sequentially.",
+    "The current recipe CLI rejects existing host swap. Hardware verification used the advanced server command; admission behavior is tested separately.",
+    "Full Fast certification and a 60-minute endurance run remain outstanding."
+  ],
+  "native_prefix_cache_check": {
+    "sparklab-radix-fp4-target-c1": {
+      "measured_prefill_chunks": 149,
+      "cached_tokens_total": 0,
+      "maximum_cached_tokens": 0,
+      "window_start_ns": 1788967968349570304,
+      "window_end_ns": 1788968814389212672,
+      "server_log_timezone": "America/Toronto"
+    },
+    "sparklab-radix-fp4-dflash12-c1": {
+      "measured_prefill_chunks": 149,
+      "cached_tokens_total": 0,
+      "maximum_cached_tokens": 0,
+      "window_start_ns": 1788968907116988160,
+      "window_end_ns": 1788969357842629120,
+      "server_log_timezone": "America/Toronto"
+    },
+    "sparklab-inferact-dflash12-c1": {
+      "measured_prefill_chunks": 59,
+      "cached_tokens_total": 0,
+      "maximum_cached_tokens": 0,
+      "window_start_ns": 1788970451494079744,
+      "window_end_ns": 1788971028768866560,
+      "server_log_timezone": "America/Toronto"
+    }
+  },
+  "verification": {
+    "hosted_equivalent_cpu": {
+      "passed": 1244,
+      "skipped": 92,
+      "log_sha256": "07cdef9e35706b0b13dcbf09f0ba13eb97fc0ff89933122c31c8dcd6d6026a8c"
+    },
+    "product_cpu": {
+      "passed": 96,
+      "log_sha256": "d0479a132fda73a6606905fdc22f99ce5ae84e347418ecf74d1cd2a6a4c1f323"
+    },
+    "kernel_gpu": {
+      "passed": 3,
+      "log_sha256": "eccbdcc7c30c294246c34a9da30b94a8d23b8abc80e73842969a68a8d75fc2ef"
+    },
+    "recipe_launch": {
+      "compiled_recipe_version": "0.4.0",
+      "passed": true,
+      "used_compiled_recipe_arguments": true,
+      "served_model": "RadixArk/Qwen3.8-27B-NVFP4",
+      "cases": [
+        "greedy arithmetic with normal EOS",
+        "default-sampled prose with normal EOS",
+        "65504 prompt + exactly 32 generated tokens"
+      ],
+      "sampled_fallback": {
+        "default_temperature": 1.0,
+        "output_tokens": 34,
+        "target_forwards": 34,
+        "draft_proposals": 0
+      },
+      "context_boundary": {
+        "prompt_tokens": 65504,
+        "completion_tokens": 32,
+        "total_tokens": 65536
+      },
+      "actual_host_admission": "swap is in use (2402476032 bytes); certified recipes require zero",
+      "plan_compilation_assumption": "zero host swap; actual memory and artifact checks retained",
+      "scope": "Recipe arguments were compiled with a zero-swap snapshot assumption, then served through the advanced command. The actual production admission rejection for pre-existing host swap remains unchanged.",
+      "environment": "SPARKLAB_DISABLE_KERNEL_CACHE=1; initial normal-cache attempt correctly rejected installed cache 0.1.0+cu130 versus runtime 0.1.2.",
+      "plan_sha256": "5981a93d9aa65d29a5539f6fe01954d34dbbb033adec2df4fc2be65c6f32fb92",
+      "responses_sha256": "3e16a8ff131354062ee449f7bdd8f36ded34325561106336da5147a5f73f011b",
+      "server_log_sha256": "ab4b5a025d6ba802d2a150249d947ce548aebdb3be1ef62fe44071e0ba72d7cc"
+    },
+    "source_acquisition": {
+      "mode": "real pinned downloader with prepopulated local cache",
+      "target_and_draft_validated": true,
+      "fresh_preparation": true,
+      "manifest_sha256": "0ec732fb93daaae767b08dcaee18c816d6e857967d9d1f3cf314224e73eb7e4c"
+    }
+  },
+  "raw_archive": {
+    "directory": "results/qwen27-shipping-20260909",
+    "files": 199,
+    "sha256sums_sha256": "ced445f93584b8159674f1248f73a1a6828bce2f813ba6a76b27d92886d3a1d4",
+    "exclusions": "Bulk acquisition weights/cache, mutable work notes, user working patch, and this derived evidence mirror; weights are verified separately against pinned source hashes."
+  }
+}

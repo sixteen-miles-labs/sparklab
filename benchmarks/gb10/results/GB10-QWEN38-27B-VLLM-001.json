@@ -1,0 +1,497 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWEN38-27B-VLLM-001",
+  "status": "measured",
+  "date": "2026-09-08",
+  "recipe": {
+    "slug": "qwen3.8-27b",
+    "recipe_version": "0.3.0",
+    "default_changed": false
+  },
+  "engine": {
+    "native_git_revision": "2057a41499fdd9dd6c7be6f90f9ce46be2cd561a",
+    "native_tracked_dirty": false,
+    "vllm_version": "0.28.0",
+    "vllm_image": "vllm/vllm-openai:v0.28.0@sha256:61fc8a896b0a4fbbbdc063bc4b0dbc25ce98e02b5050c24aeb7830ac02039b14"
+  },
+  "hardware": {
+    "platform": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+    "machine": "aarch64",
+    "driver": "NVIDIA GB10, 580.126.09",
+    "config_hashes": {
+      "source_config": "267be2125ee2ec272555748c87cc636b25a96107946f05491bd6043151c7fe4e",
+      "prepared_config": "267be2125ee2ec272555748c87cc636b25a96107946f05491bd6043151c7fe4e"
+    },
+    "native_software": {
+      "torch": "2.11.0+cu130",
+      "triton": "3.6.0",
+      "sparklab": "0.1.2"
+    },
+    "physical_unified_memory_gib": 128
+  },
+  "prepared_artifact": {
+    "format": "freetoken_weight",
+    "version": 1,
+    "total_bytes": 24617562112,
+    "shards": [
+      {
+        "file": "freetoken-00000.ftw",
+        "global_off": 0,
+        "nbytes": 8545333248
+      },
+      {
+        "file": "freetoken-00001.ftw",
+        "global_off": 8545333248,
+        "nbytes": 8545230848
+      },
+      {
+        "file": "freetoken-00002.ftw",
+        "global_off": 17090564096,
+        "nbytes": 7526998016
+      }
+    ],
+    "fingerprint": "af78f7411817bb73",
+    "quant_format": null,
+    "counts": {
+      "weight": 1027
+    },
+    "index_sha256": "105b958b3046308b02989d7e32abf0547144f8842027cfaff3931a1f793fe7e3"
+  },
+  "checkpoint_verification": {
+    "target": {
+      "repository": "Inferact/Qwen3.8-27B-NVFP4",
+      "revision": "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462",
+      "all_safetensors_match_published_sha256": true,
+      "files": [
+        {
+          "file": "model-00001-of-00006.safetensors",
+          "bytes": 4013662656,
+          "sha256": "4b71c5d9d5027c88d1df9f53b93ad77b8d5e428d5d6f75ae42063704d94930b9"
+        },
+        {
+          "file": "model-00002-of-00006.safetensors",
+          "bytes": 4104675536,
+          "sha256": "d0ceb042ef003ec63e00203823eb70d4815c9fc0430ba04a5442b6b8bde19093"
+        },
+        {
+          "file": "model-00003-of-00006.safetensors",
+          "bytes": 4028901296,
+          "sha256": "b633a26c1d3b97bf061585363b99d4c01650b4e3f6d0cbb18e7c7e03ca2de1e4"
+        },
+        {
+          "file": "model-00004-of-00006.safetensors",
+          "bytes": 4003421984,
+          "sha256": "485ea312626e2d1f3a820d9f7545809cef1e2e77414e3977a61d32dacd370bd0"
+        },
+        {
+          "file": "model-00005-of-00006.safetensors",
+          "bytes": 4000515080,
+          "sha256": "2aa61bab1ed252fe3cdb479286b5b7add7e8ad567501add5f6eeef3987b03d31"
+        },
+        {
+          "file": "model-00006-of-00006.safetensors",
+          "bytes": 5380672368,
+          "sha256": "8214cd21a46832380c06be552c42d9514c6cc9f27d98e09e2a09e36a8bd6e6ce"
+        },
+        {
+          "file": "nvfp4_experts_mtp.safetensors",
+          "bytes": 849400392,
+          "sha256": "c2b7cb6987e40f13b1ab6e552958afe47a759f86cac0c3c4a1c29f606dc080ef"
+        }
+      ]
+    },
+    "draft": {
+      "repository": "maurienne-ai/Qwen3.8-27B-DFlash2-NVFP4-RTNcal",
+      "revision": "bd7a934213c47a9e7ef69eef36bb3325f47fd1f1",
+      "all_safetensors_match_published_sha256": true,
+      "files": [
+        {
+          "file": "model.safetensors",
+          "bytes": 1550153248,
+          "sha256": "2228b9b22e93a88d84556419c879448ab6c490ae65c4c0b166f4962190ddbf26"
+        }
+      ]
+    }
+  },
+  "workload": {
+    "dataset": "nvidia/SPEED-Bench",
+    "split": "throughput_8k",
+    "dataset_revision": "487aa718444e816458d1a0a52bfce7a454285cf4",
+    "selection": "Same 30 measured and 3 warmup prompts as GB10-QWENSPEED-005; ten measured prompts per entropy tier, interleaved.",
+    "client": "AIPerf 0.12.0 streaming chat, server token counts",
+    "measured_requests_per_profile": 30,
+    "warmup_requests_per_profile": 3,
+    "trials_per_profile": 1,
+    "concurrency": [
+      1,
+      4
+    ],
+    "temperature": 0,
+    "ignore_eos": true,
+    "max_completion_tokens": 256,
+    "thinking": "checkpoint default enabled",
+    "measured_dataset_sha256": "293c1a311471f5c79e1c4b36b3e8133e57fe360285c1496e4d3b4b32083fd1b2",
+    "cache_policy": "vLLM prefix cache cleared before each profile, followed by warmup; native prefill cache-hit counts checked in server logs"
+  },
+  "native_prefix_cache_check": {
+    "sparklab-target": {
+      "prefill_chunks": 66,
+      "cached_tokens_total": 0,
+      "max_cached_tokens_per_chunk": 0
+    },
+    "sparklab-dflash-b12": {
+      "prefill_chunks": 131,
+      "cached_tokens_total": 0,
+      "max_cached_tokens_per_chunk": 0
+    }
+  },
+  "configurations": {
+    "sparklab-target": {
+      "command": [
+        "$HOME/projects/sparklab/.venv/bin/python",
+        "-m",
+        "sparklab",
+        "serve",
+        "--model",
+        "$HOME/.sparklab/models/qwen3.8-27b/prepared/0.1.0",
+        "--served-model-name",
+        "qwen38-bench",
+        "--nvfp4-backend",
+        "triton",
+        "--cuda-graph-max-bs",
+        "1",
+        "--cache-type",
+        "radix",
+        "--page-size",
+        "16",
+        "--max-running-requests",
+        "1",
+        "--max-seq-len-override",
+        "65536",
+        "--num-tokens",
+        "65536",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "1938"
+      ],
+      "environment": {
+        "SPARKLAB_DISABLE_KERNEL_CACHE": "1"
+      }
+    },
+    "sparklab-dflash-b12": {
+      "command": [
+        "$HOME/projects/sparklab/.venv/bin/python",
+        "-m",
+        "sparklab",
+        "serve",
+        "--model",
+        "$HOME/.sparklab/models/qwen3.8-27b/prepared/0.1.0",
+        "--served-model-name",
+        "qwen38-bench",
+        "--nvfp4-backend",
+        "triton",
+        "--cuda-graph-max-bs",
+        "1",
+        "--cache-type",
+        "radix",
+        "--page-size",
+        "16",
+        "--max-running-requests",
+        "1",
+        "--max-seq-len-override",
+        "65536",
+        "--num-tokens",
+        "65536",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "1938",
+        "--attention-backend",
+        "triton",
+        "--speculative-method",
+        "dflash2",
+        "--speculative-tokens",
+        "12",
+        "--speculative-draft-model",
+        "$HOME/.sparklab/models/qwen3.8-27b/draft/dflash2-bd7a934213c4"
+      ],
+      "environment": {
+        "SPARKLAB_DISABLE_KERNEL_CACHE": "1",
+        "SPARKLAB_DFLASH2_REJECT_DRAFT": "1",
+        "SPARKLAB_DFLASH2_VERIFY_GRAPH": "1"
+      }
+    },
+    "vllm-target": {
+      "command": [
+        "docker",
+        "run",
+        "-e",
+        "VLLM_SERVER_DEV_MODE=1",
+        "-d",
+        "--name",
+        "qwen38-bench-vllm-target",
+        "--gpus",
+        "all",
+        "--network",
+        "host",
+        "--shm-size",
+        "16g",
+        "--memory",
+        "96g",
+        "--memory-swap",
+        "96g",
+        "-v",
+        "$HOME/.sparklab/models/qwen3.8-27b/source/6128240ebaf4:/model:ro",
+        "-v",
+        "/tmp/qwen38-vllm-benchmark-cache:/root/.cache",
+        "vllm/vllm-openai:v0.28.0@sha256:61fc8a896b0a4fbbbdc063bc4b0dbc25ce98e02b5050c24aeb7830ac02039b14",
+        "/model",
+        "--served-model-name",
+        "qwen38-bench",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "1938",
+        "--tensor-parallel-size",
+        "1",
+        "--max-model-len",
+        "65536",
+        "--max-num-seqs",
+        "8",
+        "--max-num-batched-tokens",
+        "8192",
+        "--gpu-memory-utilization",
+        "0.5",
+        "--kv-cache-dtype",
+        "fp8",
+        "--attention-backend",
+        "flashinfer",
+        "--language-model-only",
+        "--reasoning-parser",
+        "qwen3",
+        "--enable-auto-tool-choice",
+        "--tool-call-parser",
+        "qwen3_coder"
+      ]
+    }
+  },
+  "profiles": {
+    "vllm-target-c1": {
+      "requests": 30,
+      "same_inputs_and_prompt_counts": true,
+      "all_http_200": true,
+      "all_output_tokens_256": true,
+      "raw_sha256": "861b31fafebb96b7db50391e306d653df9116d3af11ea16cd8a03642cc320fa1",
+      "metrics": {
+        "output_token_throughput_per_user": 9.432037183028877,
+        "output_token_throughput": 8.24422584775614,
+        "time_to_first_token": 4013.8543616999996,
+        "request_latency": 31049.380515499997,
+        "benchmark_duration": 931.5572014080001
+      },
+      "measured_window_unix_s": [
+        1788900832.6717129,
+        1788901764.2289143
+      ],
+      "telemetry_bracket_unix_s": [
+        1788900832.6419485,
+        1788901764.2496676
+      ],
+      "swap_pages": {
+        "pswpin": 1437,
+        "pswpout": 0
+      },
+      "min_available_ram_gib": 52.21498107910156,
+      "prefix_cache_hits_during_measurement": 0.0,
+      "observed_max_http_inflight": 1,
+      "p95_ms": {
+        "time_to_first_token": 4185.878548199999,
+        "request_latency": 31230.887605099997
+      },
+      "input_tokens_mean": 8553.133333333333,
+      "max_gpu_temperature_c": 69.0,
+      "mean_gpu_power_w": 34.568479001135074
+    },
+    "vllm-target-c4": {
+      "requests": 30,
+      "same_inputs_and_prompt_counts": true,
+      "all_http_200": true,
+      "all_output_tokens_256": true,
+      "raw_sha256": "1d8a85c7cb2be8fa21108f3cb2a9a85b880813b4643fbe6c7d6f858297951656",
+      "metrics": {
+        "output_token_throughput_per_user": 7.127008704828752,
+        "output_token_throughput": 22.12475037316323,
+        "time_to_first_token": 8358.330176566666,
+        "request_latency": 44369.4686523,
+        "benchmark_duration": 347.118985984
+      },
+      "measured_window_unix_s": [
+        1788901814.2769086,
+        1788902161.3958945
+      ],
+      "telemetry_bracket_unix_s": [
+        1788901813.415269,
+        1788902162.0009172
+      ],
+      "swap_pages": {
+        "pswpin": 3,
+        "pswpout": 0
+      },
+      "min_available_ram_gib": 52.052886962890625,
+      "prefix_cache_hits_during_measurement": 0.0,
+      "observed_max_http_inflight": 4,
+      "p95_ms": {
+        "time_to_first_token": 14953.942583849996,
+        "request_latency": 47744.813893299994
+      },
+      "input_tokens_mean": 8553.133333333333,
+      "max_gpu_temperature_c": 72.0,
+      "mean_gpu_power_w": 42.5895166163142
+    },
+    "sparklab-target-c1": {
+      "requests": 30,
+      "same_inputs_and_prompt_counts": true,
+      "all_http_200": true,
+      "all_output_tokens_256": true,
+      "raw_sha256": "4919ac71219921b60325b0517e44eb390fdc18e7159c05d75788a166ae0abd2c",
+      "metrics": {
+        "output_token_throughput_per_user": 8.919620277416707,
+        "output_token_throughput": 7.171966721131397,
+        "time_to_first_token": 7102.893201533333,
+        "request_latency": 35691.619559599996,
+        "benchmark_duration": 1070.832234752
+      },
+      "measured_window_unix_s": [
+        1788897972.7064211,
+        1788899043.5389237
+      ],
+      "telemetry_bracket_unix_s": [
+        1788897972.3824456,
+        1788899044.3709798
+      ],
+      "swap_pages": {
+        "pswpin": 1951,
+        "pswpout": 0
+      },
+      "min_available_ram_gib": 82.10898971557617,
+      "observed_max_http_inflight": 1,
+      "p95_ms": {
+        "time_to_first_token": 7406.4533384999995,
+        "request_latency": 36035.8404407
+      },
+      "input_tokens_mean": 8553.133333333333,
+      "max_gpu_temperature_c": 76.0,
+      "mean_gpu_power_w": 44.36344793713163
+    },
+    "sparklab-dflash-b12-c1": {
+      "requests": 30,
+      "same_inputs_and_prompt_counts": true,
+      "all_http_200": true,
+      "all_output_tokens_256": true,
+      "raw_sha256": "9a5175ea77a2df188b79752bb30ba98e23869c9cdef249f966d04081abde7d8f",
+      "metrics": {
+        "output_token_throughput_per_user": 22.0544894689659,
+        "output_token_throughput": 13.30232791710641,
+        "time_to_first_token": 7467.1198481,
+        "request_latency": 19241.419010799997,
+        "benchmark_duration": 577.336418048
+      },
+      "measured_window_unix_s": [
+        1788899210.2706075,
+        1788899787.6078486
+      ],
+      "telemetry_bracket_unix_s": [
+        1788899209.5289667,
+        1788899787.9144826
+      ],
+      "swap_pages": {
+        "pswpin": 131,
+        "pswpout": 0
+      },
+      "min_available_ram_gib": 76.33056640625,
+      "observed_max_http_inflight": 1,
+      "p95_ms": {
+        "time_to_first_token": 7800.00882795,
+        "request_latency": 20976.069118299998
+      },
+      "input_tokens_mean": 8553.133333333333,
+      "max_gpu_temperature_c": 79.0,
+      "mean_gpu_power_w": 56.2402166064982
+    },
+    "sparklab-dflash-b12-c4": {
+      "requests": 30,
+      "same_inputs_and_prompt_counts": true,
+      "all_http_200": true,
+      "all_output_tokens_256": true,
+      "raw_sha256": "da87f55dc44daed357ee461f158833e88d130c03503d03768b6ebcb462bad46d",
+      "metrics": {
+        "output_token_throughput_per_user": 21.995236330811625,
+        "output_token_throughput": 13.283639742205043,
+        "time_to_first_token": 61235.795997133326,
+        "request_latency": 73043.63656439999,
+        "benchmark_duration": 578.1511526400001
+      },
+      "measured_window_unix_s": [
+        1788899854.0623446,
+        1788900432.2137887
+      ],
+      "telemetry_bracket_unix_s": [
+        1788899854.0219498,
+        1788900432.491856
+      ],
+      "swap_pages": {
+        "pswpin": 97,
+        "pswpout": 0
+      },
+      "min_available_ram_gib": 76.24770736694336,
+      "observed_max_http_inflight": 4,
+      "p95_ms": {
+        "time_to_first_token": 68534.06370404999,
+        "request_latency": 80931.66743014999
+      },
+      "input_tokens_mean": 8553.133333333333,
+      "max_gpu_temperature_c": 79.0,
+      "mean_gpu_power_w": 56.878682310469316
+    }
+  },
+  "unavailable_configurations": [
+    {
+      "name": "vllm-dflash-b12",
+      "status": "startup_failed",
+      "draft": "same pinned NVFP4 draft as native",
+      "speculative_config": {
+        "method": "dflash",
+        "num_speculative_tokens": 11
+      },
+      "error": "RuntimeError: mat1 and mat2 shapes cannot be multiplied (8192x5120 and 2560x10240)",
+      "diagnosis": "vLLM qwen3_dflash.py directly concatenates packed QKV weights into _fused_kv_weight and passes them to F.linear; the packed input dimension is half the activation dimension.",
+      "throughput_measured": false
+    }
+  ],
+  "limitations": [
+    "Both servers are text-only; the vision tower is not served.",
+    "The native C4 profile serializes generation with max-running-requests=1; it tests queueing, not batched decoding.",
+    "vLLM uses FP8 KV cache; native uses BF16. Both load the same target checkpoint but do not perform identical arithmetic.",
+    "No matching-draft vLLM throughput is available because this exact NVFP4 DFlash2 configuration failed during startup. This does not establish that all vLLM DFlash configurations fail.",
+    "Arithmetic smoke checks passed for the measured servers; broad quality parity was not tested.",
+    "One fixed 30-request trial per profile; no endurance or certification claim.",
+    "Host-wide swap counters can include unrelated CPU processes; see each measured window."
+  ],
+  "source": {
+    "raw_directory": "results/qwen38-27b-vllm-20260908",
+    "validation_script": "validate_profiles.py",
+    "raw_manifest": "SHA256SUMS",
+    "service_restored": {
+      "container": "20939bd0539903e3db9ef75a9e27be59e0fd720dbb8622ef9e5dac61c684e929",
+      "health": {
+        "status": "ok",
+        "model": "nvidia/Qwen3.6-35B-A3B-NVFP4",
+        "instance_id": "f2e41c05-2f4c-4854-812f-ad2de992a1f9",
+        "uptime_s": 0,
+        "maintenance": "serving",
+        "version": "0.1.2"
+      }
+    }
+  }
+}

@@ -31,7 +31,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     assert get_recipe("qwen3.8-flash-next").model == (
         "nvidia/Qwen3.8-Flash-Next-NVFP4"
     )
-    assert get_recipe("qwen3.8-27b").model == "Inferact/Qwen3.8-27B-NVFP4"
+    assert get_recipe("qwen3.8-27b").model == "RadixArk/Qwen3.8-27B-NVFP4"
     assert get_recipe("qwen3.6-35b-a3b").name == "Qwen3.6 35B A3B"
     assert get_recipe("glm-5.2").name == "GLM-5.2"
     assert get_recipe("glm-5.2").intended_tier == "research"
@@ -161,19 +161,21 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     glm53 = get_recipe("glm-5.3")
     deepseek = get_recipe("deepseek-v4")
     assert qwen.revision == "fab0aecb760cec45227f6656abcaafa11abca87a"
-    assert qwen27.revision == "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462"
-    assert qwen27.source_bytes == 26404418018
-    assert qwen27.prepared_bytes == 24640689529
+    assert qwen27.revision == "319f741cce68d7914884900c138a1fbb70a42f30"
+    assert qwen27.source_bytes == 21945295265
+    assert qwen27.prepared_bytes == 21036142615
     assert qwen27.intended_tier == "fast"
-    assert qwen27.performance.decode_tokens_per_second == pytest.approx(8.832997654771269)
-    assert qwen27.performance.warm_ttft_seconds == pytest.approx(0.14434478300245246)
+    assert qwen27.performance.decode_tokens_per_second == pytest.approx(27.467633094202384)
+    assert qwen27.performance.warm_ttft_seconds == pytest.approx(5.432493594633333)
     assert qwen27.performance.context_tokens == 65_536
-    assert qwen27.evidence == (
-        "GB10-QWEN38-27B-001",
-        "GB10-QWEN38-DFLASH-002",
-        "GB10-QWEN38-DFLASH-003",
-        "GB10-QWEN38-DFLASH-004",
-    )
+    assert qwen27.evidence == ("GB10-QWEN38-27B-FAST-001",)
+    assert qwen27.recipe_version == "0.4.0"
+    assert qwen27.draft_model is not None
+    assert qwen27.draft_model.revision == "bd7a934213c47a9e7ef69eef36bb3325f47fd1f1"
+    assert qwen27.deployment.backend_options["speculative_draft_model"] == "@draft"
+    assert qwen27.deployment.backend_options["speculative_tokens"] == 12
+    assert qwen27.deployment.backend_options["nvfp4_prefill_backend"] == "flashinfer"
+    assert qwen27.deployment.backend_options["max_prefill_length"] == 2048
     assert qwen27.deployment.execution_policy == "resident"
     assert qwen27.deployment.backend_options["num_tokens"] == 65_536
     assert qwen27.deployment.backend_options["max_seq_len_override"] == 65_536

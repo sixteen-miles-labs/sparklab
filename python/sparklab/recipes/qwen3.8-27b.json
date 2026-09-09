@@ -1,14 +1,14 @@
 {
   "schema_version": "2.0",
-  "recipe_version": "0.3.0",
+  "recipe_version": "0.4.0",
   "slug": "qwen3.8-27b",
   "name": "Qwen3.8 27B",
-  "model": "Inferact/Qwen3.8-27B-NVFP4",
+  "model": "RadixArk/Qwen3.8-27B-NVFP4",
   "parameters": "27B dense",
-  "revision": "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462",
-  "source_bytes": 26404418018,
-  "prepared_bytes": 24640689529,
-  "minimum_free_bytes": 80000000000,
+  "revision": "319f741cce68d7914884900c138a1fbb70a42f30",
+  "source_bytes": 21945295265,
+  "prepared_bytes": 21036142615,
+  "minimum_free_bytes": 70000000000,
   "intended_tier": "fast",
   "status": "experimental",
   "implementation": "available",
@@ -27,33 +27,42 @@
       "page_size": 16,
       "max_running_req": 1,
       "max_seq_len_override": 65536,
-      "num_tokens": 65536
+      "num_tokens": 65536,
+      "attention_backend": "triton",
+      "nvfp4_prefill_backend": "flashinfer",
+      "max_prefill_length": 2048,
+      "speculative_method": "dflash2",
+      "speculative_tokens": 12,
+      "speculative_draft_model": "@draft"
     }
   },
-  "profile": "quality",
+  "profile": "fast",
   "runtime_memory": {
-    "total_bytes": 51539607552
+    "total_bytes": 68719476736
   },
-  "description": "Experimental Fast-tier text-only ModelOpt NVFP4 recipe for dense Qwen3.8 on one NVIDIA GB10.",
+  "description": "Experimental Fast-tier text-only RadixArk NVFP4 recipe with FP4 prefill and greedy DFlash2-12 on one NVIDIA GB10.",
   "performance": {
-    "decode_tokens_per_second": 8.832997654771269,
-    "warm_ttft_seconds": 0.14434478300245246,
+    "decode_tokens_per_second": 27.467633094202384,
+    "warm_ttft_seconds": 5.432493594633333,
     "context_tokens": 65536,
-    "evidence": "GB10-QWEN38-27B-001",
-    "note": "The complete pinned checkpoint passed a three-trial greedy performance probe, exact 64K recall, and reasoning/tool/coding capability probes. Opt-in DFlash2-12 reached 45.88 tok/s with exact target-output parity on the original 128-token probe; longer math/coding/prose medians reached 59.58/37.51/19.26 tok/s."
+    "evidence": "GB10-QWEN38-27B-FAST-001",
+    "note": "Thirty fixed SPEED-Bench requests, roughly 8K input and exactly 256 output tokens, three warmups, one client, temperature 0, thinking enabled. Mean request time 15.02 s. Sampled requests use target-only generation. Quality: 70/74 checks; serving: 29/29. These are not quality-equivalence or endurance certification results."
   },
   "evidence": [
-    "GB10-QWEN38-27B-001",
-    "GB10-QWEN38-DFLASH-002",
-    "GB10-QWEN38-DFLASH-003",
-    "GB10-QWEN38-DFLASH-004"
+    "GB10-QWEN38-27B-FAST-001"
   ],
   "limitations": [
-    "The published checkpoint includes a vision tower; SparkLab serves its language model text-only.",
-    "The exact 65,536-token recall gate passed; the checkpoint's declared 262,144-token maximum has not been validated on GB10.",
-    "The opt-in DFlash2-12 profile clears the Fast throughput and latency thresholds; full Fast certification remains outstanding, including a clean-revision 60-minute endurance run.",
-    "The evidence host had about 209 MiB of pre-existing swap resident, although the 64K request produced zero swap growth, swap-in, or swap-out.",
-    "Native DFlash2 is opt-in and limited to batch-one greedy serving. The optimized width-twelve profile passed arithmetic, reasoning, tool, coding, and roughly 7K recall probes; 64K speculative context, sampled, concurrent, and endurance gates remain outstanding.",
-    "The 128-token optimized DFlash2 probe matches target-only output; complete longer traces can differ because verification grouping changes floating-point rounding."
-  ]
+    "Text-only serving; the published checkpoint includes a vision tower.",
+    "RadixArk changes the weight quantization from the previous Inferact profile. Dynamic FP4 activation prefill changes numerics and retains an extra packed weight layout; BF16 KV and FP32 recurrent state remain native.",
+    "DFlash2-12 accelerates batch-one greedy requests only. Default model sampling remains temperature 1.0; sampled requests fall back to target-only. Multiple clients queue behind one active generation.",
+    "The fixed quality screen passed 70/74 checks, versus 68/74 for both the previous native profile and vLLM. Failures include arithmetic, JSON, one HumanEval task, and an AIME token-budget limit. This does not establish general quality parity.",
+    "A 65,504-token prompt plus 32 generated tokens passed the 65,536-token serving limit. The checkpoint maximum beyond 65,536 tokens has not been qualified on GB10.",
+    "Full Fast certification and a 60-minute endurance run remain outstanding.",
+    "The evidence host had pre-existing swap and some swap-in, with no measured swap-out. Current recipe admission requires zero host swap; the advanced server command was used for hardware verification."
+  ],
+  "draft_model": {
+    "repo_id": "maurienne-ai/Qwen3.8-27B-DFlash2-NVFP4-RTNcal",
+    "revision": "bd7a934213c47a9e7ef69eef36bb3325f47fd1f1",
+    "bytes": 1550171194
+  }
 }
