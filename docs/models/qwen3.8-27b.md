@@ -45,6 +45,17 @@ to `sparklab run`.
 
 ## Measured performance
 
+The portfolio uses the original short AIME-25 problem 0 probe: 96 input tokens,
+exactly 128 output tokens, thinking enabled, temperature 0, one client, one warmup
+and three measured trials. The new default measured **49.52 tok/s** and
+**0.125 s warm TTFT** (medians); individual decode trials were 49.47–49.54 tok/s.
+This is 7.9% above the historical 45.88 tok/s result on the same short workload.
+All three new outputs matched each other, but differed from the previous Inferact
+output. This truncated speed probe does not measure completed-answer quality.
+See the [short-probe evidence](../../benchmarks/gb10/results/GB10-QWEN38-27B-PORTFOLIO-001.json).
+
+### Long-prompt comparison
+
 Thirty fixed SPEED-Bench requests, roughly 8K input tokens and exactly 256 output
 tokens, three warmups, thinking enabled, temperature 0, one client:
 

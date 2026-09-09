@@ -27,6 +27,16 @@ target-only configuration, using speculative generation that vLLM does not use
 in this comparison. vLLM still wins target-only decode and prompt processing.
 No vLLM DFlash performance is claimed.
 
+## Short portfolio probe
+
+The portfolio now reports a separate rerun of the original short probe on this
+default recipe: **49.52 tok/s** and **0.125 s warm TTFT**, medians of three trials
+after one warmup, with 96 input and 128 output tokens. The historical Inferact
+result on that workload was 45.88 tok/s. These short-probe numbers do not replace
+the 30-request long-prompt comparison above. See the
+[short-probe record](results/GB10-QWEN38-27B-PORTFOLIO-001.json) for the exact prompt,
+per-trial timings, output hashes, launch arguments, and raw artifact hashes.
+
 ## What changed
 
 The pinned RadixArk checkpoint stores more projections in reduced precision than

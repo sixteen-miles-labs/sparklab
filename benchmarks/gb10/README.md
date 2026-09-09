@@ -4,6 +4,10 @@ This directory contains compact, reviewable summaries for SparkLab model
 recipes. Raw logs and large result streams stay outside the source repository.
 
 - `result.schema.json` defines the versioned summary contract.
+- `results/GB10-QWEN38-27B-PORTFOLIO-001.json` reruns the original 96-input/
+  128-output short probe on the default RadixArk + FP4 prefill + DFlash2-12 recipe:
+  49.52 tok/s and 0.125 s warm TTFT, medians of three trials after one warmup.
+  The separate 8K/256 comparison remains in `QWEN38_27B_FAST.md`.
 - `results/GB10-DSV4-PREFIX-006.json` records safe replay-free compressor-prefix
   commits and shared verification metadata: 14.02 tok/s over 128 tokens and
   9.96 tok/s over 256 tokens. It also identifies the older first-rejection

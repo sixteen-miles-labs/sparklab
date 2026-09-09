@@ -104,8 +104,8 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
       <td>27B dense</td>
       <td>NVFP4 · FP4 prefill + DFlash2-12 (greedy)</td>
       <td>Experimental</td>
-      <td align="right">27.47</td>
-      <td align="right">5.432</td>
+      <td align="right">49.52</td>
+      <td align="right">0.125</td>
       <td><a href="docs/models/qwen3.8-27b.md">Instructions</a></td>
     </tr>
     <tr>
@@ -161,6 +161,10 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
     </tr>
   </tbody>
 </table>
+
+Qwen3.8-27B uses the three-trial median of the original 96-input/128-output
+short-prompt probe. Its separate 8K-input/256-output comparison averages
+27.47 tok/s; see the [benchmark details](docs/models/qwen3.8-27b.md#measured-performance).
 
 Status meanings:
 
