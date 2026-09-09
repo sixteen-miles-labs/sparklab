@@ -1,5 +1,9 @@
 # Qwen3.8-27B optimization probes on DGX Spark
 
+Recipe 0.4.0 integrates the selected profile into the normal runtime. See the
+[full 30-request verification](../gb10/QWEN38_27B_FAST.md) for the current results;
+the exploratory measurements below are preserved for comparison.
+
 The original single-client comparison measured 8.92 decode tok/s with SparkLab
 target-only, 22.05 with DFlash2-12, and 9.43 with vLLM target-only. Its roughly 8K
 prompts took 7.10 seconds to reach the first token in SparkLab target-only versus
@@ -37,7 +41,7 @@ with Marlin was not consistently faster, especially during large prefills.
 The combined profile changes both weight quantization and activation numerics.
 FP4 prefill uses dynamic activation scaling, not the checkpoint's calibrated
 NVFP4 input scales. It retains an extra packed weight layout. Native FP32
-recurrent state and BF16 KV cache remain in use. Recipe defaults are unchanged.
+recurrent state and BF16 KV cache remain in use. This experiment preceded the verified recipe 0.4.0 update.
 
 The reviewable launcher reproduced 10.31 s mean request time and all six
 experimental output hashes. A separate regression screen passed 24/26 checks,

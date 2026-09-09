@@ -1,5 +1,8 @@
 # Qwen3.8-27B: SparkLab and vLLM on GB10
 
+For the current RadixArk default, see the
+[September 9 fast-profile verification](QWEN38_27B_FAST.md).
+
 Measured on 2026-09-08 using the same pinned Inferact NVFP4 target, 30 fixed SPEED-Bench prompts of roughly 8K input tokens, and exactly 256 generated tokens per request. Each profile has three warmups and one measured trial. All measured requests passed HTTP and token-count checks; prompt identities and counts match across engines.
 
 | Engine/profile | Clients | Decode tok/s/user | Total output tok/s | Mean TTFT | Mean request time | p95 TTFT |

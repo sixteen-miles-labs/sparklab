@@ -100,12 +100,12 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
       <td><a href="docs/models/qwen3.6-35b-a3b.md">Instructions</a></td>
     </tr>
     <tr>
-      <td><a href="https://huggingface.co/oakmindai/Qwen3.8-27B-NVFP4-FTW">Qwen3.8-27B</a></td>
+      <td><a href="https://huggingface.co/RadixArk/Qwen3.8-27B-NVFP4">Qwen3.8-27B</a></td>
       <td>27B dense</td>
-      <td>NVFP4 · FTW + optional DFlash2-12</td>
+      <td>NVFP4 · FP4 prefill + DFlash2-12 (greedy)</td>
       <td>Experimental</td>
-      <td align="right">45.88</td>
-      <td align="right">0.152</td>
+      <td align="right">27.47</td>
+      <td align="right">5.432</td>
       <td><a href="docs/models/qwen3.8-27b.md">Instructions</a></td>
     </tr>
     <tr>
