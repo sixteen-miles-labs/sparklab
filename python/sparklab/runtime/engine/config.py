@@ -28,6 +28,8 @@ class EngineConfig:
     moe_host_cache_gb: float = 1.0
     # NVFP4 routed-expert GEMM backend (--nvfp4-backend): auto|marlin|flashinfer|triton.
     nvfp4_backend: str = "triton"
+    # Dense Qwen MLP prefill only; flashinfer changes activation numerics to FP4.
+    nvfp4_prefill_backend: str = "w4a16"
     # Expert-bank host load (--expert-load): auto|serial|parallel. "auto" reads scattered
     # experts in parallel but falls back to serial when free RAM can't cover the banks + the
     # parallel reader's extra (non-reclaimable) whole-shard buffer; "serial" forces the

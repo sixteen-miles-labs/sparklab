@@ -145,7 +145,7 @@ class DFlashGroupedConv(BaseOP):
 
 
 class DFlashAttention(BaseOP):
-    def __init__(self, args: DFlash2Args, layer_id: int, *, bf16: bool = False):
+    def __init__(self, args: DFlash2Args, layer_id: int, *, bf16: bool = False, prefill_backend: str = "w4a16"):
         self.layer_id = layer_id
         self.num_q = args.num_attention_heads
         self.num_kv = args.num_key_value_heads
@@ -156,11 +156,11 @@ class DFlashAttention(BaseOP):
         self.qkv_proj = (
             LinearReplicated(args.hidden_size, self.q_size + 2 * self.kv_size, has_bias=False)
             if bf16 else Nvfp4DenseColMerged(
-                args.hidden_size, [self.q_size, self.kv_size, self.kv_size]
+                args.hidden_size, [self.q_size, self.kv_size, self.kv_size], prefill_backend=prefill_backend
             )
         )
         self.o_proj = (LinearReplicated(self.q_size, args.hidden_size, has_bias=False)
-                       if bf16 else Nvfp4DenseLinear(self.q_size, args.hidden_size))
+                       if bf16 else Nvfp4DenseLinear(self.q_size, args.hidden_size, prefill_backend=prefill_backend))
         self.q_norm = RMSNorm(self.head_dim, args.rms_norm_eps)
         self.k_norm = RMSNorm(self.head_dim, args.rms_norm_eps)
         self.rotary = get_rope(
@@ -230,16 +230,16 @@ class DFlashAttention(BaseOP):
 
 
 class DFlashMLP(BaseOP):
-    def __init__(self, args: DFlash2Args, *, bf16: bool = False):
+    def __init__(self, args: DFlash2Args, *, bf16: bool = False, prefill_backend: str = "w4a16"):
         self.gate_up_proj = (
             LinearReplicated(args.hidden_size, 2 * args.intermediate_size, has_bias=False)
             if bf16 else Nvfp4DenseColMerged(
-                args.hidden_size, [args.intermediate_size, args.intermediate_size]
+                args.hidden_size, [args.intermediate_size, args.intermediate_size], prefill_backend=prefill_backend
             )
         )
         self.down_proj = (
             LinearReplicated(args.intermediate_size, args.hidden_size, has_bias=False)
-            if bf16 else Nvfp4DenseLinear(args.intermediate_size, args.hidden_size)
+            if bf16 else Nvfp4DenseLinear(args.intermediate_size, args.hidden_size, prefill_backend=prefill_backend)
         )
 
     def forward(self, hidden: torch.Tensor) -> torch.Tensor:
@@ -247,11 +247,11 @@ class DFlashMLP(BaseOP):
 
 
 class DFlashDecoderLayer(BaseOP):
-    def __init__(self, args: DFlash2Args, layer_id: int, block_size: int, *, bf16: bool = False):
+    def __init__(self, args: DFlash2Args, layer_id: int, block_size: int, *, bf16: bool = False, prefill_backend: str = "w4a16"):
         self.input_layernorm = RMSNorm(args.hidden_size, args.rms_norm_eps)
-        self.self_attn = DFlashAttention(args, layer_id, bf16=bf16)
+        self.self_attn = DFlashAttention(args, layer_id, bf16=bf16, prefill_backend=prefill_backend)
         self.post_attention_layernorm = RMSNorm(args.hidden_size, args.rms_norm_eps)
-        self.mlp = DFlashMLP(args, bf16=bf16)
+        self.mlp = DFlashMLP(args, bf16=bf16, prefill_backend=prefill_backend)
         self.attention_conv = DFlashGroupedConv(args, block_size)
         self.mlp_conv = DFlashGroupedConv(args, block_size)
 
@@ -318,7 +318,7 @@ class Qwen38DFlash2(BaseOP):
     Qwen uses native NVFP4 projections. Full GLM opts into original BF16 draft
     projections and supplies its own scale-aware target-head projection.
     """
-    def __init__(self, args: DFlash2Args, target_num_layers: int, block_size: int, *, bf16: bool = False):
+    def __init__(self, args: DFlash2Args, target_num_layers: int, block_size: int, *, bf16: bool = False, prefill_backend: str = "w4a16"):
         if args.hidden_size <= 0 or args.selector_rank <= 0:
             raise ValueError("invalid DFlash2 checkpoint geometry")
         if any(layer < 0 or layer >= target_num_layers for layer in args.target_layer_ids):
@@ -328,7 +328,7 @@ class Qwen38DFlash2(BaseOP):
         first_layer_id = target_num_layers
         self.layers = OPList(
             [
-                DFlashDecoderLayer(args, first_layer_id + i, block_size, bf16=bf16)
+                DFlashDecoderLayer(args, first_layer_id + i, block_size, bf16=bf16, prefill_backend=prefill_backend)
                 for i in range(args.num_layers)
             ]
         )

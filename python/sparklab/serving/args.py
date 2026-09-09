@@ -565,6 +565,17 @@ def parse_args(
     )
 
     parser.add_argument(
+        "--nvfp4-prefill-backend",
+        default=ServerArgs.nvfp4_prefill_backend,
+        choices=["w4a16", "flashinfer"],
+        help=(
+            "Dense Qwen NVFP4 MLP prefill: w4a16 preserves the native path; flashinfer "
+            "uses dynamic FP4 activations at 128 or more rows on GB10. Requires BF16 "
+            "model dtype and retains an extra packed weight layout."
+        ),
+    )
+
+    parser.add_argument(
         "--expert-load",
         default=ServerArgs.expert_load,
         choices=["auto", "serial", "parallel"],

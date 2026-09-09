@@ -13,12 +13,46 @@ from huggingface_hub import snapshot_download
 
 from sparklab.backends import BackendError, get_backend
 from sparklab.catalog import DeploymentRecipe, ModelRecipe
-from sparklab.paths import manifest_path, prepared_path, source_path
+from sparklab.paths import draft_path, manifest_path, prepared_path, source_path
 from sparklab.planner import ArtifactPlan, plan_artifacts
 
 
 class AcquisitionError(RuntimeError):
     pass
+
+
+def validate_draft_snapshot(directory: str | os.PathLike[str]) -> dict[str, Any]:
+    """Validate the single-shard DFlash snapshot without importing the GPU runtime."""
+    folder = Path(directory)
+    try:
+        config = json.loads((folder / "config.json").read_text())
+        if not isinstance(config, dict):
+            raise ValueError("config.json must contain an object")
+        weight = folder / "model.safetensors"
+        with weight.open("rb") as stream:
+            prefix = stream.read(8)
+            if len(prefix) != 8:
+                raise ValueError("truncated safetensors prefix")
+            header_size = struct.unpack("<Q", prefix)[0]
+            if not 1 < header_size <= min(64 << 20, weight.stat().st_size - 8):
+                raise ValueError("invalid safetensors header size")
+            header = json.loads(stream.read(header_size))
+        ranges = sorted(
+            (int(meta["data_offsets"][0]), int(meta["data_offsets"][1]))
+            for name, meta in header.items() if name != "__metadata__"
+        )
+        cursor = 0
+        if not ranges:
+            raise ValueError("empty draft weights")
+        for begin, end in ranges:
+            if begin != cursor or end < begin:
+                raise ValueError("non-contiguous draft tensor ranges")
+            cursor = end
+        if weight.stat().st_size != 8 + header_size + cursor:
+            raise ValueError("draft safetensors size mismatch")
+    except (OSError, ValueError, KeyError, IndexError, TypeError, AttributeError) as exc:
+        raise AcquisitionError(f"invalid draft snapshot {folder}: {exc}") from exc
+    return {"tensors": len(ranges), "weight_bytes": weight.stat().st_size}
 
 
 def validate_safetensors_snapshot(directory: str | os.PathLike[str]) -> dict[str, Any] | None:
@@ -208,6 +242,7 @@ def acquire_recipe(
             else None
         ),
         "dry_run": dry_run,
+        "draft_model": recipe.draft_model.to_dict() if recipe.draft_model is not None else None,
         "artifact_plan": plan.to_dict(),
     }
     if not plan.ready:
@@ -352,6 +387,24 @@ def acquire_recipe(
             "validation": _validation_payload(validation),
         }
 
+    draft_artifact = None
+    if recipe.draft_model is not None:
+        draft = recipe.draft_model
+        destination = draft_path(recipe, root)
+        destination.mkdir(parents=True, exist_ok=True)
+        try:
+            resolved_draft = Path(downloader(
+                repo_id=draft.repo_id, revision=draft.revision, local_dir=str(destination),
+            )).resolve()
+        except Exception as exc:
+            raise AcquisitionError(f"cannot acquire draft {draft.repo_id}@{draft.revision}: {exc}") from exc
+        draft_validation = validate_draft_snapshot(resolved_draft)
+        draft_artifact = {
+            "role": "draft", "path": str(resolved_draft), "format": "safetensors",
+            "repository": draft.repo_id, "revision": draft.revision,
+            "validation": draft_validation,
+        }
+
     payload = {
         "schema_version": "2.0",
         "recipe": recipe.slug,
@@ -362,6 +415,7 @@ def acquire_recipe(
         "artifacts": {
             "source": source_artifact,
             "runtime": runtime_artifact,
+            "draft": draft_artifact,
         },
         "completed_at": datetime.now(timezone.utc).isoformat(),
     }

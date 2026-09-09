@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from sparklab.catalog import ModelRecipe
-from sparklab.paths import prepared_path, source_path, state_root
+from sparklab.paths import draft_path, prepared_path, source_path, state_root
 from sparklab.platform import GB10_SAFETY_RESERVE_BYTES, GB10Snapshot
 
 
@@ -105,6 +105,11 @@ def plan_artifacts(
             safety_margin = max(0, recipe.minimum_free_bytes - declared)
             required += safety_margin
         if required is not None and free < required:
+            reasons.append(f"storage shortfall: need {required} bytes, have {free} bytes free")
+    if recipe.draft_model is not None and required is not None:
+        required += max(0, recipe.draft_model.bytes - _existing_bytes(draft_path(recipe, base)))
+        if free < required:
+            reasons = [reason for reason in reasons if not reason.startswith("storage shortfall:")]
             reasons.append(f"storage shortfall: need {required} bytes, have {free} bytes free")
     shortfall = None if required is None else max(0, required - free)
     return ArtifactPlan(

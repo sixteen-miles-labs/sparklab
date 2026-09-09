@@ -85,6 +85,62 @@ def _ftw_checkpoint(path):
     )
 
 
+def test_pinned_draft_download_and_validation(tmp_path):
+    from sparklab.catalog import DraftModel
+    from sparklab.acquire import validate_draft_snapshot
+    from sparklab.paths import draft_path
+
+    recipe = get_recipe("qwen3.8-27b")
+    recipe = replace(
+        recipe, source_bytes=1, prepared_bytes=1, minimum_free_bytes=2,
+        draft_model=DraftModel("publisher/draft", "d" * 40, 4096),
+        deployment=replace(recipe.deployment, backend_options={
+            **recipe.deployment.backend_options, "speculative_draft_model": "@draft",
+        }),
+    )
+    recipe.validate()
+    calls = []
+
+    def downloader(**kwargs):
+        calls.append(kwargs)
+        destination = Path(kwargs["local_dir"])
+        destination.mkdir(parents=True, exist_ok=True)
+        (destination / "config.json").write_text("{}")
+        if kwargs["repo_id"] == "publisher/draft":
+            save_file({"weight": torch.ones(4)}, destination / "model.safetensors")
+        return str(destination)
+
+    result = acquire_recipe(recipe, root=str(tmp_path), downloader=downloader)
+    assert calls[-1]["repo_id"] == "publisher/draft"
+    assert calls[-1]["revision"] == "d" * 40
+    assert result["manifest"]["artifacts"]["draft"]["validation"]["tensors"] == 1
+    path = draft_path(recipe, tmp_path)
+    weight = path / "model.safetensors"
+    weight.write_bytes(weight.read_bytes()[:-1])
+    with pytest.raises(AcquisitionError, match="size mismatch"):
+        validate_draft_snapshot(path)
+
+
+def test_draft_metadata_roundtrip_and_storage_budget(tmp_path):
+    from sparklab.catalog import DraftModel, ModelRecipe
+    from sparklab.planner import plan_artifacts
+
+    base = get_recipe("qwen3.8-27b")
+    base = replace(base, draft_model=None, deployment=replace(
+        base.deployment, backend_options={k: v for k, v in base.deployment.backend_options.items()
+                                          if k != "speculative_draft_model"},
+    ))
+    with_draft = replace(base, draft_model=DraftModel("publisher/draft", "e" * 40, 123456),
+                         deployment=replace(base.deployment, backend_options={
+                             **base.deployment.backend_options, "speculative_draft_model": "@draft"}))
+    assert ModelRecipe.from_dict(with_draft.to_dict()).draft_model == with_draft.draft_model
+    before = plan_artifacts(base, root=str(tmp_path), include_prepared=True)
+    after = plan_artifacts(with_draft, root=str(tmp_path), include_prepared=True)
+    assert after.required_bytes == before.required_bytes + 123456
+    with pytest.raises(ValueError, match="full hexadecimal"):
+        DraftModel("publisher/draft", "main", 1).validate()
+
+
 def test_validate_ftw_checkpoint_checks_shards_tensors_and_external_artifacts(tmp_path):
     index = _ftw_checkpoint(tmp_path)
     result = validate_ftw_checkpoint(tmp_path)

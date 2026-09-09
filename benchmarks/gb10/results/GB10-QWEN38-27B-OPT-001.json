@@ -1,0 +1,849 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWEN38-27B-OPT-001",
+  "status": "exploratory",
+  "date": "2026-09-08",
+  "recipe": {
+    "slug": "qwen3.8-27b",
+    "recipe_version": "0.3.0",
+    "default_changed": false
+  },
+  "engine": {
+    "native_git_revision": "2057a41499fdd9dd6c7be6f90f9ce46be2cd561a",
+    "native_tracked_dirty": true,
+    "preexisting_changes": "CLI/planner swap warning, planner tests, and model documentation; preserved.",
+    "python": "3.11.15",
+    "torch": "2.11.0+cu130",
+    "triton": "3.6.0",
+    "flashinfer": "0.6.15.post1",
+    "cudnn": 91900
+  },
+  "hardware": {
+    "gpu": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "driver": "580.126.09"
+  },
+  "workload": {
+    "requests": 6,
+    "warmups": 1,
+    "input": "First six requests ordered by request_start_ns from prior target-only C1 SPEED-Bench export. Warmup is seventh request.",
+    "dataset_source": "results/qwen38-27b-vllm-20260908/sparklab-target-c1/profile_export_raw.jsonl",
+    "dataset_source_sha256": "4919ac71219921b60325b0517e44eb390fdc18e7159c05d75788a166ae0abd2c",
+    "prompt_tokens": [
+      8383,
+      8835,
+      8207,
+      8519,
+      8617,
+      8229
+    ],
+    "output_tokens": 128,
+    "concurrency": 1,
+    "temperature": 0,
+    "ignore_eos": true,
+    "thinking": true,
+    "trials": 1,
+    "decode_metric": "127 / (last text event time - first text event time), mean over six requests",
+    "ttft_metric": "First text event minus request start",
+    "elapsed_metric": "Complete HTTP stream duration, mean over six requests"
+  },
+  "profiles": [
+    {
+      "profile": "baseline",
+      "requests": 6,
+      "output_tokens": 128,
+      "decode_tps": 9.121483055632448,
+      "ttft_s": 7.065188390008795,
+      "elapsed_s": 20.989045125839766,
+      "output_hashes_matching_target_baseline": 6,
+      "raw_sha256": "ece149e447e20414c5baf155161256e0604f30024ee45ed29a23ec05688ef978",
+      "command": {
+        "argv": [
+          "$SPARKLAB_ROOT/.venv/bin/python",
+          "$SPARKLAB_ROOT/results/qwen27-optimization-20260908/candidate_server.py",
+          "--model",
+          "$HOME/.sparklab/models/qwen3.8-27b/prepared/0.1.0",
+          "--served-model-name",
+          "qwen27-opt",
+          "--nvfp4-backend",
+          "triton",
+          "--cuda-graph-max-bs",
+          "1",
+          "--cache-type",
+          "radix",
+          "--page-size",
+          "16",
+          "--max-running-requests",
+          "1",
+          "--max-seq-len-override",
+          "65536",
+          "--num-tokens",
+          "65536",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "1938"
+        ],
+        "env": {}
+      }
+    },
+    {
+      "profile": "scratch512",
+      "requests": 6,
+      "output_tokens": 128,
+      "decode_tps": 9.023031655975885,
+      "ttft_s": 6.615647501661442,
+      "elapsed_s": 20.692932157350395,
+      "output_hashes_matching_target_baseline": 5,
+      "raw_sha256": "d4f395bfd652983f98246eff7cbbe57ab38009fe745ef0265a837887b495d842",
+      "command": {
+        "argv": [
+          "$SPARKLAB_ROOT/.venv/bin/python",
+          "$SPARKLAB_ROOT/results/qwen27-optimization-20260908/candidate_server.py",
+          "--model",
+          "$HOME/.sparklab/models/qwen3.8-27b/prepared/0.1.0",
+          "--served-model-name",
+          "qwen27-opt",
+          "--nvfp4-backend",
+          "triton",
+          "--cuda-graph-max-bs",
+          "1",
+          "--cache-type",
+          "radix",
+          "--page-size",
+          "16",
+          "--max-running-requests",
+          "1",
+          "--max-seq-len-override",
+          "65536",
+          "--num-tokens",
+          "65536",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "1938"
+        ],
+        "env": {
+          "Q27_SCRATCH_MIB": "512"
+        }
+      }
+    },
+    {
+      "profile": "w4a4-8192",
+      "requests": 6,
+      "output_tokens": 128,
+      "decode_tps": 9.273113595483153,
+      "ttft_s": 5.925497452844866,
+      "elapsed_s": 19.62130150885787,
+      "output_hashes_matching_target_baseline": 0,
+      "raw_sha256": "5324fc006a6cfb26da68c1528645b46f5999521e0cc7656219fb7222f0d2c3e3",
+      "command": {
+        "argv": [
+          "$SPARKLAB_ROOT/.venv/bin/python",
+          "$SPARKLAB_ROOT/results/qwen27-optimization-20260908/candidate_server.py",
+          "--model",
+          "$HOME/.sparklab/models/qwen3.8-27b/prepared/0.1.0",
+          "--served-model-name",
+          "qwen27-opt",
+          "--nvfp4-backend",
+          "triton",
+          "--cuda-graph-max-bs",
+          "1",
+          "--cache-type",
+          "radix",
+          "--page-size",
+          "16",
+          "--max-running-requests",
+          "1",
+          "--max-seq-len-override",
+          "65536",
+          "--num-tokens",
+          "65536",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "1938"
+        ],
+        "env": {
+          "Q27_W4A4_PREFILL": "1"
+        }
+      }
+    },
+    {
+      "profile": "w4a4-2048",
+      "requests": 6,
+      "output_tokens": 128,
+      "decode_tps": 9.216933469336539,
+      "ttft_s": 5.542038166837301,
+      "elapsed_s": 19.321370283840224,
+      "output_hashes_matching_target_baseline": 0,
+      "raw_sha256": "6db5ae80b3618a1e3e9836cd3ebf4bed9d885f25c56e5cdeca490f281c561ec8",
+      "command": {
+        "argv": [
+          "$SPARKLAB_ROOT/.venv/bin/python",
+          "$SPARKLAB_ROOT/results/qwen27-optimization-20260908/candidate_server.py",
+          "--model",
+          "$HOME/.sparklab/models/qwen3.8-27b/prepared/0.1.0",
+          "--served-model-name",
+          "qwen27-opt",
+          "--nvfp4-backend",
+          "triton",
+          "--cuda-graph-max-bs",
+          "1",
+          "--cache-type",
+          "radix",
+          "--page-size",
+          "16",
+          "--max-running-requests",
+          "1",
+          "--max-seq-len-override",
+          "65536",
+          "--num-tokens",
+          "65536",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "1938",
+          "--max-prefill-length",
+          "2048"
+        ],
+        "env": {
+          "Q27_W4A4_PREFILL": "1"
+        }
+      }
+    },
+    {
+      "profile": "radix-target",
+      "requests": 6,
+      "output_tokens": 128,
+      "decode_tps": 11.227045728934975,
+      "ttft_s": 7.556066207471304,
+      "elapsed_s": 18.86860664767058,
+      "output_hashes_matching_target_baseline": 0,
+      "raw_sha256": "9d94c6a779f81025d37a38622cfbe265b2b1e11220d8301050039a4db5c1266c",
+      "command": {
+        "argv": [
+          "$SPARKLAB_ROOT/.venv/bin/python",
+          "$SPARKLAB_ROOT/results/qwen27-optimization-20260908/candidate_server.py",
+          "--model",
+          "$HOME/.sparklab/models/qwen3.8-27b/prepared/experimental-radix-319f741cce68",
+          "--served-model-name",
+          "qwen27-opt",
+          "--nvfp4-backend",
+          "triton",
+          "--cuda-graph-max-bs",
+          "1",
+          "--cache-type",
+          "radix",
+          "--page-size",
+          "16",
+          "--max-running-requests",
+          "1",
+          "--max-seq-len-override",
+          "65536",
+          "--num-tokens",
+          "65536",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "1938"
+        ],
+        "env": {}
+      }
+    },
+    {
+      "profile": "inferact-dflash",
+      "requests": 6,
+      "output_tokens": 128,
+      "decode_tps": 22.22641514695926,
+      "ttft_s": 7.334975716813157,
+      "elapsed_s": 13.133185262481371,
+      "output_hashes_matching_target_baseline": 2,
+      "raw_sha256": "cf5a707cbde22cf86be99a24137ad2a8b23c8425400dc7b48baf24f0b5b0482f",
+      "command": {
+        "argv": [
+          "$SPARKLAB_ROOT/.venv/bin/python",
+          "$SPARKLAB_ROOT/results/qwen27-optimization-20260908/candidate_server.py",
+          "--model",
+          "$HOME/.sparklab/models/qwen3.8-27b/prepared/experimental-radix-319f741cce68",
+          "--served-model-name",
+          "qwen27-opt",
+          "--nvfp4-backend",
+          "triton",
+          "--cuda-graph-max-bs",
+          "1",
+          "--cache-type",
+          "radix",
+          "--page-size",
+          "16",
+          "--max-running-requests",
+          "1",
+          "--max-seq-len-override",
+          "65536",
+          "--num-tokens",
+          "65536",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "1938",
+          "--attention-backend",
+          "triton",
+          "--speculative-method",
+          "dflash2",
+          "--speculative-tokens",
+          "12",
+          "--speculative-draft-model",
+          "$HOME/.sparklab/models/qwen3.8-27b/draft/dflash2-bd7a934213c4",
+          "--model",
+          "$HOME/.sparklab/models/qwen3.8-27b/prepared/0.1.0"
+        ],
+        "env": {
+          "SPARKLAB_DFLASH2_REJECT_DRAFT": "1",
+          "SPARKLAB_DFLASH2_VERIFY_GRAPH": "1"
+        }
+      }
+    },
+    {
+      "profile": "radix-dflash",
+      "requests": 6,
+      "output_tokens": 128,
+      "decode_tps": 26.262842927603554,
+      "ttft_s": 8.086906058558574,
+      "elapsed_s": 13.002518519662166,
+      "output_hashes_matching_target_baseline": 0,
+      "raw_sha256": "d8fb22cc199cca702e0291d69cb589f6fca381305e88ef6ca18990f6b0ed9ab2",
+      "command": {
+        "argv": [
+          "$SPARKLAB_ROOT/.venv/bin/python",
+          "$SPARKLAB_ROOT/results/qwen27-optimization-20260908/candidate_server.py",
+          "--model",
+          "$HOME/.sparklab/models/qwen3.8-27b/prepared/experimental-radix-319f741cce68",
+          "--served-model-name",
+          "qwen27-opt",
+          "--nvfp4-backend",
+          "triton",
+          "--cuda-graph-max-bs",
+          "1",
+          "--cache-type",
+          "radix",
+          "--page-size",
+          "16",
+          "--max-running-requests",
+          "1",
+          "--max-seq-len-override",
+          "65536",
+          "--num-tokens",
+          "65536",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "1938",
+          "--attention-backend",
+          "triton",
+          "--speculative-method",
+          "dflash2",
+          "--speculative-tokens",
+          "12",
+          "--speculative-draft-model",
+          "$HOME/.sparklab/models/qwen3.8-27b/draft/dflash2-bd7a934213c4"
+        ],
+        "env": {
+          "SPARKLAB_DFLASH2_REJECT_DRAFT": "1",
+          "SPARKLAB_DFLASH2_VERIFY_GRAPH": "1"
+        }
+      }
+    },
+    {
+      "profile": "radix-dflash-w4a4",
+      "requests": 6,
+      "output_tokens": 128,
+      "decode_tps": 25.660671655213303,
+      "ttft_s": 5.349108261677126,
+      "elapsed_s": 10.315905901486985,
+      "output_hashes_matching_target_baseline": 0,
+      "raw_sha256": "d874abd59594d9fa892be8a53a3981e3d6bc6279491af67d2a4dd43a61e79dbb",
+      "command": {
+        "argv": [
+          "$SPARKLAB_ROOT/.venv/bin/python",
+          "$SPARKLAB_ROOT/results/qwen27-optimization-20260908/candidate_server.py",
+          "--model",
+          "$HOME/.sparklab/models/qwen3.8-27b/prepared/experimental-radix-319f741cce68",
+          "--served-model-name",
+          "qwen27-opt",
+          "--nvfp4-backend",
+          "triton",
+          "--cuda-graph-max-bs",
+          "1",
+          "--cache-type",
+          "radix",
+          "--page-size",
+          "16",
+          "--max-running-requests",
+          "1",
+          "--max-seq-len-override",
+          "65536",
+          "--num-tokens",
+          "65536",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "1938",
+          "--attention-backend",
+          "triton",
+          "--speculative-method",
+          "dflash2",
+          "--speculative-tokens",
+          "12",
+          "--speculative-draft-model",
+          "$HOME/.sparklab/models/qwen3.8-27b/draft/dflash2-bd7a934213c4",
+          "--max-prefill-length",
+          "2048"
+        ],
+        "env": {
+          "SPARKLAB_DFLASH2_REJECT_DRAFT": "1",
+          "SPARKLAB_DFLASH2_VERIFY_GRAPH": "1",
+          "Q27_W4A4_PREFILL": "1"
+        }
+      }
+    }
+  ],
+  "sources": {
+    "inferact": {
+      "repo": "Inferact/Qwen3.8-27B-NVFP4",
+      "revision": "6128240ebaf4eaa7bad2b3d1c72c37d677c5f462",
+      "prepared": {
+        "index_sha256": "105b958b3046308b02989d7e32abf0547144f8842027cfaff3931a1f793fe7e3",
+        "total_bytes": 24617562112,
+        "tensor_bytes": 24616352768
+      }
+    },
+    "radix": {
+      "repo": "RadixArk/Qwen3.8-27B-NVFP4",
+      "revision": "319f741cce68d7914884900c138a1fbb70a42f30",
+      "verified_lfs": [
+        {
+          "file": "model-00001-of-00003.safetensors",
+          "sha256": "fbcdb5ba1cdda462b5f38592d071e772c4d398afea61a0aa9188b32d1a239a79"
+        },
+        {
+          "file": "model-00002-of-00003.safetensors",
+          "sha256": "db6146a5464fb0a891181b93c81593f0ca65c602eb14120a1c2b1b09bca11f85"
+        },
+        {
+          "file": "model-00003-of-00003.safetensors",
+          "sha256": "d3cfb92742e30c8b46564665791dbe0a86ed64cfc02b1275081530793c0c9581"
+        },
+        {
+          "file": "tokenizer.json",
+          "sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3"
+        }
+      ],
+      "prepared": {
+        "index_sha256": "0f5e2a391a4cb3d139b3932e2db0e67ea6ad4abd1bba5f0addf824c1b2ec4129",
+        "total_bytes": 21012570112,
+        "tensor_bytes": 21010947584
+      }
+    },
+    "draft": {
+      "repo": "maurienne-ai/Qwen3.8-27B-DFlash2-NVFP4-RTNcal",
+      "revision": "bd7a934213c47a9e7ef69eef36bb3325f47fd1f1"
+    }
+  },
+  "profiling": {
+    "decode_steps": 11,
+    "self_cuda_ms": 1213,
+    "bf16_gemv_ms": 546.678,
+    "nvfp4_gemv_ms": 353.795,
+    "nvfp4_splitk_ms": 262.568,
+    "attention_ms": 28.258,
+    "gdn_update_ms": 10.536,
+    "trace_sha256": {
+      "decode-trace.json": "0ad57cf9336c19568584aba5087106da5d583aeac377c13b0650fe64ac9f216e",
+      "prefill-trace.json": "a6dcfa773a81e936ec79061166047111abde6b965c8433e27a8cda80f7f8d245"
+    }
+  },
+  "experimental_numerics": {
+    "w4a4": "Dynamic per-input global activation scale 2688 / max(abs(x)); FlashInfer block scales; CUTLASS FP4 GEMM at rows >= 128. Native W4A16 for smaller rows. Does not use source calibrated NVFP4 input_scale.",
+    "weights": "Preserves existing packed values and per-projection global scales from the prepared checkpoint.",
+    "state": "Native FP32 recurrent state and BF16 KV cache.",
+    "memory": "W4A4 prototype retains an additional packed dense weight layout alongside native K-major weights; smaller source does not imply lower runtime memory."
+  },
+  "quality": {
+    "scope": "20 fixed regression cases, four long-prompt variants, and two successful-tool roundtrips. No representative model-quality or vLLM quality comparison.",
+    "corpus_sha256": "e21d2048b6b931bc6bd6983453850dae47fcbee842db1ff67300f666bf248268",
+    "profiles": {
+      "inferact-dflash": {
+        "passed_checks": 23,
+        "total_checks": 26,
+        "results": [
+          {
+            "id": "arithmetic-0",
+            "kind": "exact",
+            "passed": true
+          },
+          {
+            "id": "arithmetic-1",
+            "kind": "exact",
+            "passed": true
+          },
+          {
+            "id": "arithmetic-2",
+            "kind": "exact",
+            "passed": true
+          },
+          {
+            "id": "arithmetic-3",
+            "kind": "exact",
+            "passed": true
+          },
+          {
+            "id": "arithmetic-4",
+            "kind": "exact",
+            "passed": true
+          },
+          {
+            "id": "arithmetic-5",
+            "kind": "exact",
+            "passed": false
+          },
+          {
+            "id": "reasoning-0",
+            "kind": "reasoning",
+            "passed": true
+          },
+          {
+            "id": "reasoning-1",
+            "kind": "reasoning",
+            "passed": true
+          },
+          {
+            "id": "reasoning-2",
+            "kind": "reasoning",
+            "passed": true
+          },
+          {
+            "id": "reasoning-3",
+            "kind": "reasoning",
+            "passed": true
+          },
+          {
+            "id": "json-0",
+            "kind": "json",
+            "passed": true
+          },
+          {
+            "id": "json-1",
+            "kind": "json",
+            "passed": false
+          },
+          {
+            "id": "json-2",
+            "kind": "json",
+            "passed": true
+          },
+          {
+            "id": "json-3",
+            "kind": "json",
+            "passed": false
+          },
+          {
+            "id": "code-clamp",
+            "kind": "code",
+            "passed": true
+          },
+          {
+            "id": "code-sign",
+            "kind": "code",
+            "passed": true
+          },
+          {
+            "id": "code-absolute_difference",
+            "kind": "code",
+            "passed": true
+          },
+          {
+            "id": "code-is_leap_year",
+            "kind": "code",
+            "passed": true
+          },
+          {
+            "id": "tool-0",
+            "kind": "tool",
+            "passed": true
+          },
+          {
+            "id": "tool-0-roundtrip",
+            "kind": "exact",
+            "passed": true
+          },
+          {
+            "id": "tool-1",
+            "kind": "tool",
+            "passed": true
+          },
+          {
+            "id": "tool-1-roundtrip",
+            "kind": "exact",
+            "passed": true
+          },
+          {
+            "id": "long-arithmetic-1",
+            "kind": "exact",
+            "passed": true
+          },
+          {
+            "id": "long-reasoning-0",
+            "kind": "reasoning",
+            "passed": true
+          },
+          {
+            "id": "long-json-0",
+            "kind": "json",
+            "passed": true
+          },
+          {
+            "id": "long-code-clamp",
+            "kind": "code",
+            "passed": true
+          }
+        ],
+        "summary_sha256": "cbecc8a7f122cc5c9b601f2c165e43981972ecb6cc9c4db837b3dde3e36e21b8",
+        "final_health": {
+          "status": "ok",
+          "model": "qwen27-opt",
+          "instance_id": "4b8a5534-db82-4431-84bf-553d17d35a2f",
+          "uptime_s": 175,
+          "maintenance": "serving",
+          "version": "0.1.2"
+        },
+        "errors": [],
+        "host_swap_io_delta_pages": {
+          "pswpin": 546,
+          "pswpout": 0
+        }
+      },
+      "radix-dflash-w4a4": {
+        "passed_checks": 24,
+        "total_checks": 26,
+        "results": [
+          {
+            "id": "arithmetic-0",
+            "kind": "exact",
+            "passed": true
+          },
+          {
+            "id": "arithmetic-1",
+            "kind": "exact",
+            "passed": true
+          },
+          {
+            "id": "arithmetic-2",
+            "kind": "exact",
+            "passed": true
+          },
+          {
+            "id": "arithmetic-3",
+            "kind": "exact",
+            "passed": true
+          },
+          {
+            "id": "arithmetic-4",
+            "kind": "exact",
+            "passed": true
+          },
+          {
+            "id": "arithmetic-5",
+            "kind": "exact",
+            "passed": false
+          },
+          {
+            "id": "reasoning-0",
+            "kind": "reasoning",
+            "passed": true
+          },
+          {
+            "id": "reasoning-1",
+            "kind": "reasoning",
+            "passed": true
+          },
+          {
+            "id": "reasoning-2",
+            "kind": "reasoning",
+            "passed": true
+          },
+          {
+            "id": "reasoning-3",
+            "kind": "reasoning",
+            "passed": true
+          },
+          {
+            "id": "json-0",
+            "kind": "json",
+            "passed": true
+          },
+          {
+            "id": "json-1",
+            "kind": "json",
+            "passed": false
+          },
+          {
+            "id": "json-2",
+            "kind": "json",
+            "passed": true
+          },
+          {
+            "id": "json-3",
+            "kind": "json",
+            "passed": true
+          },
+          {
+            "id": "code-clamp",
+            "kind": "code",
+            "passed": true
+          },
+          {
+            "id": "code-sign",
+            "kind": "code",
+            "passed": true
+          },
+          {
+            "id": "code-absolute_difference",
+            "kind": "code",
+            "passed": true
+          },
+          {
+            "id": "code-is_leap_year",
+            "kind": "code",
+            "passed": true
+          },
+          {
+            "id": "tool-0",
+            "kind": "tool",
+            "passed": true
+          },
+          {
+            "id": "tool-0-roundtrip",
+            "kind": "exact",
+            "passed": true
+          },
+          {
+            "id": "tool-1",
+            "kind": "tool",
+            "passed": true
+          },
+          {
+            "id": "tool-1-roundtrip",
+            "kind": "exact",
+            "passed": true
+          },
+          {
+            "id": "long-arithmetic-1",
+            "kind": "exact",
+            "passed": true
+          },
+          {
+            "id": "long-reasoning-0",
+            "kind": "reasoning",
+            "passed": true
+          },
+          {
+            "id": "long-json-0",
+            "kind": "json",
+            "passed": true
+          },
+          {
+            "id": "long-code-clamp",
+            "kind": "code",
+            "passed": true
+          }
+        ],
+        "summary_sha256": "70f4c7e95ba58580c7942ec7c972a13fd711773a426d8043925b4dd625fc202e",
+        "final_health": {
+          "status": "ok",
+          "model": "qwen27-opt",
+          "instance_id": "5fb43c8b-7a4f-4abb-8901-13d3f18452cc",
+          "uptime_s": 264,
+          "maintenance": "serving",
+          "version": "0.1.2"
+        },
+        "errors": [],
+        "host_swap_io_delta_pages": {
+          "pswpin": 195,
+          "pswpout": 0
+        }
+      }
+    }
+  },
+  "artifacts": {
+    "raw_directory": "$SPARKLAB_ROOT/results/qwen27-optimization-20260908",
+    "measured_wrapper_sha256": "ff01350942086e870721b11375ff2ac92d14607f7275db478e33678112bb0427",
+    "reviewable_wrapper": "benchmarks/qwen27_optimization/serve_probe.py",
+    "reviewable_wrapper_sha256": "83a1768b25086aceb65f478d3abd90b7f7fbf6f25cc0f0ba7a47da29f6c0bc6c",
+    "raw_manifest_sha256": "02ce0cd1086c9f8e87a3f14e63e75c67787655a2ee4fa76d7717b89e67ead59f",
+    "raw_manifest_files": 95
+  },
+  "limitations": [
+    "Exploratory six-prompt, 128-output-token screen; not the prior 30-prompt, 256-output-token vLLM comparison.",
+    "Different quantized checkpoints and activation schemes do not establish quality parity.",
+    "A source download overlapped the initial baseline and scratch probes; later Radix/DFlash runs were after download completion. No overlapping GPU workloads.",
+    "Only batch-one greedy serving was measured. No capacity, endurance, concurrent, sampled, or 64K quality qualification."
+  ],
+  "reviewable_verification": {
+    "requests": 6,
+    "decode_tps": 25.632156177548886,
+    "ttft_s": 5.336041190351049,
+    "elapsed_s": 10.30784700983592,
+    "matching_prototype_output_hashes": 6,
+    "raw_sha256": "73636375ab6ac6841c27a3edc262e03ef38a8a5833b7b24a26a75c0c7d706ad4",
+    "command": {
+      "argv": [
+        "$SPARKLAB_ROOT/.venv/bin/python",
+        "$SPARKLAB_ROOT/benchmarks/qwen27_optimization/serve_probe.py",
+        "--model",
+        "$HOME/.sparklab/models/qwen3.8-27b/prepared/experimental-radix-319f741cce68",
+        "--served-model-name",
+        "qwen27-opt",
+        "--nvfp4-backend",
+        "triton",
+        "--cuda-graph-max-bs",
+        "1",
+        "--cache-type",
+        "radix",
+        "--page-size",
+        "16",
+        "--max-running-requests",
+        "1",
+        "--max-seq-len-override",
+        "65536",
+        "--num-tokens",
+        "65536",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "1938",
+        "--attention-backend",
+        "triton",
+        "--speculative-method",
+        "dflash2",
+        "--speculative-tokens",
+        "12",
+        "--speculative-draft-model",
+        "$HOME/.sparklab/models/qwen3.8-27b/draft/dflash2-bd7a934213c4",
+        "--max-prefill-length",
+        "2048"
+      ],
+      "env": {
+        "SPARKLAB_DFLASH2_REJECT_DRAFT": "1",
+        "SPARKLAB_DFLASH2_VERIFY_GRAPH": "1",
+        "Q27_W4A4_PREFILL": "1"
+      }
+    },
+    "worker_installation": "Checked under __mp_main__ without early CUDA initialization",
+    "stream_client": "Validated reasoning/content streaming and 128-token override against local HTTP fixture"
+  },
+  "final_state": {
+    "gpu_processes": 0,
+    "ports_1919_1938_listening": false,
+    "preexisting_tracked_changes_preserved": true
+  }
+}

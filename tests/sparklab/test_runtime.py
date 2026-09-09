@@ -40,6 +40,63 @@ def _ready_snapshot() -> GB10Snapshot:
     )
 
 
+def test_runtime_resolves_pinned_draft_and_rejects_stale_provenance(tmp_path):
+    from safetensors.torch import save_file
+    from sparklab.catalog import DraftModel
+    from sparklab.paths import draft_path
+
+    recipe = get_recipe("qwen3.8-27b")
+    recipe = replace(recipe, runtime_artifact=None,
+                     draft_model=DraftModel("publisher/draft", "a" * 40, 4096),
+                     deployment=replace(recipe.deployment, backend_options={
+                         **recipe.deployment.backend_options,
+                         "speculative_draft_model": "@draft",
+                         "nvfp4_prefill_backend": "flashinfer", "max_prefill_length": 2048,
+                     }))
+    checkpoint = prepared_path(recipe, tmp_path)
+    checkpoint.mkdir(parents=True)
+    (checkpoint / "config.json").write_text("{}")
+    writer = FTWWriter(str(checkpoint), shard_limit=4096)
+    writer.add_tensor("weight", torch.ones(1))
+    writer.finalize({"fingerprint": "draft-test", "counts": {"weight": 1}})
+    draft = draft_path(recipe, tmp_path)
+    draft.mkdir(parents=True)
+    (draft / "config.json").write_text("{}")
+    save_file({"weight": torch.ones(4)}, draft / "model.safetensors")
+    manifest = {"schema_version": "2.0", "model": recipe.model, "revision": recipe.revision,
+                "artifacts": {"runtime": {"path": str(checkpoint)}, "draft": {
+                    "path": str(draft), "repository": "publisher/draft", "revision": "a" * 40}}}
+    path = manifest_path(recipe, tmp_path)
+    path.write_text(json.dumps(manifest))
+    plan = plan_invocation(recipe, _ready_snapshot(), root=str(tmp_path))
+    args = plan.arguments
+    assert args[args.index("--speculative-draft-model") + 1] == str(draft.resolve())
+    assert args[args.index("--nvfp4-prefill-backend") + 1] == "flashinfer"
+    assert args[args.index("--max-prefill-length") + 1] == "2048"
+    manifest["artifacts"]["draft"]["revision"] = "b" * 40
+    path.write_text(json.dumps(manifest))
+    with pytest.raises(RuntimePlanError, match="pinned draft is not acquired"):
+        plan_invocation(recipe, _ready_snapshot(), root=str(tmp_path))
+
+
+def test_runtime_does_not_reuse_previous_checkpoint_after_source_changes(tmp_path):
+    from sparklab.deployment import resolve_checkpoint
+
+    recipe = replace(get_recipe("qwen3.8-27b"), runtime_artifact=None)
+    old = tmp_path / "old-checkpoint"
+    old.mkdir()
+    (old / "config.json").write_text("{}")
+    writer = FTWWriter(str(old), shard_limit=4096)
+    writer.add_tensor("weight", torch.ones(1))
+    writer.finalize({"fingerprint": "old", "counts": {"weight": 1}})
+    path = manifest_path(recipe, tmp_path)
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps({"schema_version": "2.0", "model": "old/publisher",
+                                "revision": "0" * 40, "artifacts": {"runtime": {"path": str(old)}}}))
+    with pytest.raises(RuntimePlanError, match="no .* artifact accepted"):
+        resolve_checkpoint(recipe, str(tmp_path))
+
+
 def test_runtime_routes_resident_recipe_through_selected_backend(tmp_path):
     recipe = replace(
         get_recipe("qwen3.6-35b-a3b"),

@@ -852,7 +852,8 @@ class Nvfp4DenseLinear(BaseOP):
     packed weight + block scales are repacked to K-major (:func:`nvfp4_transpose_resident`)
     so the decode kernels' weight loads coalesce along N (~2x batched-decode throughput)."""
 
-    def __init__(self, in_features: int, out_features: int, has_bias: bool = False):
+    def __init__(self, in_features: int, out_features: int, has_bias: bool = False,
+                 *, prefill_backend: str = "w4a16"):
         assert in_features % 16 == 0, f"NVFP4 in_features must be %16, got {in_features}"
         self.in_features = in_features
         self.out_features = out_features
@@ -862,11 +863,24 @@ class Nvfp4DenseLinear(BaseOP):
         self.bias = torch.empty(out_features) if has_bias else None
         self._transposed = False
 
+        if prefill_backend not in ("w4a16", "flashinfer"):
+            raise ValueError(f"Unknown NVFP4 prefill backend: {prefill_backend!r}")
+        self._prefill_backend = prefill_backend
+        self._prefill = None
+
     def load_state_dict(self, state_dict, *, prefix: str = "", _internal: bool = False) -> None:
         w = state_dict.pop(_concat_prefix(prefix, "weight"))
         s = state_dict.pop(_concat_prefix(prefix, "weight_scale"))
         assert w.shape == self.weight.shape and w.dtype == torch.uint8
         assert s.shape == self.weight_scale.shape
+        self._prefill = None
+        if self._prefill_backend == "flashinfer":
+            from sparklab.kernels.triton.nvfp4_prefill import Nvfp4Prefill
+
+            self._prefill = Nvfp4Prefill(
+                w, s, state_dict[_concat_prefix(prefix, "weight_global")],
+                getattr(self, "output_sizes", [self.out_features]),
+            )
         self.weight, self.weight_scale = nvfp4_transpose_resident(w, s)
         self.weight_global = state_dict.pop(_concat_prefix(prefix, "weight_global"))
         if self.bias is not None:
@@ -876,6 +890,9 @@ class Nvfp4DenseLinear(BaseOP):
             raise RuntimeError(f"Unexpected keys in state_dict: {list(state_dict.keys())}")
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if self._prefill is not None and x.numel() // x.shape[-1] >= 128:
+            output = self._prefill.forward(x)
+            return output + self.bias if self.bias is not None else output
         if self._transposed:
             return nvfp4_dense_linear_t(
                 x, self.weight, self.weight_scale, self.weight_global, self.bias
@@ -889,9 +906,10 @@ class Nvfp4DenseColMerged(Nvfp4DenseLinear):
     own per-row ``weight_global`` (and block scales), so the fused weight is exact. The caller
     splits the output by ``output_sizes`` (e.g. shared-expert gate|up) as before."""
 
-    def __init__(self, in_features: int, output_sizes: list[int], has_bias: bool = False):
+    def __init__(self, in_features: int, output_sizes: list[int], has_bias: bool = False,
+                 *, prefill_backend: str = "w4a16"):
         self.output_sizes = list(output_sizes)
-        super().__init__(in_features, sum(output_sizes), has_bias)
+        super().__init__(in_features, sum(output_sizes), has_bias, prefill_backend=prefill_backend)
 
 
 class Nvfp4LMHead(BaseOP):

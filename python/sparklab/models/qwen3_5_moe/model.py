@@ -123,7 +123,8 @@ class Qwen3_5MoEForCausalLM(BaseLLMModel):
             from .dflash2 import Qwen38DFlash2
 
             self._dflash = Qwen38DFlash2(
-                config.dflash2_args, config.num_layers, self._mtp_steps
+                config.dflash2_args, config.num_layers, self._mtp_steps,
+                prefill_backend=getattr(config, "nvfp4_prefill_backend", "w4a16"),
             )
         elif self._mtp_steps:
             from .mtp import Qwen3_5MultiTokenPredictor

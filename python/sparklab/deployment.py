@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
-from sparklab.acquire import AcquisitionError, read_manifest
+from sparklab.acquire import AcquisitionError, read_manifest, validate_draft_snapshot
 from sparklab.backends import BackendError, BackendLaunchPlan, RuntimeRequest, get_backend
 from sparklab.catalog import ModelRecipe
-from sparklab.paths import prepared_path, source_path
+from sparklab.paths import draft_path, prepared_path, source_path
 from sparklab.planner import RuntimePlan, plan_runtime
 from sparklab.platform import GB10Snapshot
 
@@ -65,7 +65,13 @@ def resolve_checkpoint(recipe: ModelRecipe, root: str | None = None) -> Path:
         manifest = read_manifest(recipe, root)
     except AcquisitionError as exc:
         raise RuntimePlanError(str(exc)) from exc
-    candidates = _manifest_candidates(manifest)
+    # A recipe upgrade may select a different quantized source. An old manifest
+    # must not silently bind the new model name/settings to the previous weights.
+    stale_source = manifest is not None and (
+        manifest.get("model") not in (None, recipe.model)
+        or manifest.get("revision") not in (None, recipe.revision)
+    )
+    candidates = [] if stale_source else _manifest_candidates(manifest)
     if recipe.runtime_artifact is None:
         candidates.append(prepared_path(recipe, root))
     candidates.append(source_path(recipe, root))
@@ -118,6 +124,27 @@ def plan_invocation(
         raise RuntimePlanError("; ".join(memory.reasons))
     backend = get_backend(recipe.backend)
     try:
+        deployment = recipe.deployment
+        if recipe.draft_model is not None:
+            draft = draft_path(recipe, root).resolve()
+            manifest = read_manifest(recipe, root) or {}
+            record = (manifest.get("artifacts") or {}).get("draft") or {}
+            if (
+                record.get("repository") != recipe.draft_model.repo_id
+                or record.get("revision") != recipe.draft_model.revision
+                or Path(record.get("path") or ".").resolve() != draft
+            ):
+                raise RuntimePlanError(
+                    f"pinned draft is not acquired; run sparklab pull {recipe.slug} --prepare"
+                )
+            try:
+                validate_draft_snapshot(draft)
+            except AcquisitionError as exc:
+                raise RuntimePlanError(str(exc)) from exc
+            deployment = replace(
+                deployment,
+                backend_options={**deployment.backend_options, "speculative_draft_model": str(draft)},
+            )
         validation = backend.validate_artifact(checkpoint, recipe.deployment)
         hosted = recipe.runtime_artifact
         record = _hosted_runtime_record(recipe, checkpoint, root)
@@ -141,11 +168,11 @@ def plan_invocation(
                 recipe_version=recipe.recipe_version,
                 model=recipe.model,
                 checkpoint=checkpoint,
-                deployment=recipe.deployment,
+                deployment=deployment,
                 extra_args=extra_args,
             )
         )
-    except BackendError as exc:
+    except (BackendError, AcquisitionError) as exc:
         raise RuntimePlanError(str(exc)) from exc
     return RecipeInvocation(plan=plan, memory=memory)
 

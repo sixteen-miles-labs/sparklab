@@ -2325,6 +2325,17 @@ def _adjust_config(config: EngineConfig):
     if is_moe:
         object.__setattr__(model_config, "moe_backend", config.moe_backend)
     object.__setattr__(model_config, "nvfp4_backend", config.nvfp4_backend)
+    nvfp4_prefill_backend = getattr(config, "nvfp4_prefill_backend", "w4a16")
+    if nvfp4_prefill_backend not in ("w4a16", "flashinfer"):
+        raise ValueError(f"Unknown NVFP4 prefill backend: {nvfp4_prefill_backend!r}")
+    if nvfp4_prefill_backend == "flashinfer":
+        if (
+            "Qwen3_5ForConditionalGeneration" not in model_config.architectures
+            or is_moe or getattr(model_config, "dense_quant", "none") != "nvfp4"
+            or config.dtype != torch.bfloat16
+        ):
+            raise ValueError("FlashInfer NVFP4 prefill requires a dense NVFP4 Qwen model with BF16 dtype")
+    object.__setattr__(model_config, "nvfp4_prefill_backend", nvfp4_prefill_backend)
 
     # Must stay LAST: page_size is only final here (_adjust_dsv4_config sets P=128, the
     # TRTLLM block sets 64). Also covers the programmatic LLM(...) path that bypasses parse_args.
