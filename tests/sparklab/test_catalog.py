@@ -165,10 +165,13 @@ def test_next_model_recipes_are_immutable_and_capacity_plannable():
     assert qwen27.source_bytes == 21945295265
     assert qwen27.prepared_bytes == 21036142615
     assert qwen27.intended_tier == "fast"
-    assert qwen27.performance.decode_tokens_per_second == pytest.approx(27.467633094202384)
-    assert qwen27.performance.warm_ttft_seconds == pytest.approx(5.432493594633333)
+    assert qwen27.performance.decode_tokens_per_second == pytest.approx(49.519452895302685)
+    assert qwen27.performance.warm_ttft_seconds == pytest.approx(0.12460947199724615)
     assert qwen27.performance.context_tokens == 65_536
-    assert qwen27.evidence == ("GB10-QWEN38-27B-FAST-001",)
+    assert qwen27.evidence == (
+        "GB10-QWEN38-27B-FAST-001",
+        "GB10-QWEN38-27B-PORTFOLIO-001",
+    )
     assert qwen27.recipe_version == "0.4.0"
     assert qwen27.draft_model is not None
     assert qwen27.draft_model.revision == "bd7a934213c47a9e7ef69eef36bb3325f47fd1f1"

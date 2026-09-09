@@ -1,0 +1,186 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWEN38-27B-PORTFOLIO-001",
+  "status": "measured",
+  "date": "2026-09-09",
+  "recipe": {
+    "slug": "qwen3.8-27b",
+    "recipe_version": "0.4.0",
+    "status": "experimental"
+  },
+  "engine": {
+    "name": "SparkLab",
+    "git_revision": "9312e95d96955381e1c1687d755e27087708b9c4",
+    "git_tree": "5f38bf54e047d5985492fe7cb086d8fa68398990",
+    "git_tracked_dirty": false,
+    "merged_main_commit": "c6224c473bd3bc5675ffd186cf33e0ba21cc4e24",
+    "merged_main_tree_matches": true
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "machine": "aarch64",
+    "cuda": "13.0",
+    "torch": "2.11.0+cu130",
+    "triton": "3.6.0",
+    "flashinfer": "0.6.15.post1"
+  },
+  "checkpoint": {
+    "target_repository": "RadixArk/Qwen3.8-27B-NVFP4",
+    "target_revision": "319f741cce68d7914884900c138a1fbb70a42f30",
+    "target_format": "ftw-nvfp4",
+    "target_fingerprint": "1ad54cc34ff10c49",
+    "draft_repository": "maurienne-ai/Qwen3.8-27B-DFlash2-NVFP4-RTNcal",
+    "draft_revision": "bd7a934213c47a9e7ef69eef36bb3325f47fd1f1"
+  },
+  "configuration": {
+    "nvfp4_backend": "triton",
+    "cuda_graph_max_bs": 1,
+    "cache_type": "radix",
+    "page_size": 16,
+    "max_running_req": 1,
+    "max_seq_len_override": 65536,
+    "num_tokens": 65536,
+    "attention_backend": "triton",
+    "nvfp4_prefill_backend": "flashinfer",
+    "max_prefill_length": 2048,
+    "speculative_method": "dflash2",
+    "speculative_tokens": 12,
+    "speculative_draft_model": "@draft"
+  },
+  "workload": {
+    "name": "Original AIME-25 problem 0 portfolio probe",
+    "prompt": "Find the sum of all integer bases $b>9$ for which $17_b$ is a divisor of $97_b.$\nPlease reason step by step, and put your final answer within \\boxed{}.",
+    "prompt_sha256": "51e1235f1c85cf333085c9e2889a20fb7e7ef65f320856975bac705eb04e43d4",
+    "prompt_tokens": 96,
+    "output_tokens": 128,
+    "clients": 1,
+    "temperature": 0,
+    "thinking": true,
+    "ignore_eos": true,
+    "warmup_requests": 1,
+    "measured_trials": 3,
+    "aggregation": "median",
+    "metric": "(completion_tokens - 1) / (last content event - first content event)"
+  },
+  "metrics": {
+    "decode_tokens_per_second": 49.519452895302685,
+    "warm_ttft_seconds": 0.12460947199724615,
+    "previous_published_decode_tokens_per_second": 45.878599543535536,
+    "previous_published_warm_ttft_seconds": 0.15192310701240785,
+    "improvement_over_previous_published_percent": 7.93584239273093
+  },
+  "trials": [
+    {
+      "decode_tokens_per_second": 49.519452895302685,
+      "ttft_seconds": 0.12460947199724615,
+      "elapsed_seconds": 2.689518706058152,
+      "usage": {
+        "prompt_tokens": 96,
+        "completion_tokens": 128,
+        "total_tokens": 224
+      },
+      "output_sha256": "690adfa2168a262be71fffd635142f0b5b21e2ed107049dd12e3d4bbcf93223c",
+      "text": "We need solve problem. Need reason step by step. Problem: Find sum of all integer bases b>9 for which 17_b is a divisor of 97_b.\n\nInterpretation: In base b, digits? 17_b means 1*b + 7 = b+7. 97_b means 9*b + 7 = 9b+7. Need b integer >9, and b+7 divides 9b+7. Need sum of all such bases.\n\nLet's solve. Divisibility: b+7 | 9b+7. Compute 9"
+    },
+    {
+      "decode_tokens_per_second": 49.54258047428204,
+      "ttft_seconds": 0.12600689905229956,
+      "elapsed_seconds": 2.689864707062952,
+      "usage": {
+        "prompt_tokens": 96,
+        "completion_tokens": 128,
+        "total_tokens": 224
+      },
+      "output_sha256": "690adfa2168a262be71fffd635142f0b5b21e2ed107049dd12e3d4bbcf93223c",
+      "text": "We need solve problem. Need reason step by step. Problem: Find sum of all integer bases b>9 for which 17_b is a divisor of 97_b.\n\nInterpretation: In base b, digits? 17_b means 1*b + 7 = b+7. 97_b means 9*b + 7 = 9b+7. Need b integer >9, and b+7 divides 9b+7. Need sum of all such bases.\n\nLet's solve. Divisibility: b+7 | 9b+7. Compute 9"
+    },
+    {
+      "decode_tokens_per_second": 49.4659033000671,
+      "ttft_seconds": 0.12278802692890167,
+      "elapsed_seconds": 2.69073077396024,
+      "usage": {
+        "prompt_tokens": 96,
+        "completion_tokens": 128,
+        "total_tokens": 224
+      },
+      "output_sha256": "690adfa2168a262be71fffd635142f0b5b21e2ed107049dd12e3d4bbcf93223c",
+      "text": "We need solve problem. Need reason step by step. Problem: Find sum of all integer bases b>9 for which 17_b is a divisor of 97_b.\n\nInterpretation: In base b, digits? 17_b means 1*b + 7 = b+7. 97_b means 9*b + 7 = 9b+7. Need b integer >9, and b+7 divides 9b+7. Need sum of all such bases.\n\nLet's solve. Divisibility: b+7 | 9b+7. Compute 9"
+    }
+  ],
+  "validation": {
+    "all_trials_exact_prompt_and_output_tokens": true,
+    "all_trial_output_hashes_equal": true,
+    "output_matches_previous_profile": false,
+    "completed_requests_including_warmup": 4,
+    "host_swap_in_pages_during_startup_and_probe": 1,
+    "host_swap_out_pages_during_startup_and_probe": 0,
+    "quality_and_serving_evidence": "GB10-QWEN38-27B-FAST-001"
+  },
+  "source": {
+    "benchmark": "benchmarks/bench_single_stream.py:generate",
+    "command": [
+      "$REPO/.venv/bin/python",
+      "-m",
+      "sparklab",
+      "serve",
+      "--model",
+      "$REPO/results/qwen27-shipping-20260909/acquisition-root/models/qwen3.8-27b/prepared/0.4.0",
+      "--served-model-name",
+      "RadixArk/Qwen3.8-27B-NVFP4",
+      "--attention-backend",
+      "triton",
+      "--nvfp4-backend",
+      "triton",
+      "--nvfp4-prefill-backend",
+      "flashinfer",
+      "--max-prefill-length",
+      "2048",
+      "--cuda-graph-max-bs",
+      "1",
+      "--cache-type",
+      "radix",
+      "--page-size",
+      "16",
+      "--max-running-requests",
+      "1",
+      "--max-seq-len-override",
+      "65536",
+      "--num-tokens",
+      "65536",
+      "--speculative-method",
+      "dflash2",
+      "--speculative-tokens",
+      "12",
+      "--speculative-draft-model",
+      "$REPO/results/qwen27-shipping-20260909/acquisition-root/models/qwen3.8-27b/draft/bd7a934213c4",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "1938"
+    ],
+    "environment_overrides": {
+      "PYTHONPATH": "$SOURCE_WORKTREE/python",
+      "SPARKLAB_DISABLE_KERNEL_CACHE": "1"
+    },
+    "raw_directory": "results/qwen27-portfolio-20260909",
+    "raw_manifest_sha256": "f292e4ac7ca5e571bb7f455b27f5c0effe8917bccc828f7c014f8ce11f0ec947",
+    "previous_short_probe": "GB10-QWEN38-DFLASH-004",
+    "long_prompt_comparison": "GB10-QWEN38-27B-FAST-001",
+    "path_placeholders": {
+      "$REPO": "SparkLab checkout containing the prepared benchmark artifacts",
+      "$SOURCE_WORKTREE": "Clean source checkout at engine.git_revision; tree matches the recorded merged main commit",
+      "$HOME": "User home directory"
+    }
+  },
+  "limitations": [
+    "One fixed short prompt, not a broad workload average or a completed-answer quality test.",
+    "The previous 45.88 tok/s is a historical result on the same prompt and token budget, not a contemporaneous control; checkpoint, runtime and KV capacity differ.",
+    "Outputs are stable across the three new trials but differ from the previous Inferact profile.",
+    "The default recipe is measured with greedy requests; sampled requests use target-only generation.",
+    "The 27.47 tok/s, 5.432 s TTFT long-prompt mean remains valid on its separate 30-request 8K/256 workload.",
+    "Pre-existing host swap and one swap-in page were observed; no swap-out during startup and the probe. CPU activity was not isolated.",
+    "The advanced server command uses the final recipe arguments and source JIT with the incompatible optional kernel-cache package disabled.",
+    "Full Fast certification and endurance remain outstanding."
+  ]
+}
