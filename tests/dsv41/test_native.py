@@ -18,6 +18,29 @@ from sparklab.utils.hf import RawConfigShim
 FIXTURE = Path(__file__).parent / "fixtures/tiny"
 
 
+@pytest.fixture(scope="session", autouse=True)
+def materialize_tiny_checkpoint(tmp_path_factory):
+    import shutil
+    from safetensors.torch import save_file
+
+    global FIXTURE
+    original = FIXTURE
+    destination = tmp_path_factory.mktemp("dsv41-checkpoint")
+    shutil.copytree(original, destination, dirs_exist_ok=True)
+    shapes = json.loads((original / "tensor_shapes.json").read_text())
+    with torch.random.fork_rng(devices=[]):
+        torch.manual_seed(137)
+        weights = {
+            name: (torch.ones(shape, dtype=torch.bfloat16) if ".scale" in name
+                   else torch.randn(shape, dtype=torch.bfloat16) * .1)
+            for name, shape in shapes.items()
+        }
+    save_file(weights, str(destination / "model.safetensors"))
+    FIXTURE = destination
+    yield
+    FIXTURE = original
+
+
 @pytest.fixture
 def decoder():
     args = ModelArgs(**json.loads((FIXTURE / "inference/config.json").read_text()))

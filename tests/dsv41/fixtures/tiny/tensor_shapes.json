@@ -1,0 +1,841 @@
+{
+  "embed.weight": [
+    32,
+    32
+  ],
+  "layers.0.hc_attn_fn": [
+    24,
+    128
+  ],
+  "layers.0.hc_ffn_fn": [
+    24,
+    128
+  ],
+  "layers.0.hc_attn_base": [
+    24
+  ],
+  "layers.0.hc_ffn_base": [
+    24
+  ],
+  "layers.0.hc_attn_scale": [
+    3
+  ],
+  "layers.0.hc_ffn_scale": [
+    3
+  ],
+  "layers.0.attn.attn_sink": [
+    2
+  ],
+  "layers.0.attn.wq_a.weight": [
+    32,
+    32
+  ],
+  "layers.0.attn.q_norm.weight": [
+    32
+  ],
+  "layers.0.attn.wq_b.weight": [
+    64,
+    32
+  ],
+  "layers.0.attn.wkv.weight": [
+    32,
+    32
+  ],
+  "layers.0.attn.kv_norm.weight": [
+    32
+  ],
+  "layers.0.attn.wo_a.weight": [
+    32,
+    64
+  ],
+  "layers.0.attn.wo_b.weight": [
+    32,
+    32
+  ],
+  "layers.0.ffn.gate.weight": [
+    4,
+    32
+  ],
+  "layers.0.ffn.gate.bias": [
+    4
+  ],
+  "layers.0.ffn.experts.0.w1.weight": [
+    32,
+    32
+  ],
+  "layers.0.ffn.experts.0.w2.weight": [
+    32,
+    32
+  ],
+  "layers.0.ffn.experts.0.w3.weight": [
+    32,
+    32
+  ],
+  "layers.0.ffn.experts.1.w1.weight": [
+    32,
+    32
+  ],
+  "layers.0.ffn.experts.1.w2.weight": [
+    32,
+    32
+  ],
+  "layers.0.ffn.experts.1.w3.weight": [
+    32,
+    32
+  ],
+  "layers.0.ffn.experts.2.w1.weight": [
+    32,
+    32
+  ],
+  "layers.0.ffn.experts.2.w2.weight": [
+    32,
+    32
+  ],
+  "layers.0.ffn.experts.2.w3.weight": [
+    32,
+    32
+  ],
+  "layers.0.ffn.experts.3.w1.weight": [
+    32,
+    32
+  ],
+  "layers.0.ffn.experts.3.w2.weight": [
+    32,
+    32
+  ],
+  "layers.0.ffn.experts.3.w3.weight": [
+    32,
+    32
+  ],
+  "layers.0.ffn.shared_experts.w1.weight": [
+    32,
+    32
+  ],
+  "layers.0.ffn.shared_experts.w2.weight": [
+    32,
+    32
+  ],
+  "layers.0.ffn.shared_experts.w3.weight": [
+    32,
+    32
+  ],
+  "layers.0.attn_norm.weight": [
+    32
+  ],
+  "layers.0.ffn_norm.weight": [
+    32
+  ],
+  "layers.1.hc_attn_fn": [
+    24,
+    128
+  ],
+  "layers.1.hc_ffn_fn": [
+    24,
+    128
+  ],
+  "layers.1.hc_attn_base": [
+    24
+  ],
+  "layers.1.hc_ffn_base": [
+    24
+  ],
+  "layers.1.hc_attn_scale": [
+    3
+  ],
+  "layers.1.hc_ffn_scale": [
+    3
+  ],
+  "layers.1.attn.attn_sink": [
+    2
+  ],
+  "layers.1.attn.wq_a.weight": [
+    32,
+    32
+  ],
+  "layers.1.attn.q_norm.weight": [
+    32
+  ],
+  "layers.1.attn.wq_b.weight": [
+    64,
+    32
+  ],
+  "layers.1.attn.wkv.weight": [
+    32,
+    32
+  ],
+  "layers.1.attn.kv_norm.weight": [
+    32
+  ],
+  "layers.1.attn.wo_a.weight": [
+    32,
+    64
+  ],
+  "layers.1.attn.wo_b.weight": [
+    32,
+    32
+  ],
+  "layers.1.attn.compressor.norm.weight": [
+    32
+  ],
+  "layers.1.attn.compressor.wkv.weight": [
+    32,
+    32
+  ],
+  "layers.1.attn.compressor.wgate.weight": [
+    32,
+    32
+  ],
+  "layers.1.attn.indexer.wq_b.weight": [
+    64,
+    32
+  ],
+  "layers.1.attn.indexer.weights_proj.weight": [
+    2,
+    32
+  ],
+  "layers.1.attn.indexer.wk.weight": [
+    32,
+    32
+  ],
+  "layers.1.attn.indexer.k_norm.weight": [
+    32
+  ],
+  "layers.1.ffn.gate.weight": [
+    4,
+    32
+  ],
+  "layers.1.ffn.gate.bias": [
+    4
+  ],
+  "layers.1.ffn.experts.0.w1.weight": [
+    32,
+    32
+  ],
+  "layers.1.ffn.experts.0.w2.weight": [
+    32,
+    32
+  ],
+  "layers.1.ffn.experts.0.w3.weight": [
+    32,
+    32
+  ],
+  "layers.1.ffn.experts.1.w1.weight": [
+    32,
+    32
+  ],
+  "layers.1.ffn.experts.1.w2.weight": [
+    32,
+    32
+  ],
+  "layers.1.ffn.experts.1.w3.weight": [
+    32,
+    32
+  ],
+  "layers.1.ffn.experts.2.w1.weight": [
+    32,
+    32
+  ],
+  "layers.1.ffn.experts.2.w2.weight": [
+    32,
+    32
+  ],
+  "layers.1.ffn.experts.2.w3.weight": [
+    32,
+    32
+  ],
+  "layers.1.ffn.experts.3.w1.weight": [
+    32,
+    32
+  ],
+  "layers.1.ffn.experts.3.w2.weight": [
+    32,
+    32
+  ],
+  "layers.1.ffn.experts.3.w3.weight": [
+    32,
+    32
+  ],
+  "layers.1.ffn.shared_experts.w1.weight": [
+    32,
+    32
+  ],
+  "layers.1.ffn.shared_experts.w2.weight": [
+    32,
+    32
+  ],
+  "layers.1.ffn.shared_experts.w3.weight": [
+    32,
+    32
+  ],
+  "layers.1.engram.q_weight": [
+    4,
+    32
+  ],
+  "layers.1.engram.k_weight": [
+    4,
+    32
+  ],
+  "layers.1.engram.embed.weight": [
+    18,
+    32
+  ],
+  "layers.1.engram.embed.scale": [
+    18,
+    1
+  ],
+  "layers.1.engram.wkv.weight": [
+    160,
+    64
+  ],
+  "layers.1.attn_norm.weight": [
+    32
+  ],
+  "layers.1.ffn_norm.weight": [
+    32
+  ],
+  "layers.2.hc_attn_fn": [
+    24,
+    128
+  ],
+  "layers.2.hc_ffn_fn": [
+    24,
+    128
+  ],
+  "layers.2.hc_attn_base": [
+    24
+  ],
+  "layers.2.hc_ffn_base": [
+    24
+  ],
+  "layers.2.hc_attn_scale": [
+    3
+  ],
+  "layers.2.hc_ffn_scale": [
+    3
+  ],
+  "layers.2.attn.attn_sink": [
+    2
+  ],
+  "layers.2.attn.wq_a.weight": [
+    32,
+    32
+  ],
+  "layers.2.attn.q_norm.weight": [
+    32
+  ],
+  "layers.2.attn.wq_b.weight": [
+    64,
+    32
+  ],
+  "layers.2.attn.wkv.weight": [
+    32,
+    32
+  ],
+  "layers.2.attn.kv_norm.weight": [
+    32
+  ],
+  "layers.2.attn.wo_a.weight": [
+    32,
+    64
+  ],
+  "layers.2.attn.wo_b.weight": [
+    32,
+    32
+  ],
+  "layers.2.ffn.gate.weight": [
+    4,
+    32
+  ],
+  "layers.2.ffn.gate.bias": [
+    4
+  ],
+  "layers.2.ffn.experts.0.w1.weight": [
+    32,
+    32
+  ],
+  "layers.2.ffn.experts.0.w2.weight": [
+    32,
+    32
+  ],
+  "layers.2.ffn.experts.0.w3.weight": [
+    32,
+    32
+  ],
+  "layers.2.ffn.experts.1.w1.weight": [
+    32,
+    32
+  ],
+  "layers.2.ffn.experts.1.w2.weight": [
+    32,
+    32
+  ],
+  "layers.2.ffn.experts.1.w3.weight": [
+    32,
+    32
+  ],
+  "layers.2.ffn.experts.2.w1.weight": [
+    32,
+    32
+  ],
+  "layers.2.ffn.experts.2.w2.weight": [
+    32,
+    32
+  ],
+  "layers.2.ffn.experts.2.w3.weight": [
+    32,
+    32
+  ],
+  "layers.2.ffn.experts.3.w1.weight": [
+    32,
+    32
+  ],
+  "layers.2.ffn.experts.3.w2.weight": [
+    32,
+    32
+  ],
+  "layers.2.ffn.experts.3.w3.weight": [
+    32,
+    32
+  ],
+  "layers.2.ffn.shared_experts.w1.weight": [
+    32,
+    32
+  ],
+  "layers.2.ffn.shared_experts.w2.weight": [
+    32,
+    32
+  ],
+  "layers.2.ffn.shared_experts.w3.weight": [
+    32,
+    32
+  ],
+  "layers.2.attn_norm.weight": [
+    32
+  ],
+  "layers.2.ffn_norm.weight": [
+    32
+  ],
+  "layers.3.hc_attn_fn": [
+    24,
+    128
+  ],
+  "layers.3.hc_ffn_fn": [
+    24,
+    128
+  ],
+  "layers.3.hc_attn_base": [
+    24
+  ],
+  "layers.3.hc_ffn_base": [
+    24
+  ],
+  "layers.3.hc_attn_scale": [
+    3
+  ],
+  "layers.3.hc_ffn_scale": [
+    3
+  ],
+  "layers.3.attn.attn_sink": [
+    2
+  ],
+  "layers.3.attn.wq_a.weight": [
+    32,
+    32
+  ],
+  "layers.3.attn.q_norm.weight": [
+    32
+  ],
+  "layers.3.attn.wq_b.weight": [
+    64,
+    32
+  ],
+  "layers.3.attn.wkv.weight": [
+    32,
+    32
+  ],
+  "layers.3.attn.kv_norm.weight": [
+    32
+  ],
+  "layers.3.attn.wo_a.weight": [
+    32,
+    64
+  ],
+  "layers.3.attn.wo_b.weight": [
+    32,
+    32
+  ],
+  "layers.3.attn.compressor.norm.weight": [
+    32
+  ],
+  "layers.3.attn.compressor.wkv.weight": [
+    32,
+    32
+  ],
+  "layers.3.attn.indexer.wq_b.weight": [
+    64,
+    32
+  ],
+  "layers.3.attn.indexer.weights_proj.weight": [
+    2,
+    32
+  ],
+  "layers.3.attn.indexer.wk.weight": [
+    32,
+    32
+  ],
+  "layers.3.attn.indexer.k_norm.weight": [
+    32
+  ],
+  "layers.3.ffn.gate.weight": [
+    4,
+    32
+  ],
+  "layers.3.ffn.gate.bias": [
+    4
+  ],
+  "layers.3.ffn.experts.0.w1.weight": [
+    32,
+    32
+  ],
+  "layers.3.ffn.experts.0.w2.weight": [
+    32,
+    32
+  ],
+  "layers.3.ffn.experts.0.w3.weight": [
+    32,
+    32
+  ],
+  "layers.3.ffn.experts.1.w1.weight": [
+    32,
+    32
+  ],
+  "layers.3.ffn.experts.1.w2.weight": [
+    32,
+    32
+  ],
+  "layers.3.ffn.experts.1.w3.weight": [
+    32,
+    32
+  ],
+  "layers.3.ffn.experts.2.w1.weight": [
+    32,
+    32
+  ],
+  "layers.3.ffn.experts.2.w2.weight": [
+    32,
+    32
+  ],
+  "layers.3.ffn.experts.2.w3.weight": [
+    32,
+    32
+  ],
+  "layers.3.ffn.experts.3.w1.weight": [
+    32,
+    32
+  ],
+  "layers.3.ffn.experts.3.w2.weight": [
+    32,
+    32
+  ],
+  "layers.3.ffn.experts.3.w3.weight": [
+    32,
+    32
+  ],
+  "layers.3.ffn.shared_experts.w1.weight": [
+    32,
+    32
+  ],
+  "layers.3.ffn.shared_experts.w2.weight": [
+    32,
+    32
+  ],
+  "layers.3.ffn.shared_experts.w3.weight": [
+    32,
+    32
+  ],
+  "layers.3.engram.q_weight": [
+    4,
+    32
+  ],
+  "layers.3.engram.k_weight": [
+    4,
+    32
+  ],
+  "layers.3.engram.embed.weight": [
+    30,
+    32
+  ],
+  "layers.3.engram.embed.scale": [
+    30,
+    1
+  ],
+  "layers.3.engram.wkv.weight": [
+    160,
+    64
+  ],
+  "layers.3.attn_norm.weight": [
+    32
+  ],
+  "layers.3.ffn_norm.weight": [
+    32
+  ],
+  "layers.4.hc_attn_fn": [
+    24,
+    128
+  ],
+  "layers.4.hc_ffn_fn": [
+    24,
+    128
+  ],
+  "layers.4.hc_attn_base": [
+    24
+  ],
+  "layers.4.hc_ffn_base": [
+    24
+  ],
+  "layers.4.hc_attn_scale": [
+    3
+  ],
+  "layers.4.hc_ffn_scale": [
+    3
+  ],
+  "layers.4.attn.attn_sink": [
+    2
+  ],
+  "layers.4.attn.wq_a.weight": [
+    32,
+    32
+  ],
+  "layers.4.attn.q_norm.weight": [
+    32
+  ],
+  "layers.4.attn.wq_b.weight": [
+    64,
+    32
+  ],
+  "layers.4.attn.wkv.weight": [
+    32,
+    32
+  ],
+  "layers.4.attn.kv_norm.weight": [
+    32
+  ],
+  "layers.4.attn.wo_a.weight": [
+    32,
+    64
+  ],
+  "layers.4.attn.wo_b.weight": [
+    32,
+    32
+  ],
+  "layers.4.attn.indexer.wq_b.weight": [
+    64,
+    32
+  ],
+  "layers.4.attn.indexer.weights_proj.weight": [
+    2,
+    32
+  ],
+  "layers.4.ffn.gate.weight": [
+    4,
+    32
+  ],
+  "layers.4.ffn.gate.bias": [
+    4
+  ],
+  "layers.4.ffn.experts.0.w1.weight": [
+    32,
+    32
+  ],
+  "layers.4.ffn.experts.0.w2.weight": [
+    32,
+    32
+  ],
+  "layers.4.ffn.experts.0.w3.weight": [
+    32,
+    32
+  ],
+  "layers.4.ffn.experts.1.w1.weight": [
+    32,
+    32
+  ],
+  "layers.4.ffn.experts.1.w2.weight": [
+    32,
+    32
+  ],
+  "layers.4.ffn.experts.1.w3.weight": [
+    32,
+    32
+  ],
+  "layers.4.ffn.experts.2.w1.weight": [
+    32,
+    32
+  ],
+  "layers.4.ffn.experts.2.w2.weight": [
+    32,
+    32
+  ],
+  "layers.4.ffn.experts.2.w3.weight": [
+    32,
+    32
+  ],
+  "layers.4.ffn.experts.3.w1.weight": [
+    32,
+    32
+  ],
+  "layers.4.ffn.experts.3.w2.weight": [
+    32,
+    32
+  ],
+  "layers.4.ffn.experts.3.w3.weight": [
+    32,
+    32
+  ],
+  "layers.4.ffn.shared_experts.w1.weight": [
+    32,
+    32
+  ],
+  "layers.4.ffn.shared_experts.w2.weight": [
+    32,
+    32
+  ],
+  "layers.4.ffn.shared_experts.w3.weight": [
+    32,
+    32
+  ],
+  "layers.4.attn_norm.weight": [
+    32
+  ],
+  "layers.4.ffn_norm.weight": [
+    32
+  ],
+  "layers.5.hc_attn_fn": [
+    24,
+    128
+  ],
+  "layers.5.hc_ffn_fn": [
+    24,
+    128
+  ],
+  "layers.5.hc_attn_base": [
+    24
+  ],
+  "layers.5.hc_ffn_base": [
+    24
+  ],
+  "layers.5.hc_attn_scale": [
+    3
+  ],
+  "layers.5.hc_ffn_scale": [
+    3
+  ],
+  "layers.5.attn.attn_sink": [
+    2
+  ],
+  "layers.5.attn.wq_a.weight": [
+    32,
+    32
+  ],
+  "layers.5.attn.q_norm.weight": [
+    32
+  ],
+  "layers.5.attn.wq_b.weight": [
+    64,
+    32
+  ],
+  "layers.5.attn.wkv.weight": [
+    32,
+    32
+  ],
+  "layers.5.attn.kv_norm.weight": [
+    32
+  ],
+  "layers.5.attn.wo_a.weight": [
+    32,
+    64
+  ],
+  "layers.5.attn.wo_b.weight": [
+    32,
+    32
+  ],
+  "layers.5.ffn.gate.weight": [
+    4,
+    32
+  ],
+  "layers.5.ffn.gate.bias": [
+    4
+  ],
+  "layers.5.ffn.experts.0.w1.weight": [
+    32,
+    32
+  ],
+  "layers.5.ffn.experts.0.w2.weight": [
+    32,
+    32
+  ],
+  "layers.5.ffn.experts.0.w3.weight": [
+    32,
+    32
+  ],
+  "layers.5.ffn.experts.1.w1.weight": [
+    32,
+    32
+  ],
+  "layers.5.ffn.experts.1.w2.weight": [
+    32,
+    32
+  ],
+  "layers.5.ffn.experts.1.w3.weight": [
+    32,
+    32
+  ],
+  "layers.5.ffn.experts.2.w1.weight": [
+    32,
+    32
+  ],
+  "layers.5.ffn.experts.2.w2.weight": [
+    32,
+    32
+  ],
+  "layers.5.ffn.experts.2.w3.weight": [
+    32,
+    32
+  ],
+  "layers.5.ffn.experts.3.w1.weight": [
+    32,
+    32
+  ],
+  "layers.5.ffn.experts.3.w2.weight": [
+    32,
+    32
+  ],
+  "layers.5.ffn.experts.3.w3.weight": [
+    32,
+    32
+  ],
+  "layers.5.ffn.shared_experts.w1.weight": [
+    32,
+    32
+  ],
+  "layers.5.ffn.shared_experts.w2.weight": [
+    32,
+    32
+  ],
+  "layers.5.ffn.shared_experts.w3.weight": [
+    32,
+    32
+  ],
+  "layers.5.attn_norm.weight": [
+    32
+  ],
+  "layers.5.ffn_norm.weight": [
+    32
+  ],
+  "norm.weight": [
+    32
+  ],
+  "head.weight": [
+    32,
+    32
+  ]
+}

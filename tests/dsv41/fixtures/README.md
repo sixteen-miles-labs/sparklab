@@ -17,3 +17,7 @@ https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash/tree/df42c109f1defefcbfce
 
 The native engine also served this synthetic checkpoint through `/v1/completions`
 on a GB10 during development. This is an integration smoke test only.
+
+The synthetic BF16 checkpoint is generated at test time with seed 137 and the
+ordered tensor shapes in `tiny/tensor_shapes.json`; no binary weights are stored.
+The generator reproduces every tensor of the original reference fixture exactly.
