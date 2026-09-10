@@ -11,7 +11,7 @@ from sparklab.models.deepseek_v41.args import ModelArgs
 from sparklab.models.deepseek_v41.config import parse_config
 from sparklab.models.deepseek_v41.model import Decoder, DeepseekV41ForCausalLM
 from sparklab.models.deepseek_v41.ops import dequant, fp4_roundtrip, fp8_roundtrip
-from sparklab.models.deepseek_v41.weight import DiskWeights
+from sparklab.models.deepseek_v41.weight import DTYPES, DiskWeights
 from sparklab.models.register import get_model_spec
 from sparklab.utils.hf import RawConfigShim
 
@@ -31,9 +31,9 @@ def materialize_tiny_checkpoint(tmp_path_factory):
     with torch.random.fork_rng(devices=[]):
         torch.manual_seed(137)
         weights = {
-            name: (torch.ones(shape, dtype=torch.bfloat16) if ".scale" in name
-                   else torch.randn(shape, dtype=torch.bfloat16) * .1)
-            for name, shape in shapes.items()
+            name: (torch.ones(spec["shape"], dtype=torch.bfloat16) if ".scale" in name
+                   else torch.randn(spec["shape"], dtype=torch.bfloat16) * .1).to(DTYPES[spec["dtype"]])
+            for name, spec in shapes.items()
         }
     save_file(weights, str(destination / "model.safetensors"))
     FIXTURE = destination
