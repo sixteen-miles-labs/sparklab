@@ -142,6 +142,15 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
       <th colspan="7" align="left">Research — bounded execution outside the interactive envelope</th>
     </tr>
     <tr>
+      <td><a href="https://recipes.vllm.ai/deepseek-ai/DeepSeek-V4.1-Flash">DeepSeek V4.1 Flash</a></td>
+      <td>522B total / 8–16B active</td>
+      <td>MXFP4 / MXFP8 · native disk streaming</td>
+      <td>Experimental</td>
+      <td align="right">0.24</td>
+      <td align="right">343.131</td>
+      <td><a href="docs/models/deepseek-v4.1-flash.md">Instructions</a></td>
+    </tr>
+    <tr>
       <td><a href="https://huggingface.co/oakmindai/GLM-5.3-NVFP4-FTW">GLM-5.3</a></td>
       <td>753B total / 40B active</td>
       <td>NVFP4 + resident FP8 · FTW + optional DFlash2-4</td>
@@ -161,10 +170,6 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
     </tr>
   </tbody>
 </table>
-
-Qwen3.8-27B uses the three-trial median of the original 96-input/128-output
-short-prompt probe. Its separate 8K-input/256-output comparison averages
-27.47 tok/s; see the [benchmark details](docs/models/qwen3.8-27b.md#measured-performance).
 
 Status meanings:
 

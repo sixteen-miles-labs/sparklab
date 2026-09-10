@@ -329,6 +329,8 @@ def _convert_checkpoint(
         nvfp4_backend=nvfp4_backend,
     )
     mc = cfg.model_config
+    if getattr(mc, "dsv41_args", None) is not None:
+        raise ValueError("DeepSeek V4.1 native research loads source safetensors directly; FTW conversion is not supported")
     # A fused DSV4 checkpoint carries three DSpark MoE layers under ``mtp.*``.
     # Convert them into the same expert-bank artifact even though target-only
     # serving does not instantiate the draft. FTW readers can expose either the

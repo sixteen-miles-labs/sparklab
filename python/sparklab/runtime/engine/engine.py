@@ -2093,6 +2093,30 @@ def _adjust_config(config: EngineConfig):
             override("cuda_graph_bs", [1])
             override("cuda_graph_max_bs", 1)
 
+    if getattr(model_config, "dsv41_args", None) is not None:
+        # V4.1's initial native research decoder owns disk reads and state. It
+        # cannot share V4's expert banks, prefix snapshots or captured graphs.
+        from sparklab.models.deepseek_v41.config import MAX_CONTEXT
+
+        if config.tp_info.size != 1:
+            raise ValueError("DeepSeek V4.1 native research requires TP=1")
+        if config.dtype != torch.bfloat16:
+            raise ValueError("DeepSeek V4.1 native research requires bfloat16 computation")
+        if config.speculative_tokens or config.speculative_method not in ("auto", "none"):
+            raise ValueError("DeepSeek V4.1 native research does not support speculation")
+        if config.max_seq_len > MAX_CONTEXT:
+            raise ValueError(f"DeepSeek V4.1 native research is limited to {MAX_CONTEXT} tokens")
+        override("moe_backend", "fused")  # model-owned disk experts, no generic bank allocation
+        override("cache_type", "naive")
+        override("cuda_graph_bs", [])
+        override("cuda_graph_max_bs", 0)
+        override("page_size", 1)
+        override("max_running_req", 1)
+        override("disable_startup_prefill_warmup", True)
+        if config.num_token_override is None and config.num_page_override is None:
+            override("num_token_override", config.max_seq_len)
+        model_config.dsv41_args.max_seq_len = config.max_seq_len
+
     if config.cuda_graph_max_bs is None:
         override("cuda_graph_max_bs", config.max_running_req)
 
@@ -2307,6 +2331,7 @@ def _adjust_config(config: EngineConfig):
         is_moe
         and expert_quant not in ("none", "fp8_block")
         and not is_offload_moe_backend(config.moe_backend)
+        and getattr(model_config, "dsv41_args", None) is None
     ):
         raise ValueError(
             f"{expert_quant} experts require --moe-backend offload or cpu, "

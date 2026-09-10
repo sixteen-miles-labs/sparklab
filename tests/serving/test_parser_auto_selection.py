@@ -58,6 +58,10 @@ def _inferred(architecture: str) -> tuple[str, str | None]:
     return args.tool_call_parser, args.reasoning_parser
 
 
+def test_deepseek_v41_uses_spaced_dsml_and_shared_thinking_protocol():
+    assert _inferred("DeepseekV41ForCausalLM") == ("deepseekv41", "deepseekv32")
+
+
 @pytest.mark.parametrize("architecture", ARCHITECTURES)
 def test_inferred_parser_names_are_names_the_factories_know(architecture):
     """A name the cascade invents but no factory can build fails at request time, not at boot."""

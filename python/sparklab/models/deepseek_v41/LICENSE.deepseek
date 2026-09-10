@@ -1,24 +1,6 @@
-SparkLab
-Copyright 2026 Oakmind AI
+MIT License
 
-SparkLab is developed by SixteenMiles Labs, a research lab under Oakmind AI.
-
-This distribution incorporates and adapts FreeToken research and software originally
-published at https://github.com/FlashML-org/FreeToken. See the repository README and
-source notices for additional third-party attribution.
-
-The native DeepSeek V4.1 text implementation adapts configuration, n-gram hashing,
-and model mathematics from deepseek-ai/DeepSeek-V4.1-Flash revision
-df42c109f1defefcbfcedbe7d905718a12266e40, Copyright (c) 2023 DeepSeek,
-under the MIT License. The license is reproduced in
-python/sparklab/models/deepseek_v41/LICENSE.deepseek.
-
-The native Qwen3.8 DFlash2 implementation is based on the architecture and DGX Spark
-reference published by Paolo Rosson at
-https://github.com/pangoleen/qwen3.8-27b-dgx-spark-dflash2 (revision
-2c7c38216cea410497ae222dc58030c021b74bd7), licensed under the MIT License.
-
-Copyright (c) 2026 Paolo Rosson
+Copyright (c) 2023 DeepSeek
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
