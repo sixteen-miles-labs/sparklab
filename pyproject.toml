@@ -121,6 +121,7 @@ where = ["python"]
 
 [tool.setuptools.package-data]
 "*" = ["csrc/**/*", "moe/configs/**/*.json", "recipes/*.json"]
+"sparklab.models.deepseek_v41" = ["LICENSE.deepseek"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

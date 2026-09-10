@@ -1564,11 +1564,14 @@ class DeepSeekV32Detector(BaseFormatDetector):
     Reference: https://huggingface.co/deepseek-ai/DeepSeek-V3.2
     """
 
+    v41 = False
+
     def __init__(self):
         super().__init__()
-        self.dsml_token = "｜DSML｜"
-        self.bot_token = f"<{self.dsml_token}function_calls>"
-        self.eot_token = f"</{self.dsml_token}function_calls>"
+        self.dsml_token = "｜DSML｜ " if self.v41 else "｜DSML｜"
+        block = "calls" if self.v41 else "function_calls"
+        self.bot_token = f"<{self.dsml_token}{block}>"
+        self.eot_token = f"</{self.dsml_token}{block}>"
         self.alt_bot_token = f"<{self.dsml_token}tool_calls>"
         self.alt_eot_token = f"</{self.dsml_token}tool_calls>"
         self.invoke_start_prefix = f"<{self.dsml_token}invoke"
@@ -1882,6 +1885,12 @@ class DeepSeekV32Detector(BaseFormatDetector):
         if self.prev_tool_call_arr and residual.strip() == "":
             return ""
         return residual
+
+
+class DeepSeekV41Detector(DeepSeekV32Detector):
+    """V4.1's spaced DSML calls/invoke/parameter tags."""
+
+    v41 = True
 
 
 class Qwen3CoderDetector(InvokeParamStreamMixin, BaseFormatDetector):
@@ -3663,6 +3672,7 @@ class FunctionCallParser:
 
     ToolCallParserEnum: Dict[str, Type[BaseFormatDetector]] = {
         "deepseekv32": DeepSeekV32Detector,
+        "deepseekv41": DeepSeekV41Detector,
         "gemma4": Gemma4Detector,
         "gpt-oss": GptOssDetector,
         "gpt_oss": GptOssDetector,

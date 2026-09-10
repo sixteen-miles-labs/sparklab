@@ -23,12 +23,13 @@ def test_models_json_exposes_tier_and_admission_status(capsys):
     payload = json.loads(capsys.readouterr().out)
     assert payload["product"] == "SparkLab" and payload["platform"] == "gb10"
     assert [recipe["slug"] for recipe in payload["recipes"]] == [
+        "deepseek-v4.1-flash",
         "glm-5.2",
         "glm-5.3",
         "kimi-k3",
     ]
     assert all(recipe["status"] == "experimental" for recipe in payload["recipes"])
-    assert payload["recipes"][0]["parameters"] == "753B total / 40B active"
+    assert payload["recipes"][0]["parameters"] == "522B total / 8-16B active"
 
 
 def test_models_can_select_primary_portfolio(capsys):
@@ -40,6 +41,7 @@ def test_models_can_select_primary_portfolio(capsys):
         "deepseek-v4",
         "glm-5.3-flash",
         "qwen3.8-flash-next",
+        "deepseek-v4.1-flash",
         "kimi-k3",
     ]
     assert all(recipe["portfolio_role"] == "primary" for recipe in payload["recipes"])

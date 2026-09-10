@@ -3,6 +3,9 @@
 This directory contains compact, reviewable summaries for SparkLab model
 recipes. Raw logs and large result streams stay outside the source repository.
 
+- `results/GB10-DSV41-PORTFOLIO-001.json` records the native DeepSeek V4.1 Flash
+  short probe: 0.244 decode tok/s and 343.131 s warm TTFT, medians of three
+  trials after one warmup with 74 input and 128 output tokens.
 - `result.schema.json` defines the versioned summary contract.
 - `results/GB10-QWEN38-27B-PORTFOLIO-001.json` reruns the original 96-input/
   128-output short probe on the default RadixArk + FP4 prefill + DFlash2-12 recipe:

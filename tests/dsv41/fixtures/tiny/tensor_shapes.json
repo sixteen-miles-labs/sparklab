@@ -1,0 +1,1519 @@
+{
+  "embed.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.hc_attn_fn": {
+    "shape": [
+      24,
+      128
+    ],
+    "dtype": "F32"
+  },
+  "layers.0.hc_ffn_fn": {
+    "shape": [
+      24,
+      128
+    ],
+    "dtype": "F32"
+  },
+  "layers.0.hc_attn_base": {
+    "shape": [
+      24
+    ],
+    "dtype": "F32"
+  },
+  "layers.0.hc_ffn_base": {
+    "shape": [
+      24
+    ],
+    "dtype": "F32"
+  },
+  "layers.0.hc_attn_scale": {
+    "shape": [
+      3
+    ],
+    "dtype": "F32"
+  },
+  "layers.0.hc_ffn_scale": {
+    "shape": [
+      3
+    ],
+    "dtype": "F32"
+  },
+  "layers.0.attn.attn_sink": {
+    "shape": [
+      2
+    ],
+    "dtype": "F32"
+  },
+  "layers.0.attn.wq_a.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.attn.q_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.attn.wq_b.weight": {
+    "shape": [
+      64,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.attn.wkv.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.attn.kv_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.attn.wo_a.weight": {
+    "shape": [
+      32,
+      64
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.attn.wo_b.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.ffn.gate.weight": {
+    "shape": [
+      4,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.ffn.gate.bias": {
+    "shape": [
+      4
+    ],
+    "dtype": "F32"
+  },
+  "layers.0.ffn.experts.0.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.ffn.experts.0.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.ffn.experts.0.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.ffn.experts.1.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.ffn.experts.1.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.ffn.experts.1.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.ffn.experts.2.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.ffn.experts.2.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.ffn.experts.2.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.ffn.experts.3.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.ffn.experts.3.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.ffn.experts.3.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.ffn.shared_experts.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.ffn.shared_experts.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.ffn.shared_experts.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.attn_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.0.ffn_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.hc_attn_fn": {
+    "shape": [
+      24,
+      128
+    ],
+    "dtype": "F32"
+  },
+  "layers.1.hc_ffn_fn": {
+    "shape": [
+      24,
+      128
+    ],
+    "dtype": "F32"
+  },
+  "layers.1.hc_attn_base": {
+    "shape": [
+      24
+    ],
+    "dtype": "F32"
+  },
+  "layers.1.hc_ffn_base": {
+    "shape": [
+      24
+    ],
+    "dtype": "F32"
+  },
+  "layers.1.hc_attn_scale": {
+    "shape": [
+      3
+    ],
+    "dtype": "F32"
+  },
+  "layers.1.hc_ffn_scale": {
+    "shape": [
+      3
+    ],
+    "dtype": "F32"
+  },
+  "layers.1.attn.attn_sink": {
+    "shape": [
+      2
+    ],
+    "dtype": "F32"
+  },
+  "layers.1.attn.wq_a.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.attn.q_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.attn.wq_b.weight": {
+    "shape": [
+      64,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.attn.wkv.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.attn.kv_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.attn.wo_a.weight": {
+    "shape": [
+      32,
+      64
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.attn.wo_b.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.attn.compressor.norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.attn.compressor.wkv.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "F32"
+  },
+  "layers.1.attn.compressor.wgate.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "F32"
+  },
+  "layers.1.attn.indexer.wq_b.weight": {
+    "shape": [
+      64,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.attn.indexer.weights_proj.weight": {
+    "shape": [
+      2,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.attn.indexer.wk.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.attn.indexer.k_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.ffn.gate.weight": {
+    "shape": [
+      4,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.ffn.gate.bias": {
+    "shape": [
+      4
+    ],
+    "dtype": "F32"
+  },
+  "layers.1.ffn.experts.0.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.ffn.experts.0.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.ffn.experts.0.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.ffn.experts.1.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.ffn.experts.1.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.ffn.experts.1.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.ffn.experts.2.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.ffn.experts.2.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.ffn.experts.2.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.ffn.experts.3.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.ffn.experts.3.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.ffn.experts.3.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.ffn.shared_experts.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.ffn.shared_experts.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.ffn.shared_experts.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.engram.q_weight": {
+    "shape": [
+      4,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.engram.k_weight": {
+    "shape": [
+      4,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.engram.embed.weight": {
+    "shape": [
+      18,
+      32
+    ],
+    "dtype": "F8_E4M3"
+  },
+  "layers.1.engram.embed.scale": {
+    "shape": [
+      18,
+      1
+    ],
+    "dtype": "F8_E8M0"
+  },
+  "layers.1.engram.wkv.weight": {
+    "shape": [
+      160,
+      64
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.attn_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.1.ffn_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.hc_attn_fn": {
+    "shape": [
+      24,
+      128
+    ],
+    "dtype": "F32"
+  },
+  "layers.2.hc_ffn_fn": {
+    "shape": [
+      24,
+      128
+    ],
+    "dtype": "F32"
+  },
+  "layers.2.hc_attn_base": {
+    "shape": [
+      24
+    ],
+    "dtype": "F32"
+  },
+  "layers.2.hc_ffn_base": {
+    "shape": [
+      24
+    ],
+    "dtype": "F32"
+  },
+  "layers.2.hc_attn_scale": {
+    "shape": [
+      3
+    ],
+    "dtype": "F32"
+  },
+  "layers.2.hc_ffn_scale": {
+    "shape": [
+      3
+    ],
+    "dtype": "F32"
+  },
+  "layers.2.attn.attn_sink": {
+    "shape": [
+      2
+    ],
+    "dtype": "F32"
+  },
+  "layers.2.attn.wq_a.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.attn.q_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.attn.wq_b.weight": {
+    "shape": [
+      64,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.attn.wkv.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.attn.kv_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.attn.wo_a.weight": {
+    "shape": [
+      32,
+      64
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.attn.wo_b.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.ffn.gate.weight": {
+    "shape": [
+      4,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.ffn.gate.bias": {
+    "shape": [
+      4
+    ],
+    "dtype": "F32"
+  },
+  "layers.2.ffn.experts.0.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.ffn.experts.0.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.ffn.experts.0.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.ffn.experts.1.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.ffn.experts.1.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.ffn.experts.1.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.ffn.experts.2.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.ffn.experts.2.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.ffn.experts.2.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.ffn.experts.3.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.ffn.experts.3.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.ffn.experts.3.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.ffn.shared_experts.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.ffn.shared_experts.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.ffn.shared_experts.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.attn_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.2.ffn_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.hc_attn_fn": {
+    "shape": [
+      24,
+      128
+    ],
+    "dtype": "F32"
+  },
+  "layers.3.hc_ffn_fn": {
+    "shape": [
+      24,
+      128
+    ],
+    "dtype": "F32"
+  },
+  "layers.3.hc_attn_base": {
+    "shape": [
+      24
+    ],
+    "dtype": "F32"
+  },
+  "layers.3.hc_ffn_base": {
+    "shape": [
+      24
+    ],
+    "dtype": "F32"
+  },
+  "layers.3.hc_attn_scale": {
+    "shape": [
+      3
+    ],
+    "dtype": "F32"
+  },
+  "layers.3.hc_ffn_scale": {
+    "shape": [
+      3
+    ],
+    "dtype": "F32"
+  },
+  "layers.3.attn.attn_sink": {
+    "shape": [
+      2
+    ],
+    "dtype": "F32"
+  },
+  "layers.3.attn.wq_a.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.attn.q_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.attn.wq_b.weight": {
+    "shape": [
+      64,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.attn.wkv.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.attn.kv_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.attn.wo_a.weight": {
+    "shape": [
+      32,
+      64
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.attn.wo_b.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.attn.compressor.norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.attn.compressor.wkv.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.attn.indexer.wq_b.weight": {
+    "shape": [
+      64,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.attn.indexer.weights_proj.weight": {
+    "shape": [
+      2,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.attn.indexer.wk.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.attn.indexer.k_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.ffn.gate.weight": {
+    "shape": [
+      4,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.ffn.gate.bias": {
+    "shape": [
+      4
+    ],
+    "dtype": "F32"
+  },
+  "layers.3.ffn.experts.0.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.ffn.experts.0.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.ffn.experts.0.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.ffn.experts.1.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.ffn.experts.1.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.ffn.experts.1.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.ffn.experts.2.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.ffn.experts.2.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.ffn.experts.2.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.ffn.experts.3.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.ffn.experts.3.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.ffn.experts.3.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.ffn.shared_experts.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.ffn.shared_experts.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.ffn.shared_experts.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.engram.q_weight": {
+    "shape": [
+      4,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.engram.k_weight": {
+    "shape": [
+      4,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.engram.embed.weight": {
+    "shape": [
+      30,
+      32
+    ],
+    "dtype": "F8_E4M3"
+  },
+  "layers.3.engram.embed.scale": {
+    "shape": [
+      30,
+      1
+    ],
+    "dtype": "F8_E8M0"
+  },
+  "layers.3.engram.wkv.weight": {
+    "shape": [
+      160,
+      64
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.attn_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.3.ffn_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.hc_attn_fn": {
+    "shape": [
+      24,
+      128
+    ],
+    "dtype": "F32"
+  },
+  "layers.4.hc_ffn_fn": {
+    "shape": [
+      24,
+      128
+    ],
+    "dtype": "F32"
+  },
+  "layers.4.hc_attn_base": {
+    "shape": [
+      24
+    ],
+    "dtype": "F32"
+  },
+  "layers.4.hc_ffn_base": {
+    "shape": [
+      24
+    ],
+    "dtype": "F32"
+  },
+  "layers.4.hc_attn_scale": {
+    "shape": [
+      3
+    ],
+    "dtype": "F32"
+  },
+  "layers.4.hc_ffn_scale": {
+    "shape": [
+      3
+    ],
+    "dtype": "F32"
+  },
+  "layers.4.attn.attn_sink": {
+    "shape": [
+      2
+    ],
+    "dtype": "F32"
+  },
+  "layers.4.attn.wq_a.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.attn.q_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.attn.wq_b.weight": {
+    "shape": [
+      64,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.attn.wkv.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.attn.kv_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.attn.wo_a.weight": {
+    "shape": [
+      32,
+      64
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.attn.wo_b.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.attn.indexer.wq_b.weight": {
+    "shape": [
+      64,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.attn.indexer.weights_proj.weight": {
+    "shape": [
+      2,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.ffn.gate.weight": {
+    "shape": [
+      4,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.ffn.gate.bias": {
+    "shape": [
+      4
+    ],
+    "dtype": "F32"
+  },
+  "layers.4.ffn.experts.0.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.ffn.experts.0.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.ffn.experts.0.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.ffn.experts.1.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.ffn.experts.1.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.ffn.experts.1.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.ffn.experts.2.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.ffn.experts.2.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.ffn.experts.2.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.ffn.experts.3.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.ffn.experts.3.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.ffn.experts.3.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.ffn.shared_experts.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.ffn.shared_experts.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.ffn.shared_experts.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.attn_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.4.ffn_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.hc_attn_fn": {
+    "shape": [
+      24,
+      128
+    ],
+    "dtype": "F32"
+  },
+  "layers.5.hc_ffn_fn": {
+    "shape": [
+      24,
+      128
+    ],
+    "dtype": "F32"
+  },
+  "layers.5.hc_attn_base": {
+    "shape": [
+      24
+    ],
+    "dtype": "F32"
+  },
+  "layers.5.hc_ffn_base": {
+    "shape": [
+      24
+    ],
+    "dtype": "F32"
+  },
+  "layers.5.hc_attn_scale": {
+    "shape": [
+      3
+    ],
+    "dtype": "F32"
+  },
+  "layers.5.hc_ffn_scale": {
+    "shape": [
+      3
+    ],
+    "dtype": "F32"
+  },
+  "layers.5.attn.attn_sink": {
+    "shape": [
+      2
+    ],
+    "dtype": "F32"
+  },
+  "layers.5.attn.wq_a.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.attn.q_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.attn.wq_b.weight": {
+    "shape": [
+      64,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.attn.wkv.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.attn.kv_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.attn.wo_a.weight": {
+    "shape": [
+      32,
+      64
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.attn.wo_b.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.ffn.gate.weight": {
+    "shape": [
+      4,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.ffn.gate.bias": {
+    "shape": [
+      4
+    ],
+    "dtype": "F32"
+  },
+  "layers.5.ffn.experts.0.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.ffn.experts.0.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.ffn.experts.0.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.ffn.experts.1.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.ffn.experts.1.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.ffn.experts.1.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.ffn.experts.2.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.ffn.experts.2.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.ffn.experts.2.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.ffn.experts.3.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.ffn.experts.3.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.ffn.experts.3.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.ffn.shared_experts.w1.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.ffn.shared_experts.w2.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.ffn.shared_experts.w3.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.attn_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "layers.5.ffn_norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "norm.weight": {
+    "shape": [
+      32
+    ],
+    "dtype": "BF16"
+  },
+  "head.weight": {
+    "shape": [
+      32,
+      32
+    ],
+    "dtype": "F32"
+  }
+}

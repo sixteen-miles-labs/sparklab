@@ -38,12 +38,17 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 · FTW + optional DSpark5 | `deepseek-v4` | Preview | 14.02 | 0.515 |
 | [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 + KDA FP8 · FTW + optional MTP3 | `glm-5.3-flash` | Experimental | 7.77 | 6.395 |
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
+| [DeepSeek V4.1 Flash](https://recipes.vllm.ai/deepseek-ai/DeepSeek-V4.1-Flash) | 522B total / 8–16B active | MXFP4 / MXFP8 · native disk streaming | `deepseek-v4.1-flash` | Experimental | — | — |
 | [GLM-5.3](https://huggingface.co/oakmindai/GLM-5.3-NVFP4-FTW) | 753B total / 40B active | NVFP4 + resident FP8 · FTW + optional DFlash2-4 | `glm-5.3` | Experimental fallback | 1.29 | 2.085 |
 | [Kimi K3](https://huggingface.co/oakmindai/Kimi-K3-NVFP4-FTW) | 2.8T total / 16 of 896 experts | ModelOpt NVFP4/FP8 · FTW | `kimi-k3` | Experimental | 0.16 | 395.405 |
 
 Model links point to the selected source or published FTW checkpoint. GLM-5.3
 and Kimi K3 use pinned prebuilt artifacts with reproducible source-conversion paths.
 Qwen3.6 converts its pinned NVIDIA source into a separate Marlin FTW inside its container.
+DeepSeek V4.1 Flash links to its architecture recipe; SparkLab implements a native
+text-only Research path with direct safetensors disk reads, bounded Engram lookups,
+and no FTW conversion. See its [run instructions](models/deepseek-v4.1-flash.md).
+Full-checkpoint inference and performance are unverified; dashes mean unmeasured.
 The current Qwen3.8-Flash-Next recipe requires a
 [source installation](install.md#method-2-install-from-source); the released 0.1.2 wheel
 lacks its required runtime support.

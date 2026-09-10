@@ -219,6 +219,8 @@ def acquire_recipe(
         raise AcquisitionError(f"{recipe.slug} is not pinned to an immutable revision")
     if from_source and not prepare:
         raise AcquisitionError("from_source requires prepare=True")
+    if prepare and recipe.deployment.runtime_format == "safetensors":
+        raise AcquisitionError(f"{recipe.slug} loads source safetensors directly; omit --prepare")
     use_prebuilt = prepare and not from_source and recipe.runtime_artifact is not None
     plan = plan_artifacts(
         recipe,

@@ -54,6 +54,10 @@ _MODEL_REGISTRY: dict[str, ModelSpec] = {
         "sparklab.models.deepseek_v4",
         "DeepseekV4ForCausalLM",
     ),
+    "DeepseekV41ForCausalLM": ModelSpec(
+        "sparklab.models.deepseek_v41",
+        "DeepseekV41ForCausalLM",
+    ),
     "Qwen3_5MoeForConditionalGeneration": ModelSpec(
         "sparklab.models.qwen3_5_moe",
         "Qwen3_5MoEForCausalLM",

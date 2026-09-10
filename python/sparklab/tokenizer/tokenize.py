@@ -163,6 +163,10 @@ class TokenizeManager:
         if "reasoning_effort" not in chat_template_kwargs:
             return chat_template_kwargs
         raw = chat_template_kwargs.get("reasoning_effort")
+        if getattr(self._dsv4_encoder, "__name__", "") == "encoding_dsv41" and isinstance(raw, int):
+            if type(raw) is not int or not 1 <= raw <= 100:
+                raise ValueError("DeepSeek V4.1 reasoning_effort must be an integer in [1, 100]")
+            return chat_template_kwargs
         mapped = quantize_effort(raw, self.effort_profile())
         if mapped == raw:
             return chat_template_kwargs
@@ -191,8 +195,16 @@ def _load_dsv4_encoder_if_needed(tokenizer: PreTrainedTokenizerBase) -> ModuleTy
         return None
     encoder_path = os.path.join(str(model_path), "encoding", "encoding_dsv4.py")
     if not os.path.isfile(encoder_path):
+        # V4.1 publishes the same encode_messages contract under encoding.py.
+        config_path = os.path.join(str(model_path), "config.json")
+        if os.path.isfile(config_path):
+            with open(config_path, encoding="utf-8") as handle:
+                if json.load(handle).get("model_type") == "deepseek_v41":
+                    encoder_path = os.path.join(str(model_path), "encoding", "encoding.py")
+    if not os.path.isfile(encoder_path):
         return None
-    spec = importlib.util.spec_from_file_location("encoding_dsv4", encoder_path)
+    module_name = "encoding_dsv41" if os.path.basename(encoder_path) == "encoding.py" else "encoding_dsv4"
+    spec = importlib.util.spec_from_file_location(module_name, encoder_path)
     if spec is None or spec.loader is None:
         return None
     module = importlib.util.module_from_spec(spec)

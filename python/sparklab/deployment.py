@@ -84,10 +84,11 @@ def resolve_checkpoint(recipe: ModelRecipe, root: str | None = None) -> Path:
         seen.add(resolved)
         if backend.accepts_artifact(resolved, recipe.deployment):
             return resolved
+    prepare_flag = " --prepare" if recipe.deployment.runtime_format.startswith("ftw") else ""
     raise RuntimePlanError(
         f"no {recipe.deployment.runtime_format} artifact accepted by backend "
         f"{recipe.backend!r} for {recipe.slug}; run "
-        f"`sparklab pull {recipe.slug} --prepare` first"
+        f"`sparklab pull {recipe.slug}{prepare_flag}` first"
     )
 
 

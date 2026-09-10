@@ -1,0 +1,123 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-DSV41-PORTFOLIO-001",
+  "status": "measured",
+  "date": "2026-09-10",
+  "model": "deepseek-v4.1-flash",
+  "checkpoint": {
+    "repository": "deepseek-ai/DeepSeek-V4.1-Flash",
+    "revision": "df42c109f1defefcbfcedbe7d905718a12266e40",
+    "format": "safetensors"
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "gpus": 1
+  },
+  "engine": {
+    "revision": "5f5c3465b8a8d4b0d736e9114d70ce4c9cbcef56",
+    "tracked_dirty": true,
+    "source_sha256": {
+      "python/sparklab/models/deepseek_v41/__init__.py": "9f046ed4e7d45b101a878b89bb92a1013da3cfe830a753a855563db58ecd6212",
+      "python/sparklab/models/deepseek_v41/args.py": "a8438d47c53adf27bc19d2232f087135dd8deb89b7d4da8a9d04ae7adf18e6c9",
+      "python/sparklab/models/deepseek_v41/config.py": "da0eb6a5d2e2a53083dc370a4907246ac501a099259ea57c80283542da78eb95",
+      "python/sparklab/models/deepseek_v41/engram.py": "6d708da78adc18d4d9d629c939344620bc405aa9e1ec76e4669fafa014ad4086",
+      "python/sparklab/models/deepseek_v41/model.py": "484677aea2a53ec43c13dcfd91d049459f29ae6246123a426abc00d35030ac26",
+      "python/sparklab/models/deepseek_v41/ops.py": "d8792334f86ad408f92c7e846f8e162ea9c2c477968bd488ace5b74fe9d2be0e",
+      "python/sparklab/models/deepseek_v41/weight.py": "2eaf57bfa91cd806a8924162f81ea7ecadae54ebac362ae2b85c4681524c0296"
+    }
+  },
+  "workload": {
+    "name": "Original AIME-25 problem 0 portfolio probe",
+    "prompt": "Find the sum of all integer bases $b>9$ for which $17_b$ is a divisor of $97_b.$\nPlease reason step by step, and put your final answer within \\boxed{}.",
+    "prompt_sha256": "51e1235f1c85cf333085c9e2889a20fb7e7ef65f320856975bac705eb04e43d4",
+    "prompt_tokens": 74,
+    "output_tokens": 128,
+    "clients": 1,
+    "temperature": 0,
+    "thinking": true,
+    "ignore_eos": true,
+    "warmup_requests": 1,
+    "measured_trials": 3,
+    "aggregation": "median",
+    "metric": "(completion_tokens - 1) / (last content event - first content event)"
+  },
+  "metrics": {
+    "decode_tokens_per_second": 0.24350497465775373,
+    "ttft_seconds": 343.13075944792945,
+    "elapsed_seconds": 864.6815347810043
+  },
+  "warmups": [
+    {
+      "decode_tokens_per_second": 0.24460748079607017,
+      "ttft_seconds": 358.63816906907596,
+      "elapsed_seconds": 877.8382295450429,
+      "usage": {
+        "prompt_tokens": 74,
+        "completion_tokens": 128,
+        "total_tokens": 202
+      },
+      "output_sha256": "dd72a88bc44b474e2a0b1f14fa29d8786b0ce8efa482ba0eb04d3a3f6f34c349",
+      "text": "We need answer math problem. Need reason. Need solve.\n\nProblem: Find sum of all integer bases b>9 for which 17_b is a divisor of 97_b.\n\nInterpretation: numbers in base b. 17_b = 1*b + 7 = b+7. 97_b = 9*b + 7 = 9b+7. Need b>9 integer. Need (b+7) divides (9b+7). Find all bases b>9, sum.\n\nCompute divisibility: (b+7) | (9b+7). Mod b+7, b \u2261 -"
+    }
+  ],
+  "trials": [
+    {
+      "decode_tokens_per_second": 0.22867477255995344,
+      "ttft_seconds": 409.748444552999,
+      "elapsed_seconds": 965.1224850759609,
+      "usage": {
+        "prompt_tokens": 74,
+        "completion_tokens": 128,
+        "total_tokens": 202
+      },
+      "output_sha256": "dd72a88bc44b474e2a0b1f14fa29d8786b0ce8efa482ba0eb04d3a3f6f34c349",
+      "text": "We need answer math problem. Need reason. Need solve.\n\nProblem: Find sum of all integer bases b>9 for which 17_b is a divisor of 97_b.\n\nInterpretation: numbers in base b. 17_b = 1*b + 7 = b+7. 97_b = 9*b + 7 = 9b+7. Need b>9 integer. Need (b+7) divides (9b+7). Find all bases b>9, sum.\n\nCompute divisibility: (b+7) | (9b+7). Mod b+7, b \u2261 -"
+    },
+    {
+      "decode_tokens_per_second": 0.24554596856916677,
+      "ttft_seconds": 339.9304617010057,
+      "elapsed_seconds": 857.1461148159578,
+      "usage": {
+        "prompt_tokens": 74,
+        "completion_tokens": 128,
+        "total_tokens": 202
+      },
+      "output_sha256": "dd72a88bc44b474e2a0b1f14fa29d8786b0ce8efa482ba0eb04d3a3f6f34c349",
+      "text": "We need answer math problem. Need reason. Need solve.\n\nProblem: Find sum of all integer bases b>9 for which 17_b is a divisor of 97_b.\n\nInterpretation: numbers in base b. 17_b = 1*b + 7 = b+7. 97_b = 9*b + 7 = 9b+7. Need b>9 integer. Need (b+7) divides (9b+7). Find all bases b>9, sum.\n\nCompute divisibility: (b+7) | (9b+7). Mod b+7, b \u2261 -"
+    },
+    {
+      "decode_tokens_per_second": 0.24350497465775373,
+      "ttft_seconds": 343.13075944792945,
+      "elapsed_seconds": 864.6815347810043,
+      "usage": {
+        "prompt_tokens": 74,
+        "completion_tokens": 128,
+        "total_tokens": 202
+      },
+      "output_sha256": "dd72a88bc44b474e2a0b1f14fa29d8786b0ce8efa482ba0eb04d3a3f6f34c349",
+      "text": "We need answer math problem. Need reason. Need solve.\n\nProblem: Find sum of all integer bases b>9 for which 17_b is a divisor of 97_b.\n\nInterpretation: numbers in base b. 17_b = 1*b + 7 = b+7. 97_b = 9*b + 7 = 9b+7. Need b>9 integer. Need (b+7) divides (9b+7). Find all bases b>9, sum.\n\nCompute divisibility: (b+7) | (9b+7). Mod b+7, b \u2261 -"
+    }
+  ],
+  "configuration": {
+    "weight_cache_gib": 24,
+    "context_tokens": 2048,
+    "backend": "native",
+    "prefix_reuse": false,
+    "speculation": false,
+    "prefill": "token-at-a-time eager"
+  },
+  "source": {
+    "benchmark": {
+      "benchmark": "benchmarks/bench_single_stream.py:generate",
+      "benchmark_sha256": "b9f62626e92b43e53b8f6bf955b73bcebbd1013818086490210f54f0dda4a50c",
+      "adaptation": "HTTP timeout 14400 seconds; identical prompt, request and metric arithmetic"
+    },
+    "raw_directory": "results/deepseek-v41-portfolio-20260910"
+  },
+  "limitations": [
+    "One fixed 74-input/128-output prompt; not a completed-answer quality test or general numerical parity validation.",
+    "Same prompt as the README Qwen short probe; tokenizer and prefix-cache behavior differ.",
+    "Working-tree implementation; source hashes identify the measured decoder.",
+    "Host swap-out was observed; performance is not an isolated no-swap certification result."
+  ]
+}

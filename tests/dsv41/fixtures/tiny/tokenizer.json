@@ -1,0 +1,83 @@
+{
+  "version": "1.0",
+  "truncation": null,
+  "padding": null,
+  "added_tokens": [
+    {
+      "id": 0,
+      "content": "t0",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    }
+  ],
+  "normalizer": null,
+  "pre_tokenizer": null,
+  "post_processor": {
+    "type": "TemplateProcessing",
+    "single": [
+      {
+        "Sequence": {
+          "id": "A",
+          "type_id": 0
+        }
+      }
+    ],
+    "pair": [
+      {
+        "Sequence": {
+          "id": "A",
+          "type_id": 0
+        }
+      },
+      {
+        "Sequence": {
+          "id": "B",
+          "type_id": 1
+        }
+      }
+    ],
+    "special_tokens": {}
+  },
+  "decoder": null,
+  "model": {
+    "type": "WordLevel",
+    "vocab": {
+      "t0": 0,
+      "t1": 1,
+      "t2": 2,
+      "t3": 3,
+      "t4": 4,
+      "t5": 5,
+      "t6": 6,
+      "t7": 7,
+      "t8": 8,
+      "t9": 9,
+      "t10": 10,
+      "t11": 11,
+      "t12": 12,
+      "t13": 13,
+      "t14": 14,
+      "t15": 15,
+      "t16": 16,
+      "t17": 17,
+      "t18": 18,
+      "t19": 19,
+      "t20": 20,
+      "t21": 21,
+      "t22": 22,
+      "t23": 23,
+      "t24": 24,
+      "t25": 25,
+      "t26": 26,
+      "t27": 27,
+      "t28": 28,
+      "t29": 29,
+      "t30": 30,
+      "t31": 31
+    },
+    "unk_token": "t0"
+  }
+}
