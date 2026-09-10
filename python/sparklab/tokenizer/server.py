@@ -128,6 +128,7 @@ def _tokenize_requests(
 def tokenize_worker(
     *,
     tokenizer_path: str,
+    vision_model: str | None = None,
     addr: str,
     create: bool,
     backend_addr: str,
@@ -147,7 +148,7 @@ def tokenize_worker(
     from .detokenize import DetokenizeManager
     from .tokenize import TokenizeManager
 
-    tokenize_manager = TokenizeManager(tokenizer)
+    tokenize_manager = TokenizeManager(tokenizer, vision_model=vision_model)
     detokenize_manager = DetokenizeManager(
         tokenizer, load_eos_token_ids(tokenizer_path, tokenizer)
     )
@@ -255,7 +256,7 @@ def tokenize_worker(
                     )
                 if ok_msgs:
                     backend = [
-                        UserMsg(uid=msg.uid, input_ids=t, sampling_params=msg.sampling_params)
+                        UserMsg(uid=msg.uid, input_ids=t, sampling_params=msg.sampling_params, mm_inputs=msg.mm_inputs)
                         for msg, t in zip(ok_msgs, ok_tensors, strict=True)
                     ]
                     send_backend.put(backend[0] if len(backend) == 1 else BatchBackendMsg(data=backend))

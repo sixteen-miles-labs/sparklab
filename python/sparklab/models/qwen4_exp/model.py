@@ -88,7 +88,14 @@ class Qwen4ExpModel(BaseOP):
     def forward(
         self, input_ids: torch.Tensor, *, return_multi: bool = False
     ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
-        hidden = self.embed_tokens.forward(input_ids).repeat(1, self._hc_count)
+        hidden = self.embed_tokens.forward(input_ids)
+        embeds = getattr(get_global_ctx().batch, "mm_embeds", None)
+        if embeds is not None:
+            mask = input_ids == self._image_token_id
+            if int(mask.sum()) != embeds.shape[0]:
+                raise ValueError("Image embeddings and placeholders differ")
+            hidden = hidden.masked_scatter(mask.unsqueeze(-1), embeds.to(hidden.dtype))
+        hidden = hidden.repeat(1, self._hc_count)
         for layer in self.layers.op_list:
             hidden = layer.forward(hidden)
         sample = self.hyper_connection_mixer.forward(hidden)

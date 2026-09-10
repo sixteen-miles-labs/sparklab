@@ -18,6 +18,7 @@ class EngineConfig:
     model_path: str
     tp_info: DistributedInfo
     dtype: torch.dtype
+    vision_model: str | None = None
     max_running_req: int = 4
     attention_backend: str = "auto"
     moe_backend: str = "auto"

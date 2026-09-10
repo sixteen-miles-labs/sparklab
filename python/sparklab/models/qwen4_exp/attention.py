@@ -70,6 +70,9 @@ class Qwen4ExpAttention(BaseOP):
     @nvtx_annotate("QSA")
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         ctx = get_global_ctx()
+        positions = getattr(ctx.batch, "mm_positions", None)
+        if positions is None:
+            positions = ctx.batch.positions
         qg, k, v = self.qkv_proj.forward(x).split(self._split, dim=-1)
         qg = qg.view(-1, self.num_q, 2 * self.head_dim)
         q, gate = qg.chunk(2, dim=-1)
@@ -79,7 +82,7 @@ class Qwen4ExpAttention(BaseOP):
         self.q_norm.forward_inplace(q)
         self.k_norm.forward_inplace(k)
         q_flat, k_flat = self.rotary.forward(
-            ctx.batch.positions, q.view(-1, self.q_dim), k.view(-1, self.kv_dim)
+            positions, q.view(-1, self.q_dim), k.view(-1, self.kv_dim)
         )
 
         if ctx.attn_backend.needs_index_query(ctx.batch):
@@ -92,7 +95,7 @@ class Qwen4ExpAttention(BaseOP):
             # Only queries are normalized/rotated here. QSA first averages raw key
             # groups, then normalizes and rotates the pooled key at the group start.
             iq_flat, _ = self.index_rotary.forward(
-                ctx.batch.positions,
+                positions,
                 iq.view(-1, self.index_q_dim),
                 raw_ik.clone(),
             )

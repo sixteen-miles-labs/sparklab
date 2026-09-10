@@ -208,6 +208,7 @@ class FrontendManager:
                 from sparklab.utils import load_tokenizer
 
                 self._frontend_tokenizer = TokenizeManager(load_tokenizer(self.config.model_path))
+                self._frontend_tokenizer._vision_source = getattr(self.config, "vision_model", None)
             return self._frontend_tokenizer
 
     def warm_frontend_tokenizer(self) -> None:

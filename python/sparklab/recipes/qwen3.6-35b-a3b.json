@@ -76,6 +76,7 @@
     "Default selected for speed; quality equivalence is not established. The fixed core screen scored 17/20 versus native target-only 18/20 and vLLM 17/20; capped 16K AIME scored 0/5 versus 1/5 for both references.",
     "Requires Docker with NVIDIA GPU access and the separately built sparklab-qwen36:gb10-v1 image (PyTorch 2.13); the host PyTorch 2.11 environment is unchanged.",
     "Requires a separate nvfp4_marlin FTW converted from the pinned NVIDIA source; the previous hosted Triton FTW is incompatible.",
-    "Validated for text on one 128 GiB GB10, one actively decoded request, BF16 KV, FP32 recurrent state and 32,832 total sequence tokens. Sampled requests use target-only decoding."
+    "Validated for text on one 128 GiB GB10, one actively decoded request, BF16 KV, FP32 recurrent state and 32,832 total sequence tokens. Sampled requests use target-only decoding.",
+    "Source builds support opt-in native image inputs through --vision-model using the host Triton profile. The pinned released container does not include this feature; see docs/models/qwen-vision.md."
   ]
 }

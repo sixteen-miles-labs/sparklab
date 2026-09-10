@@ -321,7 +321,11 @@ class QSAAttnBackend(BaseAttnBackend):
             )
             # RotaryEmbedding mutates both arguments. The query clone is unused but
             # keeps its in-place write from aliasing the pooled key.
-            _, pooled = rotary.forward(starts, pooled.clone(), pooled)
+            rotary_positions = starts
+            if getattr(req, "mm_positions", None) is not None:
+                from sparklab.models.qwen3_5_moe.vision import request_positions
+                rotary_positions = request_positions(req, starts)
+            _, pooled = rotary.forward(rotary_positions, pooled.clone(), pooled)
             cache[rows[:, -1]] = pooled
 
     def _pool_completed_keys_capture(

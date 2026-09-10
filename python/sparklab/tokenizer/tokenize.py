@@ -47,8 +47,10 @@ _EFFORT_PROBE_MESSAGES = [{"role": "user", "content": "ping"}]
 
 
 class TokenizeManager:
-    def __init__(self, tokenizer: PreTrainedTokenizerBase) -> None:
+    def __init__(self, tokenizer: PreTrainedTokenizerBase, vision_model: str | None = None) -> None:
         self.tokenizer = tokenizer
+        self._vision_source = vision_model
+        self._image_processor = None
         self._dsv4_encoder = _load_dsv4_encoder_if_needed(tokenizer)
         self._effort_profile: EffortProfile | None = None
         self._thinking_profile: ThinkingProfile | None = None
@@ -59,6 +61,11 @@ class TokenizeManager:
         results: List[torch.Tensor] = []
         # TODO: batch tokenization
         for msg in msgs:
+            from sparklab.multimodal.qwen import has_images
+            if has_images(msg.text):
+                _, ids, msg.mm_inputs = self._prepare_images(msg)
+                results.append(ids)
+                continue
             prompt = self.render_prompt(msg)
             # A jinja chat template owns every special token (HF's apply_chat_template
             # tokenizes with add_special_tokens=False for the same reason): tokenizers
@@ -74,11 +81,22 @@ class TokenizeManager:
             results.append(input_ids.view(-1).to(torch.int32))
         return results
 
+    def _prepare_images(self, msg):
+        if not self._vision_source:
+            raise ValueError("Image inputs require --vision-model")
+        if self._image_processor is None:
+            from sparklab.multimodal.qwen import QwenImageProcessor
+            self._image_processor = QwenImageProcessor(self._vision_source, self.tokenizer)
+        return self._image_processor.prepare(msg.text, msg.tools, self._sanitize_effort(msg.chat_template_kwargs or {}))
+
     def render_prompt(self, msg: TokenizeMsg) -> str:
         """The template/encoder half of ``tokenize``, exposed so the frontend can
         validate a request before committing an SSE stream. Sanitizes
         ``reasoning_effort`` first: every render path (worker, frontend
         validation, count_tokens) must quantize identically."""
+        from sparklab.multimodal.qwen import has_images
+        if has_images(msg.text):
+            return self._prepare_images(msg)[0]
         if not isinstance(msg.text, list):
             return msg.text
         return self._render(

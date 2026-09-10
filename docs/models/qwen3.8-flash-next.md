@@ -1,6 +1,6 @@
 # Run Qwen3.8-Flash-Next
 
-Qwen3.8-Flash-Next is an Experimental, text-only Frontier recipe for one NVIDIA
+Qwen3.8-Flash-Next is an Experimental Frontier recipe for one NVIDIA
 GB10. Recipe 0.9.0 uses NVIDIA's mixed-precision checkpoint: native NVFP4 target
 experts, native block-FP8 MTP experts, BF16 resident projections, and scaled FP8
 PLE n-gram embeddings.
@@ -226,3 +226,10 @@ Saving verified intermediate states can change floating-point rounding relative
 to replaying smaller prefixes; exact generated-text parity is not guaranteed.
 
 See the [quick start](../quickstart.md) for API and agent examples.
+
+## Image inputs
+
+The source runtime supports [experimental native vision](qwen-vision.md) with
+`--vision-model` pointing to the matching NVIDIA source snapshot. The default
+recipe and performance measurements remain text-only. Vision uses eager,
+single-request, target-only decoding; the prepared FTW does not need replacing.

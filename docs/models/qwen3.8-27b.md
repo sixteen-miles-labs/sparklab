@@ -1,5 +1,7 @@
 # Run Qwen3.8-27B
 
+An experimental native image-input path is available from source; see [vision setup and limits](qwen-vision.md).
+
 Recipe 0.4.0 uses the pinned RadixArk NVFP4 checkpoint, FP4 prefill in 2K-token
 chunks, and DFlash2-12 by default. It is an Experimental, text-only recipe for one
 NVIDIA GB10. DFlash accelerates greedy requests; model-default sampling remains

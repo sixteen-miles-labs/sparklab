@@ -59,6 +59,7 @@ def _thinking_type(req: Any) -> str | None:
 def chat_request_to_genspec(
     req: ChatCompletionRequest,
     model_sampling: dict[str, Any],
+    *, allow_images: bool = False,
 ) -> GenSpec:
     """OpenAI ChatCompletionRequest -> GenSpec (the OpenAI 'to_sampling_params')."""
     from .model_meta import effort_toggle_kwargs
@@ -68,7 +69,7 @@ def chat_request_to_genspec(
     if req.reasoning_effort or thinking_type:
         ctk = effort_toggle_kwargs(req.reasoning_effort, ctk, thinking_type=thinking_type)
     return GenSpec(
-        messages=render_messages([m.model_dump(exclude_none=True) for m in req.messages]),
+        messages=render_messages([m.model_dump(exclude_none=True) for m in req.messages], allow_images=allow_images),
         sampling_params=resolve_sampling(
             temperature=req.temperature,
             top_k=req.top_k,
@@ -180,7 +181,7 @@ async def handle_chat_completion(
             )
 
     try:
-        spec = chat_request_to_genspec(req, model_sampling)
+        spec = chat_request_to_genspec(req, model_sampling, allow_images=bool(getattr(state.config, "vision_model", None)))
     except ValueError:
         return create_error_response("invalid generation parameters")
 

@@ -77,6 +77,7 @@ sparklab = "sparklab.cli:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=6.0"]
+vision = ["Pillow>=10", "torchvision==0.26.0"]
 # Native fused-kernel packages. Without them the runtime falls back to the pure-Triton
 # kernels in sparklab.kernels.triton (and the 'triton' attention backend). Install
 # `sparklab[accel]` for the full native fast path.
@@ -97,6 +98,7 @@ accel = ["sparklab[fi,sgl]"]
 # which would otherwise shadow PyPI under uv's first-index strategy).
 [tool.uv.sources]
 torch = { index = "pytorch-cu130" }
+torchvision = { index = "pytorch-cu130" }
 sglang-kernel = { index = "sglang-cu130" }
 
 [[tool.uv.index]]

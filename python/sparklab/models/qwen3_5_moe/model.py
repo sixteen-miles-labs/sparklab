@@ -86,6 +86,12 @@ class Qwen3_5Model(BaseOP):
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
         x = self.embed_tokens.forward(input_ids)
+        embeds = getattr(get_global_ctx().batch, "mm_embeds", None)
+        if embeds is not None:
+            mask = input_ids == self._image_token_id
+            if int(mask.sum()) != embeds.shape[0]:
+                raise ValueError("Image embeddings and placeholders differ")
+            x = x.masked_scatter(mask.unsqueeze(-1), embeds.to(x.dtype))
         residual: torch.Tensor | None = None
         captures: list[torch.Tensor] = []
         for layer_id, layer in enumerate(self.layers.op_list):

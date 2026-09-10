@@ -194,18 +194,21 @@ def resolve_sampling(
     )
 
 
-def render_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def render_messages(messages: list[dict[str, Any]], *, allow_images: bool = False) -> list[dict[str, Any]]:
     """Normalize OpenAI-shaped message dicts for the chat template: flatten text
     content parts to a string and decode tool-call arguments from JSON. Raises
     ValueError on a non-text content part (text-only server). Shared by all adapters."""
-    return [_render_message(m) for m in messages]
+    return [_render_message(m, allow_images=allow_images) for m in messages]
 
 
-def _render_message(message: dict[str, Any]) -> dict[str, Any]:
+def _render_message(message: dict[str, Any], *, allow_images: bool = False) -> dict[str, Any]:
     m = dict(message)
     content = m.get("content")
     if isinstance(content, list):
-        m["content"] = _flatten_text_parts(content)
+        if allow_images and any(isinstance(p, dict) and p.get("type") == "image_url" for p in content):
+            m["content"] = content
+        else:
+            m["content"] = _flatten_text_parts(content)
     # Templates read different reasoning keys (reasoning_content: most; reasoning:
     # gemma4; thinking: gpt-oss) — accept any, emit both.
     reasoning = m.get("reasoning_content") or m.get("reasoning") or m.get("thinking")
