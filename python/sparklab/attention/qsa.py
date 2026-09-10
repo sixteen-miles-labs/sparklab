@@ -416,6 +416,7 @@ class QSAAttnBackend(BaseAttnBackend):
             raise RuntimeError("QSA index queries are required beyond the dense budget")
 
         selected: list[torch.Tensor] = []
+        counts_list: list[int] = []
         for req_idx, req in enumerate(reqs):
             q0, q1 = md.qo_indptr[req_idx : req_idx + 2]
             physical = ctx.page_table[req.table_idx, : req.device_len].to(torch.int32)
@@ -439,13 +440,27 @@ class QSAAttnBackend(BaseAttnBackend):
                 )
                 if sparse else None
             )
-            for local, iq in enumerate(index_q[q0:q1]):
-                selected.append(self._selected_rows(
-                    iq, pooled, physical, req.cached_len + local + 1,
-                ))
+            if sparse and self._fused_selection and index_q.is_cuda and q1 - q0 >= 32:
+                from sparklab.kernels.triton.qwen4_qsa_prefill import qsa_prefill_indices
+
+                rows, row_counts = qsa_prefill_indices(
+                    index_q[q0:q1].contiguous(), pooled.contiguous(), physical,
+                    cached_len=req.cached_len,
+                    ratio=self.args.index_compress_ratio,
+                    topk=self.args.index_block_topk,
+                )
+                selected.append(rows)
+                counts_list.extend(row_counts)
+            else:
+                for local, iq in enumerate(index_q[q0:q1]):
+                    rows = self._selected_rows(
+                        iq, pooled, physical, req.cached_len + local + 1,
+                    )
+                    selected.append(rows)
+                    counts_list.append(rows.numel())
 
         counts = torch.tensor(
-            [x.numel() for x in selected], dtype=torch.int32, device=self.device
+            counts_list, dtype=torch.int32, device=self.device
         )
         indptr = torch.cat((counts.new_zeros(1), counts.cumsum(0)))
         indices = torch.cat(selected) if selected else counts.new_empty(0)

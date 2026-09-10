@@ -1,5 +1,9 @@
 # Qwen3.8-Flash-Next cross-framework benchmark
 
+For current SparkLab, vLLM, and SGLang measurements using newer checkpoints and
+file-backed PLE support, see the [2026-09-09 comparison](QWEN38_FLASH_NEXT_20260909.md).
+The results below are historical and use a different checkpoint and workload.
+
 This report measures batch-one text serving of Qwen3.8-Flash-Next on one NVIDIA
 DGX Spark (GB10, 128 GB coherent memory, ARM64 Linux). It is separate from the
 [Qwen3.6 comparison](README.md) because Qwen3.8-Flash-Next has a substantially

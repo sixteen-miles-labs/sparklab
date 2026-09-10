@@ -234,8 +234,19 @@ def _qsa_index_scores_kernel(
     dim: tl.constexpr,
     block_d: tl.constexpr,
     scale: tl.constexpr,
+    stride_qq=0,
+    cached_len=0,
+    ratio: tl.constexpr = 1,
+    batched: tl.constexpr = False,
 ):
     row = tl.program_id(0)
+    query_row = tl.program_id(1)
+    if batched:
+        query_ptr += query_row * stride_qq
+        score_ptr += query_row * rows
+        if row >= (cached_len + query_row + 1) // ratio:
+            tl.store(score_ptr + row, float("-inf"))
+            return
     offsets = tl.arange(0, block_d)
     mask = offsets < dim
     key = tl.load(
