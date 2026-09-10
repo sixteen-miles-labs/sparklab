@@ -584,6 +584,23 @@ class Scheduler(SchedulerIOMixin):
                 logger.warning_rank0(
                     f"Adjust max_tokens to {max_output_len} for request {msg.uid}."
                 )
+            if msg.mm_inputs is not None:
+                try:
+                    tower = getattr(self.engine.model, "_vision", None)
+                    if tower is None:
+                        raise ValueError("Image inputs require a loaded vision tower")
+                    if input_len > self.prefill_budget:
+                        raise ValueError("Image prompt exceeds single-prefill budget; shorten it or increase --max-extend-tokens")
+                    payload = msg.mm_inputs
+                    pixels = payload['pixels'].reshape(payload['pixel_shape']).to(self.device, dtype=torch.bfloat16)
+                    grids = payload['grids'].reshape(-1, 3).to(self.device)
+                    msg.mm_embeds = tower(pixels, grid_thw=grids, return_dict=True).pooler_output
+                    msg.mm_positions = payload['positions'].reshape(3, -1).to(self.device)
+                    msg.mm_delta = payload['delta']
+                    msg.mm_inputs = None
+                except Exception as exc:
+                    self.send_result([ErrorReplyMsg(uid=msg.uid, error=f"could not encode images: {exc}")])
+                    return
             self.prefill_manager.add_one_req(msg)
         elif isinstance(msg, AbortBackendMsg):
             logger.debug_rank0("Aborting request %d", msg.uid)
@@ -873,6 +890,17 @@ class Scheduler(SchedulerIOMixin):
         if batch.is_prefill:
             self._gather_multimodal(batch)
         batch.positions = _make_positions(batch, self.device)
+        if any(req.mm_positions is not None for req in batch.reqs):
+            parts = []
+            for req in batch.reqs:
+                start, end = req.cached_len, req.device_len
+                if req.mm_positions is None:
+                    parts.append(torch.arange(start, end, device=self.device).expand(3, -1))
+                elif batch.is_prefill:
+                    parts.append(req.mm_positions[:, start:end])
+                else:
+                    parts.append((torch.arange(start, end, device=self.device) + req.mm_delta).expand(3, -1))
+            batch.mm_positions = torch.cat(parts, dim=1)
         input_mapping = _make_input_tuple(batch, self.device)
         write_mapping = _make_write_tuple(batch, self.device)
         batch.out_loc = self.engine.page_table[input_mapping]

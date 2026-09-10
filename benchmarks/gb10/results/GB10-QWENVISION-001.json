@@ -1,0 +1,246 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWENVISION-001",
+  "status": "measured",
+  "date": "2026-09-10",
+  "hardware": "NVIDIA GB10, one GPU",
+  "backend": "native",
+  "configuration": {
+    "context_tokens": 4096,
+    "speculation": false,
+    "cuda_graphs": false,
+    "text_kernel": "triton",
+    "vision_dtype": "bfloat16",
+    "vision_attention": "Transformers Qwen3.5 SDPA"
+  },
+  "models": {
+    "qwen36-35b": {
+      "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce",
+      "image_checks": [
+        {
+          "case": "red",
+          "expected": "red",
+          "text": " red",
+          "passed": true,
+          "usage": {
+            "prompt_tokens": 93,
+            "completion_tokens": 2,
+            "total_tokens": 95
+          },
+          "elapsed_s": 0.6521768759703264
+        },
+        {
+          "case": "blue",
+          "expected": "blue",
+          "text": " blue",
+          "passed": true,
+          "usage": {
+            "prompt_tokens": 93,
+            "completion_tokens": 2,
+            "total_tokens": 95
+          },
+          "elapsed_s": 0.23323484300635755
+        },
+        {
+          "case": "red_repeat",
+          "expected": "red",
+          "text": " red",
+          "passed": true,
+          "usage": {
+            "prompt_tokens": 93,
+            "completion_tokens": 2,
+            "total_tokens": 95
+          },
+          "elapsed_s": 0.23069187498185784
+        },
+        {
+          "case": "two_images",
+          "expected": "red, blue",
+          "text": "red, blue",
+          "passed": true,
+          "usage": {
+            "prompt_tokens": 161,
+            "completion_tokens": 4,
+            "total_tokens": 165
+          },
+          "elapsed_s": 0.34226184198632836
+        },
+        {
+          "case": "reversed",
+          "expected": "blue, red",
+          "text": "Blue, Red",
+          "passed": true,
+          "usage": {
+            "prompt_tokens": 161,
+            "completion_tokens": 4,
+            "total_tokens": 165
+          },
+          "elapsed_s": 0.3231698180316016
+        },
+        {
+          "case": "ocr",
+          "expected": "SPARK 42",
+          "text": "PSP 3000",
+          "passed": false,
+          "usage": {
+            "prompt_tokens": 154,
+            "completion_tokens": 8,
+            "total_tokens": 162
+          },
+          "elapsed_s": 0.4019084289902821
+        }
+      ],
+      "api_checks": [
+        {
+          "case": "multi_turn_stream",
+          "passed": true,
+          "status": 200
+        },
+        {
+          "case": "invalid_image",
+          "passed": true,
+          "status": 400
+        },
+        {
+          "case": "remote_url",
+          "passed": true,
+          "status": 400
+        },
+        {
+          "case": "text_after_image",
+          "passed": true,
+          "status": 200
+        }
+      ]
+    },
+    "qwen38-27b": {
+      "revision": "319f741cce68d7914884900c138a1fbb70a42f30",
+      "image_checks": [
+        {
+          "case": "red",
+          "expected": "red",
+          "text": "Red",
+          "passed": true,
+          "usage": {
+            "prompt_tokens": 93,
+            "completion_tokens": 2,
+            "total_tokens": 95
+          },
+          "elapsed_s": 0.9957417810801417
+        },
+        {
+          "case": "blue",
+          "expected": "blue",
+          "text": "Blue",
+          "passed": true,
+          "usage": {
+            "prompt_tokens": 93,
+            "completion_tokens": 2,
+            "total_tokens": 95
+          },
+          "elapsed_s": 0.640219505992718
+        },
+        {
+          "case": "red_repeat",
+          "expected": "red",
+          "text": "Red",
+          "passed": true,
+          "usage": {
+            "prompt_tokens": 93,
+            "completion_tokens": 2,
+            "total_tokens": 95
+          },
+          "elapsed_s": 0.6338611600222066
+        },
+        {
+          "case": "two_images",
+          "expected": "red, blue",
+          "text": "red, blue",
+          "passed": true,
+          "usage": {
+            "prompt_tokens": 161,
+            "completion_tokens": 4,
+            "total_tokens": 165
+          },
+          "elapsed_s": 0.9111467539332807
+        },
+        {
+          "case": "reversed",
+          "expected": "blue, red",
+          "text": "blue, red",
+          "passed": true,
+          "usage": {
+            "prompt_tokens": 161,
+            "completion_tokens": 4,
+            "total_tokens": 165
+          },
+          "elapsed_s": 0.8392434730194509
+        },
+        {
+          "case": "ocr",
+          "expected": "SPARK 42",
+          "text": "SPARK2",
+          "passed": false,
+          "usage": {
+            "prompt_tokens": 154,
+            "completion_tokens": 4,
+            "total_tokens": 158
+          },
+          "elapsed_s": 0.845859905006364
+        }
+      ],
+      "api_checks": [
+        {
+          "case": "multi_turn_stream",
+          "passed": true,
+          "status": 200
+        },
+        {
+          "case": "invalid_image",
+          "passed": true,
+          "status": 400
+        },
+        {
+          "case": "remote_url",
+          "passed": true,
+          "status": 400
+        },
+        {
+          "case": "text_after_image",
+          "passed": true,
+          "status": 200
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "Six synthetic image checks per model; both fail OCR. No broad vision benchmark or full-model reference comparison.",
+    "Image requests bypass prefix caching; text-only portfolio performance does not transfer to this eager profile."
+  ],
+  "source": {
+    "raw_directory": "results/qwen-vision-20260910",
+    "probe_sha256": "dc512bef66f2f34091509b6df0fd92a95490cc27c9900e130ac705befec5242b",
+    "api_probe_sha256": "d6f86470016da924958d6f70ac891bebcf7a395a260b34fcec3cc86157ecbc6b"
+  },
+  "tests": {
+    "passed": 847,
+    "command": "SPARKLAB_DISABLE_KERNEL_CACHE=1 python -m pytest tests/multimodal tests/serving tests/tokenizer tests/sparklab tests/models/test_qwen3_5* tests/runtime/scheduler -q"
+  },
+  "reference_ocr": {
+    "engine": "vLLM 0.28.0",
+    "model": "nvidia/Qwen3.6-35B-A3B-NVFP4",
+    "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce",
+    "expected": "SPARK 42",
+    "actual": "B E A U T Y",
+    "passed": false,
+    "configuration": {
+      "max_model_len": 4096,
+      "max_num_seqs": 1,
+      "enforce_eager": true,
+      "temperature": 0,
+      "max_tokens": 32,
+      "enable_thinking": false
+    },
+    "note": "Same image and prompt. Different text kernels; this single failed check does not establish parity."
+  }
+}

@@ -33,6 +33,8 @@ class Qwen3_5Attention(BaseOP):
         self.num_q = config.num_qo_heads
         self.num_kv = config.num_kv_heads
         self.head_dim = head_dim
+        self._rotary_dim = config.rotary_config.rotary_dim
+        self._rotary_base = config.rotary_config.base
         self.qo_attn_dim = self.num_q * head_dim
         self.kv_attn_dim = self.num_kv * head_dim
 
@@ -73,7 +75,13 @@ class Qwen3_5Attention(BaseOP):
         v = v.contiguous()  # split view has the qkv row stride; the KV store needs contiguous
         q = self.q_norm.forward(q).reshape(-1, self.qo_attn_dim)
         k = self.k_norm.forward(k).reshape(-1, self.kv_attn_dim)
-        q, k = self.rotary.forward(positions, q, k)
+        mm_positions = getattr(get_global_ctx().batch, "mm_positions", None)
+        if mm_positions is not None:
+            from .vision import apply_mrope
+            q, k = apply_mrope(q, k, mm_positions, self.head_dim, self._rotary_dim,
+                              self._rotary_base, self._mrope_section)
+        else:
+            q, k = self.rotary.forward(positions, q, k)
         return q.view(-1, self.num_q, self.head_dim), k, v, gate
 
     def _combine(self, attn_out: torch.Tensor, gate: torch.Tensor) -> torch.Tensor:

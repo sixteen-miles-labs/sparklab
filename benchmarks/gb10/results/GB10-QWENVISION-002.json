@@ -1,0 +1,171 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWENVISION-002",
+  "status": "measured",
+  "date": "2026-09-10",
+  "hardware": "NVIDIA GB10, one GPU",
+  "backend": "native",
+  "model": "nvidia/Qwen3.8-Flash-Next-NVFP4",
+  "revision": "fab0aecb760cec45227f6656abcaafa11abca87a",
+  "configuration": {
+    "context_tokens": 8192,
+    "speculation": false,
+    "cuda_graphs": false,
+    "max_running_requests": 1,
+    "text_kernel": "triton",
+    "attention": "qsa",
+    "moe_backend": "offload",
+    "moe_storage": "disk",
+    "moe_cache_size": 24576,
+    "moe_preload_all": true,
+    "vision_dtype": "bfloat16",
+    "vision_attention": "Transformers Qwen4Exp SDPA",
+    "temperature": 0,
+    "max_output_tokens": 32,
+    "enable_thinking": false
+  },
+  "image_checks": [
+    {
+      "case": "red",
+      "expected": "red",
+      "text": " Red",
+      "passed": true,
+      "usage": {
+        "prompt_tokens": 93,
+        "completion_tokens": 2,
+        "total_tokens": 95
+      },
+      "elapsed_s": 11.017815373954363
+    },
+    {
+      "case": "blue",
+      "expected": "blue",
+      "text": " Blue",
+      "passed": true,
+      "usage": {
+        "prompt_tokens": 93,
+        "completion_tokens": 2,
+        "total_tokens": 95
+      },
+      "elapsed_s": 0.5553966109873727
+    },
+    {
+      "case": "red_repeat",
+      "expected": "red",
+      "text": " Red",
+      "passed": true,
+      "usage": {
+        "prompt_tokens": 93,
+        "completion_tokens": 2,
+        "total_tokens": 95
+      },
+      "elapsed_s": 0.5564784390153363
+    },
+    {
+      "case": "two_images",
+      "expected": "red, blue",
+      "text": "Red, Blue",
+      "passed": true,
+      "usage": {
+        "prompt_tokens": 161,
+        "completion_tokens": 4,
+        "total_tokens": 165
+      },
+      "elapsed_s": 0.8411950670415536
+    },
+    {
+      "case": "reversed",
+      "expected": "blue, red",
+      "text": "Blue, Red",
+      "passed": true,
+      "usage": {
+        "prompt_tokens": 161,
+        "completion_tokens": 4,
+        "total_tokens": 165
+      },
+      "elapsed_s": 0.7896557379281148
+    },
+    {
+      "case": "ocr",
+      "expected": "SPARK 42",
+      "text": "spark42",
+      "passed": false,
+      "usage": {
+        "prompt_tokens": 154,
+        "completion_tokens": 4,
+        "total_tokens": 158
+      },
+      "elapsed_s": 0.7378950139973313
+    }
+  ],
+  "sparse_image_checks": [
+    {
+      "case": "sparse_two_images",
+      "expected": "red, blue",
+      "text": "Red, Blue",
+      "passed": true,
+      "usage": {
+        "prompt_tokens": 2081,
+        "completion_tokens": 4,
+        "total_tokens": 2085
+      },
+      "elapsed_s": 4.622474379022606
+    },
+    {
+      "case": "sparse_reversed",
+      "expected": "blue, red",
+      "text": "Blue, Red",
+      "passed": true,
+      "usage": {
+        "prompt_tokens": 2081,
+        "completion_tokens": 4,
+        "total_tokens": 2085
+      },
+      "elapsed_s": 4.364169382955879
+    }
+  ],
+  "api_checks": [
+    {
+      "case": "multi_turn_stream",
+      "passed": true,
+      "status": 200
+    },
+    {
+      "case": "invalid_image",
+      "passed": true,
+      "status": 400
+    },
+    {
+      "case": "remote_url",
+      "passed": true,
+      "status": 400
+    },
+    {
+      "case": "text_after_image",
+      "passed": true,
+      "status": 200
+    }
+  ],
+  "method": {
+    "short_images": "256x256 solid red and blue PNGs; repeated red, two-image order and reversed order.",
+    "ocr": "512x256 white PNG, black DejaVuSans 64 text SPARK 42 at (35,85).",
+    "sparse_images": "Two 1024x1024 solid-color PNGs, in both orders; 2081 prompt tokens exceed the 2051-token dense QSA range.",
+    "grading": "Case-insensitive expected substring, including whitespace; OCR spark42 fails the expected SPARK 42.",
+    "timing": "Single request wall time including image preprocessing, prefill and output; first request includes warmup. Not a throughput benchmark."
+  },
+  "limitations": [
+    "Experimental image integration; no broad vision benchmark or full-model reference parity.",
+    "OCR returned spark42, losing the space and case from SPARK 42.",
+    "Vision requires matching local source weights; published FTW and Hugging Face artifacts were not changed."
+  ],
+  "source": {
+    "raw_directory": "results/qwen-vision-20260910",
+    "probe_sha256": "dc512bef66f2f34091509b6df0fd92a95490cc27c9900e130ac705befec5242b",
+    "sparse_probe_sha256": "0526e59cdc75d35470a669ae99916a1432e226346d26f4d4f8adfa56fa8bc2fc",
+    "api_probe_sha256": "d6f86470016da924958d6f70ac891bebcf7a395a260b34fcec3cc86157ecbc6b"
+  },
+  "tests": {
+    "passed": 1261,
+    "command": "SPARKLAB_DISABLE_KERNEL_CACHE=1 python -m pytest tests/multimodal tests/serving tests/tokenizer tests/sparklab tests/models/test_qwen3_5* tests/models/test_qwen4* tests/kernels/test_qwen4_qsa_prefill.py tests/runtime/scheduler -q"
+  }
+}

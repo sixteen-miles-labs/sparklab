@@ -63,7 +63,7 @@
     "The approximately 51.2 GB FP8 n-gram payload retains its published global BF16 scale.",
     "Full preload requires all 24,576 target routed experts to fit in unified memory and eliminates steady-state routed-expert disk reads.",
     "Native MTP is opt-in, batch-one greedy, and supports one to three draft tokens. Dense-QSA verification uses a dedicated CUDA graph; sparse-QSA verification falls back to eager execution.",
-    "Text-only experimental runtime. NVIDIA has not been shown to outperform Inferact in quality.",
+    "Default profile is text-only. Source builds offer experimental image inputs with --vision-model and the matching NVIDIA source; vision requires eager, single-request, target-only decoding. NVIDIA has not been shown to outperform Inferact in quality.",
     "Previous Inferact FTW remains available at immutable Hub revision 5ab790b83f149a96594237a35905d84be24599a3."
   ]
 }

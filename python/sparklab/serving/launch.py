@@ -156,6 +156,7 @@ def launch_server(
             kwargs={
                 "detach": detach,
                 "tokenizer_path": server_args.model_path,
+                "vision_model": server_args.vision_model,
                 "addr": server_args.zmq_detokenizer_addr,
                 "backend_addr": server_args.zmq_backend_addr,
                 "frontend_addr": server_args.zmq_frontend_addr,
@@ -175,6 +176,7 @@ def launch_server(
                 kwargs={
                     "detach": detach,
                     "tokenizer_path": server_args.model_path,
+                    "vision_model": server_args.vision_model,
                     "addr": server_args.zmq_tokenizer_addr,
                     "backend_addr": server_args.zmq_backend_addr,
                     "frontend_addr": server_args.zmq_frontend_addr,

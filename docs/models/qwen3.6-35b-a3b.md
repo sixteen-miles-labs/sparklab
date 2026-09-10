@@ -1,5 +1,7 @@
 # Run Qwen3.6-35B-A3B
 
+An experimental native image-input path is available from source; see [vision setup and limits](qwen-vision.md).
+
 Recipe **0.6.0** makes the fast Marlin/MTP4 container the default on one 128 GiB
 NVIDIA GB10. SparkLab still runs the model and scheduler; the container supplies
 PyTorch 2.13 and vLLM 0.28's Marlin kernels. The host environment stays unchanged.

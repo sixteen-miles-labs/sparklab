@@ -53,7 +53,7 @@
     "GB10-QWEN38-27B-PORTFOLIO-001"
   ],
   "limitations": [
-    "Text-only serving; the published checkpoint includes a vision tower.",
+    "Default recipe serves text. Source builds support opt-in native image inputs through --vision-model; see docs/models/qwen-vision.md for the target-only profile and measured limitations.",
     "RadixArk changes the weight quantization from the previous Inferact profile. Dynamic FP4 activation prefill changes numerics and retains an extra packed weight layout; BF16 KV and FP32 recurrent state remain native.",
     "DFlash2-12 accelerates batch-one greedy requests only. Default model sampling remains temperature 1.0; sampled requests fall back to target-only. Multiple clients queue behind one active generation.",
     "The fixed quality screen passed 70/74 checks, versus 68/74 for both the previous native profile and vLLM. Failures include arithmetic, JSON, one HumanEval task, and an AIME token-budget limit. This does not establish general quality parity.",

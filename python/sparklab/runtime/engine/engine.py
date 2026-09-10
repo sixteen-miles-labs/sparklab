@@ -730,6 +730,9 @@ class Engine:
                 config.model_path, dummy=config.use_dummy_weight
             )
         self.model.load_state_dict(self._load_weight_state_dict(config))
+        if config.vision_model:
+            from sparklab.models.qwen3_5_moe.vision import load_vision
+            load_vision(self.model, config.vision_model, self.device)
         if hasattr(self.model, "load_speculative_weights"):
             self.model.load_speculative_weights(
                 config.model_path, self.device, dummy=config.use_dummy_weight
@@ -1985,6 +1988,16 @@ def _adjust_config(config: EngineConfig):
         object.__setattr__(config, attr, value)
 
     model_config = config.model_config
+    if config.vision_model:
+        if not any("Qwen3_5" in a or "Qwen3_6" in a or "Qwen3_8" in a or "Qwen4Exp" in a for a in model_config.architectures):
+            raise ValueError("--vision-model requires a supported native Qwen decoder")
+        if config.tp_info.size != 1:
+            raise ValueError("Qwen vision currently requires TP=1")
+        override("cuda_graph_bs", [])
+        override("cuda_graph_max_bs", 0)
+        override("speculative_method", "none")
+        override("speculative_tokens", 0)
+        override("max_running_req", 1)
     single_stream_only = getattr(model_config, "single_stream_only", False)
     is_dsv4 = getattr(model_config, "dsv4_args", None) is not None
     is_qwen4 = getattr(model_config, "qwen4_exp_args", None) is not None

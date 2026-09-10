@@ -209,6 +209,7 @@ def parse_args(
 
     parser = argparse.ArgumentParser(prog=prog, description="SparkLab Server Arguments")
 
+    parser.add_argument("--vision-model", help="Local Qwen source snapshot containing vision weights and processor files")
     parser.add_argument(
         "--model-path",
         "--model",
