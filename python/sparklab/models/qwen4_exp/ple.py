@@ -97,6 +97,9 @@ class _CachedRowStore:
         self._row_cache_capacity = (cache_mb << 20) // self.row_bytes
         self._row_cache: OrderedDict[int, bytes] = OrderedDict()
 
+    def _read_batch(self, keys: list[int]) -> list[bytes]:
+        return [self._read_one(key) for key in keys]
+
     def _lookup_rows(self, keys: list[int]) -> list[bytes]:
         rows: list[bytes | None] = [None] * len(keys)
         missing_positions, missing_keys = [], []
@@ -109,7 +112,15 @@ class _CachedRowStore:
                 self._row_cache.move_to_end(key)
                 rows[position] = value
         if missing_keys:
-            loaded = list(self._executor.map(self._read_one, missing_keys))
+            if len(missing_keys) >= 4096:
+                # Keep parallel NVMe reads but amortize Future/queue overhead:
+                # long prompts can need over 100K tiny rows. map preserves batch
+                # order, so row reconstruction and cache insertion are unchanged.
+                batches = [missing_keys[i:i + 512] for i in range(0, len(missing_keys), 512)]
+                loaded = [row for batch in self._executor.map(self._read_batch, batches)
+                          for row in batch]
+            else:
+                loaded = list(self._executor.map(self._read_one, missing_keys))
             for position, key, value in zip(missing_positions, missing_keys, loaded):
                 rows[position] = value
                 if self._row_cache_capacity:

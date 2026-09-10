@@ -167,6 +167,22 @@ have the `SPARKLAB_QWEN4_` prefix). The measured speed runs additionally used
 See the [focused quality runner](../../benchmarks/quality/README.md#focused-qwen4-optimization-regressions)
 for the fixed paired evaluation protocols.
 
+## Prefill batching
+
+The native source runtime now batches large PLE row reads and sparse-QSA prompt
+selection automatically. A paired single-client run of the fast MTP3 profile
+above reduced mean TTFT from **2.21 to 1.98 seconds** for
+1,024-token prompts and **23.01 to 19.37 seconds** for approximately 8K-token
+prompts. Each workload used 30 requests with 256 output tokens. Decode speed was
+essentially unchanged; the short repeated prompt remained about 42 tok/s.
+
+Weights, precision and recipe flags are unchanged. The paired measured outputs
+matched for 63/63 requests. The arithmetic/recall/JSON smoke suite, run after the
+speed workloads, scored 42/52 before and 42/52 after, with 0 new failures.
+This preserves the measured baseline's existing failures; MGSM was not rerun.
+See the [prefill report](../../benchmarks/frameworks/QWEN38_FLASH_NEXT_PREFILL_20260910.md)
+and [versioned evidence](../../benchmarks/gb10/results/GB10-QWENNVIDIA-006.json).
+
 ## Experimental reduced draft vocabulary
 
 An independent experiment inspired by
