@@ -4,7 +4,9 @@
 
 <p align="center"><strong>Built for NVIDIA DGX Spark (GB10)</strong></p>
 
-<h1 align="center">SparkLab</h1>
+<p align="center">
+  <img src="docs/assets/sparklab_logo.png" alt="SparkLab" width="620">
+</p>
 
 <p align="center">
   <a href="#documentation">
