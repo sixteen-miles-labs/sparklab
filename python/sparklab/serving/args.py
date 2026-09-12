@@ -336,7 +336,7 @@ def parse_args(
         default=ServerArgs.speculative_tokens,
         help=(
             "Draft block size (0 disables; Qwen MTP supports 1-3, DSV4 DSpark "
-            "1-7, Qwen3.8 DFlash2 2-16)."
+            "1-7, DSV4.1 DSpark 1-5, Qwen3.8 DFlash2 2-16)."
         ),
     )
     parser.add_argument(

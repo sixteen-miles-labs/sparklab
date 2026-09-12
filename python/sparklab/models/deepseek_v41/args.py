@@ -87,8 +87,7 @@ class ModelArgs:
     vision_max_wh_ratio: int | None = None
     # raw id of <｜deepseek_image｜>; every position of an image span carries this id in input_ids
     image_token_id: int = 129264
-    # dspark draft head. Only the forward pass is implemented here -- nothing calls forward_spec,
-    # so these are read but the speculative-decoding loop itself is out of scope for this repo.
+    # DSpark draft head stored under the mtp.* checkpoint namespace.
     dspark_block_size: int = 0
     dspark_noise_token_id: int = 0
     dspark_target_layer_ids: tuple[int, ...] = ()

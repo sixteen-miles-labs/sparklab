@@ -7,9 +7,14 @@ is the architecture reference; this SparkLab recipe does not launch vLLM or Dock
 
 The source is `deepseek-ai/DeepSeek-V4.1-Flash`, pinned to
 `df42c109f1defefcbfcedbe7d905718a12266e40`. The complete snapshot is
-510,313,345,254 bytes (about 475 GiB). Publisher parameter counts are 522B total,
+510,313,345,254 bytes (about 475 GiB). Publisher parameter counts are 552B total,
 8B active per prompt token and 16B active per generated token; these describe the
 publisher model, including capabilities beyond this initial text path.
+
+A byte-preserving copy of that pinned checkpoint is published at
+[`oakmindai/DeepSeek-V4.1-Flash-FTW`](https://huggingface.co/oakmindai/DeepSeek-V4.1-Flash-FTW).
+It keeps the original safetensors layout; the `FTW` name identifies the SparkLab
+deployment artifact and does not imply conversion to the generic FTW container.
 
 ## Run
 
@@ -26,8 +31,20 @@ Omit `--prepare`: the decoder reads the original safetensors snapshot directly.
 FTW conversion is unsupported. The native engine fixes this path to TP=1, one
 request, BF16 computation, eager execution, naive prefix caching and a 2,048-token
 total context. Prompt-wide Engram, hyper-connection and MoE work runs
-layer-by-layer; attention and its projections still advance causally. Vision, prefix reuse, CUDA
-graphs and DSpark speculation are not implemented.
+layer-by-layer; attention and its projections still advance causally. Vision,
+prefix reuse, and CUDA graphs are not implemented. Native greedy DSpark-5 is available as an opt-in
+single-request profile:
+
+```bash
+SPARKLAB_DSV41_EXPERT_CACHE_GB=64 sparklab serve \
+  --model /path/to/DeepSeek-V4.1-Flash-FTW \
+  --dtype bfloat16 --max-running-requests 1 \
+  --max-seq-len-override 2048 --num-tokens 2048 \
+  --attention-backend triton --cache-type naive --moe-backend fused \
+  --cuda-graph-max-bs 0 --disable-startup-prefill-warmup \
+  --speculative-method dspark --speculative-tokens 5 \
+  --draft-sample-method greedy
+```
 
 The model owns a 64 GiB packed-expert LRU plus a bounded 24 GiB device-weight LRU,
 and reads Engram embedding rows from disk only when requested. MXFP4 experts run
@@ -82,6 +99,14 @@ generates 128 output tokens, with greedy sampling, thinking enabled and EOS igno
 This is 3.98x the prior decode rate, with 4.61x faster TTFT and 4.21x lower total
 time. See [optimized evidence](../../benchmarks/gb10/results/GB10-DSV41-OPT-002.json)
 and the [prior baseline](../../benchmarks/gb10/results/GB10-DSV41-PORTFOLIO-001.json).
+
+The opt-in DSpark-5 profile measured **1.053 decode tok/s**, **76.329 s warm
+TTFT**, and **196.980 s total request time**, medians of two trials after one
+warmup. This is 8.6% faster decode and 4.1% lower total time than target-only.
+DSpark accepted 94 of 118 drafts, emitted 3.76 tokens per target forward, and
+used exact accepted-prefix commits with no target replay. Both trials reproduced
+the target-only output hash. See the
+[DSpark evidence](../../benchmarks/gb10/results/GB10-DSV41-DSPARK-003.json).
 
 All optimized trials produced the same output hash. The packed/fused arithmetic
 did not reproduce the prior decoder's output hash, and both 128-token traces end

@@ -109,6 +109,10 @@ recipes. Raw logs and large result streams stay outside the source repository.
   commits: a three-trial median of 7.77 tok/s and 6.395 s warm TTFT, 3.4% above the
   fresh MTP3 control. Every trial preserved its output and eliminated rejection replay,
   at an additional 0.55 GiB of device allocation with fixed expert-cache capacity.
+- `results/GB10-DSV41-DSPARK-003.json` records the opt-in native DeepSeek V4.1
+  DSpark-5 prototype: 1.053 decode tok/s on the fixed 74-input/128-output probe,
+  8.6% above the target-only median. Accepted-prefix state commits eliminated all
+  rejection replay and both measured trials matched the target-only output hash.
 - `results/GB10-KIMI-001.json` records the full Kimi K3 ModelOpt NVFP4 FTW
   capacity experiment with SparkLab's GB10 resident FP8 profile: 0.161 decode tok/s,
   395.405 s warm TTFT, exact 256-token completion, and zero runtime OOM/swap-out.

@@ -1,10 +1,10 @@
 {
   "schema_version": "2.0",
-  "recipe_version": "0.2.0",
+  "recipe_version": "0.3.0",
   "slug": "deepseek-v4.1-flash",
   "name": "DeepSeek V4.1 Flash",
   "model": "deepseek-ai/DeepSeek-V4.1-Flash",
-  "parameters": "522B total / 8-16B active",
+  "parameters": "552B total / 8-16B active",
   "revision": "df42c109f1defefcbfcedbe7d905718a12266e40",
   "source_bytes": 510313345254,
   "intended_tier": "research",
@@ -31,10 +31,10 @@
   },
   "profile": "research",
   "description": "Native text-only Research decoder with layer-major prefill, direct packed kernels, a 64 GiB expert LRU and bounded safetensors reads. Reference: https://recipes.vllm.ai/deepseek-ai/DeepSeek-V4.1-Flash",
-  "evidence": [],
+  "evidence": ["GB10-DSV41-DSPARK-003"],
   "limitations": [
     "Experimental native text implementation; the optimized complete-checkpoint short probe is measured in GB10-DSV41-OPT-002. General quality, parser, agent and endurance gates remain unverified. No V4 performance evidence transfers to V4.1.",
-    "Eager TP=1, one request and 2048 total tokens with a naive cache and no prefix reuse. Vision and DSpark are not implemented.",
+    "Eager TP=1, one request and 2048 total tokens with a naive cache and no prefix reuse. Vision is not implemented. Native greedy DSpark-5 is available as an opt-in prototype and is measured in GB10-DSV41-DSPARK-003; it is not the default profile.",
     "Reads original safetensors directly. The model owns a dedicated packed expert LRU; the fused engine setting avoids generic MoE bank allocation. Generic FTW conversion and offload-cache controls do not apply.",
     "The 96 GiB runtime budget covers the measured 64 GiB expert bank, bounded dense-weight cache, transient projections and request state; it is not a certification result.",
     "Requires roughly 510 GB of local storage. Engram tables are read by row and never loaded whole. First-token and decode latency may be high."
