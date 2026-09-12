@@ -73,6 +73,29 @@ def test_layer_major_prefill_matches_sequential_reference(decoder):
     assert decoder.position == len(golden["tokens"])
 
 
+def test_layer_major_verification_returns_every_logit(decoder):
+    golden = json.loads((FIXTURE / "expected.json").read_text())
+    expected = torch.tensor(golden["logits"], dtype=torch.float32)
+    actual = decoder.prefill(golden["tokens"], return_all_logits=True)
+    torch.testing.assert_close(actual, expected, atol=1e-6, rtol=1e-6)
+
+
+def test_verification_prefix_commit_matches_sequential_state(decoder):
+    tokens = json.loads((FIXTURE / "expected.json").read_text())["tokens"]
+    for token in tokens[:2]:
+        decoder.step(token)
+    snapshot = decoder.snapshot()
+    decoder.prefill(tokens[2:6], return_all_logits=True)
+    decoder.commit_prefix(snapshot, 2)
+    committed = decoder.step(tokens[4])
+
+    decoder.reset()
+    golden = None
+    for token in tokens[:5]:
+        golden = decoder.step(token)
+    torch.testing.assert_close(committed, golden, atol=1e-6, rtol=1e-6)
+
+
 def test_context_and_image_inputs_fail_before_state_is_advanced(decoder):
     with pytest.raises(ValueError, match="text token"):
         decoder.step(decoder.args.image_token_id)
@@ -160,6 +183,37 @@ def test_registration_and_engine_reconcile_native_constraints(monkeypatch):
         _adjust_config(multi)
 
 
+def test_dspark_opt_in_uses_checkpoint_block_size():
+    from sparklab.runtime.engine.engine import _adjust_speculative_config
+
+    model_config = parse_config(RawConfigShim(_name_or_path=str(FIXTURE)))
+    object.__setattr__(model_config, "dsv41_args", replace(
+        model_config.dsv41_args,
+        n_mtp_layers=3,
+        dspark_block_size=5,
+        dspark_target_layer_ids=(1, 2, 3),
+        dspark_markov_rank=256,
+    ))
+    options = SimpleNamespace(
+        model_config=model_config,
+        speculative_method="auto",
+        speculative_tokens=5,
+        speculative_draft_model=None,
+        draft_sample_method="greedy",
+        max_running_req=4,
+        cuda_graph_bs=[1, 2, 4],
+        cuda_graph_max_bs=4,
+    )
+    _adjust_speculative_config(
+        options, lambda name, value: setattr(options, name, value)
+    )
+    assert options.speculative_method == "dspark"
+    assert model_config.speculative_method == "dspark"
+    assert model_config.speculative_tokens == 5
+    assert options.max_running_req == 1
+    assert options.cuda_graph_bs == [] and options.cuda_graph_max_bs == 0
+
+
 def test_engine_adapter_handles_chunk_continuation_and_new_requests(decoder, monkeypatch):
     model = DeepseekV41ForCausalLM(SimpleNamespace(dsv41_args=decoder.args))
     model.decoder = decoder
@@ -186,9 +240,10 @@ def test_native_recipe_is_experimental_and_skips_ftw(tmp_path):
     recipe = get_recipe("deepseek-v4.1-flash")
     assert recipe.backend == "native" and recipe.intended_tier == "research"
     assert recipe.status == "experimental" and recipe.performance is None
-    assert recipe.evidence == () and recipe.runtime_artifact is None
+    assert recipe.evidence == ("GB10-DSV41-DSPARK-003",)
+    assert recipe.runtime_artifact is None
     assert recipe.deployment.runtime_format == "safetensors"
-    assert recipe.recipe_version == "0.2.0"
+    assert recipe.recipe_version == "0.3.0"
     assert recipe.runtime_memory == {"total_bytes": 96 * 2**30}
     with pytest.raises(AcquisitionError, match="omit --prepare"):
         acquire_recipe(recipe, root=str(tmp_path), prepare=True)

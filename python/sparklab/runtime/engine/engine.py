@@ -317,6 +317,14 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
         and tuple(getattr(dsv4_args, "dspark_target_layer_ids", ()) or ())
         and int(getattr(dsv4_args, "dspark_markov_rank", 0) or 0) > 0
     )
+    dsv41_args = getattr(model_config, "dsv41_args", None)
+    dsv41_dspark = bool(
+        dsv41_args is not None
+        and int(getattr(dsv41_args, "n_mtp_layers", 0) or 0) > 0
+        and int(getattr(dsv41_args, "dspark_block_size", 0) or 0) > 0
+        and tuple(getattr(dsv41_args, "dspark_target_layer_ids", ()) or ())
+        and int(getattr(dsv41_args, "dspark_markov_rank", 0) or 0) > 0
+    )
     draft_model = getattr(config, "speculative_draft_model", None) or os.getenv(
         "SPARKLAB_DFLASH2_PATH"
     )
@@ -325,7 +333,7 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
             "dflash2"
             if draft_model
             else "dspark"
-            if dsv4_dspark
+            if (dsv4_dspark or dsv41_dspark)
             else "mtp"
             if (qwen_mtp or glm5_mtp or glm_dsa_mtp)
             else "none"
@@ -338,10 +346,31 @@ def _adjust_speculative_config(config: EngineConfig, override) -> None:
         )
 
     if method == "dspark":
-        if not dsv4_dspark:
+        if not (dsv4_dspark or dsv41_dspark):
             raise ValueError(
-                "--speculative-method dspark requires a fused DeepSeek-V4 DSpark checkpoint"
+                "--speculative-method dspark requires a DeepSeek DSpark checkpoint"
             )
+        if dsv41_dspark:
+            if speculative_tokens > dsv41_args.dspark_block_size:
+                raise ValueError(
+                    "DeepSeek-V4.1 DSpark exceeds the checkpoint's trained block size"
+                )
+            if getattr(config, "draft_sample_method", "greedy") != "greedy":
+                raise ValueError(
+                    "DeepSeek-V4.1 native DSpark currently requires greedy draft sampling"
+                )
+            if float(getattr(config, "dspark_confidence_threshold", 0.0) or 0.0):
+                raise ValueError(
+                    "DeepSeek-V4.1 native DSpark does not yet support adaptive verification"
+                )
+            object.__setattr__(model_config, "speculative_method", "dspark")
+            object.__setattr__(model_config, "speculative_tokens", speculative_tokens)
+            object.__setattr__(model_config, "draft_sample_method", "greedy")
+            override("speculative_method", "dspark")
+            override("max_running_req", 1)
+            override("cuda_graph_bs", [])
+            override("cuda_graph_max_bs", 0)
+            return
         if speculative_tokens > 7:
             raise ValueError("DeepSeek-V4 DSpark supports at most 7 speculative tokens")
         if getattr(config, "draft_sample_method", "greedy") not in {
@@ -1483,6 +1512,7 @@ class Engine:
             self.mtp_stats["target_forwards"] += 1
         state_snapshots: list[tuple[int, int]] = []
         kv_snapshot = None
+        model_snapshot = None
         append_only_speculation = (
             getattr(self.config, "speculative_method", None) in {"mtp", "dflash2"}
             and getattr(getattr(self.config, "model_config", None), "glm_dsa_args", None) is not None
@@ -1493,12 +1523,16 @@ class Engine:
                 if batch.size != 1:
                     raise RuntimeError("DSpark verification currently supports batch size 1")
                 start = batch.verify_cached_lens[0]
-                kv_snapshot = self.kv_cache.snapshot_speculative(
-                    batch.reqs[0].table_idx, start, start + batch.input_ids.numel()
-                )
-                self.kv_cache.begin_speculative_carry_capture(
-                    all_prefixes=os.getenv("SPARKLAB_DSPARK_PREFIX_COMMIT", "1") == "1"
-                )
+                snapshotter = getattr(self.model, "snapshot_speculative_state", None)
+                if snapshotter is not None:
+                    model_snapshot = snapshotter()
+                else:
+                    kv_snapshot = self.kv_cache.snapshot_speculative(
+                        batch.reqs[0].table_idx, start, start + batch.input_ids.numel()
+                    )
+                    self.kv_cache.begin_speculative_carry_capture(
+                        all_prefixes=os.getenv("SPARKLAB_DSPARK_PREFIX_COMMIT", "1") == "1"
+                    )
             elif append_only_speculation:
                 # Full GLM has append-only latent/index KV, not recurrent state.
                 # Causal verification leaves every retained prefix row valid.
@@ -1577,9 +1611,19 @@ class Engine:
             if accepted < drafts.numel():
                 dspark_prefix_committed = False
                 if self.config.speculative_method == "dspark":
-                    dspark_prefix_committed = self._commit_dspark_prefix(
-                        kv_snapshot, accepted + 1
-                    )
+                    if model_snapshot is not None:
+                        committer = getattr(
+                            self.model, "commit_speculative_prefix", None
+                        )
+                        if committer is None:
+                            self.model.restore_speculative_state(model_snapshot)
+                        else:
+                            committer(model_snapshot, accepted + 1)
+                            dspark_prefix_committed = True
+                    else:
+                        dspark_prefix_committed = self._commit_dspark_prefix(
+                            kv_snapshot, accepted + 1
+                        )
                     if dspark_prefix_committed:
                         self.mtp_stats["fast_carry_commits"] += 1
                 elif not batch.cache_verify_states and not append_only_speculation:
@@ -1634,7 +1678,7 @@ class Engine:
                     take_probs() if take_probs is not None else None
                 )
             req.cached_len = start + accepted + 1
-            if self.config.speculative_method == "dspark":
+            if self.config.speculative_method == "dspark" and model_snapshot is None:
                 self.kv_cache.end_speculative_carry_capture()
             req.device_len = req.cached_len + 1
             # Accepted draft rows already occupy token_pool. The correction or
@@ -2107,16 +2151,16 @@ def _adjust_config(config: EngineConfig):
             override("cuda_graph_max_bs", 1)
 
     if getattr(model_config, "dsv41_args", None) is not None:
-        # V4.1's initial native research decoder owns disk reads and state. It
-        # cannot share V4's expert banks, prefix snapshots or captured graphs.
+        # V4.1's native decoder owns disk reads and state. DSpark uses the
+        # decoder's own snapshots rather than V4's paged-cache snapshots.
         from sparklab.models.deepseek_v41.config import MAX_CONTEXT
 
         if config.tp_info.size != 1:
             raise ValueError("DeepSeek V4.1 native research requires TP=1")
         if config.dtype != torch.bfloat16:
             raise ValueError("DeepSeek V4.1 native research requires bfloat16 computation")
-        if config.speculative_tokens or config.speculative_method not in ("auto", "none"):
-            raise ValueError("DeepSeek V4.1 native research does not support speculation")
+        if config.speculative_method not in ("auto", "none", "dspark"):
+            raise ValueError("DeepSeek V4.1 native research only supports DSpark speculation")
         if config.max_seq_len > MAX_CONTEXT:
             raise ValueError(f"DeepSeek V4.1 native research is limited to {MAX_CONTEXT} tokens")
         override("moe_backend", "fused")  # model-owned disk experts, no generic bank allocation

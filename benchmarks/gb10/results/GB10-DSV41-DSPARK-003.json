@@ -1,0 +1,96 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-DSV41-DSPARK-003",
+  "status": "measured",
+  "date": "2026-09-12",
+  "recipe": {
+    "slug": "deepseek-v4.1-flash",
+    "recipe_version": "0.3.0",
+    "revision": "df42c109f1defefcbfcedbe7d905718a12266e40"
+  },
+  "engine": {
+    "name": "SparkLab",
+    "base_git_revision": "9c3b2965df9b07bfcbcafad826aea28856b3665a",
+    "profile": "uncommitted native DSpark prototype"
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "unified_memory_gib": 128,
+    "machine": "aarch64"
+  },
+  "checkpoint": {
+    "repository": "deepseek-ai/DeepSeek-V4.1-Flash",
+    "revision": "df42c109f1defefcbfcedbe7d905718a12266e40",
+    "format": "safetensors",
+    "bytes": 510313345254
+  },
+  "workload": {
+    "name": "Original AIME-25 problem 0 portfolio probe",
+    "prompt_sha256": "51e1235f1c85cf333085c9e2889a20fb7e7ef65f320856975bac705eb04e43d4",
+    "prompt_tokens": 74,
+    "completion_tokens": 128,
+    "clients": 1,
+    "temperature": 0,
+    "thinking": true,
+    "ignore_eos": true,
+    "warmup_requests": 1,
+    "measured_trials": 2,
+    "aggregation": "median",
+    "metric": "(completion_tokens - 1) / (last content event - first content event)"
+  },
+  "configuration": {
+    "backend": "native",
+    "expert_cache_gib": 64,
+    "context_tokens": 2048,
+    "speculative_method": "dspark",
+    "speculative_tokens": 5,
+    "draft_sample_method": "greedy",
+    "verification": "layer-major target pass with model-owned accepted-prefix commit"
+  },
+  "metrics": {
+    "decode_tokens_per_second_trials": [
+      1.0488766566257035,
+      1.0563955253971997
+    ],
+    "decode_tokens_per_second_median": 1.0526360910114516,
+    "warm_ttft_seconds_trials": [
+      75.85293513000943,
+      76.80458605499007
+    ],
+    "warm_ttft_seconds_median": 76.32876059249975,
+    "elapsed_seconds_trials": [
+      196.93515756493434,
+      197.02550676907413
+    ],
+    "elapsed_seconds_median": 196.98033216700424,
+    "target_only_decode_tokens_per_second_median": 0.9692250183829233,
+    "decode_speedup": 1.0860595538151638,
+    "elapsed_reduction": 0.04108575523588831,
+    "accepted_drafts": 94,
+    "drafted_tokens": 118,
+    "acceptance_rate": 0.7966101694915254,
+    "outputs_per_target_forward": 3.76,
+    "prefix_commits": 9,
+    "replay_calls": 0
+  },
+  "validation": {
+    "focused_tests_passed": 67,
+    "all_measured_output_hashes_match": true,
+    "target_only_output_hash_matches": true,
+    "output_sha256": "4d81d182dc00c34a3e6ae7934832dbc23a6eac9ede6bf61c27cf82e204f286a5"
+  },
+  "source": {
+    "upstream_recipe": "https://recipes.vllm.ai/deepseek-ai/DeepSeek-V4.1-Flash",
+    "raw_artifacts": [
+      "/tmp/dsv41-dspark-commit-128.jsonl",
+      "/tmp/dsv41-dspark-commit-128-repeat.jsonl",
+      "/tmp/dsv41-dspark-commit.log"
+    ],
+    "target_only_evidence": "GB10-DSV41-OPT-002"
+  },
+  "limitations": [
+    "Two measured trials on one fixed short-context prompt; this is optimization evidence, not quality or endurance certification.",
+    "The prototype implements greedy DSpark. The upstream vLLM recipe uses probabilistic draft sampling, block rejection, and adaptive verification.",
+    "Single-request TP=1 execution remains required."
+  ]
+}

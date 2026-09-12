@@ -21,7 +21,6 @@ def load_args(path):
     args.max_seq_len = MAX_CONTEXT
     args.max_batch_size = 1
     args.vision_n_layers = 0
-    args.dspark_block_size = 0
     if len(args.compress_ratios) < args.n_layers or any(
         ratio not in (0, 1, 2) for ratio in args.compress_ratios[:args.n_layers]
     ):
@@ -51,5 +50,5 @@ def parse_config(hf_config):
         moe_intermediate_size=args.moe_inter_dim, norm_topk_prob=args.norm_topk_prob,
         model_type="deepseek_v41", architectures=["DeepseekV41ForCausalLM"],
         moe_enabled=True, expert_quant="ds_fp4", single_stream_only=True,
-        dsv41_args=args,
+        dsv41_args=args, speculative_method="none", speculative_tokens=0,
     )

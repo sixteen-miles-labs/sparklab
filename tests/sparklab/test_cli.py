@@ -29,7 +29,7 @@ def test_models_json_exposes_tier_and_admission_status(capsys):
         "kimi-k3",
     ]
     assert all(recipe["status"] == "experimental" for recipe in payload["recipes"])
-    assert payload["recipes"][0]["parameters"] == "522B total / 8-16B active"
+    assert payload["recipes"][0]["parameters"] == "552B total / 8-16B active"
 
 
 def test_models_can_select_primary_portfolio(capsys):

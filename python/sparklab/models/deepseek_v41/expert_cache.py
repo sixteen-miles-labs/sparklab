@@ -70,7 +70,11 @@ class ExpertBank:
 
     def _read_expert(self, key):
         layer, expert = key
-        root = f"layers.{layer}.ffn.experts.{expert}"
+        root = (
+            f"layers.{layer}.ffn.experts.{expert}"
+            if layer < self.args.n_layers
+            else f"mtp.{layer - self.args.n_layers}.ffn.experts.{expert}"
+        )
         return [self.store._read_host(root + suffix) for suffix in (
             ".w1.weight", ".w3.weight", ".w1.scale", ".w3.scale",
             ".w2.weight", ".w2.scale",

@@ -144,12 +144,12 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
       <th colspan="7" align="left">Research — bounded execution outside the interactive envelope</th>
     </tr>
     <tr>
-      <td><a href="https://recipes.vllm.ai/deepseek-ai/DeepSeek-V4.1-Flash">DeepSeek V4.1 Flash</a></td>
-      <td>522B total / 8–16B active</td>
-      <td>MXFP4 / MXFP8 · native disk streaming</td>
+      <td><a href="https://huggingface.co/oakmindai/DeepSeek-V4.1-Flash-FTW">DeepSeek V4.1 Flash</a></td>
+      <td>552B total / 8–16B active</td>
+      <td>MXFP4 / MXFP8 · disk streaming + optional DSpark5</td>
       <td>Experimental</td>
-      <td align="right">0.24</td>
-      <td align="right">343.131</td>
+      <td align="right">1.05</td>
+      <td align="right">76.329</td>
       <td><a href="docs/models/deepseek-v4.1-flash.md">Instructions</a></td>
     </tr>
     <tr>

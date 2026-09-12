@@ -45,14 +45,93 @@ class Decoder:
         self.expert_bank = (
             ExpertBank(args, store) if self.device.type == "cuda" and packed_experts else None
         )
+        self.dspark = None
+        self._verify_carries = None
         self.reset()
 
     def reset(self):
         self.position = 0
+        self._verify_carries = None
         self.windows = {}
         self.compressed = {}
         self.keys = {}
         self.carry = {}
+        if self.hash is not None:
+            self.hash.cache.zero_()
+        if self.dspark is not None:
+            self.dspark.reset()
+
+    def enable_dspark(self, steps):
+        from .dspark import DSparkDraft
+
+        self.dspark = DSparkDraft(self, steps)
+
+    @staticmethod
+    def _clone_tree(value):
+        if isinstance(value, torch.Tensor):
+            return value.clone()
+        if isinstance(value, dict):
+            return {key: Decoder._clone_tree(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [Decoder._clone_tree(item) for item in value]
+        if isinstance(value, tuple):
+            return tuple(Decoder._clone_tree(item) for item in value)
+        return value
+
+    def snapshot(self):
+        return {
+            "position": self.position,
+            "windows": self._clone_tree(self.windows),
+            "compressed": self._clone_tree(self.compressed),
+            "keys": self._clone_tree(self.keys),
+            "carry": self._clone_tree(self.carry),
+            "hash": self.hash.cache.clone() if self.hash is not None else None,
+            "dspark": self.dspark.snapshot() if self.dspark is not None else None,
+        }
+
+    def restore(self, snapshot):
+        self.position = snapshot["position"]
+        self.windows = snapshot["windows"]
+        self.compressed = snapshot["compressed"]
+        self.keys = snapshot["keys"]
+        self.carry = snapshot["carry"]
+        if self.hash is not None:
+            self.hash.cache.copy_(snapshot["hash"])
+        if self.dspark is not None:
+            self.dspark.restore(snapshot["dspark"])
+
+    def commit_prefix(self, snapshot, length):
+        """Retain an accepted verification prefix without replaying the model."""
+        start = snapshot["position"]
+        current = self.snapshot()
+        positions = torch.arange(start, start + length, device=self.device)
+        self.restore(snapshot)
+        for layer, window in self.windows.items():
+            slots = positions % self.args.window_size
+            window[slots] = current["windows"][layer][slots]
+        for layer, values in self.compressed.items():
+            ratio = self.args.compress_ratios[layer]
+            old_count, new_count = start // ratio, (start + length) // ratio
+            if new_count > old_count:
+                values[old_count:new_count] = current["compressed"][layer][
+                    old_count:new_count
+                ]
+                self.keys[layer][old_count:new_count] = current["keys"][layer][
+                    old_count:new_count
+                ]
+        if self._verify_carries is not None:
+            for layer, states in self._verify_carries.items():
+                self.carry[layer] = self._clone_tree(states[length - 1])
+        if self.hash is not None:
+            self.hash.cache[:, start:start + length] = current["hash"][
+                :, start:start + length
+            ]
+        if self.dspark is not None:
+            self.dspark.commit_prefix(
+                snapshot["dspark"], current["dspark"], start, length
+            )
+        self.position = start + length
+        self._verify_carries = None
 
     def _linear(self, name, x):
         return linear(self.store, name, x)
@@ -150,9 +229,17 @@ class Decoder:
             hidden = hidden * routing_weight
         return self._linear(name + ".w2", hidden.to(x.dtype))
 
-    def _moe(self, layer, x):
+    def _moe(
+        self,
+        layer,
+        x,
+        *,
+        name=None,
+        n_activated_experts=None,
+    ):
         a, store = self.args, self.store
-        name = f"layers.{layer}.ffn"
+        name = name or f"layers.{layer}.ffn"
+        n_activated_experts = n_activated_experts or a.n_activated_experts
         scores = F.linear(x.float(), store.get(name + ".gate.weight").float()) / a.gate_temp
         if a.score_func == "sqrtsoftplus":
             scores = F.softplus(scores).sqrt()
@@ -160,9 +247,11 @@ class Decoder:
             scores = scores.sigmoid()
         else:
             scores = scores.softmax(-1)
-        indices = (scores + store.get(name + ".gate.bias")).topk(a.n_activated_experts, dim=-1).indices
+        indices = (scores + store.get(name + ".gate.bias")).topk(
+            n_activated_experts, dim=-1
+        ).indices
         weights = scores.gather(-1, indices)
-        if a.norm_topk_prob and a.n_activated_experts > 1:
+        if a.norm_topk_prob and n_activated_experts > 1:
             weights = weights / (weights.sum(-1, keepdim=True) + 1e-20)
         weights = weights * a.route_scale
         if self.expert_bank is not None:
@@ -254,9 +343,12 @@ class Decoder:
         pre = torch.zeros((1, 1, a.hc_mult), device=self.device, dtype=torch.float32)
         pre[..., 0] = 1
         shared = {}
+        aux = []
         for layer in range(a.n_layers):
             if self.layout and layer in self.layout.layer_ids:
                 h = self._engram(layer, h, hashes)
+            if self.dspark is not None and layer in a.dspark_target_layer_ids:
+                aux.append(h.mean(2))
             attn_pre, post, comb = self._mixes(layer, "attn", h)
             x = self._norm(f"layers.{layer}.attn_norm", self._pre(h, pre))
             h = self._post(self._attention(layer, x, pos, shared), h, post, comb)
@@ -271,11 +363,13 @@ class Decoder:
             logits = bf16_skinny_linear(h[:, -1], head, out_dtype=torch.float32)
         else:
             logits = F.linear(h[:, -1].float(), head.float())
+        if self.dspark is not None:
+            self.dspark.store_target(aux, pos)
         self.position += 1
         return logits
 
     @torch.inference_mode()
-    def prefill(self, tokens):
+    def prefill(self, tokens, *, return_all_logits=False):
         """Evaluate a prompt layer-by-layer while retaining sequential state.
 
         Attention and its projections still advance each query causally, while
@@ -296,28 +390,42 @@ class Decoder:
         pre = torch.zeros((1, len(tokens), a.hc_mult), device=self.device, dtype=torch.float32)
         pre[..., 0] = 1
         shared = [{} for _ in tokens]
+        self._verify_carries = {} if return_all_logits else None
+        aux = []
         for layer in range(a.n_layers):
             if self.layout and layer in self.layout.layer_ids:
                 h = self._engram(layer, h, hashes)
+            if self.dspark is not None and layer in a.dspark_target_layer_ids:
+                aux.append(h.mean(2))
             attn_pre, post, comb = self._mixes(layer, "attn", h)
             x = self._norm(f"layers.{layer}.attn_norm", self._pre(h, pre))
-            attention = torch.cat([
-                self._attention(layer, x[:, local:local + 1], start + local, shared[local])
-                for local in range(len(tokens))
-            ], dim=1)
+            pieces, carry_states = [], []
+            for local in range(len(tokens)):
+                pieces.append(
+                    self._attention(
+                        layer, x[:, local:local + 1], start + local, shared[local]
+                    )
+                )
+                if return_all_logits and layer in a.kv_source_layers:
+                    carry_states.append(self._clone_tree(self.carry.get(layer, [])))
+            attention = torch.cat(pieces, dim=1)
+            if carry_states:
+                self._verify_carries[layer] = carry_states
             h = self._post(attention, h, post, comb)
             pre, post, comb = self._mixes(layer, "ffn", h)
             x = self._norm(f"layers.{layer}.ffn_norm", self._pre(h, attn_pre))
             h = self._post(self._moe(layer, x), h, post, comb)
         h = self._norm("norm", self._pre(h, pre))
         head = self.store.get("head.weight")
-        last = h[:, -1]
-        if last.is_cuda and head.is_cuda:
+        output = h[0] if return_all_logits else h[:, -1]
+        if output.is_cuda and head.is_cuda:
             from sparklab.kernels.triton.dsv4.skinny import bf16_skinny_linear
 
-            logits = bf16_skinny_linear(last, head, out_dtype=torch.float32)
+            logits = bf16_skinny_linear(output, head, out_dtype=torch.float32)
         else:
-            logits = F.linear(last.float(), head.float())
+            logits = F.linear(output.float(), head.float())
+        if self.dspark is not None:
+            self.dspark.store_target(aux, start)
         self.position += len(tokens)
         return logits
 
@@ -325,6 +433,7 @@ class Decoder:
 class DeepseekV41ForCausalLM(BaseLLMModel):
     def __init__(self, config):
         self.args = config.dsv41_args
+        self.speculative_tokens = int(getattr(config, "speculative_tokens", 0) or 0)
         self.decoder = None
         self.uid = None
 
@@ -336,6 +445,8 @@ class DeepseekV41ForCausalLM(BaseLLMModel):
         tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=False)
         store = DiskWeights(model_path, device=torch.device("cuda", torch.cuda.current_device()), cache_bytes=CACHE_BYTES)
         self.decoder = Decoder(self.args, store, tokenizer)
+        if self.speculative_tokens:
+            self.decoder.enable_dspark(self.speculative_tokens)
 
     def state_dict(self, **kwargs):
         return {}
@@ -356,11 +467,30 @@ class DeepseekV41ForCausalLM(BaseLLMModel):
         if positions != list(range(self.decoder.position, self.decoder.position + len(positions))):
             raise ValueError("DeepSeek V4.1 state requires consecutive tokens without prefix reuse")
         tokens = batch.input_ids.cpu().tolist()
-        if len(tokens) > 1 and not batch.return_all_logits:
-            return self.decoder.prefill(tokens)
+        if len(tokens) > 1:
+            return self.decoder.prefill(
+                tokens, return_all_logits=batch.return_all_logits
+            )
         outputs = []
         for token in tokens:
             result = self.decoder.step(token)
             if batch.return_all_logits:
                 outputs.append(result)
         return torch.cat(outputs) if outputs else result
+
+    def propose_mtp(self, batch, next_token):
+        if self.decoder.dspark is None or batch.size != 1:
+            return None
+        return self.decoder.dspark.propose(next_token)
+
+    def take_speculative_probs(self):
+        return None
+
+    def snapshot_speculative_state(self):
+        return self.decoder.snapshot()
+
+    def restore_speculative_state(self, snapshot):
+        self.decoder.restore(snapshot)
+
+    def commit_speculative_prefix(self, snapshot, length):
+        self.decoder.commit_prefix(snapshot, length)
