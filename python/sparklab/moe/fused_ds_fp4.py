@@ -103,6 +103,8 @@ def routed_experts_fp4(
     down_packed: torch.Tensor,     # [S, H, I//2] uint8
     down_scale: torch.Tensor,      # [S, H, I//32] e8m0
     swiglu_limit: float,
+    activation_block: int = 128,
+    sum_in_fp32: bool = False,
 ) -> torch.Tensor:
     """Full routed-expert output (summed over the top-k routes), excludes shared expert.
 
@@ -116,7 +118,7 @@ def routed_experts_fp4(
     two_I = gate_up_packed.shape[1]
     I = two_I // 2
 
-    x = act_quant_fp8_roundtrip(x, 128)  # gate_up activation -> FP8 round-trip (no clone)
+    x = act_quant_fp8_roundtrip(x, activation_block)
     gate_up = _grouped_decode(
         x, gate_up_packed, gate_up_scale, slots, None,
         a_row_is_route=False, mul_routed_weight=False,
@@ -124,12 +126,12 @@ def routed_experts_fp4(
     act = fused_swiglu(gate_up, swiglu_limit)  # [T, top_k, I]
 
     act = act.reshape(T * top_k, I)
-    act_quant_fp8_inplace(act, 128)  # down activation -> FP8 round-trip
+    act_quant_fp8_inplace(act, activation_block)
     down = _grouped_decode(
         act, down_packed, down_scale, slots, topk_weights,
         a_row_is_route=True, mul_routed_weight=True,
     )  # [T, top_k, H]
-    return down.sum(dim=1)  # [T, H]
+    return down.float().sum(dim=1) if sum_in_fp32 else down.sum(dim=1)
 
 
 # Above this the grouped GEMM beats the per-route GEMV despite its padding;

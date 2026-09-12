@@ -22,6 +22,7 @@ class DiskWeights:
         self.cache_limit = cache_bytes
         self.cache = OrderedDict()
         self.cache_bytes = 0
+        self.derived = {}
         self.metadata = {}
         self.fds = {}
         try:
@@ -65,6 +66,7 @@ class DiskWeights:
             os.close(fd)
         self.fds.clear()
         self.cache.clear()
+        self.derived.clear()
         self.cache_bytes = 0
 
     def validate_geometry(self, args):
@@ -138,6 +140,10 @@ class DiskWeights:
         self.close()
 
     def _read(self, name, first=0, rows=None):
+        return self._read_host(name, first, rows).to(self.device)
+
+    def _read_host(self, name, first=0, rows=None):
+        """Read a tensor range into CPU memory without a device allocation."""
         fd, offset, shape, dtype = self.metadata[name]
         count = shape[0] if rows is None else rows
         if first < 0 or count < 0 or first + count > shape[0]:
@@ -147,7 +153,7 @@ class DiskWeights:
         data = bytearray(os.pread(fd, size, offset + first * stride))
         if len(data) != size:
             raise ValueError(f"truncated tensor: {name}")
-        tensor = torch.frombuffer(data, dtype=dtype).reshape(count, *shape[1:]).to(self.device)
+        tensor = torch.frombuffer(data, dtype=dtype).reshape(count, *shape[1:])
         # pread avoids mmap retaining a 100 GB table; evict clean read pages too.
         if hasattr(os, "posix_fadvise"):
             os.posix_fadvise(fd, offset + first * stride, size, os.POSIX_FADV_DONTNEED)
@@ -177,6 +183,23 @@ class DiskWeights:
         return torch.cat([unique[index] for index in ids]).reshape(
             *indices.shape, *self.metadata[name][2][1:]
         )
+
+    def linear_scale_codes(self, name, output_rows):
+        """Return E8M0 codes with one scale row per output row.
+
+        Dense MXFP8 tensors store one scale for each 32-by-32 weight tile;
+        the small-row kernel consumes the equivalent expanded row view. Keep
+        that compact derived tensor beside the packed weight across requests.
+        Expert MXFP4 scales are already row-wise and pass through unchanged.
+        """
+        key = (name, output_rows)
+        value = self.derived.get(key)
+        if value is None:
+            codes = self.get(name).view(torch.uint8)
+            if codes.shape[0] != output_rows:
+                codes = codes.repeat_interleave(32, dim=0)[:output_rows].contiguous()
+            value = self.derived[key] = codes
+        return value
 
 
 def iter_weights(model_path, device, *, include_moe_experts=True, include_non_moe=True):

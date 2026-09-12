@@ -3,9 +3,10 @@
 This directory contains compact, reviewable summaries for SparkLab model
 recipes. Raw logs and large result streams stay outside the source repository.
 
-- `results/GB10-DSV41-PORTFOLIO-001.json` records the native DeepSeek V4.1 Flash
-  short probe: 0.244 decode tok/s and 343.131 s warm TTFT, medians of three
-  trials after one warmup with 74 input and 128 output tokens.
+- `results/GB10-DSV41-OPT-002.json` records the optimized native DeepSeek V4.1
+  Flash short probe: 0.969 decode tok/s and 74.387 s warm TTFT, medians of three
+  trials after one full-length warmup with 74 input and 128 output tokens. The
+  prior `GB10-DSV41-PORTFOLIO-001` result was 0.244 tok/s and 343.131 s TTFT.
 - `results/GB10-QWENVISION-001.json` records native image-input integration for
   Qwen3.6-35B-A3B and Qwen3.8-27B: color/order/repeat and API checks pass;
   both models fail the single OCR probe.

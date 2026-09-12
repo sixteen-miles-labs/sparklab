@@ -2,8 +2,8 @@
 
 Math follows DeepSeek's MIT-licensed inference/model.py at
 df42c109f1defefcbfcedbe7d905718a12266e40 (see LICENSE.deepseek).
-This initial research path evaluates tokens eagerly, including prefill. It
-prioritizes a bounded complete-model path over throughput or prefix reuse.
+This research path batches prompt work layer-by-layer and evaluates decode
+eagerly. It prioritizes bounded complete-model execution over prefix reuse.
 """
 import torch
 import torch.nn.functional as F
@@ -19,6 +19,7 @@ from .ops import (
     sparse_attention, candidate_mask,
 )
 from .weight import DiskWeights
+from .expert_cache import ExpertBank
 
 
 class Decoder:
@@ -40,6 +41,10 @@ class Decoder:
                     args.rope_factor, args.beta_fast, args.beta_slow,
                 ) for compressed in (False, True)
             }
+        packed_experts = "layers.0.ffn.experts.0.w1.scale" in store.metadata
+        self.expert_bank = (
+            ExpertBank(args, store) if self.device.type == "cuda" and packed_experts else None
+        )
         self.reset()
 
     def reset(self):
@@ -160,13 +165,44 @@ class Decoder:
         if a.norm_topk_prob and a.n_activated_experts > 1:
             weights = weights / (weights.sum(-1, keepdim=True) + 1e-20)
         weights = weights * a.route_scale
-        output = torch.zeros_like(x, dtype=torch.float32)
+        if self.expert_bank is not None:
+            order = indices.argsort(-1)
+            sorted_indices = indices.gather(-1, order)
+            sorted_weights = weights.gather(-1, order)
+            slots = self.expert_bank.slots(layer, sorted_indices)
+            if slots is not None:
+                from sparklab.moe.fused_ds_fp4 import routed_experts_fp4
+
+                flat = x.reshape(-1, x.shape[-1])
+                output = routed_experts_fp4(
+                    flat,
+                    slots.reshape(flat.shape[0], -1),
+                    sorted_weights.reshape(flat.shape[0], -1),
+                    self.expert_bank.gate_up,
+                    self.expert_bank.gate_up_scale,
+                    self.expert_bank.down,
+                    self.expert_bank.down_scale,
+                    a.swiglu_limit,
+                    activation_block=32,
+                    sum_in_fp32=True,
+                ).reshape_as(x)
+                output += self._expert(name + ".shared_experts", x).float()
+                return output.to(x.dtype)
+        flat_x = x.reshape(-1, x.shape[-1])
+        flat_indices = indices.reshape(flat_x.shape[0], -1)
+        flat_weights = weights.reshape_as(flat_indices)
+        output = torch.zeros_like(flat_x, dtype=torch.float32)
         # Upstream accumulates in expert-ID order, with weighting before w2.
-        for slot in indices.reshape(-1).argsort().tolist():
-            expert = int(indices.reshape(-1)[slot])
-            output += self._expert(f"{name}.experts.{expert}", x, weights.reshape(-1)[slot])
-        output += self._expert(name + ".shared_experts", x)
-        return output.to(x.dtype)
+        for slot in flat_indices.flatten().argsort().tolist():
+            row, route = divmod(slot, flat_indices.shape[1])
+            expert = int(flat_indices[row, route])
+            output[row:row + 1] += self._expert(
+                f"{name}.experts.{expert}",
+                flat_x[row:row + 1],
+                flat_weights[row, route],
+            )
+        output += self._expert(name + ".shared_experts", flat_x)
+        return output.reshape_as(x).to(x.dtype)
 
     def _engram(self, layer, h, hashes):
         a, store = self.args, self.store
@@ -190,9 +226,11 @@ class Decoder:
         name = f"layers.{layer}.hc_{kind}"
         x = h.flatten(2).float()
         mixes = F.linear(x, store.get(name + "_fn").float()) * torch.rsqrt(x.square().mean(-1, keepdim=True) + a.norm_eps)
-        pre, post, comb = hc_split_sinkhorn(mixes.reshape(1, -1), store.get(name + "_scale"), store.get(name + "_base"),
+        pre, post, comb = hc_split_sinkhorn(mixes.reshape(-1, mixes.shape[-1]), store.get(name + "_scale"), store.get(name + "_base"),
                                            a.hc_mult, a.hc_sinkhorn_iters, a.hc_eps)
-        return pre.view(1, 1, a.hc_mult), post.view(1, 1, a.hc_mult), comb.view(1, 1, a.hc_mult, a.hc_mult)
+        lead = mixes.shape[:-1]
+        return (pre.reshape(*lead, a.hc_mult), post.reshape(*lead, a.hc_mult),
+                comb.reshape(*lead, a.hc_mult, a.hc_mult))
 
     @staticmethod
     def _pre(h, pre):
@@ -226,8 +264,61 @@ class Decoder:
             x = self._norm(f"layers.{layer}.ffn_norm", self._pre(h, attn_pre))
             h = self._post(self._moe(layer, x), h, post, comb)
         h = self._norm("norm", self._pre(h, pre))
-        logits = F.linear(h[:, -1].float(), self.store.get("head.weight").float())
+        head = self.store.get("head.weight")
+        if h.is_cuda and head.is_cuda:
+            from sparklab.kernels.triton.dsv4.skinny import bf16_skinny_linear
+
+            logits = bf16_skinny_linear(h[:, -1], head, out_dtype=torch.float32)
+        else:
+            logits = F.linear(h[:, -1].float(), head.float())
         self.position += 1
+        return logits
+
+    @torch.inference_mode()
+    def prefill(self, tokens):
+        """Evaluate a prompt layer-by-layer while retaining sequential state.
+
+        Attention and its projections still advance each query causally, while
+        Engram reads, hyper-connections, and MoE routing/compute operate on the
+        whole prompt. Each selected expert is loaded at most once per layer.
+        """
+        a, start = self.args, self.position
+        tokens = [int(token) for token in tokens]
+        if not tokens:
+            raise ValueError("DeepSeek V4.1 prefill requires at least one token")
+        if start + len(tokens) > a.max_seq_len:
+            raise ValueError("DeepSeek V4.1 research context limit exceeded")
+        if any(not 0 <= token < a.vocab_size or token == a.image_token_id for token in tokens):
+            raise ValueError("DeepSeek V4.1 native research supports text token IDs only")
+        ids = torch.tensor([tokens], dtype=torch.int64, device="cpu")
+        hashes = self.hash(ids, start) if self.hash is not None else None
+        h = self.store.rows("embed.weight", ids).to(torch.bfloat16).unsqueeze(2).repeat(1, 1, a.hc_mult, 1)
+        pre = torch.zeros((1, len(tokens), a.hc_mult), device=self.device, dtype=torch.float32)
+        pre[..., 0] = 1
+        shared = [{} for _ in tokens]
+        for layer in range(a.n_layers):
+            if self.layout and layer in self.layout.layer_ids:
+                h = self._engram(layer, h, hashes)
+            attn_pre, post, comb = self._mixes(layer, "attn", h)
+            x = self._norm(f"layers.{layer}.attn_norm", self._pre(h, pre))
+            attention = torch.cat([
+                self._attention(layer, x[:, local:local + 1], start + local, shared[local])
+                for local in range(len(tokens))
+            ], dim=1)
+            h = self._post(attention, h, post, comb)
+            pre, post, comb = self._mixes(layer, "ffn", h)
+            x = self._norm(f"layers.{layer}.ffn_norm", self._pre(h, attn_pre))
+            h = self._post(self._moe(layer, x), h, post, comb)
+        h = self._norm("norm", self._pre(h, pre))
+        head = self.store.get("head.weight")
+        last = h[:, -1]
+        if last.is_cuda and head.is_cuda:
+            from sparklab.kernels.triton.dsv4.skinny import bf16_skinny_linear
+
+            logits = bf16_skinny_linear(last, head, out_dtype=torch.float32)
+        else:
+            logits = F.linear(last.float(), head.float())
+        self.position += len(tokens)
         return logits
 
 
@@ -264,8 +355,11 @@ class DeepseekV41ForCausalLM(BaseLLMModel):
             self.uid = req.uid
         if positions != list(range(self.decoder.position, self.decoder.position + len(positions))):
             raise ValueError("DeepSeek V4.1 state requires consecutive tokens without prefix reuse")
+        tokens = batch.input_ids.cpu().tolist()
+        if len(tokens) > 1 and not batch.return_all_logits:
+            return self.decoder.prefill(tokens)
         outputs = []
-        for token in batch.input_ids.cpu().tolist():
+        for token in tokens:
             result = self.decoder.step(token)
             if batch.return_all_logits:
                 outputs.append(result)

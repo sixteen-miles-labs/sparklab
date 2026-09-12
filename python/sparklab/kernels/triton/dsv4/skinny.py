@@ -52,7 +52,12 @@ def _bf16_skinny_kernel(
     )
 
 
-def bf16_skinny_linear(x: torch.Tensor, weight: torch.Tensor) -> torch.Tensor:
+def bf16_skinny_linear(
+    x: torch.Tensor,
+    weight: torch.Tensor,
+    *,
+    out_dtype: torch.dtype | None = None,
+) -> torch.Tensor:
     """Compute a contiguous bias-free BF16 linear for one to six rows."""
     *lead, k = x.shape
     m = x.numel() // k
@@ -60,7 +65,7 @@ def bf16_skinny_linear(x: torch.Tensor, weight: torch.Tensor) -> torch.Tensor:
     if not 1 <= m <= 6:
         raise ValueError(f"DSV4 skinny linear requires 1 <= M <= 6, got {m}")
     x2 = x.reshape(m, k).contiguous()
-    out = torch.empty((m, n), dtype=x.dtype, device=x.device)
+    out = torch.empty((m, n), dtype=out_dtype or x.dtype, device=x.device)
     num_warps = 8 if m == 1 else 2 if m == 3 else 4
     _bf16_skinny_kernel[(n,)](
         x2,
