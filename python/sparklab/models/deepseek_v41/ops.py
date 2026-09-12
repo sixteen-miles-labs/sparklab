@@ -50,6 +50,16 @@ def linear(store, name, x):
     if name + ".scale" in store.metadata:
         scale = store.get(name + ".scale")
         fp4 = weight.dtype in (torch.uint8, torch.int8)
+        if x.is_cuda and weight.is_cuda and scale.is_cuda:
+            rounded = fp8_roundtrip(x)
+            if fp4:
+                from sparklab.kernels.triton.dsv41_linear import mxfp4_linear
+
+                return mxfp4_linear(rounded, weight, scale)
+            from sparklab.kernels.triton.mxfp8_linear import mxfp8_linear
+
+            codes = store.linear_scale_codes(name + ".scale", weight.shape[0])
+            return mxfp8_linear(rounded, weight, codes)
         weight = dequant(weight, scale, fp4)
         return F.linear(fp8_roundtrip(x).float(), weight).to(x.dtype)
     return F.linear(x, weight.to(x.dtype))

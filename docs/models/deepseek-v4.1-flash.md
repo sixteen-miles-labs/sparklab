@@ -25,17 +25,19 @@ sparklab run deepseek-v4.1-flash
 Omit `--prepare`: the decoder reads the original safetensors snapshot directly.
 FTW conversion is unsupported. The native engine fixes this path to TP=1, one
 request, BF16 computation, eager execution, naive prefix caching and a 2,048-token
-total context. Prefill processes tokens sequentially. Vision, prefix reuse,
-CUDA graphs and DSpark speculation are not implemented.
+total context. Prompt-wide Engram, hyper-connection and MoE work runs
+layer-by-layer; attention and its projections still advance causally. Vision, prefix reuse, CUDA
+graphs and DSpark speculation are not implemented.
 
-The model owns a 24 GiB device weight LRU and reads Engram embedding rows from disk
-only when requested. Quantized projections are dequantized during computation;
-the stored MXFP4 expert weights and MXFP8 dense weights remain packed in the cache.
-The recipe's 32 GiB memory budget includes an estimated allowance for transient
-projections, request state and scheduler KV storage. It is an engineering budget,
-not a measured full-model memory result. The engine's `fused` MoE setting prevents
-generic expert-bank allocation; execution still uses this model's disk reader.
-Generic MoE cache and offload tuning flags do not tune this reader.
+The model owns a 64 GiB packed-expert LRU plus a bounded 24 GiB device-weight LRU,
+and reads Engram embedding rows from disk only when requested. MXFP4 experts run
+directly from their packed checkpoint representation; MXFP8 dense projections use
+a packed small-row kernel. Eight parallel bounded reads fill missing expert slots.
+`SPARKLAB_DSV41_EXPERT_CACHE_GB` can lower the expert budget, though values below
+the 64 GiB measured profile may reduce decode speed. The recipe reserves 96 GiB
+for these caches, transient projections, request state and scheduler KV storage.
+The engine's `fused` MoE setting prevents generic expert-bank allocation;
+generic FTW cache and offload controls do not tune this model-owned cache.
 
 ## API example
 
@@ -73,16 +75,19 @@ the loader's geometry validation. The real tokenizer produces the expected
 
 ## Measured performance
 
-The native GB10 README probe measured **0.244 decode tok/s**, **343.131 s warm
-TTFT**, and **864.682 s total request time**, medians of three trials after one
-warmup. The unchanged AIME prompt encodes to 74 input tokens and generates 128
-output tokens, with greedy sampling and thinking enabled. All three output hashes
-match. See [versioned benchmark evidence](../../benchmarks/gb10/results/GB10-DSV41-PORTFOLIO-001.json).
+The optimized native GB10 profile measured **0.969 decode tok/s**, **74.387 s warm
+TTFT**, and **205.420 s total request time**, medians of three trials after one
+full-length warmup. The unchanged AIME prompt encodes to 74 input tokens and
+generates 128 output tokens, with greedy sampling, thinking enabled and EOS ignored.
+This is 3.98x the prior decode rate, with 4.61x faster TTFT and 4.21x lower total
+time. See [optimized evidence](../../benchmarks/gb10/results/GB10-DSV41-OPT-002.json)
+and the [prior baseline](../../benchmarks/gb10/results/GB10-DSV41-PORTFOLIO-001.json).
 
-This complete-checkpoint run uses the 24 GiB weight cache and eager disk decoder
-above. Host swap-out was observed. It is a bounded performance probe, not a
-completed-answer quality check. General numerical parity, generated tool calls,
-agent tasks and endurance remain unverified. No V4 certification transfers to V4.1.
+All optimized trials produced the same output hash. The packed/fused arithmetic
+did not reproduce the prior decoder's output hash, and both 128-token traces end
+before the answer. This remains a bounded performance probe rather than a quality
+result. General numerical parity, completed answers, generated tool calls, agent
+tasks and endurance remain unverified. No V4 certification transfers to V4.1.
 
 ## Architecture provenance
 

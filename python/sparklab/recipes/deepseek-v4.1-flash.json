@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "recipe_version": "0.1.0",
+  "recipe_version": "0.2.0",
   "slug": "deepseek-v4.1-flash",
   "name": "DeepSeek V4.1 Flash",
   "model": "deepseek-ai/DeepSeek-V4.1-Flash",
@@ -30,16 +30,16 @@
     }
   },
   "profile": "research",
-  "description": "Native text-only Research decoder with bounded safetensors disk reads, a 24 GiB device weight LRU, row-wise Engram lookup and shared sparse attention. Reference: https://recipes.vllm.ai/deepseek-ai/DeepSeek-V4.1-Flash",
+  "description": "Native text-only Research decoder with layer-major prefill, direct packed kernels, a 64 GiB expert LRU and bounded safetensors reads. Reference: https://recipes.vllm.ai/deepseek-ai/DeepSeek-V4.1-Flash",
   "evidence": [],
   "limitations": [
-    "Experimental native text implementation; the complete-checkpoint short probe is measured in GB10-DSV41-PORTFOLIO-001. General quality, parser, agent and endurance gates remain unverified. No V4 performance evidence transfers to V4.1.",
-    "Eager TP=1, one request, 2048 total tokens, token-at-a-time prefill, naive cache with no prefix reuse. Vision and DSpark are not implemented.",
-    "Reads original safetensors directly. The model owns disk expert execution; the fused engine setting avoids generic MoE bank allocation. Generic FTW conversion and offload-cache controls do not apply.",
-    "The 32 GiB runtime budget is an engineering estimate for the bounded 24 GiB device weight cache, transient projections and request state, not a measured certification result.",
+    "Experimental native text implementation; the optimized complete-checkpoint short probe is measured in GB10-DSV41-OPT-002. General quality, parser, agent and endurance gates remain unverified. No V4 performance evidence transfers to V4.1.",
+    "Eager TP=1, one request and 2048 total tokens with a naive cache and no prefix reuse. Vision and DSpark are not implemented.",
+    "Reads original safetensors directly. The model owns a dedicated packed expert LRU; the fused engine setting avoids generic MoE bank allocation. Generic FTW conversion and offload-cache controls do not apply.",
+    "The 96 GiB runtime budget covers the measured 64 GiB expert bank, bounded dense-weight cache, transient projections and request state; it is not a certification result.",
     "Requires roughly 510 GB of local storage. Engram tables are read by row and never loaded whole. First-token and decode latency may be high."
   ],
   "runtime_memory": {
-    "total_bytes": 34359738368
+    "total_bytes": 103079215104
   }
 }

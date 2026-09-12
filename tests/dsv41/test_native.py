@@ -64,6 +64,15 @@ def test_complete_tiny_decoder_matches_pinned_reference_and_resets(decoder):
         decoder.reset()
 
 
+def test_layer_major_prefill_matches_sequential_reference(decoder):
+    golden = json.loads((FIXTURE / "expected.json").read_text())
+    expected = torch.cat([decoder.step(token) for token in golden["tokens"]])[-1:]
+    decoder.reset()
+    actual = decoder.prefill(golden["tokens"])
+    torch.testing.assert_close(actual, expected, atol=1e-6, rtol=1e-6)
+    assert decoder.position == len(golden["tokens"])
+
+
 def test_context_and_image_inputs_fail_before_state_is_advanced(decoder):
     with pytest.raises(ValueError, match="text token"):
         decoder.step(decoder.args.image_token_id)
@@ -179,5 +188,7 @@ def test_native_recipe_is_experimental_and_skips_ftw(tmp_path):
     assert recipe.status == "experimental" and recipe.performance is None
     assert recipe.evidence == () and recipe.runtime_artifact is None
     assert recipe.deployment.runtime_format == "safetensors"
+    assert recipe.recipe_version == "0.2.0"
+    assert recipe.runtime_memory == {"total_bytes": 96 * 2**30}
     with pytest.raises(AcquisitionError, match="omit --prepare"):
         acquire_recipe(recipe, root=str(tmp_path), prepare=True)

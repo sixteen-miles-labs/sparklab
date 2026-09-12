@@ -1,0 +1,139 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-DSV41-OPT-002",
+  "status": "measured",
+  "date": "2026-09-11",
+  "recipe": {
+    "slug": "deepseek-v4.1-flash",
+    "recipe_version": "0.2.0",
+    "revision": "df42c109f1defefcbfcedbe7d905718a12266e40"
+  },
+  "engine": {
+    "name": "SparkLab",
+    "git_revision": "7b866d5971463d573d096f4a7574dd5b275b9e0b",
+    "git_tracked_dirty": true,
+    "source_sha256": {
+      "python/sparklab/models/deepseek_v41/model.py": "7f6e36d1f6eb193e7d4cf441b2976908269b403243cf6a3f54fef2ac6e0566f1",
+      "python/sparklab/models/deepseek_v41/ops.py": "f71eb5799954cf5b53ed8a0a371de45c7c323e29c8a2d14908d3e72238afc753",
+      "python/sparklab/models/deepseek_v41/weight.py": "160c5f2f19e244e25e1f1b7b4e12e63377ed28ac37b14ebc63b65ea779ad1650",
+      "python/sparklab/models/deepseek_v41/expert_cache.py": "ccc602b1010c296aa8c65748fd9306569370d7aef4466fae3ad133ffb9e07b5c",
+      "python/sparklab/kernels/triton/dsv41_linear.py": "52062a6066d4f6f17261296a59b23a328a7fea99f144a84203016090489423cb",
+      "python/sparklab/kernels/triton/dsv4/skinny.py": "04c933bd26cdbd916e97ec16770b31401560389c9292e389637043f5295e5a04",
+      "python/sparklab/moe/fused_ds_fp4.py": "8b160bd0fe46f4037428a8197adafaad09b1e90c1b4ebd7c2b4dad1908be19fc"
+    }
+  },
+  "hardware": {
+    "platform": "NVIDIA GB10",
+    "os": "Linux-6.17.0-1014-nvidia-aarch64-with-glibc2.39",
+    "unified_memory_gib": 128,
+    "machine": "aarch64",
+    "python": "3.11.15",
+    "packages": {
+      "torch": "2.11.0+cu130",
+      "triton": "3.6.0",
+      "transformers": "5.16.1"
+    },
+    "gpu_driver": "NVIDIA GB10, 580.126.09"
+  },
+  "checkpoint": {
+    "repository": "deepseek-ai/DeepSeek-V4.1-Flash",
+    "revision": "df42c109f1defefcbfcedbe7d905718a12266e40",
+    "format": "safetensors",
+    "bytes": 510313345254
+  },
+  "workload": {
+    "name": "Original AIME-25 problem 0 portfolio probe",
+    "prompt_sha256": "51e1235f1c85cf333085c9e2889a20fb7e7ef65f320856975bac705eb04e43d4",
+    "prompt_tokens": 74,
+    "completion_tokens": 128,
+    "clients": 1,
+    "temperature": 0,
+    "thinking": true,
+    "ignore_eos": true,
+    "warmup_requests": 1,
+    "measured_trials": 3,
+    "aggregation": "median",
+    "metric": "(completion_tokens - 1) / (last content event - first content event)"
+  },
+  "configuration": {
+    "backend": "native",
+    "expert_cache_gib": 64,
+    "weight_cache_gib": 24,
+    "expert_read_workers": 8,
+    "context_tokens": 2048,
+    "prefix_reuse": false,
+    "speculation": false,
+    "prefill": "layer-major MoE with sequential causal attention",
+    "quantized_linears": "direct packed MXFP4/MXFP8 Triton kernels"
+  },
+  "metrics": {
+    "decode_tokens_per_second_trials": [
+      0.969032549661657,
+      0.9715390021997505,
+      0.9692250183829233
+    ],
+    "decode_tokens_per_second_median": 0.9692250183829233,
+    "warm_ttft_seconds_trials": [
+      74.36858827096876,
+      74.50880825798959,
+      74.38668339408468
+    ],
+    "warm_ttft_seconds_median": 74.38668339408468,
+    "elapsed_seconds_trials": [
+      205.42812377598602,
+      205.22933713905513,
+      205.42017520603258
+    ],
+    "elapsed_seconds_median": 205.42017520603258,
+    "prior_decode_tokens_per_second": 0.24350497465775373,
+    "prior_warm_ttft_seconds": 343.13075944792945,
+    "prior_elapsed_seconds": 864.6815347810043,
+    "decode_speedup": 3.980306888370122,
+    "ttft_speedup": 4.612793019724797,
+    "elapsed_speedup": 4.209330150509891,
+    "device_allocation_gib_observed": 73.03125,
+    "minimum_system_memory_available_gib_observed": 37.0
+  },
+  "warmup": {
+    "decode_tokens_per_second": 0.9526616564995584,
+    "ttft_seconds": 72.90125450596679,
+    "elapsed_seconds": 206.21220136689954,
+    "output_sha256": "4d81d182dc00c34a3e6ae7934832dbc23a6eac9ede6bf61c27cf82e204f286a5"
+  },
+  "validation": {
+    "focused_tests_passed": 48,
+    "focused_test_command": "PYTHONPATH=python SPARKLAB_DISABLE_KERNEL_CACHE=1 .venv/bin/python -m pytest -q tests/dsv41/test_native.py tests/dsv41/test_expert_cache.py tests/kernels/test_dsv41_packed_linear.py tests/models/test_dsv4_dspark.py tests/kernels/test_dsv4_skinny.py",
+    "api_streams_completed": 4,
+    "all_measured_output_hashes_match": true,
+    "output_sha256": "4d81d182dc00c34a3e6ae7934832dbc23a6eac9ede6bf61c27cf82e204f286a5",
+    "prior_output_sha256": "dd72a88bc44b474e2a0b1f14fa29d8786b0ce8efa482ba0eb04d3a3f6f34c349",
+    "oom_count": 0,
+    "swap_growth_observed": false
+  },
+  "ablations": {
+    "fixed_32_output_probe": {
+      "global_lru_64_gib": {
+        "ttft_seconds": 105.57397510891315,
+        "decode_tokens_per_second": 0.6500408060473133
+      },
+      "per_layer_hybrid_64_gib": {
+        "ttft_seconds": 109.42244399001356,
+        "decode_tokens_per_second": 0.29477674917097435
+      },
+      "output_hashes_match": true
+    }
+  },
+  "source": {
+    "summary": "Three full measured requests after one full-length warmup, using the same prompt and metric as GB10-DSV41-PORTFOLIO-001.",
+    "raw_artifact": "/tmp/dsv41-global64-three-trials.jsonl and /tmp/dsv41-global64-fourth.jsonl",
+    "benchmark_sha256": "d1fe83f8bbbf8b11f511e11f0a317f16a3ecec11cdcc908b7fa0207b76c4e207",
+    "prior_evidence": "GB10-DSV41-PORTFOLIO-001"
+  },
+  "limitations": [
+    "One fixed 74-input/128-output prompt; this is not a completed-answer quality, long-context, concurrent or endurance test.",
+    "The packed/fused path changes numerical rounding and did not reproduce the prior implementation's 128-token output hash; both outputs are truncated before the final answer.",
+    "Focused source-tree optimization evidence, not a clean-release certification result.",
+    "Swap was already in use before measurement. No additional swap growth was observed, but per-trial VM telemetry was not captured.",
+    "The first full-length warmup followed one 32-token cache-layout probe in the same server process."
+  ]
+}
