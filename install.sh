@@ -7,15 +7,14 @@
 # Dependencies come from PyPI via uv, except torch and sglang-kernel whose cu130
 # wheels live on dedicated indexes (see CU_INDEX_ARGS below).
 #
-# Typical use (once a release exists):
-#   curl -fsSL https://<host>/install.sh | bash
+# Typical use:
+#   curl -fsSL https://raw.githubusercontent.com/sixteen-miles-labs/sparklab/v0.1.3/install.sh | bash
 #
 # Configurable via environment:
 #   SPARKLAB_WHEEL                runtime wheel — local path OR URL. Defaults to the
-#                                 pinned release asset ($DEFAULT_WHEEL_URL); if that is
-#                                 empty and install.sh runs from a source checkout, the
-#                                 wheels are built from source via
-#                                 scripts/build-release-wheels.sh.
+#                                 pinned release asset ($DEFAULT_WHEEL_URL). When
+#                                 install.sh runs from a source checkout, the wheels
+#                                 are built from that checkout instead.
 #   SPARKLAB_KERNEL_CACHE_WHEEL   prebuilt kernel-cache wheel — local path OR URL.
 #                                 Defaults to $DEFAULT_KERNEL_CACHE_WHEEL_URL; if
 #                                 unset and SPARKLAB_WHEEL is local, the script
@@ -30,16 +29,19 @@
 # variant, a mismatched cache wheel, or development builds.
 set -euo pipefail
 
-DEFAULT_WHEEL_URL=""   # filled in once GitHub Releases are live
-DEFAULT_KERNEL_CACHE_WHEEL_URL=""   # filled in once GitHub Releases are live
+DEFAULT_RELEASE_VERSION="0.1.3"
 
 INSTALL_ROOT="${SPARKLAB_INSTALL_ROOT:-$HOME/.sparklab}"
 VENV="$INSTALL_ROOT/venv"
 PY_VERSION="${SPARKLAB_PY_VERSION:-3.12}"
 BIN_DIR="${SPARKLAB_BIN_DIR:-$HOME/.local/bin}"
 ENV_DIR="${SPARKLAB_ENV_DIR:-$HOME/.config/environment.d}"
-WHEEL="${SPARKLAB_WHEEL:-$DEFAULT_WHEEL_URL}"
-KERNEL_CACHE_WHEEL="${SPARKLAB_KERNEL_CACHE_WHEEL:-$DEFAULT_KERNEL_CACHE_WHEEL_URL}"
+PY_TAG="cp${PY_VERSION//./}"
+DEFAULT_RELEASE_BASE="https://github.com/sixteen-miles-labs/sparklab/releases/download/v${DEFAULT_RELEASE_VERSION}"
+DEFAULT_WHEEL_URL="${DEFAULT_RELEASE_BASE}/sparklab-${DEFAULT_RELEASE_VERSION}-${PY_TAG}-${PY_TAG}-manylinux_2_27_aarch64.whl"
+DEFAULT_KERNEL_CACHE_WHEEL_URL="${DEFAULT_RELEASE_BASE}/sparklab_kernel_cache-${DEFAULT_RELEASE_VERSION}+cu130-py3-none-linux_aarch64.whl"
+WHEEL="${SPARKLAB_WHEEL:-}"
+KERNEL_CACHE_WHEEL="${SPARKLAB_KERNEL_CACHE_WHEEL:-}"
 
 # --yes / -y (or SPARKLAB_ASSUME_YES=1): run non-interactively.
 ASSUME_YES="${SPARKLAB_ASSUME_YES:-0}"
@@ -115,6 +117,21 @@ build_from_repo_if_needed() {
   fi
 }
 
+use_default_release_wheels() {
+  [ -z "$WHEEL" ] || return 0
+  case "$(uname -m)" in
+    aarch64|arm64) ;;
+    *) die "SparkLab release wheels target NVIDIA GB10 on ARM64; found $(uname -m)." ;;
+  esac
+  case "$PY_TAG" in
+    cp310|cp311|cp312|cp313) ;;
+    *) die "SparkLab $DEFAULT_RELEASE_VERSION has wheels for Python 3.10-3.13; requested $PY_VERSION." ;;
+  esac
+  WHEEL="$DEFAULT_WHEEL_URL"
+  [ -n "$KERNEL_CACHE_WHEEL" ] || KERNEL_CACHE_WHEEL="$DEFAULT_KERNEL_CACHE_WHEEL_URL"
+  say "using SparkLab $DEFAULT_RELEASE_VERSION release wheels"
+}
+
 # The SparkLab Desktop engine bundle ships the wheels in ./dist next to this script.
 find_bundled_wheel() {
   [ -z "$WHEEL" ] || return 0
@@ -154,6 +171,7 @@ say "uv $("$UV" --version | awk '{print $2}')"
 # Resolve the runtime wheel: explicit env → ./dist bundle → build from a source checkout.
 find_bundled_wheel
 build_from_repo_if_needed
+use_default_release_wheels
 
 [ -n "$WHEEL" ] || die "no runtime wheel to install — set SPARKLAB_WHEEL to a local path or URL, or run install.sh from a source checkout to build one."
 infer_kernel_cache_wheel
@@ -234,6 +252,28 @@ say "installing $WHEEL + accel (flashinfer prebuilt + sglang-kernel) + $KERNEL_C
 
 SPARKLAB_BIN="$VENV/bin/sparklab"
 [ -x "$SPARKLAB_BIN" ] || die "install finished but $SPARKLAB_BIN is missing."
+
+# A stale cache package is safe at runtime only when JIT is available. Managed installs
+# promise prebuilt operation, so verify the installed pair strictly before wiring it into
+# the user's PATH. This catches version, build-stamp, CUDA-major, package-layout, and
+# empty-wheel mistakes in the installation that created them.
+if SPARKLAB_DISABLE_JIT=1 "$VENV/bin/python" - <<'PY'
+from pathlib import Path
+
+from sparklab.kernels.utils import _kernel_cache_dir
+
+cache_dir = _kernel_cache_dir()
+if cache_dir is None:
+    raise RuntimeError("installed kernel-cache package was not discovered")
+cache_dir = Path(cache_dir)
+if not cache_dir.is_dir() or not any(cache_dir.rglob("*.so")):
+    raise RuntimeError(f"installed kernel cache has no compiled modules: {cache_dir}")
+PY
+then
+  say "self-check: runtime and prebuilt kernel-cache versions match"
+else
+  die "installed runtime and kernel-cache wheels are incompatible; use wheels from the same SparkLab release."
+fi
 
 # --- 4. Wire up the SparkLab CLI --------------------------------------------
 mkdir -p "$BIN_DIR"
