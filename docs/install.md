@@ -9,10 +9,10 @@
 
 ## Method 1: Install from PyPI
 
-Use this for the published release. For the current Qwen3.8-Flash-Next recipe and
-unreleased runtime changes documented in this checkout, use
-[Method 2](#method-2-install-from-source). The released 0.1.2 wheel lacks the current
-Qwen3.8-Flash-Next checkpoint support.
+Use this for the published release. SparkLab 0.1.3 includes the current model
+recipes, including Qwen3.8-Flash-Next checkpoint support. Use
+[Method 2](#method-2-install-from-source) when testing changes newer than the
+published release.
 
 ```bash
 uv venv && source .venv/bin/activate

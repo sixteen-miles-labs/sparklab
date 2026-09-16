@@ -42,6 +42,7 @@ class RuntimePlan:
     components: dict[str, int]
     ready: bool
     reasons: tuple[str, ...]
+    warnings: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -151,8 +152,18 @@ def plan_runtime(recipe: ModelRecipe, snapshot: GB10Snapshot) -> RuntimePlan:
     from sparklab.backends.container import settings as container_settings
 
     isolated_swap = recipe.backend == "native" and container_settings(recipe.deployment) is not None
+    warnings: list[str] = []
     if swap_used and not isolated_swap:
-        reasons.append(f"swap is in use ({swap_used} bytes); certified recipes require zero")
+        if recipe.status == "experimental":
+            warnings.append(
+                f"host swap is in use ({swap_used} bytes); experimental recipe permits pre-existing swap; "
+                "capacity is based on available physical RAM only. This is not swap isolation; "
+                "monitor swap activity during inference."
+            )
+        else:
+            reasons.append(
+                f"swap is in use ({swap_used} bytes); certified and preview recipes require zero"
+            )
     if required is not None and required > usable:
         reasons.append(f"runtime memory shortfall: need {required} bytes, have {usable} usable")
     headroom = None if required is None else usable - required
@@ -167,6 +178,7 @@ def plan_runtime(recipe: ModelRecipe, snapshot: GB10Snapshot) -> RuntimePlan:
         components=components,
         ready=required is not None and not reasons,
         reasons=tuple(reasons),
+        warnings=tuple(warnings),
     )
 
 

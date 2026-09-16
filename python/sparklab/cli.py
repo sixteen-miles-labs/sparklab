@@ -238,6 +238,8 @@ def _run_plan(argv: list[str]) -> int:
             f"{_gib(memory.usable_bytes)} safely usable"
         )
         print(f"  Runtime ready: {'yes' if memory.ready else 'no'}")
+        for warning in memory.warnings:
+            print(f"    WARNING: {warning}")
         for reason in (*artifacts.reasons, *memory.reasons):
             print(f"    - {reason}")
     return 0 if artifacts.ready and memory.ready else 1
@@ -327,6 +329,9 @@ def _run_recipe(argv: list[str]) -> int:
     except RuntimePlanError as exc:
         print(f"sparklab run: {exc}", file=sys.stderr)
         return 1
+    if not args.json:
+        for warning in invocation.memory.warnings:
+            print(f"WARNING: {warning}", file=sys.stderr)
     if args.json or args.dry_run:
         if args.json:
             print(json.dumps(invocation.to_dict(), indent=2, sort_keys=True))

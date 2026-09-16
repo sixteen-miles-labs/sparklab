@@ -18,7 +18,7 @@ deployment artifact and does not imply conversion to the generic FTW container.
 
 ## Run
 
-Use a source installation containing this implementation and local NVMe storage:
+Install SparkLab 0.1.3 or newer and use local NVMe storage:
 
 ```bash
 sparklab plan deepseek-v4.1-flash

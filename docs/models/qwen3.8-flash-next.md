@@ -7,10 +7,9 @@ PLE n-gram embeddings.
 
 ## Install
 
-Use a [source installation](../install.md#method-2-install-from-source) containing
-the NVIDIA mixed-precision loader, scaled FP8 PLE support, complete indexed MTP
-sidecar extraction, and accepted-prefix state commits. The previously released
-0.1.2 wheel does not contain these changes.
+Install SparkLab 0.1.3 or newer with the `accel` dependencies. It contains the
+NVIDIA mixed-precision loader, scaled FP8 PLE support, complete indexed MTP
+sidecar extraction, and accepted-prefix state commits.
 
 ## Prepare
 

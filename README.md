@@ -190,9 +190,8 @@ fingerprints, implementation state, evidence IDs, and known constraints.
 ## Documentation
 
 Start with installation, then follow the quick start or a model's run instructions.
-The current Qwen3.8-Flash-Next recipe requires a
-[source installation](docs/install.md#method-2-install-from-source); the released 0.1.2
-wheel does not include its required runtime support.
+SparkLab 0.1.3 includes the current Qwen3.8-Flash-Next runtime and checkpoint
+support.
 
 - [Installation](docs/install.md)
 - [Quick start](docs/quickstart.md)
