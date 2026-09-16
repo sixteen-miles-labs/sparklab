@@ -139,3 +139,5 @@ Reduced-layer, dummy-weight, or mismatched-recipe evidence is rejected even for
 Research admission.
 
 - `results/GB10-QWENVISION-002.json` records native Flash-Next image integration: five short image checks, two sparse-context image checks and four API checks pass; the OCR exact-text check fails.
+
+- `results/GB10-QWENVISIONPERF-001.json` compares Qwen3.6 native vision with vLLM eager target-only and recipe-derived MTP3 profiles. See [method and results](../vision/README.md).

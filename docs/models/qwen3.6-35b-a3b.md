@@ -1,6 +1,6 @@
 # Run Qwen3.6-35B-A3B
 
-An experimental native image-input path is available from source; see [vision setup and limits](qwen-vision.md).
+An experimental native image-input path is available; see [vision setup and limits](qwen-vision.md).
 
 Recipe **0.6.0** makes the fast Marlin/MTP4 container the default on one 128 GiB
 NVIDIA GB10. SparkLab still runs the model and scheduler; the container supplies
@@ -18,7 +18,7 @@ native SparkLab and vLLM. See [the qualification record](../../benchmarks/qwen36
 
 ## Build and prepare
 
-Install SparkLab from this source checkout using the [installation guide](../install.md).
+Install SparkLab 0.1.3 or newer using the [installation guide](../install.md).
 Docker with NVIDIA GPU access is required. Build the separate runtime image from
 the repository root:
 

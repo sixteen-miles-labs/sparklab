@@ -43,7 +43,7 @@
   "evidence": ["GB10-GLM53-RESEARCH-001", "GB10-GLM53-RESEARCH-OPT-002", "GB10-GLM53-SPEC-003"],
   "limitations": [
     "The portfolio uses a single opt-in DFlash2-4 256-token performance trial, not an aggregate quality score. Set SPARKLAB_DISK_READ_WORKERS=20 to reproduce its reader count. Target-only remains the default at 1.11 tok/s and 1.958 s warm TTFT.",
-    "DFlash2 requires source installation and a separately acquired original BF16 incoai/GLM-5.3-DFlash2 draft, licensed CC BY-NC-ND 4.0 for research/evaluation with separate commercial licensing. Draft weights are not bundled or automatically downloaded.",
+    "DFlash2 requires SparkLab 0.1.3 or newer and a separately acquired original BF16 incoai/GLM-5.3-DFlash2 draft, licensed CC BY-NC-ND 4.0 for research/evaluation with separate commercial licensing. Draft weights are not bundled or automatically downloaded.",
     "Full GLM speculation is opt-in, greedy-only, batch one, TP=1 and eager. DFlash2 output differs from the saved target-only control, and neither capped 256-token run completed the answer.",
     "Separate target-only normal-EOS checks completed AIME problem 0 correctly; problem 1 reached its 1024-token cap without a final answer. This does not certify speculative quality.",
     "Changing cache layout can change greedy text; bit-exact output parity is not claimed.",

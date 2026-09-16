@@ -48,9 +48,8 @@ Qwen3.6 converts its pinned NVIDIA source into a separate Marlin FTW inside its 
 DeepSeek V4.1 Flash uses a byte-preserving Oakmind mirror of the original mixed
 MXFP4/MXFP8 checkpoint; its model-owned safetensors path does not use the generic FTW
 container. See its [run instructions](models/deepseek-v4.1-flash.md).
-The current Qwen3.8-Flash-Next recipe requires a
-[source installation](install.md#method-2-install-from-source); the released 0.1.2 wheel
-lacks its required runtime support.
+SparkLab 0.1.3 includes the current Qwen3.8-Flash-Next runtime and checkpoint
+support.
 
 Parameter counts come from model publishers, and performance values come from the
 evidence attached to each recipe. Certification applies only to that exact checkpoint

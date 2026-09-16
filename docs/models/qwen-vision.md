@@ -126,3 +126,6 @@ QSA. Its OCR response was `spark42`, failing the expected `SPARK 42` text.
 See [Flash-Next results](../../benchmarks/gb10/results/GB10-QWENVISION-002.json).
 These checks validate the native image path within the tested bounds; they do
 not establish broad vision quality.
+
+For measured Qwen3.6 image latency and throughput against vLLM, see the
+[vision performance comparison](../../benchmarks/vision/README.md).

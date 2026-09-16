@@ -1,0 +1,934 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-QWENVISIONPERF-001",
+  "status": "measured",
+  "metadata": {
+    "date": "2026-09-10",
+    "hardware": "NVIDIA GB10, single GPU, 128 GB unified memory",
+    "driver": "580.126.09",
+    "checkpoint": "nvidia/Qwen3.6-35B-A3B-NVFP4",
+    "revision": "491c2f1ea524c639598bf8fa787a93fed5a6fbce",
+    "sparklab_commit": "7b866d5971463d573d096f4a7574dd5b275b9e0b",
+    "vllm_image": "vllm/vllm-openai:v0.28.0",
+    "vllm_image_id": "sha256:89154ef00dd15368d2b293c167e5cc7dbb521fcfb2fbb77510e0d4df2b820e8f",
+    "recipe_url": "https://recipes.vllm.ai/Qwen/Qwen3.6-35B-A3B?variant=nvfp4",
+    "source_snapshot_used_for_both": true,
+    "context_tokens": 8192,
+    "image_min_pixels": 65536,
+    "image_max_pixels": 1048576,
+    "host_swap_at_start_kib": 2957432,
+    "notes": [
+      "Other model server stopped with user permission; restore port 1919 after benchmarking.",
+      "Existing host swap is not disabled; this is not a zero-swap qualification run.",
+      "SparkLab prepared Triton FTW 0.5.0 with source vision tower; vLLM reads same source checkpoint directly.",
+      "No quality-equivalence claim; deterministic images and requests, outputs retained."
+    ]
+  },
+  "versions": {
+    "sparklab": {
+      "torch": "2.11.0+cu130",
+      "transformers": "5.16.1",
+      "triton": "3.6.0",
+      "pillow": "12.3.0",
+      "torchvision": "0.26.0+cu130"
+    },
+    "vllm": {
+      "torch": "2.13.0+cu130",
+      "transformers": "5.15.1",
+      "vllm": "0.28.0",
+      "flashinfer-python": "0.6.16.post3"
+    }
+  },
+  "profiles": {
+    "sparklab": {
+      "profile": "sparklab-triton-target",
+      "method": {
+        "concurrency": 1,
+        "trials": 3,
+        "warmups_per_case": 1,
+        "output_tokens": 128,
+        "ignore_eos": true,
+        "temperature": 0,
+        "enable_thinking": false,
+        "prompt": "Describe the image or images in detail: list the colored shapes, their positions, and the background. Then explain how their arrangement could be recreated step by step. Continue with detailed observations until you reach the output limit.",
+        "ttft": "Request start to first nonempty content/reasoning SSE chunk.",
+        "decode": "(usage completion tokens - 1) / (last content chunk time - first content chunk time); chunk-based approximation, especially with MTP.",
+        "e2e": "Request start through final streamed usage and DONE.",
+        "cache_policy": "Disable vLLM prefix and multimodal processor caches; SparkLab image prefix reuse is disabled."
+      },
+      "cases": {
+        "image_256": {
+          "image_sizes": [
+            256
+          ],
+          "image_sha256": [
+            "3159c99c7280fe53658a07cfa917a9cf87fa65bc4976c00e4d6031090bfd9f35"
+          ],
+          "warmup": {
+            "ttft_s": 1.2388095039641485,
+            "e2e_s": 4.209130304050632,
+            "decode_tok_s": 42.76075894716048,
+            "output_tok_s": 30.41008254765122,
+            "usage": {
+              "prompt_tokens": 121,
+              "completion_tokens": 128,
+              "total_tokens": 249
+            },
+            "content_chunks": 128,
+            "finish_reasons": [
+              "length"
+            ],
+            "output": "The image displays three distinct geometric shapes arranged on a plain white background. Here is a detailed breakdown:\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a solid, bright red square with sharp, well-defined edges.\n   - The square is oriented normally (not rotated), with sides parallel to the image frame.\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant, roughly at the same vertical level as the red square.\n   - It is a solid, vibrant blue circle with smooth"
+          },
+          "trials": [
+            {
+              "ttft_s": 0.2402863319730386,
+              "e2e_s": 3.3047329409746453,
+              "decode_tok_s": 41.44706379145346,
+              "output_tok_s": 38.73232793275263,
+              "usage": {
+                "prompt_tokens": 121,
+                "completion_tokens": 128,
+                "total_tokens": 249
+              },
+              "content_chunks": 128,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "The image displays three distinct geometric shapes arranged on a plain white background. Here is a detailed breakdown:\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a solid, bright red square with sharp, well-defined edges.\n   - The square is oriented normally (not rotated), with sides parallel to the image frame.\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant, roughly at the same vertical level as the red square.\n   - It is a solid, vibrant blue circle with smooth"
+            },
+            {
+              "ttft_s": 0.2380827700253576,
+              "e2e_s": 3.184100360958837,
+              "decode_tok_s": 43.11331659384206,
+              "output_tok_s": 40.19973791324059,
+              "usage": {
+                "prompt_tokens": 121,
+                "completion_tokens": 128,
+                "total_tokens": 249
+              },
+              "content_chunks": 128,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "The image displays three distinct geometric shapes arranged on a plain white background. Here is a detailed breakdown:\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a solid, bright red square with sharp, well-defined edges.\n   - The square is oriented normally (not rotated), with sides parallel to the image frame.\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant, roughly at the same vertical level as the red square.\n   - It is a solid, vibrant blue circle with smooth"
+            },
+            {
+              "ttft_s": 0.23574944806750864,
+              "e2e_s": 3.187791179982014,
+              "decode_tok_s": 43.030400520683415,
+              "output_tok_s": 40.15319472736674,
+              "usage": {
+                "prompt_tokens": 121,
+                "completion_tokens": 128,
+                "total_tokens": 249
+              },
+              "content_chunks": 128,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "The image displays three distinct geometric shapes arranged on a plain white background. Here is a detailed breakdown:\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a solid, bright red square with sharp, well-defined edges.\n   - The square is oriented normally (not rotated), with sides parallel to the image frame.\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant, roughly at the same vertical level as the red square.\n   - It is a solid, vibrant blue circle with smooth"
+            }
+          ],
+          "median": {
+            "ttft_s": 0.2380827700253576,
+            "e2e_s": 3.187791179982014,
+            "decode_tok_s": 43.030400520683415,
+            "output_tok_s": 40.15319472736674
+          }
+        },
+        "image_1024": {
+          "image_sizes": [
+            1024
+          ],
+          "image_sha256": [
+            "553d83331d10ab322980c9fbb41dd50b088d77d66fbfd5d5c077c7edcc519245"
+          ],
+          "warmup": {
+            "ttft_s": 1.5056956700282171,
+            "e2e_s": 4.4759196729864925,
+            "decode_tok_s": 42.762301667305195,
+            "output_tok_s": 28.597474787699632,
+            "usage": {
+              "prompt_tokens": 1081,
+              "completion_tokens": 128,
+              "total_tokens": 1209
+            },
+            "content_chunks": 128,
+            "finish_reasons": [
+              "length"
+            ],
+            "output": "The image displays three distinct geometric shapes arranged on a plain white background. Each shape is filled with a solid, vibrant color and has no outline or border.\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a perfect square, aligned horizontally and vertically (not rotated).\n   - The red is bright and saturated, appearing as pure red (#FF0000).\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant.\n   - It is a perfect circle, centered within its own"
+          },
+          "trials": [
+            {
+              "ttft_s": 0.8569875539978966,
+              "e2e_s": 3.839038866921328,
+              "decode_tok_s": 42.599238676836336,
+              "output_tok_s": 33.34167859119595,
+              "usage": {
+                "prompt_tokens": 1081,
+                "completion_tokens": 128,
+                "total_tokens": 1209
+              },
+              "content_chunks": 128,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "The image displays three distinct geometric shapes arranged on a plain white background. Each shape is filled with a solid, vibrant color and has no outline or border.\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a perfect square, aligned horizontally and vertically (not rotated).\n   - The red is bright and saturated, appearing as pure red (#FF0000).\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant.\n   - It is a perfect circle, centered within its own"
+            },
+            {
+              "ttft_s": 0.8748976980568841,
+              "e2e_s": 3.8500666350591928,
+              "decode_tok_s": 42.68816244833061,
+              "output_tok_s": 33.24617782830454,
+              "usage": {
+                "prompt_tokens": 1081,
+                "completion_tokens": 128,
+                "total_tokens": 1209
+              },
+              "content_chunks": 128,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "The image displays three distinct geometric shapes arranged on a plain white background. Each shape is filled with a solid, vibrant color and has no outline or border.\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a perfect square, aligned horizontally and vertically (not rotated).\n   - The red is bright and saturated, appearing as pure red (#FF0000).\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant.\n   - It is a perfect circle, centered within its own"
+            },
+            {
+              "ttft_s": 0.8705560269299895,
+              "e2e_s": 3.846714669954963,
+              "decode_tok_s": 42.68140274689914,
+              "output_tok_s": 33.27514801130249,
+              "usage": {
+                "prompt_tokens": 1081,
+                "completion_tokens": 128,
+                "total_tokens": 1209
+              },
+              "content_chunks": 128,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "The image displays three distinct geometric shapes arranged on a plain white background. Each shape is filled with a solid, vibrant color and has no outline or border.\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a perfect square, aligned horizontally and vertically (not rotated).\n   - The red is bright and saturated, appearing as pure red (#FF0000).\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant.\n   - It is a perfect circle, centered within its own"
+            }
+          ],
+          "median": {
+            "ttft_s": 0.8705560269299895,
+            "e2e_s": 3.846714669954963,
+            "decode_tok_s": 42.68140274689914,
+            "output_tok_s": 33.27514801130249
+          }
+        },
+        "two_images_512": {
+          "image_sizes": [
+            512,
+            512
+          ],
+          "image_sha256": [
+            "5ca9ddd4e0a5d20e7da02295ef42b83d2a1e3cb00d7a0b563983f7d2dd116c72",
+            "6100b2ea0e3f71a80147d1272abc1a0dfa2ff7e3e79c84535eaa4c5172edb60e"
+          ],
+          "warmup": {
+            "ttft_s": 0.6034648449858651,
+            "e2e_s": 3.594949544989504,
+            "decode_tok_s": 42.46555391220179,
+            "output_tok_s": 35.60550666932203,
+            "usage": {
+              "prompt_tokens": 571,
+              "completion_tokens": 128,
+              "total_tokens": 699
+            },
+            "content_chunks": 128,
+            "finish_reasons": [
+              "length"
+            ],
+            "output": "Here is a detailed description of the two images provided, followed by an explanation of how their arrangement could be recreated step by step.\n\n---\n\n### **Image 1 Description**\n\n- **Background**: The background is plain white with no texture or gradient.\n- **Shapes and Colors**:\n  - A **red square** is located in the upper-left quadrant of the image.\n  - A **blue circle** is located in the upper-right quadrant, horizontally aligned with the red square.\n  - A **green triangle** (equilateral, pointing upward) is centered at the bottom of the image, below both the"
+          },
+          "trials": [
+            {
+              "ttft_s": 0.5100094130029902,
+              "e2e_s": 3.512857094989158,
+              "decode_tok_s": 42.30199936854193,
+              "output_tok_s": 36.43757674702536,
+              "usage": {
+                "prompt_tokens": 571,
+                "completion_tokens": 128,
+                "total_tokens": 699
+              },
+              "content_chunks": 128,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "Here is a detailed description of the two images provided, followed by an explanation of how their arrangement could be recreated step by step.\n\n---\n\n### **Image 1 Description**\n\n- **Background**: The background is plain white with no texture or gradient.\n- **Shapes and Colors**:\n  - A **red square** is located in the upper-left quadrant of the image.\n  - A **blue circle** is located in the upper-right quadrant, horizontally aligned with the red square.\n  - A **green triangle** (equilateral, pointing upward) is centered at the bottom of the image, below both the"
+            },
+            {
+              "ttft_s": 0.5118266919162124,
+              "e2e_s": 3.5056188829476014,
+              "decode_tok_s": 42.43183995221844,
+              "output_tok_s": 36.51281108241144,
+              "usage": {
+                "prompt_tokens": 571,
+                "completion_tokens": 128,
+                "total_tokens": 699
+              },
+              "content_chunks": 128,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "Here is a detailed description of the two images provided, followed by an explanation of how their arrangement could be recreated step by step.\n\n---\n\n### **Image 1 Description**\n\n- **Background**: The background is plain white with no texture or gradient.\n- **Shapes and Colors**:\n  - A **red square** is located in the upper-left quadrant of the image.\n  - A **blue circle** is located in the upper-right quadrant, horizontally aligned with the red square.\n  - A **green triangle** (equilateral, pointing upward) is centered at the bottom of the image, below both the"
+            },
+            {
+              "ttft_s": 0.5095621119253337,
+              "e2e_s": 3.5088688319083303,
+              "decode_tok_s": 42.352761843571784,
+              "output_tok_s": 36.47899255623814,
+              "usage": {
+                "prompt_tokens": 571,
+                "completion_tokens": 128,
+                "total_tokens": 699
+              },
+              "content_chunks": 128,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "Here is a detailed description of the two images provided, followed by an explanation of how their arrangement could be recreated step by step.\n\n---\n\n### **Image 1 Description**\n\n- **Background**: The background is plain white with no texture or gradient.\n- **Shapes and Colors**:\n  - A **red square** is located in the upper-left quadrant of the image.\n  - A **blue circle** is located in the upper-right quadrant, horizontally aligned with the red square.\n  - A **green triangle** (equilateral, pointing upward) is centered at the bottom of the image, below both the"
+            }
+          ],
+          "median": {
+            "ttft_s": 0.5100094130029902,
+            "e2e_s": 3.5088688319083303,
+            "decode_tok_s": 42.352761843571784,
+            "output_tok_s": 36.47899255623814
+          }
+        }
+      }
+    },
+    "vllm_target": {
+      "profile": "vllm-marlin-eager-target-bf16",
+      "method": {
+        "concurrency": 1,
+        "trials": 3,
+        "warmups_per_case": 1,
+        "output_tokens": 128,
+        "ignore_eos": true,
+        "temperature": 0,
+        "enable_thinking": false,
+        "prompt": "Describe the image or images in detail: list the colored shapes, their positions, and the background. Then explain how their arrangement could be recreated step by step. Continue with detailed observations until you reach the output limit.",
+        "ttft": "Request start to first nonempty content/reasoning SSE chunk.",
+        "decode": "(usage completion tokens - 1) / (last content chunk time - first content chunk time); chunk-based approximation, especially with MTP.",
+        "e2e": "Request start through final streamed usage and DONE.",
+        "cache_policy": "Disable vLLM prefix and multimodal processor caches; SparkLab image prefix reuse is disabled."
+      },
+      "cases": {
+        "image_256": {
+          "image_sizes": [
+            256
+          ],
+          "image_sha256": [
+            "3159c99c7280fe53658a07cfa917a9cf87fa65bc4976c00e4d6031090bfd9f35"
+          ],
+          "warmup": {
+            "ttft_s": 0.93497194792144,
+            "e2e_s": 5.525355655932799,
+            "decode_tok_s": 27.666937129096294,
+            "output_tok_s": 23.16592957460778,
+            "usage": {
+              "prompt_tokens": 121,
+              "total_tokens": 249,
+              "completion_tokens": 128
+            },
+            "content_chunks": 128,
+            "finish_reasons": [
+              "length"
+            ],
+            "output": "The image displays three distinct geometric shapes arranged on a plain white background. Here is a detailed breakdown:\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a solid, bright red square with sharp, well-defined edges.\n   - The square is oriented normally (not rotated), with sides parallel to the image frame.\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant, roughly at the same vertical level as the red square.\n   - It is a solid, vibrant blue circle with smooth"
+          },
+          "trials": [
+            {
+              "ttft_s": 0.11968798795714974,
+              "e2e_s": 4.708625831990503,
+              "decode_tok_s": 27.675648459954846,
+              "output_tok_s": 27.184151930349895,
+              "usage": {
+                "prompt_tokens": 121,
+                "total_tokens": 249,
+                "completion_tokens": 128
+              },
+              "content_chunks": 128,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "The image displays three distinct geometric shapes arranged on a plain white background. Here is a detailed breakdown:\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a solid, bright red square with sharp, well-defined edges.\n   - The square is oriented normally (not rotated), with sides parallel to the image frame.\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant, roughly at the same vertical level as the red square.\n   - It is a solid, vibrant blue circle with smooth"
+            },
+            {
+              "ttft_s": 0.12441478506661952,
+              "e2e_s": 4.6959214330418035,
+              "decode_tok_s": 27.78115910737594,
+              "output_tok_s": 27.257696242393784,
+              "usage": {
+                "prompt_tokens": 121,
+                "total_tokens": 249,
+                "completion_tokens": 128
+              },
+              "content_chunks": 128,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "The image displays three distinct geometric shapes arranged on a plain white background. Here is a detailed breakdown:\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a solid, bright red square with sharp, well-defined edges.\n   - The square is oriented normally (not rotated), with sides parallel to the image frame.\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant, roughly at the same vertical level as the red square.\n   - It is a solid, vibrant blue circle with smooth"
+            },
+            {
+              "ttft_s": 0.11923362500965595,
+              "e2e_s": 4.718833610997535,
+              "decode_tok_s": 27.611483877888194,
+              "output_tok_s": 27.125347183610806,
+              "usage": {
+                "prompt_tokens": 121,
+                "total_tokens": 249,
+                "completion_tokens": 128
+              },
+              "content_chunks": 128,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "The image displays three distinct geometric shapes arranged on a plain white background. Here is a detailed breakdown:\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a solid, bright red square with sharp, well-defined edges.\n   - The square is oriented normally (not rotated), with sides parallel to the image frame.\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant, roughly at the same vertical level as the red square.\n   - It is a solid, vibrant blue circle with smooth"
+            }
+          ],
+          "median": {
+            "ttft_s": 0.11968798795714974,
+            "e2e_s": 4.708625831990503,
+            "decode_tok_s": 27.675648459954846,
+            "output_tok_s": 27.184151930349895
+          }
+        },
+        "image_1024": {
+          "image_sizes": [
+            1024
+          ],
+          "image_sha256": [
+            "553d83331d10ab322980c9fbb41dd50b088d77d66fbfd5d5c077c7edcc519245"
+          ],
+          "warmup": {
+            "ttft_s": 0.4146045099478215,
+            "e2e_s": 5.002560836961493,
+            "decode_tok_s": 27.68156504298122,
+            "output_tok_s": 25.586895226594777,
+            "usage": {
+              "prompt_tokens": 1081,
+              "total_tokens": 1209,
+              "completion_tokens": 128
+            },
+            "content_chunks": 128,
+            "finish_reasons": [
+              "length"
+            ],
+            "output": "The image displays three distinct geometric shapes arranged on a plain white background. Each shape is filled with a solid, vibrant color and has no outline or border.\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a perfect square, oriented with its sides parallel to the image frame (horizontal and vertical).\n   - The red is bright and saturated, appearing as pure red (#FF0000).\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant.\n   - It is a perfect"
+          },
+          "trials": [
+            {
+              "ttft_s": 0.37816582806408405,
+              "e2e_s": 4.944915161002427,
+              "decode_tok_s": 27.810106083425737,
+              "output_tok_s": 25.885176152153033,
+              "usage": {
+                "prompt_tokens": 1081,
+                "total_tokens": 1209,
+                "completion_tokens": 128
+              },
+              "content_chunks": 128,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "The image displays three distinct geometric shapes arranged on a plain white background. Each shape is filled with a solid, vibrant color and has no outline or border.\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a perfect square, oriented with its sides parallel to the image frame (horizontal and vertical).\n   - The red is bright and saturated, covering the entire area of the square uniformly.\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant.\n   - It is a perfect circle,"
+            },
+            {
+              "ttft_s": 0.37872204603627324,
+              "e2e_s": 4.955284196999855,
+              "decode_tok_s": 27.750475734168155,
+              "output_tok_s": 25.831010878749755,
+              "usage": {
+                "prompt_tokens": 1081,
+                "total_tokens": 1209,
+                "completion_tokens": 128
+              },
+              "content_chunks": 128,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "The image displays three distinct geometric shapes arranged on a plain white background. Each shape is filled with a solid, vibrant color and has no outline or border.\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a perfect square with equal sides and right angles.\n   - The color is a bright, saturated red (approximately RGB 255, 0, 0).\n   - Its position is roughly centered vertically within the top half and aligned to the left side of the canvas.\n\n2. **Blue"
+            },
+            {
+              "ttft_s": 0.3753501729806885,
+              "e2e_s": 4.943978285999037,
+              "decode_tok_s": 27.798685008965137,
+              "output_tok_s": 25.890081346531407,
+              "usage": {
+                "prompt_tokens": 1081,
+                "total_tokens": 1209,
+                "completion_tokens": 128
+              },
+              "content_chunks": 128,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "The image displays three distinct geometric shapes arranged on a plain white background. Each shape is filled with a solid, vibrant color and has no outline or border.\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a perfect square, oriented with its sides parallel to the image frame (horizontal and vertical).\n   - The red is bright and saturated, appearing as pure red (#FF0000).\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant.\n   - It is a perfect"
+            }
+          ],
+          "median": {
+            "ttft_s": 0.37816582806408405,
+            "e2e_s": 4.944915161002427,
+            "decode_tok_s": 27.798685008965137,
+            "output_tok_s": 25.885176152153033
+          }
+        },
+        "two_images_512": {
+          "image_sizes": [
+            512,
+            512
+          ],
+          "image_sha256": [
+            "5ca9ddd4e0a5d20e7da02295ef42b83d2a1e3cb00d7a0b563983f7d2dd116c72",
+            "6100b2ea0e3f71a80147d1272abc1a0dfa2ff7e3e79c84535eaa4c5172edb60e"
+          ],
+          "warmup": {
+            "ttft_s": 0.2707599059212953,
+            "e2e_s": 4.811278281966224,
+            "decode_tok_s": 27.970742676260798,
+            "output_tok_s": 26.604156421334718,
+            "usage": {
+              "prompt_tokens": 571,
+              "total_tokens": 699,
+              "completion_tokens": 128
+            },
+            "content_chunks": 128,
+            "finish_reasons": [
+              "length"
+            ],
+            "output": "Here is a detailed description of the two images provided, followed by an explanation of how to recreate their arrangement.\n\n---\n\n### **Image 1 Description**\n\nThis image displays three geometric shapes on a plain white background.\n\n- **Red Square**: Located in the upper-left quadrant of the image. It is a solid red square with sharp, well-defined edges.\n- **Blue Circle**: Positioned in the upper-right quadrant, at approximately the same vertical level as the red square. It is a solid blue circle with a smooth edge.\n- **Green Triangle**: Situated in the lower-center portion of the image, centered horizontally"
+          },
+          "trials": [
+            {
+              "ttft_s": 0.22288869600743055,
+              "e2e_s": 4.760177116957493,
+              "decode_tok_s": 27.990677830623618,
+              "output_tok_s": 26.889755749637374,
+              "usage": {
+                "prompt_tokens": 571,
+                "total_tokens": 699,
+                "completion_tokens": 128
+              },
+              "content_chunks": 128,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "Here is a detailed description of the two images provided, followed by an explanation of how their arrangement can be recreated step by step.\n\n---\n\n### **Image 1 Description**\n\nThis image displays three geometric shapes arranged on a plain white background.\n\n- **Red Square**: Located in the upper-left quadrant of the image. It is a solid red square with sharp, well-defined edges.\n- **Blue Circle**: Positioned in the upper-right quadrant, horizontally aligned with the red square but separated by a noticeable gap. It is a solid blue circle with smooth curvature.\n- **Green Triangle**: Situated in the lower-center portion"
+            },
+            {
+              "ttft_s": 0.22254700399935246,
+              "e2e_s": 5.230319201014936,
+              "decode_tok_s": 25.360899148949873,
+              "output_tok_s": 24.47269374594992,
+              "usage": {
+                "prompt_tokens": 571,
+                "total_tokens": 699,
+                "completion_tokens": 128
+              },
+              "content_chunks": 128,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "Here is a detailed description of the two images provided, followed by step-by-step instructions for recreating their arrangement.\n\n---\n\n### **Image 1 Description**\n\nThis image displays three geometric shapes arranged on a plain white background.\n\n- **Red Square**: Located in the upper-left quadrant of the image. It is a solid red square with sharp, well-defined edges.\n- **Blue Circle**: Positioned in the upper-right quadrant, at approximately the same vertical level as the red square. It is a solid blue circle with a smooth, curved boundary.\n- **Green Triangle**: Situated in the lower-center portion of the"
+            },
+            {
+              "ttft_s": 0.22583869600202888,
+              "e2e_s": 5.287415347993374,
+              "decode_tok_s": 25.091342310419698,
+              "output_tok_s": 24.208425397973937,
+              "usage": {
+                "prompt_tokens": 571,
+                "total_tokens": 699,
+                "completion_tokens": 128
+              },
+              "content_chunks": 128,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "Here is a detailed description of the two images provided, followed by an explanation of how to recreate their arrangement.\n\n---\n\n### **Image 1 Description**\n\nThis image displays three distinct geometric shapes arranged on a plain white background.\n\n- **Red Square**: Located in the upper-left quadrant of the image. It is a solid red square with sharp, well-defined edges.\n- **Blue Circle**: Positioned in the upper-right quadrant, horizontally aligned with the red square but separated by a noticeable gap. It is a solid blue circle with a smooth, curved boundary.\n- **Green Triangle**: Situated in the lower-center portion"
+            }
+          ],
+          "median": {
+            "ttft_s": 0.22288869600743055,
+            "e2e_s": 5.230319201014936,
+            "decode_tok_s": 25.360899148949873,
+            "output_tok_s": 24.47269374594992
+          }
+        }
+      }
+    },
+    "vllm_recipe": {
+      "profile": "vllm-marlin-mtp3-fp8-graphs",
+      "method": {
+        "concurrency": 1,
+        "trials": 3,
+        "warmups_per_case": 1,
+        "output_tokens": 128,
+        "ignore_eos": true,
+        "temperature": 0,
+        "enable_thinking": false,
+        "prompt": "Describe the image or images in detail: list the colored shapes, their positions, and the background. Then explain how their arrangement could be recreated step by step. Continue with detailed observations until you reach the output limit.",
+        "ttft": "Request start to first nonempty content/reasoning SSE chunk.",
+        "decode": "(usage completion tokens - 1) / (last content chunk time - first content chunk time); chunk-based approximation, especially with MTP.",
+        "e2e": "Request start through final streamed usage and DONE.",
+        "cache_policy": "Disable vLLM prefix and multimodal processor caches; SparkLab image prefix reuse is disabled."
+      },
+      "cases": {
+        "image_256": {
+          "image_sizes": [
+            256
+          ],
+          "image_sha256": [
+            "3159c99c7280fe53658a07cfa917a9cf87fa65bc4976c00e4d6031090bfd9f35"
+          ],
+          "warmup": {
+            "ttft_s": 1.3902610120130703,
+            "e2e_s": 2.6009687029290944,
+            "decode_tok_s": 104.9097850512124,
+            "output_tok_s": 49.21243375818099,
+            "usage": {
+              "prompt_tokens": 121,
+              "total_tokens": 249,
+              "completion_tokens": 128
+            },
+            "content_chunks": 47,
+            "finish_reasons": [
+              "length"
+            ],
+            "output": "The image displays three distinct geometric shapes arranged on a plain white background. Here is a detailed breakdown:\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a solid, bright red square with sharp, well-defined edges.\n   - The square is oriented normally (not rotated), with sides parallel to the image frame.\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant, roughly at the same vertical level as the red square.\n   - It is a solid, vibrant blue circle with smooth"
+          },
+          "trials": [
+            {
+              "ttft_s": 0.1265979619929567,
+              "e2e_s": 1.35391934402287,
+              "decode_tok_s": 103.49031889289382,
+              "output_tok_s": 94.54034360693635,
+              "usage": {
+                "prompt_tokens": 121,
+                "total_tokens": 249,
+                "completion_tokens": 128
+              },
+              "content_chunks": 47,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "The image displays three distinct geometric shapes arranged on a plain white background. Here is a detailed breakdown:\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a solid, bright red square with sharp, well-defined edges.\n   - The square is oriented normally (not rotated), with sides parallel to the image frame.\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant, roughly at the same vertical level as the red square.\n   - It is a solid, vibrant blue circle with smooth"
+            },
+            {
+              "ttft_s": 0.12313129496760666,
+              "e2e_s": 1.3808275029296055,
+              "decode_tok_s": 100.98742996352621,
+              "output_tok_s": 92.69803775520933,
+              "usage": {
+                "prompt_tokens": 121,
+                "total_tokens": 249,
+                "completion_tokens": 128
+              },
+              "content_chunks": 48,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "The image displays three distinct geometric shapes arranged on a plain white background. Here is a detailed breakdown:\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a solid, bright red square with sharp, well-defined edges.\n   - The square is oriented normally (not rotated), with sides parallel to the image frame.\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant, roughly at the same vertical level as the red square.\n   - It is a solid, vibrant blue circle with smooth"
+            },
+            {
+              "ttft_s": 0.12307638302445412,
+              "e2e_s": 1.4314093890134245,
+              "decode_tok_s": 97.07777624907422,
+              "output_tok_s": 89.4223560236823,
+              "usage": {
+                "prompt_tokens": 121,
+                "total_tokens": 249,
+                "completion_tokens": 128
+              },
+              "content_chunks": 50,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "The image displays three distinct geometric shapes arranged on a plain white background. Here is a detailed breakdown:\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a solid, bright red square with sharp, well-defined edges.\n   - The square is oriented normally (not rotated), with its sides parallel to the image frame.\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant, roughly at the same vertical level as the red square.\n   - It is a solid, vibrant blue circle with"
+            }
+          ],
+          "median": {
+            "ttft_s": 0.12313129496760666,
+            "e2e_s": 1.3808275029296055,
+            "decode_tok_s": 100.98742996352621,
+            "output_tok_s": 92.69803775520933
+          }
+        },
+        "image_1024": {
+          "image_sizes": [
+            1024
+          ],
+          "image_sha256": [
+            "553d83331d10ab322980c9fbb41dd50b088d77d66fbfd5d5c077c7edcc519245"
+          ],
+          "warmup": {
+            "ttft_s": 0.731877670972608,
+            "e2e_s": 1.9414663959760219,
+            "decode_tok_s": 105.00646439474761,
+            "output_tok_s": 65.92954699875261,
+            "usage": {
+              "prompt_tokens": 1081,
+              "total_tokens": 1209,
+              "completion_tokens": 128
+            },
+            "content_chunks": 46,
+            "finish_reasons": [
+              "length"
+            ],
+            "output": "The image displays three distinct geometric shapes arranged on a plain white background. Each shape is filled with a solid, vibrant color and has no outline or border.\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a perfect square, oriented with its sides parallel to the image frame (horizontal and vertical).\n   - The red is bright and saturated, appearing as pure red (#FF0000).\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant.\n   - It is a perfect"
+          },
+          "trials": [
+            {
+              "ttft_s": 0.3572775750653818,
+              "e2e_s": 1.4839257360436022,
+              "decode_tok_s": 112.73821682318166,
+              "output_tok_s": 86.25768587400452,
+              "usage": {
+                "prompt_tokens": 1081,
+                "total_tokens": 1209,
+                "completion_tokens": 128
+              },
+              "content_chunks": 43,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "This image displays three distinct, solid-colored geometric shapes arranged on a plain white background. The composition is simple and balanced, with each shape occupying its own space without overlapping.\n\n**Detailed Description of Shapes and Positions:**\n\n1. **Red Square (Top Left):**\n   - A perfect square filled with solid, vibrant red color.\n   - Positioned in the upper-left quadrant of the canvas.\n   - Its sides are aligned horizontally and vertically \u2014 no rotation.\n   - It occupies approximately the top-left quarter of the image area.\n\n2. **Blue Circle (Top Right):**\n   - A perfect circle filled with solid"
+            },
+            {
+              "ttft_s": 0.3556857629446313,
+              "e2e_s": 1.537476320983842,
+              "decode_tok_s": 107.4816418684904,
+              "output_tok_s": 83.25331470346931,
+              "usage": {
+                "prompt_tokens": 1081,
+                "total_tokens": 1209,
+                "completion_tokens": 128
+              },
+              "content_chunks": 45,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "The image displays three distinct geometric shapes arranged on a plain white background. Each shape is filled with a solid, vibrant color and has no outline or border.\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a perfect square, oriented with its sides parallel to the image frame (horizontal and vertical).\n   - The red is bright and saturated, appearing as pure red (#FF0000).\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant.\n   - It is a perfect"
+            },
+            {
+              "ttft_s": 0.35723519301973283,
+              "e2e_s": 1.5141761190025136,
+              "decode_tok_s": 109.790517629702,
+              "output_tok_s": 84.53442000150018,
+              "usage": {
+                "prompt_tokens": 1081,
+                "total_tokens": 1209,
+                "completion_tokens": 128
+              },
+              "content_chunks": 44,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "The image displays three distinct geometric shapes arranged on a plain white background. Each shape is filled with a solid, vibrant color and has no outline or border.\n\n**Colored Shapes and Their Positions:**\n\n1. **Red Square**  \n   - Located in the upper-left quadrant of the image.\n   - It is a perfect square, oriented with its sides parallel to the image frame (horizontal and vertical).\n   - The red is bright and saturated, appearing as pure red (#FF0000).\n\n2. **Blue Circle**  \n   - Positioned in the upper-right quadrant.\n   - It is a perfect"
+            }
+          ],
+          "median": {
+            "ttft_s": 0.35723519301973283,
+            "e2e_s": 1.5141761190025136,
+            "decode_tok_s": 109.790517629702,
+            "output_tok_s": 84.53442000150018
+          }
+        },
+        "two_images_512": {
+          "image_sizes": [
+            512,
+            512
+          ],
+          "image_sha256": [
+            "5ca9ddd4e0a5d20e7da02295ef42b83d2a1e3cb00d7a0b563983f7d2dd116c72",
+            "6100b2ea0e3f71a80147d1272abc1a0dfa2ff7e3e79c84535eaa4c5172edb60e"
+          ],
+          "warmup": {
+            "ttft_s": 0.26232717698439956,
+            "e2e_s": 1.3126714720856398,
+            "decode_tok_s": 120.9291654273983,
+            "output_tok_s": 97.51107015118339,
+            "usage": {
+              "prompt_tokens": 571,
+              "total_tokens": 699,
+              "completion_tokens": 128
+            },
+            "content_chunks": 40,
+            "finish_reasons": [
+              "length"
+            ],
+            "output": "Here is a detailed description of the two images provided, followed by an explanation of how to recreate their arrangement.\n\n---\n\n### **Image 1 Description**\n\nThis image displays three distinct geometric shapes arranged on a plain white background.\n\n- **Red Square**: Located in the upper-left quadrant of the image. It is a solid red square with sharp, well-defined edges.\n- **Blue Circle**: Positioned in the upper-right quadrant, at approximately the same vertical level as the red square. It is a solid blue circle with a smooth, curved boundary.\n- **Green Triangle**: Situated in the lower-center portion of the"
+          },
+          "trials": [
+            {
+              "ttft_s": 0.21467588003724813,
+              "e2e_s": 1.3148869069991633,
+              "decode_tok_s": 115.43893276305542,
+              "output_tok_s": 97.34677508662838,
+              "usage": {
+                "prompt_tokens": 571,
+                "total_tokens": 699,
+                "completion_tokens": 128
+              },
+              "content_chunks": 42,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "Here is a detailed description of the two images provided, followed by an explanation of how their arrangement could be recreated step by step.\n\n---\n\n### **Image 1 Description**\n\nThis image displays three geometric shapes arranged on a plain white background.\n\n- **Red Square**: Located in the upper-left quadrant of the image. It is a solid red square with sharp, well-defined edges.\n- **Blue Circle**: Positioned in the upper-right quadrant, slightly lower than the top edge of the red square. It is a solid blue circle with a smooth, curved boundary.\n- **Green Triangle**: Situated in the lower-center"
+            },
+            {
+              "ttft_s": 0.20777444902341813,
+              "e2e_s": 1.3062685610493645,
+              "decode_tok_s": 115.62930473864057,
+              "output_tok_s": 97.98903825502298,
+              "usage": {
+                "prompt_tokens": 571,
+                "total_tokens": 699,
+                "completion_tokens": 128
+              },
+              "content_chunks": 42,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "Here is a detailed description of the two images provided, followed by an explanation of how their arrangement could be recreated step by step.\n\n---\n\n### **Image 1 Description**\n\nThis image displays three distinct geometric shapes arranged on a plain white background.\n\n- **Red Square**: Located in the upper-left quadrant of the image. It is a solid red square with sharp, well-defined edges.\n- **Blue Circle**: Positioned in the upper-right quadrant, horizontally aligned with the red square but separated by a noticeable gap. It is a solid blue circle with a smooth, curved boundary.\n- **Green Triangle**: Situated in"
+            },
+            {
+              "ttft_s": 0.2180827569682151,
+              "e2e_s": 1.3213170809904113,
+              "decode_tok_s": 115.133651319914,
+              "output_tok_s": 96.87303815376083,
+              "usage": {
+                "prompt_tokens": 571,
+                "total_tokens": 699,
+                "completion_tokens": 128
+              },
+              "content_chunks": 42,
+              "finish_reasons": [
+                "length"
+              ],
+              "output": "Here is a detailed description of the two images provided, followed by step-by-step instructions for recreating their arrangement.\n\n---\n\n### **Image 1 Description**\n\nThis image displays three geometric shapes arranged on a plain white background.\n\n- **Red Square**: Located in the upper-left quadrant of the image. It is a solid red square with sharp, well-defined edges.\n- **Blue Circle**: Positioned in the upper-right quadrant, horizontally aligned with the red square but separated by a noticeable gap. It is a solid blue circle with a smooth, curved boundary.\n- **Green Triangle**: Situated in the lower-center portion"
+            }
+          ],
+          "median": {
+            "ttft_s": 0.21467588003724813,
+            "e2e_s": 1.3148869069991633,
+            "decode_tok_s": 115.43893276305542,
+            "output_tok_s": 97.34677508662838
+          }
+        }
+      }
+    }
+  },
+  "benchmark_sha256": "9d7b1ac5e7190b445f3478076ad6ce99f8807e06cd4a3696b753e21ff881b822",
+  "validation": "All 36 requests succeeded: 9 warmups plus 27 measured. Matching image hashes and prompt counts across all profiles; every request produced 128 completion tokens.",
+  "server_settings": {
+    "vllm_target": [
+      "/model",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "18362",
+      "--served-model-name",
+      "qwen36-vision-bench",
+      "--max-model-len",
+      "8192",
+      "--max-num-seqs",
+      "1",
+      "--max-num-batched-tokens",
+      "8192",
+      "--gpu-memory-utilization",
+      "0.5",
+      "--moe-backend",
+      "marlin",
+      "--attention-backend",
+      "flashinfer",
+      "--kv-cache-dtype",
+      "bfloat16",
+      "--enforce-eager",
+      "--no-enable-prefix-caching",
+      "--mm-processor-cache-gb",
+      "0",
+      "--limit-mm-per-prompt",
+      "{\"image\":4,\"video\":0}",
+      "--mm-processor-kwargs",
+      "{\"size\":{\"shortest_edge\":65536,\"longest_edge\":1048576}}"
+    ],
+    "vllm_recipe": [
+      "/model",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "18362",
+      "--served-model-name",
+      "qwen36-vision-bench",
+      "--max-model-len",
+      "8192",
+      "--max-num-seqs",
+      "1",
+      "--max-num-batched-tokens",
+      "8192",
+      "--gpu-memory-utilization",
+      "0.5",
+      "--moe-backend",
+      "marlin",
+      "--attention-backend",
+      "flashinfer",
+      "--no-enable-prefix-caching",
+      "--mm-processor-cache-gb",
+      "0",
+      "--limit-mm-per-prompt",
+      "{\"image\":4,\"video\":0}",
+      "--mm-processor-kwargs",
+      "{\"size\":{\"shortest_edge\":65536,\"longest_edge\":1048576}}",
+      "--kv-cache-dtype",
+      "fp8",
+      "--max-cudagraph-capture-size",
+      "8",
+      "--mm-encoder-tp-mode",
+      "data",
+      "--async-scheduling",
+      "--enable-chunked-prefill",
+      "--speculative-config",
+      "{\"method\":\"mtp\",\"num_speculative_tokens\":3,\"moe_backend\":\"triton\"}"
+    ],
+    "sparklab": [
+      "serve",
+      "--model",
+      "/path/to/qwen36/triton-ftw",
+      "--vision-model",
+      "/path/to/qwen36/source",
+      "--served-model-name",
+      "qwen36-vision-bench",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "18361",
+      "--moe-backend",
+      "offload",
+      "--moe-storage",
+      "disk",
+      "--moe-host-cache-gb",
+      "0",
+      "--moe-cache-size",
+      "10240",
+      "--moe-preload-all",
+      "--nvfp4-backend",
+      "triton",
+      "--attention-backend",
+      "triton",
+      "--num-tokens",
+      "8192",
+      "--max-seq-len-override",
+      "8192",
+      "--max-running-requests",
+      "1",
+      "--speculative-tokens",
+      "0"
+    ]
+  }
+}

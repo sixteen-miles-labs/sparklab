@@ -1,6 +1,6 @@
 # Run Qwen3.8-27B
 
-An experimental native image-input path is available from source; see [vision setup and limits](qwen-vision.md).
+An experimental native image-input path is available; see [vision setup and limits](qwen-vision.md).
 
 Recipe 0.4.0 uses the pinned RadixArk NVFP4 checkpoint, FP4 prefill in 2K-token
 chunks, and DFlash2-12 by default. It is an Experimental, text-only recipe for one
@@ -9,11 +9,17 @@ unchanged and uses target-only generation.
 
 ## Prepare and run
 
-Use the current source checkout from the [installation guide](../install.md),
+This experimental recipe permits pre-existing host swap with a startup warning,
+provided available physical RAM covers the measured runtime budget plus the safety
+reserve. Swap is never counted as model capacity. This does not isolate or disable
+swap for the process: monitor swap activity during inference. The doctor report
+continues to flag host swap against the stricter certification baseline.
+
+Install SparkLab 0.1.3 or newer using the [installation guide](../install.md),
 including the `accel` dependencies. The measured environment used Torch
 2.11.0+cu130, Triton 3.6.0, and FlashInfer 0.6.15.post1.
-The measurements used `SPARKLAB_DISABLE_KERNEL_CACHE=1`. Use this setting with
-a source checkout if an installed optional kernel-cache package has a different
+The measurements used `SPARKLAB_DISABLE_KERNEL_CACHE=1`. Use this setting if an
+installed optional kernel-cache package has a different
 version from SparkLab; otherwise startup rejects the mismatched cache.
 
 ```bash
@@ -100,8 +106,8 @@ full 65,536-token boundary also passed with a 65,504-token prompt and exactly
 32 generated tokens. Larger contexts and a 60-minute
 endurance run remain unqualified. Full Fast certification is outstanding.
 
-The recipe reserves a conservative 64 GiB runtime budget. Current recipe
-admission requires zero host swap. The benchmark host had pre-existing swap and
+The recipe reserves a conservative 64 GiB runtime budget. The benchmark host had
+pre-existing swap and
 some swap-in activity, with no measured swap-out; hardware verification used the
 advanced `sparklab serve` command. Do not interpret these results as a zero-swap
 certification run.

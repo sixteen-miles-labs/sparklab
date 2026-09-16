@@ -56,9 +56,21 @@ def test_runtime_plan_never_counts_swap_as_capacity():
         runtime_memory={"total_bytes": 80 * GIB},
     )
     plan = plan_runtime(recipe, _snapshot(swap_used=GIB))
-    assert plan.ready is False
+    assert plan.ready is True
     assert plan.swap_used_bytes == GIB
-    assert any("swap is in use" in reason for reason in plan.reasons)
+    assert plan.usable_bytes == 88 * GIB
+    assert plan.warnings and "host swap is in use" in plan.warnings[0]
+    low_memory = plan_runtime(recipe, _snapshot(available=85 * GIB, swap_used=GIB))
+    assert not low_memory.ready
+    assert any("runtime memory shortfall" in reason for reason in low_memory.reasons)
+    unknown = plan_runtime(replace(recipe, runtime_memory=None), _snapshot(swap_used=GIB))
+    assert not unknown.ready
+    for status in ("certified", "preview"):
+        strict = plan_runtime(replace(recipe, status=status), _snapshot(swap_used=GIB))
+        assert not strict.ready
+        assert any("swap is in use" in reason for reason in strict.reasons)
+        assert not strict.warnings
+    assert not plan_runtime(recipe, _snapshot()).warnings
 
 
 def test_artifact_plan_accounts_for_source_prepare_and_safety_margin(tmp_path, monkeypatch):

@@ -72,8 +72,7 @@ Research-tier throughput. See the
 
 ## Experimental DFlash2-4
 
-Requires a [source installation](../install.md#method-2-install-from-source);
-the released 0.1.2 wheel does not include full GLM speculative decoding.
+Requires SparkLab 0.1.3 or newer with the `accel` dependencies.
 Acquire the separate original BF16 draft from
 [incoai/GLM-5.3-DFlash2](https://huggingface.co/incoai/GLM-5.3-DFlash2), pinned to
 `425aa615ce320caac34400208b30808c8f14f76c`. It adds approximately 4.58 GiB of

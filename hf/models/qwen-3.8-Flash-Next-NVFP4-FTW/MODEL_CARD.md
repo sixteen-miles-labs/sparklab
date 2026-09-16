@@ -55,15 +55,12 @@ not a claim of better model quality or higher steady-state decode throughput.
 ## Run with SparkLab on NVIDIA DGX Spark
 
 Requires ARM64 Linux / DGX OS, GB10/SM121, CUDA 13, and fast local NVMe.
-Use a current SparkLab source build with NVIDIA mixed-precision loading, scaled
-FP8 PLE, indexed MTP extraction, and accepted-prefix commits. **The previously
-released 0.1.2 wheel is not sufficient.**
+Use SparkLab 0.1.3 or newer with NVIDIA mixed-precision loading, scaled FP8 PLE,
+indexed MTP extraction, and accepted-prefix commits.
 
 ```bash
-git clone https://github.com/sixteen-miles-labs/sparklab.git
-cd sparklab
 uv venv && source .venv/bin/activate
-uv pip install -e ".[accel]"
+uv pip install "sparklab[accel]>=0.1.3"
 
 sparklab doctor --storage-path /path/to/models
 sparklab plan qwen3.8-flash-next --root /path/to/models --prepare

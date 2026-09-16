@@ -1,8 +1,6 @@
 # SparkLab quick start
 
-Install SparkLab first; see [install.md](install.md). The Qwen3.8-Flash-Next recipe
-used below requires a [source installation](install.md#method-2-install-from-source);
-the released 0.1.2 wheel lacks its current checkpoint support. The supported
+Install SparkLab 0.1.3 or newer first; see [install.md](install.md). The supported
 production target is one NVIDIA GB10.
 
 ## 1. Inspect the machine
