@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -56,6 +57,17 @@ def test_sparklab_is_the_primary_installer_and_service_identity():
     assert "SPARKLAB_INSTALL_ROOT" in installer
     assert "ExecStart=%h/.local/bin/sparklab daemon" in service
     assert "Description=SparkLab engine supervisor" in service
+
+
+def test_installer_defaults_to_the_current_release():
+    installer = _read("install.sh")
+    version = _read("python/sparklab/version.py")
+    product_match = re.search(r'^__version__ = "([^"]+)"', version, re.MULTILINE)
+    installer_match = re.search(r'^DEFAULT_RELEASE_VERSION="([^"]+)"', installer, re.MULTILINE)
+
+    assert product_match is not None
+    assert installer_match is not None
+    assert installer_match.group(1) == product_match.group(1)
 
 
 def test_only_the_sparklab_python_namespace_is_packaged():

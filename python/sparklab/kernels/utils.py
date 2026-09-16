@@ -4,6 +4,7 @@ import importlib
 import os
 import pathlib
 import re
+import warnings
 from typing import TYPE_CHECKING, List, NamedTuple, Tuple, TypeAlias, Union
 
 if TYPE_CHECKING:
@@ -16,6 +17,7 @@ DISABLE_KERNEL_CACHE_ENV = "SPARKLAB_DISABLE_KERNEL_CACHE"
 DISABLE_KERNEL_CACHE_VERSION_CHECK_ENV = "SPARKLAB_DISABLE_KERNEL_CACHE_VERSION_CHECK"
 DISABLE_JIT_ENV = "SPARKLAB_DISABLE_JIT"
 _TRUE_VALUES = {"1", "true", "yes", "on"}
+_WARNED_CACHE_ISSUES: set[str] = set()
 DEFAULT_INCLUDE = [str(KERNEL_PATH / "include")]
 DEFAULT_CFLAGS = ["-std=c++20", "-O3"]
 DEFAULT_CUDA_CFLAGS = ["-std=c++20", "-O3", "--expt-relaxed-constexpr"]
@@ -103,6 +105,24 @@ def _kernel_cache_version_ok(cache_version: str, runtime_version: str) -> bool:
     return not (cache_stamps and runtime_stamps and cache_stamps != runtime_stamps)
 
 
+def _ignore_incompatible_kernel_cache(message: str) -> None:
+    guidance = (
+        f"{message}. Install the sparklab-kernel-cache wheel from the same SparkLab "
+        "release"
+    )
+    if _env_enabled(DISABLE_JIT_ENV):
+        raise RuntimeError(
+            f"{guidance}; runtime JIT fallback is disabled by {DISABLE_JIT_ENV}"
+        )
+    if message not in _WARNED_CACHE_ISSUES:
+        _WARNED_CACHE_ISSUES.add(message)
+        warnings.warn(
+            f"{guidance}; ignoring the incompatible cache and using runtime JIT",
+            RuntimeWarning,
+            stacklevel=3,
+        )
+
+
 def _kernel_cache_dir() -> pathlib.Path | None:
     if _env_enabled(DISABLE_KERNEL_CACHE_ENV):
         return None
@@ -122,10 +142,11 @@ def _kernel_cache_dir() -> pathlib.Path | None:
     runtime_version = _sparklab_version()
     if not _env_enabled(DISABLE_KERNEL_CACHE_VERSION_CHECK_ENV):
         if not _kernel_cache_version_ok(package_version, runtime_version):
-            raise RuntimeError(
-                "sparklab-kernel-cache version "
-                f"{package_version!r} does not match sparklab version {runtime_version!r}"
+            _ignore_incompatible_kernel_cache(
+                f"sparklab-kernel-cache version {package_version!r} does not match "
+                f"sparklab version {runtime_version!r}"
             )
+            return None
         cache_cuda = re.search(r"\+cu(\d{2,})", package_version)
         if cache_cuda is not None:
             from sparklab.kernels._toolchain import torch_cuda_major
@@ -133,11 +154,11 @@ def _kernel_cache_dir() -> pathlib.Path | None:
             cache_major = int(cache_cuda.group(1)[:-1])
             torch_major = torch_cuda_major()
             if torch_major is not None and cache_major != torch_major:
-                raise RuntimeError(
+                _ignore_incompatible_kernel_cache(
                     f"sparklab-kernel-cache {package_version!r} was built for CUDA "
-                    f"{cache_major}.x but torch runs CUDA {torch_major}.x -- install "
-                    "the kernel-cache wheel matching this torch build"
+                    f"{cache_major}.x but torch runs CUDA {torch_major}.x"
                 )
+                return None
 
     get_jit_cache_dir = getattr(package, "get_jit_cache_dir", None)
     if get_jit_cache_dir is None:

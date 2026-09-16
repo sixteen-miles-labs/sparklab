@@ -7,19 +7,30 @@
 - Python >= 3.10, with [uv](https://docs.astral.sh/uv/) recommended (plain
   `pip` + `venv` works too)
 
-## Method 1: Install from PyPI
+## Method 1: Install the release
 
-Use this for the published release. SparkLab 0.1.3 includes the current model
-recipes, including Qwen3.8-Flash-Next checkpoint support. Use
-[Method 2](#method-2-install-from-source) when testing changes newer than the
-published release.
+For the complete 0.1.3 release with its matching prebuilt CUDA kernel cache, use
+the managed installer. It creates a fresh environment and verifies the runtime,
+kernel-cache, and CUDA versions before reporting success.
+The complete accelerated environment downloads several gigabytes of CUDA and
+FlashInfer packages on a cold cache.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sixteen-miles-labs/sparklab/v0.1.3/install.sh | bash
+```
+
+Use PyPI directly when a CUDA 13 toolkit with `nvcc` is available:
 
 ```bash
 uv venv && source .venv/bin/activate
 uv pip install "sparklab[accel]"
 ```
 
-CUDA kernels are JIT-compiled on first use, need a CUDA 13 toolkit with `nvcc` on PATH.
+CUDA kernels are JIT-compiled on first use and need a CUDA 13 toolkit with `nvcc`
+on `PATH`.
+If this environment contains a kernel-cache wheel from another SparkLab release,
+SparkLab ignores it with a warning and uses JIT compilation. Install the matching
+cache wheel or remove the stale package to avoid that compilation.
 
 The `sparklab` distribution and package metadata are maintained by SixteenMiles Labs.
 
