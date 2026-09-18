@@ -13,7 +13,7 @@ from typing import Any
 from .reader import gguf_architecture, load_gguf_metadata
 
 # GGUF architecture -> transformers GGUF tokenizer-converter key.
-_TOKENIZER_ARCH = {"gemma4": "gemma4_text"}
+_TOKENIZER_ARCH = {"gemma4": "gemma4_text", "qwen35": "qwen2"}
 
 
 def load_gguf_tokenizer(model_path: str):
@@ -31,8 +31,23 @@ def load_gguf_tokenizer(model_path: str):
     fast, _extra = convert_gguf_tokenizer(conv_arch, tok_dict)
 
     tokens = tok_dict["tokens"]
+    if arch == "qwen35":
+        # GGUF USER_DEFINED tokens (e.g. <think>) are atomic but not skipped
+        # during decoding. The generic Qwen2 converter adds only CONTROL tokens.
+        from tokenizers import AddedToken
 
-    def tok_for(id_key: str, default: str) -> str:
+        fast.add_special_tokens([
+            AddedToken(token, normalized=False, special=True)
+            for token, kind in zip(tokens, tok_dict["token_type"], strict=True)
+            if kind == 3
+        ])
+        fast.add_tokens([
+            AddedToken(token, normalized=False, special=False)
+            for token, kind in zip(tokens, tok_dict["token_type"], strict=True)
+            if kind == 4
+        ])
+
+    def tok_for(id_key: str, default: str | None) -> str | None:
         tid = meta.get(f"tokenizer.ggml.{id_key}")
         return tokens[int(tid)] if tid is not None and int(tid) < len(tokens) else default
 
@@ -43,7 +58,7 @@ def load_gguf_tokenizer(model_path: str):
         tokenizer_object=fast,
         bos_token=tok_for("bos_token_id", "<bos>"),
         eos_token=turn_end or tok_for("eos_token_id", "<eos>"),
-        unk_token=tok_for("unknown_token_id", "<unk>"),
+        unk_token=tok_for("unknown_token_id", None if arch == "qwen35" else "<unk>"),
         pad_token=tok_for("padding_token_id", "<pad>"),
     )
     chat_template = meta.get("tokenizer.chat_template")

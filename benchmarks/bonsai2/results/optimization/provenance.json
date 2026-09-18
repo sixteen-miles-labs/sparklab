@@ -1,0 +1,79 @@
+{
+  "date": "2026-09-18",
+  "source_base_commit": "92d03c0aa177c9f32352417dfbf83367f32f86f4",
+  "branch": "feat/bonsai2",
+  "implementation_file_sha256": {
+    "benchmarks/bonsai2/bench_gemv.py": "0b45f8eac73f6e7a20fbde1d30cffd05fdbd4bd225ea458d0a5e6e613bd9c6c2",
+    "benchmarks/bonsai2/capture_server.py": "35f55016b42c1063dd16850a6b3ba213a6461d58f367a19f24a55f14a70e93be",
+    "benchmarks/bonsai2/check_packing.py": "89b434f555be3f32413488c6e7bd38b882e02d465d12d07f7b19397d26afa649",
+    "benchmarks/bonsai2/compare.py": "ac9471425e32b66d2983e15deebb97fe5d3d68a42912665130e126cbf2592199",
+    "benchmarks/bonsai2/extra_checks.py": "923bb66744a5aa69608bf8072756c34771347a210c8f1e9386e9b4637b024101",
+    "benchmarks/bonsai2/latency.py": "8b97c8fa89c5a1948d16c7ede37541c5f66a899e254c1e3aa8b60136643d4f03",
+    "benchmarks/bonsai2/logit_check.py": "f6f3f2d0bf9eb1c36ec175c47fc45f8a1344924f323d4ff2b8a8241acbfbd7ca",
+    "benchmarks/bonsai2/profile_server.py": "d911f649bcdc2162e23edee5a1d97330ba892ee4ed55d6c9a95c72251d93457a",
+    "python/sparklab/acquire.py": "934a2be0581c499dffeb306a8c009f7edf9941a3672d4514ba48321d40941640",
+    "python/sparklab/backends/gguf_artifacts.py": "9a2860d2979565f1e8755a3a0194bc8419eb912d4843f17716e80584d06dd38b",
+    "python/sparklab/backends/native.py": "7bab926343b3cb053bd7ad8d230a1fcf07ae22ef55bf73de7c71210b38b03c25",
+    "python/sparklab/kernels/triton/bonsai.py": "c3ae83b94444e1aca37163061ef59cd33bcac4e9d1f1fe647d72ff7266293afc",
+    "python/sparklab/models/bonsai2/__init__.py": "166f8785e8c103eb20d57bdf9d1ba57298f020b872a75dd90e9e005160a97e1e",
+    "python/sparklab/models/bonsai2/model.py": "2f14b11e719eb965ed18d0c0f4cda25c05f6e5906d08726057c6598157106ccb",
+    "python/sparklab/models/bonsai2/vision.py": "7ae9a4901ea3ad422d8c1bdc351f05e3c15c7da645430470ca276c2c02b73bad",
+    "python/sparklab/models/bonsai2/weights.py": "55aa4f84794397926e40f0cb4bc80fde69e2950952025e55aa560051563515b7",
+    "python/sparklab/models/gguf/config.py": "b744695db3b81d82bc343febb71abb7358d10fa8df5da8856cfc99a7ff0adc38",
+    "python/sparklab/models/gguf/prism_reader.py": "6bbcb29f3eb09c1d6f9676889e71b11c1ae12e4dc305f8e7629fdfecda9829fd",
+    "python/sparklab/models/gguf/reader.py": "b742d737803f87850f6b96ed60e62de2e36a5298bf0ee0fa8921d8da01638fcf",
+    "python/sparklab/models/gguf/tokenizer.py": "044a08cbe5e66923429bab32fd8d1253a868b7b0d7f238cba1d51bc08f5b8090",
+    "python/sparklab/models/qwen3_5_moe/vision.py": "7319d720e091d5a3890c2c8d5a3e2adb57c2151f19a9d45bb9a2ae36cf821361",
+    "python/sparklab/models/register.py": "5348a52cfe0b5132e3b10eaa5411fff649996e48dfa6ffd09575efbe0c315d35",
+    "python/sparklab/multimodal/qwen.py": "e7b7722ff0d606a3d6be37248e5d6634a3f386c658a31ef8e515d5d52721dfcb",
+    "python/sparklab/recipes/bonsai2-27b.json": "e9fd7558962e24d2b634b9fb1c45865341a314e75fa59583602d8999cf63b450",
+    "python/sparklab/runtime/engine/engine.py": "a7adc611976656e5cf4586aae0b75fad28d82847d1ba81589385de42d791a9d1",
+    "python/sparklab/runtime/engine/graph.py": "8fc7010d1b2d6edc25edf437a7152722cf5112d8e873fb77d38330ca50742a12",
+    "tests/bonsai2/test_format.py": "3ff332866a59c8e28e65a9d450fafd09e018343463774ac3d80b4d63dedf0ecd",
+    "tests/bonsai2/test_kernels.py": "2d6b7efd52a53a143e3e523fb7a70a8733afcb872f56b6c403f4f7213c62e1f1",
+    "tests/runtime/engine/test_cache_budget.py": "1997df3e133902410ad3350668ae6bc472e69ecb2eba8d230d8c492a33ec4132",
+    "tests/runtime/engine/test_graph.py": "de40b15a4726a2886555f538154a68b8d047472829f3ad2df2cc587fa5b73a59",
+    "tests/sparklab/test_catalog.py": "6dd2ca5450b40e6b58cc1447d28cf50998078a3d9a3da43a385835749c3b90ad"
+  },
+  "model_revision": "6ed5e12bf84b7a63069882c91dd9e9218647d17b",
+  "prism_commit": "1a07bfa5f4144274c8f1c9963821dd9d9a51854b",
+  "default_changes": {
+    "ptq1_gemv": "16 output rows, 8 ternary groups, byte reuse, group-scale after inner reduction",
+    "cuda_graph_max_bs": 1,
+    "image_requests": "eager; rejected from text graphs before and after MRoPE metadata gathering"
+  },
+  "tests": {
+    "cpu_passed": 154,
+    "cpu_skipped": 1,
+    "skip_reason": "Optional local Gemma4 GGUF fixture absent",
+    "gpu_passed": 12,
+    "text_image_screen": "8/8",
+    "multi_image_tool_checks": "3/3",
+    "next_token_argmax_vs_prism": "5/5",
+    "full_reasoning_case": "AIME-25 problem 0 correct (70), native and Prism",
+    "wheel": "built; contents and imports checked",
+    "recipe": "normal pull/run, graph capture, queued image/text, and subsequent text passed"
+  },
+  "numerical_limits": "BF16 activations and FP32 accumulation retained. FP32 summation order changes; generated text differs. Small checks do not establish general quality parity.",
+  "timing": "Native benchmark ran alone with vLLM stopped. Prism comparison uses the preceding isolated run. One warmup and three measured trials/requests.",
+  "metrics": {
+    "short": {
+      "baseline_decode": 19.74882657060709,
+      "optimized_decode": 26.954231380302044,
+      "prism_decode": 33.420078533201455,
+      "gain_percent": 36.485230066372786,
+      "remaining_gap_percent": 19.34719317453387,
+      "baseline_ttft": 0.5736341041047126,
+      "optimized_ttft": 0.55399672803469
+    },
+    "long": {
+      "baseline_decode": 18.725326650387252,
+      "optimized_decode": 25.21968045259863,
+      "prism_decode": 30.417163876474063,
+      "gain_percent": 34.68219232414336,
+      "remaining_gap_percent": 17.08733741575226,
+      "baseline_ttft": 8.798273075837642,
+      "optimized_ttft": 9.029883275041357
+    }
+  }
+}

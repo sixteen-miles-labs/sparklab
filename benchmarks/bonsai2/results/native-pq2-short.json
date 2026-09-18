@@ -1,0 +1,51 @@
+{
+  "label": "native-pq2-vision",
+  "model": "bonsai2",
+  "tokens": 128,
+  "thinking": true,
+  "workloads": {
+    "aime": {
+      "prompt": "Find the sum of all integer bases $b>9$ for which $17_b$ is a divisor of $97_b.$\nPlease reason step by step, and put your final answer within \\boxed{}.",
+      "trials": [
+        {
+          "decode_tokens_per_second": 16.716378601340587,
+          "ttft_seconds": 0.5999149789568037,
+          "elapsed_seconds": 8.197549297008663,
+          "usage": {
+            "prompt_tokens": 96,
+            "completion_tokens": 128,
+            "total_tokens": 224
+          },
+          "output_sha256": "816735c0e34155ac857fd1f6a84a17885463514d3ec9b17851fb622b000ac0d5",
+          "text": "We need solve problem. Need reason step by step. Problem: Find sum of all integer bases b>9 for which 17_b is a divisor of 97_b.\n\nInterpretation: In base b, digits 1,7 and 9,7 valid? b>9 so digits 9 and 7 valid. 17_b = 1*b + 7 = b+7. 97_b = 9*b + 7 = 9b+7. Need b+7 divides 9b+7. b integer >9.\n\nCompute divisibility: 9b"
+        },
+        {
+          "decode_tokens_per_second": 16.691185391469304,
+          "ttft_seconds": 0.6001710609998554,
+          "elapsed_seconds": 8.209270207909867,
+          "usage": {
+            "prompt_tokens": 96,
+            "completion_tokens": 128,
+            "total_tokens": 224
+          },
+          "output_sha256": "816735c0e34155ac857fd1f6a84a17885463514d3ec9b17851fb622b000ac0d5",
+          "text": "We need solve problem. Need reason step by step. Problem: Find sum of all integer bases b>9 for which 17_b is a divisor of 97_b.\n\nInterpretation: In base b, digits 1,7 and 9,7 valid? b>9 so digits 9 and 7 valid. 17_b = 1*b + 7 = b+7. 97_b = 9*b + 7 = 9b+7. Need b+7 divides 9b+7. b integer >9.\n\nCompute divisibility: 9b"
+        },
+        {
+          "decode_tokens_per_second": 16.67584341197652,
+          "ttft_seconds": 0.5987371690571308,
+          "elapsed_seconds": 8.214892526855692,
+          "usage": {
+            "prompt_tokens": 96,
+            "completion_tokens": 128,
+            "total_tokens": 224
+          },
+          "output_sha256": "816735c0e34155ac857fd1f6a84a17885463514d3ec9b17851fb622b000ac0d5",
+          "text": "We need solve problem. Need reason step by step. Problem: Find sum of all integer bases b>9 for which 17_b is a divisor of 97_b.\n\nInterpretation: In base b, digits 1,7 and 9,7 valid? b>9 so digits 9 and 7 valid. 17_b = 1*b + 7 = b+7. 97_b = 9*b + 7 = 9b+7. Need b+7 divides 9b+7. b integer >9.\n\nCompute divisibility: 9b"
+        }
+      ],
+      "decode_tokens_per_second_median": 16.691185391469304,
+      "ttft_seconds_median": 0.5999149789568037
+    }
+  }
+}

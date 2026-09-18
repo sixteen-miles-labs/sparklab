@@ -1,0 +1,88 @@
+[
+  {
+    "case": "two_images",
+    "passed": true,
+    "response": {
+      "id": "chatcmpl-12",
+      "object": "chat.completion",
+      "created": 1789744892,
+      "model": "bonsai2",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "Red, Blue"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 518,
+        "completion_tokens": 4,
+        "total_tokens": 522
+      }
+    }
+  },
+  {
+    "case": "tool_call",
+    "passed": true,
+    "response": {
+      "id": "chatcmpl-13",
+      "object": "chat.completion",
+      "created": 1789744894,
+      "model": "bonsai2",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+              {
+                "id": "call_multiply_0_c9c9b731",
+                "index": 0,
+                "type": "function",
+                "function": {
+                  "name": "multiply",
+                  "arguments": "{\"a\": 6, \"b\": 7}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 296,
+        "completion_tokens": 36,
+        "total_tokens": 332
+      }
+    }
+  },
+  {
+    "case": "tool_roundtrip",
+    "passed": true,
+    "response": {
+      "id": "chatcmpl-14",
+      "object": "chat.completion",
+      "created": 1789744895,
+      "model": "bonsai2",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "42"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 363,
+        "completion_tokens": 3,
+        "total_tokens": 366
+      }
+    }
+  }
+]

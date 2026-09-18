@@ -1,0 +1,7 @@
+{
+  "wheel": "sparklab-0.1.3-cp311-cp311-linux_aarch64.whl",
+  "graph_default": 1,
+  "new_kernel_present": true,
+  "image_graph_guard_present": true,
+  "import_from_extracted_wheel": true
+}

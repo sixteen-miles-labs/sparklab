@@ -200,6 +200,9 @@ class GraphRunner:
         return (
             batch.is_decode
             and batch.size <= self.max_graph_bs
+            and batch.mm_positions is None
+            and batch.mm_embeds is None
+            and not any(req.mm_positions is not None for req in batch.reqs)
             and self.attn_backend.supports_cuda_graph(batch)
         )
 

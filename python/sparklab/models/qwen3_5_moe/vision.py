@@ -12,6 +12,9 @@ from safetensors import safe_open
 
 def load_vision(model, source, device):
     source = Path(source)
+    if source.suffix == ".gguf":
+        from sparklab.models.bonsai2.vision import load_vision as load_gguf_vision
+        return load_gguf_vision(model, source, device)
     config = json.loads((source / 'config.json').read_text())
     flash_next = config.get('model_type') == 'qwen4_exp'
     if flash_next:

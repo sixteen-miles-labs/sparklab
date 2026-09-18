@@ -176,6 +176,9 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
 Qwen3.6-35B-A3B, Qwen3.8-27B and Flash-Next support [experimental native image inputs](docs/models/qwen-vision.md)
 through the source-only `--vision-model` option. The table reports their separate text profiles.
 
+[Ternary Bonsai 2 27B](docs/models/bonsai2-27b.md) also has an experimental native
+GGUF recipe with text and still-image support, available from source.
+
 Status meanings:
 
 - **Experimental:** implementation or measured evidence exists, but required gates remain

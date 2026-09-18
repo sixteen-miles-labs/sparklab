@@ -12,7 +12,7 @@ from sparklab.runtime.engine.graph import (
 def test_cuda_graph_eligibility_delegates_to_attention_backend():
     runner = GraphRunner.__new__(GraphRunner)
     runner.max_graph_bs = 1
-    batch = SimpleNamespace(is_decode=True, size=1)
+    batch = SimpleNamespace(is_decode=True, size=1, mm_positions=None, mm_embeds=None, reqs=[])
 
     runner.attn_backend = SimpleNamespace(supports_cuda_graph=lambda _batch: True)
     assert runner.can_use_cuda_graph(batch)
@@ -28,6 +28,24 @@ def test_cuda_graph_eligibility_keeps_phase_and_batch_guards():
 
     assert not runner.can_use_cuda_graph(SimpleNamespace(is_decode=False, size=1))
     assert not runner.can_use_cuda_graph(SimpleNamespace(is_decode=True, size=2))
+
+
+def test_text_graph_rejects_image_requests_before_and_after_metadata_gather():
+    runner = GraphRunner.__new__(GraphRunner)
+    runner.max_graph_bs = 1
+    runner.attn_backend = SimpleNamespace(supports_cuda_graph=lambda _: True)
+    req = SimpleNamespace(mm_positions=None)
+    batch = SimpleNamespace(is_decode=True, size=1, mm_positions=None, mm_embeds=None, reqs=[req])
+    assert runner.can_use_cuda_graph(batch)
+    # pad_batch runs before the scheduler assembles batch-level MRoPE positions.
+    req.mm_positions = torch.zeros(3, 1)
+    assert not runner.can_use_cuda_graph(batch)
+    req.mm_positions = None
+    batch.mm_positions = torch.zeros(3, 1)
+    assert not runner.can_use_cuda_graph(batch)
+    batch.mm_positions = None
+    batch.mm_embeds = torch.zeros(1, 16)
+    assert not runner.can_use_cuda_graph(batch)
 
 
 def test_mtp_verification_capture_buffer_separates_rows_from_requests():

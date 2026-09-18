@@ -1,0 +1,36 @@
+{
+  "model": "Ternary-Bonsai-2-27B-PTQ1_0.gguf",
+  "reference_library": "/tmp/prism-llama-bonsai2/build/bin/libggml-base.so",
+  "checks": [
+    {
+      "tensor": "output.weight",
+      "type": 143,
+      "values": 81920,
+      "exact_bf16_match": true
+    },
+    {
+      "tensor": "token_embd.weight",
+      "type": 143,
+      "values": 81920,
+      "exact_bf16_match": true
+    },
+    {
+      "tensor": "blk.0.attn_qkv.weight",
+      "type": 143,
+      "values": 81920,
+      "exact_bf16_match": true
+    },
+    {
+      "tensor": "blk.0.ffn_gate.weight",
+      "type": 143,
+      "values": 81920,
+      "exact_bf16_match": true
+    },
+    {
+      "tensor": "blk.3.attn_q.weight",
+      "type": 143,
+      "values": 81920,
+      "exact_bf16_match": true
+    }
+  ]
+}

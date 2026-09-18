@@ -1,0 +1,279 @@
+[
+  {
+    "label": "prism-load",
+    "command": [
+      "/tmp/prism-llama-bonsai2/build/bin/llama-server",
+      "-m",
+      "/tmp/bonsai2-models/Ternary-Bonsai-2-27B-PTQ1_0.gguf",
+      "--mmproj",
+      "/tmp/bonsai2-models/Ternary-Bonsai-2-27B-mmproj-Q8_0.gguf",
+      "-ngl",
+      "99",
+      "-fa",
+      "on",
+      "-c",
+      "12288",
+      "-np",
+      "1",
+      "--port",
+      "8092",
+      "--host",
+      "127.0.0.1",
+      "--reasoning",
+      "off",
+      "--no-cache-prompt",
+      "--cache-ram",
+      "0"
+    ]
+  },
+  {
+    "label": "prism-ptq1-vllm-resident-short",
+    "command": [
+      "/path/to/sparklab/.venv/bin/python",
+      "benchmarks/bench_single_stream.py",
+      "--base-url",
+      "http://127.0.0.1:8092",
+      "--model",
+      "bonsai2",
+      "--tokens",
+      "128",
+      "--trials",
+      "3",
+      "--workloads",
+      "aime",
+      "--thinking",
+      "--label",
+      "prism-ptq1-vllm-resident-short",
+      "--output",
+      "/tmp/sparklab-bonsai2/benchmarks/bonsai2/results/isolation/prism-ptq1-vllm-resident-short.json"
+    ]
+  },
+  {
+    "label": "native-load",
+    "command": [
+      "/path/to/sparklab/.venv/bin/python",
+      "-m",
+      "sparklab",
+      "serve",
+      "--model",
+      "/tmp/bonsai2-models/Ternary-Bonsai-2-27B-PTQ1_0.gguf",
+      "--vision-model",
+      "/tmp/bonsai2-models/Ternary-Bonsai-2-27B-mmproj-Q8_0.gguf",
+      "--served-model-name",
+      "bonsai2",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "8093",
+      "--attention-backend",
+      "triton",
+      "--cuda-graph-max-bs",
+      "0",
+      "--max-running-requests",
+      "1",
+      "--max-seq-len-override",
+      "12288",
+      "--num-tokens",
+      "12288",
+      "--max-prefill-length",
+      "2048",
+      "--cache-type",
+      "naive"
+    ]
+  },
+  {
+    "label": "native-ptq1-vllm-resident-short",
+    "command": [
+      "/path/to/sparklab/.venv/bin/python",
+      "benchmarks/bench_single_stream.py",
+      "--base-url",
+      "http://127.0.0.1:8093",
+      "--model",
+      "bonsai2",
+      "--tokens",
+      "128",
+      "--trials",
+      "3",
+      "--workloads",
+      "aime",
+      "--thinking",
+      "--label",
+      "native-ptq1-vllm-resident-short",
+      "--output",
+      "/tmp/sparklab-bonsai2/benchmarks/bonsai2/results/isolation/native-ptq1-vllm-resident-short.json"
+    ]
+  },
+  {
+    "label": "stop-vllm",
+    "command": [
+      "docker",
+      "stop",
+      "--time",
+      "30",
+      "4a033a4e89d4"
+    ]
+  },
+  {
+    "label": "gpu-after-vllm-stop",
+    "command": [
+      "nvidia-smi"
+    ]
+  },
+  {
+    "label": "native-ptq1-isolated-short",
+    "command": [
+      "/path/to/sparklab/.venv/bin/python",
+      "benchmarks/bench_single_stream.py",
+      "--base-url",
+      "http://127.0.0.1:8093",
+      "--model",
+      "bonsai2",
+      "--tokens",
+      "128",
+      "--trials",
+      "3",
+      "--workloads",
+      "aime",
+      "--thinking",
+      "--label",
+      "native-ptq1-isolated-short",
+      "--output",
+      "/tmp/sparklab-bonsai2/benchmarks/bonsai2/results/isolation/native-ptq1-isolated-short.json"
+    ]
+  },
+  {
+    "label": "native-ptq1-isolated-long",
+    "command": [
+      "/path/to/sparklab/.venv/bin/python",
+      "benchmarks/bonsai2/latency.py",
+      "--url",
+      "http://127.0.0.1:8093",
+      "--label",
+      "native-ptq1-isolated-long",
+      "--dataset",
+      "/path/to/sparklab/results/qwen27-shipping-20260909/measured.jsonl",
+      "--warmup",
+      "/path/to/sparklab/results/qwen27-shipping-20260909/warmup.jsonl",
+      "--warmups",
+      "1",
+      "--limit",
+      "3",
+      "--output",
+      "/tmp/sparklab-bonsai2/benchmarks/bonsai2/results/isolation/native-ptq1-isolated-long.json"
+    ]
+  },
+  {
+    "label": "prism-ptq1_0-llama-bench",
+    "command": [
+      "/tmp/prism-llama-bonsai2/build/bin/llama-bench",
+      "-m",
+      "/tmp/bonsai2-models/Ternary-Bonsai-2-27B-PTQ1_0.gguf",
+      "-ngl",
+      "99",
+      "-fa",
+      "on",
+      "-p",
+      "512",
+      "-n",
+      "128",
+      "-d",
+      "0",
+      "-r",
+      "5",
+      "-o",
+      "json"
+    ]
+  },
+  {
+    "label": "prism-pq2_0-llama-bench",
+    "command": [
+      "/tmp/prism-llama-bonsai2/build/bin/llama-bench",
+      "-m",
+      "/tmp/bonsai2-models/Ternary-Bonsai-2-27B-PQ2_0.gguf",
+      "-ngl",
+      "99",
+      "-fa",
+      "on",
+      "-p",
+      "512",
+      "-n",
+      "128",
+      "-d",
+      "0",
+      "-r",
+      "5",
+      "-o",
+      "json"
+    ]
+  },
+  {
+    "label": "prism-load",
+    "command": [
+      "/tmp/prism-llama-bonsai2/build/bin/llama-server",
+      "-m",
+      "/tmp/bonsai2-models/Ternary-Bonsai-2-27B-PTQ1_0.gguf",
+      "--mmproj",
+      "/tmp/bonsai2-models/Ternary-Bonsai-2-27B-mmproj-Q8_0.gguf",
+      "-ngl",
+      "99",
+      "-fa",
+      "on",
+      "-c",
+      "12288",
+      "-np",
+      "1",
+      "--port",
+      "8092",
+      "--host",
+      "127.0.0.1",
+      "--reasoning",
+      "off",
+      "--no-cache-prompt",
+      "--cache-ram",
+      "0"
+    ]
+  },
+  {
+    "label": "prism-ptq1-isolated-short",
+    "command": [
+      "/path/to/sparklab/.venv/bin/python",
+      "benchmarks/bench_single_stream.py",
+      "--base-url",
+      "http://127.0.0.1:8092",
+      "--model",
+      "bonsai2",
+      "--tokens",
+      "128",
+      "--trials",
+      "3",
+      "--workloads",
+      "aime",
+      "--thinking",
+      "--label",
+      "prism-ptq1-isolated-short",
+      "--output",
+      "/tmp/sparklab-bonsai2/benchmarks/bonsai2/results/isolation/prism-ptq1-isolated-short.json"
+    ]
+  },
+  {
+    "label": "prism-ptq1-isolated-long",
+    "command": [
+      "/path/to/sparklab/.venv/bin/python",
+      "benchmarks/bonsai2/latency.py",
+      "--url",
+      "http://127.0.0.1:8092",
+      "--label",
+      "prism-ptq1-isolated-long",
+      "--dataset",
+      "/path/to/sparklab/results/qwen27-shipping-20260909/measured.jsonl",
+      "--warmup",
+      "/path/to/sparklab/results/qwen27-shipping-20260909/warmup.jsonl",
+      "--warmups",
+      "1",
+      "--limit",
+      "3",
+      "--output",
+      "/tmp/sparklab-bonsai2/benchmarks/bonsai2/results/isolation/prism-ptq1-isolated-long.json"
+    ]
+  }
+]

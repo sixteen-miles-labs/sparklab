@@ -588,6 +588,25 @@ def test_adjust_config_allows_override_at_rope_table_boundary():
     _adjust_config(_generic_rotary_cfg(max_position=1024, override=1024))  # must not raise
 
 
+@pytest.mark.parametrize("architecture, expected", [
+    ("Qwen3_5BonsaiForCausalLM", 1),
+    ("Qwen3_5MoEForCausalLM", 0),
+])
+def test_vision_text_graph_opt_in_is_scoped_to_bonsai(architecture, expected):
+    from sparklab.runtime.engine.engine import _adjust_config
+
+    cfg = _generic_rotary_cfg(max_position=1024, override=1024)
+    cfg.model_config.architectures = [architecture]
+    cfg.vision_model = "projector.gguf"
+    cfg.tp_info = SimpleNamespace(size=1)
+    cfg.cuda_graph_bs = None
+    cfg.cuda_graph_max_bs = 1
+    _adjust_config(cfg)
+    assert cfg.cuda_graph_max_bs == expected
+    assert cfg.max_running_req == 1
+    assert cfg.speculative_tokens == 0
+
+
 def test_adjust_config_rope_gate_exempts_dsv4():
     # DSV4 sizes its own rope table from the resolved max_seq_len (_adjust_dsv4_config),
     # so the generic gate must not fire even when the override dwarfs max_position.

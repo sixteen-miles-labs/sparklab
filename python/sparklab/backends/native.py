@@ -94,7 +94,7 @@ _SUPPORTED_FORMATS = (
     "ftw-ds-fp4",
     "gguf",
 )
-_SUPPORTED_QUANTIZATIONS = ("bf16", "fp8", "nvfp4", "mxfp4", "ds-fp4")
+_SUPPORTED_QUANTIZATIONS = ("ternary", "bf16", "fp8", "nvfp4", "mxfp4", "ds-fp4")
 
 
 def _compile_options(options: Mapping[str, Any]) -> tuple[str, ...]:
@@ -207,10 +207,20 @@ class NativeBackend(RuntimeBackend):
         unknown = set(deployment.backend_options) - set(_OPTION_ORDER) - {
             "convert_expert_quantization",
             "convert_kda_quantization",
+            "gguf_file",
+            "vision_file",
             "container",
         }
         if unknown:
             raise BackendError(f"unknown native backend options: {sorted(unknown)}")
+        if deployment.runtime_format == "gguf":
+            from .gguf_artifacts import filenames
+
+            filenames(deployment)
+            if deployment.source_format != "gguf" or deployment.backend_options.get("container"):
+                raise BackendError("GGUF recipes require native GGUF source artifacts")
+        elif any(k in deployment.backend_options for k in ("gguf_file", "vision_file")):
+            raise BackendError("GGUF file selection requires runtime_format=gguf")
         convert_quant = deployment.backend_options.get("convert_expert_quantization")
         if convert_quant not in {None, "nvfp4"}:
             raise BackendError(
@@ -247,6 +257,14 @@ class NativeBackend(RuntimeBackend):
         return migrated
 
     def accepts_artifact(self, path: Path, deployment: DeploymentConfig) -> bool:
+        if deployment.runtime_format == "gguf":
+            from .gguf_artifacts import validate
+
+            try:
+                validate(path, deployment)
+                return True
+            except BackendError:
+                return False
         if not path.is_dir() or not (path / "config.json").is_file():
             return False
         config = container.settings(deployment)
@@ -262,6 +280,12 @@ class NativeBackend(RuntimeBackend):
         self, path: Path, deployment: DeploymentConfig
     ) -> ArtifactValidation:
         self.validate_deployment(deployment)
+        if deployment.runtime_format == "gguf":
+            from .gguf_artifacts import validate
+
+            return ArtifactValidation(
+                format="gguf", fingerprint=None, details=validate(path, deployment)
+            )
         config = container.settings(deployment)
         if config is not None and not container.accepts(path, config):
             raise BackendError("artifact does not match the container recipe configuration/layout; prepare the separate Marlin artifact")
@@ -331,6 +355,15 @@ class NativeBackend(RuntimeBackend):
             "--served-model-name",
             request.model,
         ]
+        if deployment.runtime_format == "gguf":
+            from .gguf_artifacts import filenames
+
+            selected = filenames(deployment)
+            arguments[1] = str(request.checkpoint / selected["gguf_file"])
+            if "vision_file" in selected:
+                arguments.extend([
+                    "--vision-model", str(request.checkpoint / selected["vision_file"])
+                ])
         arguments.extend(_compile_options(deployment.backend_options))
         arguments.extend(request.extra_args)
         return BackendLaunchPlan(
