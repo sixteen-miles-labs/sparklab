@@ -1,0 +1,68 @@
+{
+  "label": "native-ptq1-final",
+  "concurrency": 1,
+  "output_tokens": 256,
+  "temperature": 0,
+  "thinking": true,
+  "ignore_eos": true,
+  "dataset_sha256": "293c1a311471f5c79e1c4b36b3e8133e57fe360285c1496e4d3b4b32083fd1b2",
+  "warmup_sha256": "04196c5c5b2f15996671830892149bf6d75bfae0a6847c326d1c4dad22072c7b",
+  "corpus_requests": 30,
+  "measured_requests": 3,
+  "warmups": [
+    {
+      "decode_tokens_per_second": 25.140486445530446,
+      "ttft_seconds": 9.09048091294244,
+      "elapsed_seconds": 19.23379093594849,
+      "usage": {
+        "prompt_tokens": 8942,
+        "completion_tokens": 256,
+        "total_tokens": 9198
+      },
+      "output_sha256": "5759f15c96400ad2d04f44d2137cbc84405eef4e9840646b241954bfe7709961",
+      "question_id": "345fd2fa444645f4a9bac25cae69ce3c"
+    }
+  ],
+  "trials": [
+    {
+      "decode_tokens_per_second": 25.21968045259863,
+      "ttft_seconds": 8.682552204933017,
+      "elapsed_seconds": 18.79400867782533,
+      "usage": {
+        "prompt_tokens": 8383,
+        "completion_tokens": 256,
+        "total_tokens": 8639
+      },
+      "output_sha256": "c195288e48bff11c6ad04476298b2f9c01cbc12e14736c28954c76fce2ca2d24",
+      "question_id": "353eda4a459e4c1a8bc03e81fd6e4a57"
+    },
+    {
+      "decode_tokens_per_second": 25.12654629599194,
+      "ttft_seconds": 9.04737392696552,
+      "elapsed_seconds": 19.19630561582744,
+      "usage": {
+        "prompt_tokens": 8835,
+        "completion_tokens": 256,
+        "total_tokens": 9091
+      },
+      "output_sha256": "49a62db3f646647da1e1e86c8b336f8d5c3e3308ff77e306a388c1a4fdad2ad9",
+      "question_id": "dd22ff9fa10d4651a1438535c95801dc"
+    },
+    {
+      "decode_tokens_per_second": 25.228091104349676,
+      "ttft_seconds": 9.029883275041357,
+      "elapsed_seconds": 19.13848864310421,
+      "usage": {
+        "prompt_tokens": 8207,
+        "completion_tokens": 256,
+        "total_tokens": 8463
+      },
+      "output_sha256": "5c232aef1024642053775204df710f803f565e6ea2e5d2040a858c180eb64639",
+      "question_id": "8c2543d25dad4cc1b3f28bb0727a79e0"
+    }
+  ],
+  "metrics": {
+    "decode_tokens_per_second_median": 25.21968045259863,
+    "ttft_seconds_median": 9.029883275041357
+  }
+}

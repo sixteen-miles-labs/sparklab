@@ -1,0 +1,49 @@
+{
+  "schema_version": "2.0",
+  "recipe_version": "0.1.0",
+  "slug": "bonsai2-27b",
+  "name": "Ternary Bonsai 2 27B",
+  "model": "prism-ml/Ternary-Bonsai-2-27B-gguf",
+  "parameters": "27B dense",
+  "revision": "6ed5e12bf84b7a63069882c91dd9e9218647d17b",
+  "source_bytes": 6575895904,
+  "prepared_bytes": 0,
+  "minimum_free_bytes": 8575895904,
+  "intended_tier": "fast",
+  "status": "experimental",
+  "implementation": "available",
+  "portfolio_role": "fallback",
+  "profile": "experimental",
+  "runtime_memory": {
+    "total_bytes": 21474836480
+  },
+  "description": "Experimental native packed ternary Qwen decoder with the shipped Q8 image projector.",
+  "deployment": {
+    "backend": "native",
+    "backend_api": "1.0",
+    "source_format": "gguf",
+    "runtime_format": "gguf",
+    "quantization": "ternary",
+    "execution_policy": "resident",
+    "backend_options": {
+      "gguf_file": "Ternary-Bonsai-2-27B-PTQ1_0.gguf",
+      "vision_file": "Ternary-Bonsai-2-27B-mmproj-Q8_0.gguf",
+      "attention_backend": "triton",
+      "cuda_graph_max_bs": 1,
+      "cache_type": "naive",
+      "max_running_req": 1,
+      "max_seq_len_override": 12288,
+      "num_tokens": 12288,
+      "max_prefill_length": 2048,
+      "speculative_tokens": 0
+    }
+  },
+  "limitations": [
+    "Experimental text and still-image support; TP=1 and one active request.",
+    "Text weights remain packed; the Q8 vision projector is expanded to BF16 at load.",
+    "Image prompts must fit the 2048-token single-prefill budget.",
+    "262K context, video, speculative decoding and general quality parity are not qualified.",
+    "Text decode uses CUDA graphs; image requests keep the eager MRoPE path."
+  ],
+  "evidence": []
+}

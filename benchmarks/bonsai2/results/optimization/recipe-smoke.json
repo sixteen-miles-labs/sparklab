@@ -1,0 +1,70 @@
+{
+  "passed": true,
+  "graph_size": 1,
+  "entrypoint": "sparklab run bonsai2-27b",
+  "queued_image_and_text": [
+    {
+      "id": "chatcmpl-0",
+      "object": "chat.completion",
+      "created": 1789746019,
+      "model": "prism-ml/Ternary-Bonsai-2-27B-gguf",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "SPARK 427"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 271,
+        "completion_tokens": 7,
+        "total_tokens": 278
+      }
+    },
+    {
+      "id": "chatcmpl-1",
+      "object": "chat.completion",
+      "created": 1789746019,
+      "model": "prism-ml/Ternary-Bonsai-2-27B-gguf",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "391"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 28,
+        "completion_tokens": 4,
+        "total_tokens": 32
+      }
+    }
+  ],
+  "text_after_image": {
+    "id": "chatcmpl-2",
+    "object": "chat.completion",
+    "created": 1789746020,
+    "model": "prism-ml/Ternary-Bonsai-2-27B-gguf",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "Paris"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 25,
+      "completion_tokens": 2,
+      "total_tokens": 27
+    }
+  }
+}

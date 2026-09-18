@@ -1,0 +1,3258 @@
+[
+  {
+    "time": 1789743902.281525,
+    "phase": "prism-load",
+    "pswpin": 4231444,
+    "pswpout": 10202368,
+    "available_kib": 80447796,
+    "swap_free_kib": 5156832
+  },
+  {
+    "time": 1789743903.2819166,
+    "phase": "prism-load",
+    "pswpin": 4231444,
+    "pswpout": 10202368,
+    "available_kib": 79966452,
+    "swap_free_kib": 5156832
+  },
+  {
+    "time": 1789743904.2827024,
+    "phase": "prism-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 72314468,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743905.2831652,
+    "phase": "prism-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 71735668,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743906.2842696,
+    "phase": "prism-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 71355320,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743907.285229,
+    "phase": "prism-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 71355944,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743908.2862444,
+    "phase": "prism-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 71356036,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743909.2871897,
+    "phase": "prism-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 71353504,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743910.2878368,
+    "phase": "prism-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 71350536,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743911.2887397,
+    "phase": "prism-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 71352664,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743912.2894907,
+    "phase": "prism-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 71352304,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743913.2902796,
+    "phase": "prism-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 71358616,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743914.2910569,
+    "phase": "prism-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 71360600,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743915.291945,
+    "phase": "prism-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 71365948,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743916.2927098,
+    "phase": "prism-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 71365980,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743917.2935965,
+    "phase": "prism-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 71368540,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743918.2945216,
+    "phase": "prism-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 71374228,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743919.2951853,
+    "phase": "prism-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 71365884,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743920.2960799,
+    "phase": "prism-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 71365164,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743921.2970755,
+    "phase": "prism-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 71367260,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743922.2975566,
+    "phase": "prism-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 80032092,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743923.2978857,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 79992536,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743924.2982216,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 79889916,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743925.2986813,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 79779820,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743926.2991512,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 79673828,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743927.2996097,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 79539640,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743928.3000553,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 79421340,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743929.3005037,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 79318812,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743930.3009584,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 79211152,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743931.3014936,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 78801256,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743932.3018177,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 78450680,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743933.3021824,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 78161452,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743934.302514,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 77925604,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743935.302975,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 77660192,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743936.3034544,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 77376044,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743937.3038807,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 77127384,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743938.304351,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 76841368,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743939.3048341,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 76462404,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743940.3053257,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 73887260,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743941.3057134,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 68960240,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743942.3060858,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 66329336,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743943.3075266,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65835868,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743944.3080277,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65486412,
+    "swap_free_kib": 5156840
+  },
+  {
+    "time": 1789743945.308377,
+    "phase": "native-load",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65371744,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743946.309177,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65083112,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743947.3100882,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65074868,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743948.310552,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65080928,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743949.3113694,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65089792,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743950.311862,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65106080,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743951.3127112,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65113648,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743952.3132894,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65120900,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743953.314247,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65129304,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743954.3147914,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65143968,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743955.3154364,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65162120,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743956.3160558,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65181912,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743957.3166883,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65199092,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743958.317165,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65212452,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743959.3180501,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65217172,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743960.3190827,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65235404,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743961.3202474,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65248420,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743962.321244,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65264960,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743963.321925,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65291960,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743964.3225746,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65308592,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743965.3231666,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65318840,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743966.3236153,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65334588,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743967.3244011,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65352332,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743968.3253481,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65368748,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743969.3258357,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65377316,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743970.3266754,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65393824,
+    "swap_free_kib": 5156848
+  },
+  {
+    "time": 1789743971.3276865,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65412164,
+    "swap_free_kib": 5156852
+  },
+  {
+    "time": 1789743972.3286595,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231446,
+    "pswpout": 10202368,
+    "available_kib": 65428588,
+    "swap_free_kib": 5156852
+  },
+  {
+    "time": 1789743973.3296423,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231448,
+    "pswpout": 10202368,
+    "available_kib": 65449132,
+    "swap_free_kib": 5156856
+  },
+  {
+    "time": 1789743974.3302498,
+    "phase": "native-ptq1-vllm-resident-short",
+    "pswpin": 4231448,
+    "pswpout": 10202368,
+    "available_kib": 65466004,
+    "swap_free_kib": 5156856
+  },
+  {
+    "time": 1789743975.3307142,
+    "phase": "stop-vllm",
+    "pswpin": 4235733,
+    "pswpout": 10202368,
+    "available_kib": 66685976,
+    "swap_free_kib": 11431484
+  },
+  {
+    "time": 1789743976.331163,
+    "phase": "stop-vllm",
+    "pswpin": 4240675,
+    "pswpout": 10202368,
+    "available_kib": 107697176,
+    "swap_free_kib": 11432168
+  },
+  {
+    "time": 1789743977.3316016,
+    "phase": "stop-vllm",
+    "pswpin": 4247007,
+    "pswpout": 10202368,
+    "available_kib": 107678368,
+    "swap_free_kib": 11432820
+  },
+  {
+    "time": 1789743978.3319407,
+    "phase": "stop-vllm",
+    "pswpin": 4254412,
+    "pswpout": 10202368,
+    "available_kib": 107656888,
+    "swap_free_kib": 11434752
+  },
+  {
+    "time": 1789743979.3327856,
+    "phase": "stop-vllm",
+    "pswpin": 4259665,
+    "pswpout": 10202368,
+    "available_kib": 107652516,
+    "swap_free_kib": 11436796
+  },
+  {
+    "time": 1789743980.3336358,
+    "phase": "stop-vllm",
+    "pswpin": 4265067,
+    "pswpout": 10202368,
+    "available_kib": 107642624,
+    "swap_free_kib": 11437900
+  },
+  {
+    "time": 1789743981.3345225,
+    "phase": "stop-vllm",
+    "pswpin": 4269730,
+    "pswpout": 10202368,
+    "available_kib": 107632196,
+    "swap_free_kib": 11438520
+  },
+  {
+    "time": 1789743982.3350077,
+    "phase": "stop-vllm",
+    "pswpin": 4275481,
+    "pswpout": 10202368,
+    "available_kib": 107619096,
+    "swap_free_kib": 11439376
+  },
+  {
+    "time": 1789743983.3354712,
+    "phase": "stop-vllm",
+    "pswpin": 4281709,
+    "pswpout": 10202368,
+    "available_kib": 107593480,
+    "swap_free_kib": 11440032
+  },
+  {
+    "time": 1789743984.335932,
+    "phase": "stop-vllm",
+    "pswpin": 4287200,
+    "pswpout": 10202368,
+    "available_kib": 107578372,
+    "swap_free_kib": 11441460
+  },
+  {
+    "time": 1789743985.3369553,
+    "phase": "stop-vllm",
+    "pswpin": 4301024,
+    "pswpout": 10202368,
+    "available_kib": 107572044,
+    "swap_free_kib": 11480440
+  },
+  {
+    "time": 1789743986.3378603,
+    "phase": "stop-vllm",
+    "pswpin": 4310855,
+    "pswpout": 10202368,
+    "available_kib": 107554288,
+    "swap_free_kib": 11495336
+  },
+  {
+    "time": 1789743987.338196,
+    "phase": "stop-vllm",
+    "pswpin": 4326970,
+    "pswpout": 10202368,
+    "available_kib": 107537088,
+    "swap_free_kib": 11527024
+  },
+  {
+    "time": 1789743988.3386548,
+    "phase": "stop-vllm",
+    "pswpin": 4336565,
+    "pswpout": 10202368,
+    "available_kib": 107541232,
+    "swap_free_kib": 11557620
+  },
+  {
+    "time": 1789743989.3390183,
+    "phase": "stop-vllm",
+    "pswpin": 4347081,
+    "pswpout": 10202368,
+    "available_kib": 107498932,
+    "swap_free_kib": 11557716
+  },
+  {
+    "time": 1789743990.3394847,
+    "phase": "stop-vllm",
+    "pswpin": 4354416,
+    "pswpout": 10202368,
+    "available_kib": 107475384,
+    "swap_free_kib": 11559156
+  },
+  {
+    "time": 1789743991.339937,
+    "phase": "stop-vllm",
+    "pswpin": 4361602,
+    "pswpout": 10202368,
+    "available_kib": 107438844,
+    "swap_free_kib": 11559932
+  },
+  {
+    "time": 1789743992.340388,
+    "phase": "stop-vllm",
+    "pswpin": 4368922,
+    "pswpout": 10202368,
+    "available_kib": 107420324,
+    "swap_free_kib": 11560852
+  },
+  {
+    "time": 1789743993.3407202,
+    "phase": "stop-vllm",
+    "pswpin": 4376258,
+    "pswpout": 10202368,
+    "available_kib": 107387444,
+    "swap_free_kib": 11561972
+  },
+  {
+    "time": 1789743994.341618,
+    "phase": "stop-vllm",
+    "pswpin": 4382155,
+    "pswpout": 10202368,
+    "available_kib": 107383932,
+    "swap_free_kib": 11562372
+  },
+  {
+    "time": 1789743995.3419604,
+    "phase": "stop-vllm",
+    "pswpin": 4389663,
+    "pswpout": 10202368,
+    "available_kib": 107352352,
+    "swap_free_kib": 11570848
+  },
+  {
+    "time": 1789743996.3424206,
+    "phase": "stop-vllm",
+    "pswpin": 4394005,
+    "pswpout": 10202368,
+    "available_kib": 107345508,
+    "swap_free_kib": 11570848
+  },
+  {
+    "time": 1789743997.3428295,
+    "phase": "stop-vllm",
+    "pswpin": 4397012,
+    "pswpout": 10202368,
+    "available_kib": 107333760,
+    "swap_free_kib": 11570848
+  },
+  {
+    "time": 1789743998.3431902,
+    "phase": "stop-vllm",
+    "pswpin": 4400547,
+    "pswpout": 10202368,
+    "available_kib": 107307528,
+    "swap_free_kib": 11570848
+  },
+  {
+    "time": 1789743999.3436582,
+    "phase": "stop-vllm",
+    "pswpin": 4404027,
+    "pswpout": 10202368,
+    "available_kib": 107298448,
+    "swap_free_kib": 11570848
+  },
+  {
+    "time": 1789744000.344598,
+    "phase": "stop-vllm",
+    "pswpin": 4407356,
+    "pswpout": 10202368,
+    "available_kib": 107282192,
+    "swap_free_kib": 11572200
+  },
+  {
+    "time": 1789744001.3455555,
+    "phase": "stop-vllm",
+    "pswpin": 4412192,
+    "pswpout": 10202368,
+    "available_kib": 107276768,
+    "swap_free_kib": 11572664
+  },
+  {
+    "time": 1789744002.34605,
+    "phase": "stop-vllm",
+    "pswpin": 4420466,
+    "pswpout": 10202368,
+    "available_kib": 107241108,
+    "swap_free_kib": 11572976
+  },
+  {
+    "time": 1789744003.3468053,
+    "phase": "stop-vllm",
+    "pswpin": 4425581,
+    "pswpout": 10202368,
+    "available_kib": 107228144,
+    "swap_free_kib": 11576216
+  },
+  {
+    "time": 1789744004.3472574,
+    "phase": "stop-vllm",
+    "pswpin": 4428659,
+    "pswpout": 10202368,
+    "available_kib": 107567028,
+    "swap_free_kib": 12130720
+  },
+  {
+    "time": 1789744005.348369,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429588,
+    "pswpout": 10202368,
+    "available_kib": 108193428,
+    "swap_free_kib": 13726704
+  },
+  {
+    "time": 1789744006.3489695,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429588,
+    "pswpout": 10202368,
+    "available_kib": 108194656,
+    "swap_free_kib": 13726704
+  },
+  {
+    "time": 1789744007.349594,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429588,
+    "pswpout": 10202368,
+    "available_kib": 108196540,
+    "swap_free_kib": 13726704
+  },
+  {
+    "time": 1789744008.350171,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429588,
+    "pswpout": 10202368,
+    "available_kib": 108201344,
+    "swap_free_kib": 13726704
+  },
+  {
+    "time": 1789744009.3509057,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429588,
+    "pswpout": 10202368,
+    "available_kib": 108204152,
+    "swap_free_kib": 13726704
+  },
+  {
+    "time": 1789744010.351504,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429588,
+    "pswpout": 10202368,
+    "available_kib": 108201948,
+    "swap_free_kib": 13726704
+  },
+  {
+    "time": 1789744011.3520486,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429588,
+    "pswpout": 10202368,
+    "available_kib": 108203756,
+    "swap_free_kib": 13726704
+  },
+  {
+    "time": 1789744012.3531864,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429588,
+    "pswpout": 10202368,
+    "available_kib": 108203536,
+    "swap_free_kib": 13726704
+  },
+  {
+    "time": 1789744013.3537807,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429588,
+    "pswpout": 10202368,
+    "available_kib": 108203648,
+    "swap_free_kib": 13726704
+  },
+  {
+    "time": 1789744014.354398,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429588,
+    "pswpout": 10202368,
+    "available_kib": 108206808,
+    "swap_free_kib": 13726704
+  },
+  {
+    "time": 1789744015.3549201,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429588,
+    "pswpout": 10202368,
+    "available_kib": 108206736,
+    "swap_free_kib": 13726704
+  },
+  {
+    "time": 1789744016.3554742,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429592,
+    "pswpout": 10202368,
+    "available_kib": 108212748,
+    "swap_free_kib": 13726716
+  },
+  {
+    "time": 1789744017.3559895,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429592,
+    "pswpout": 10202368,
+    "available_kib": 108212420,
+    "swap_free_kib": 13726716
+  },
+  {
+    "time": 1789744018.3566499,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429592,
+    "pswpout": 10202368,
+    "available_kib": 108212504,
+    "swap_free_kib": 13726716
+  },
+  {
+    "time": 1789744019.35788,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429592,
+    "pswpout": 10202368,
+    "available_kib": 108216156,
+    "swap_free_kib": 13726716
+  },
+  {
+    "time": 1789744020.3584921,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429592,
+    "pswpout": 10202368,
+    "available_kib": 108215936,
+    "swap_free_kib": 13726716
+  },
+  {
+    "time": 1789744021.3590257,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429592,
+    "pswpout": 10202368,
+    "available_kib": 108216664,
+    "swap_free_kib": 13726716
+  },
+  {
+    "time": 1789744022.359688,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429592,
+    "pswpout": 10202368,
+    "available_kib": 108214736,
+    "swap_free_kib": 13726716
+  },
+  {
+    "time": 1789744023.360265,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429592,
+    "pswpout": 10202368,
+    "available_kib": 108215824,
+    "swap_free_kib": 13726716
+  },
+  {
+    "time": 1789744024.3608823,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429592,
+    "pswpout": 10202368,
+    "available_kib": 108213924,
+    "swap_free_kib": 13726716
+  },
+  {
+    "time": 1789744025.3614311,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429592,
+    "pswpout": 10202368,
+    "available_kib": 108213624,
+    "swap_free_kib": 13726716
+  },
+  {
+    "time": 1789744026.3628118,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429592,
+    "pswpout": 10202368,
+    "available_kib": 108211436,
+    "swap_free_kib": 13726716
+  },
+  {
+    "time": 1789744027.3636959,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429592,
+    "pswpout": 10202368,
+    "available_kib": 108211444,
+    "swap_free_kib": 13726716
+  },
+  {
+    "time": 1789744028.3643093,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429592,
+    "pswpout": 10202368,
+    "available_kib": 108207004,
+    "swap_free_kib": 13726716
+  },
+  {
+    "time": 1789744029.3648977,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429592,
+    "pswpout": 10202368,
+    "available_kib": 108207784,
+    "swap_free_kib": 13726716
+  },
+  {
+    "time": 1789744030.3654845,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429592,
+    "pswpout": 10202368,
+    "available_kib": 108209032,
+    "swap_free_kib": 13726716
+  },
+  {
+    "time": 1789744031.3661427,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429592,
+    "pswpout": 10202368,
+    "available_kib": 108209716,
+    "swap_free_kib": 13726716
+  },
+  {
+    "time": 1789744032.3666928,
+    "phase": "native-ptq1-isolated-short",
+    "pswpin": 4429592,
+    "pswpout": 10202368,
+    "available_kib": 108209968,
+    "swap_free_kib": 13726716
+  },
+  {
+    "time": 1789744033.3674276,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429592,
+    "pswpout": 10202368,
+    "available_kib": 108028012,
+    "swap_free_kib": 13726716
+  },
+  {
+    "time": 1789744034.3686216,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429592,
+    "pswpout": 10202368,
+    "available_kib": 108028156,
+    "swap_free_kib": 13726716
+  },
+  {
+    "time": 1789744035.3692734,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429593,
+    "pswpout": 10202368,
+    "available_kib": 108022544,
+    "swap_free_kib": 13726720
+  },
+  {
+    "time": 1789744036.3698533,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429593,
+    "pswpout": 10202368,
+    "available_kib": 108022544,
+    "swap_free_kib": 13726720
+  },
+  {
+    "time": 1789744037.3705268,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429593,
+    "pswpout": 10202368,
+    "available_kib": 108026492,
+    "swap_free_kib": 13726720
+  },
+  {
+    "time": 1789744038.3714967,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429593,
+    "pswpout": 10202368,
+    "available_kib": 108026492,
+    "swap_free_kib": 13726720
+  },
+  {
+    "time": 1789744039.372173,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429593,
+    "pswpout": 10202368,
+    "available_kib": 108025748,
+    "swap_free_kib": 13726720
+  },
+  {
+    "time": 1789744040.3727937,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429593,
+    "pswpout": 10202368,
+    "available_kib": 108025748,
+    "swap_free_kib": 13726720
+  },
+  {
+    "time": 1789744041.3737764,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429593,
+    "pswpout": 10202368,
+    "available_kib": 108027420,
+    "swap_free_kib": 13726720
+  },
+  {
+    "time": 1789744042.3744402,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429593,
+    "pswpout": 10202368,
+    "available_kib": 108027436,
+    "swap_free_kib": 13726720
+  },
+  {
+    "time": 1789744043.3750012,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429593,
+    "pswpout": 10202368,
+    "available_kib": 108026180,
+    "swap_free_kib": 13726720
+  },
+  {
+    "time": 1789744044.3755538,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429593,
+    "pswpout": 10202368,
+    "available_kib": 108026180,
+    "swap_free_kib": 13726720
+  },
+  {
+    "time": 1789744045.376148,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429596,
+    "pswpout": 10202368,
+    "available_kib": 108027256,
+    "swap_free_kib": 13726728
+  },
+  {
+    "time": 1789744046.3766994,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429596,
+    "pswpout": 10202368,
+    "available_kib": 108027508,
+    "swap_free_kib": 13726728
+  },
+  {
+    "time": 1789744047.3778052,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429599,
+    "pswpout": 10202368,
+    "available_kib": 108018968,
+    "swap_free_kib": 13726740
+  },
+  {
+    "time": 1789744048.378381,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429599,
+    "pswpout": 10202368,
+    "available_kib": 108018212,
+    "swap_free_kib": 13726740
+  },
+  {
+    "time": 1789744049.3789775,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429599,
+    "pswpout": 10202368,
+    "available_kib": 108016880,
+    "swap_free_kib": 13726744
+  },
+  {
+    "time": 1789744050.3795967,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429599,
+    "pswpout": 10202368,
+    "available_kib": 108016112,
+    "swap_free_kib": 13726744
+  },
+  {
+    "time": 1789744051.3801634,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429602,
+    "pswpout": 10202368,
+    "available_kib": 108015668,
+    "swap_free_kib": 13726752
+  },
+  {
+    "time": 1789744052.3807962,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429602,
+    "pswpout": 10202368,
+    "available_kib": 108016036,
+    "swap_free_kib": 13726752
+  },
+  {
+    "time": 1789744053.3814182,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429602,
+    "pswpout": 10202368,
+    "available_kib": 108024024,
+    "swap_free_kib": 13726752
+  },
+  {
+    "time": 1789744054.3819454,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429602,
+    "pswpout": 10202368,
+    "available_kib": 108023980,
+    "swap_free_kib": 13726752
+  },
+  {
+    "time": 1789744055.3828468,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429602,
+    "pswpout": 10202368,
+    "available_kib": 108017512,
+    "swap_free_kib": 13726752
+  },
+  {
+    "time": 1789744056.3834186,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429602,
+    "pswpout": 10202368,
+    "available_kib": 108017180,
+    "swap_free_kib": 13726752
+  },
+  {
+    "time": 1789744057.3843179,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429605,
+    "pswpout": 10202368,
+    "available_kib": 108017180,
+    "swap_free_kib": 13726756
+  },
+  {
+    "time": 1789744058.3849597,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429605,
+    "pswpout": 10202368,
+    "available_kib": 108017220,
+    "swap_free_kib": 13726756
+  },
+  {
+    "time": 1789744059.3856013,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429605,
+    "pswpout": 10202368,
+    "available_kib": 108017664,
+    "swap_free_kib": 13726764
+  },
+  {
+    "time": 1789744060.386688,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429605,
+    "pswpout": 10202368,
+    "available_kib": 108017636,
+    "swap_free_kib": 13726764
+  },
+  {
+    "time": 1789744061.3875053,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429608,
+    "pswpout": 10202368,
+    "available_kib": 108020212,
+    "swap_free_kib": 13726780
+  },
+  {
+    "time": 1789744062.3882105,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429608,
+    "pswpout": 10202368,
+    "available_kib": 108019060,
+    "swap_free_kib": 13726780
+  },
+  {
+    "time": 1789744063.3891802,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429608,
+    "pswpout": 10202368,
+    "available_kib": 108020372,
+    "swap_free_kib": 13726780
+  },
+  {
+    "time": 1789744064.390086,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429608,
+    "pswpout": 10202368,
+    "available_kib": 108016324,
+    "swap_free_kib": 13726780
+  },
+  {
+    "time": 1789744065.390726,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429608,
+    "pswpout": 10202368,
+    "available_kib": 108016796,
+    "swap_free_kib": 13726780
+  },
+  {
+    "time": 1789744066.3913715,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429608,
+    "pswpout": 10202368,
+    "available_kib": 108020452,
+    "swap_free_kib": 13726780
+  },
+  {
+    "time": 1789744067.3919117,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429608,
+    "pswpout": 10202368,
+    "available_kib": 108019304,
+    "swap_free_kib": 13726780
+  },
+  {
+    "time": 1789744068.3928995,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429608,
+    "pswpout": 10202368,
+    "available_kib": 108021908,
+    "swap_free_kib": 13726780
+  },
+  {
+    "time": 1789744069.3934324,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429608,
+    "pswpout": 10202368,
+    "available_kib": 108021908,
+    "swap_free_kib": 13726780
+  },
+  {
+    "time": 1789744070.3940017,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429611,
+    "pswpout": 10202368,
+    "available_kib": 108020848,
+    "swap_free_kib": 13726788
+  },
+  {
+    "time": 1789744071.394567,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429611,
+    "pswpout": 10202368,
+    "available_kib": 108022336,
+    "swap_free_kib": 13726788
+  },
+  {
+    "time": 1789744072.3951313,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429613,
+    "pswpout": 10202368,
+    "available_kib": 108024860,
+    "swap_free_kib": 13726800
+  },
+  {
+    "time": 1789744073.3957064,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429613,
+    "pswpout": 10202368,
+    "available_kib": 108024856,
+    "swap_free_kib": 13726800
+  },
+  {
+    "time": 1789744074.3963773,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429615,
+    "pswpout": 10202368,
+    "available_kib": 108021640,
+    "swap_free_kib": 13726808
+  },
+  {
+    "time": 1789744075.3971145,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429615,
+    "pswpout": 10202368,
+    "available_kib": 108021640,
+    "swap_free_kib": 13726808
+  },
+  {
+    "time": 1789744076.3977365,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429615,
+    "pswpout": 10202368,
+    "available_kib": 108021060,
+    "swap_free_kib": 13726816
+  },
+  {
+    "time": 1789744077.398656,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429615,
+    "pswpout": 10202368,
+    "available_kib": 108021412,
+    "swap_free_kib": 13726816
+  },
+  {
+    "time": 1789744078.399838,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429615,
+    "pswpout": 10202368,
+    "available_kib": 108024964,
+    "swap_free_kib": 13726820
+  },
+  {
+    "time": 1789744079.4004588,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429615,
+    "pswpout": 10202368,
+    "available_kib": 108024012,
+    "swap_free_kib": 13726820
+  },
+  {
+    "time": 1789744080.401638,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429619,
+    "pswpout": 10202368,
+    "available_kib": 108021796,
+    "swap_free_kib": 13726828
+  },
+  {
+    "time": 1789744081.402251,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429619,
+    "pswpout": 10202368,
+    "available_kib": 108021740,
+    "swap_free_kib": 13726828
+  },
+  {
+    "time": 1789744082.4034152,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429619,
+    "pswpout": 10202368,
+    "available_kib": 108024440,
+    "swap_free_kib": 13726832
+  },
+  {
+    "time": 1789744083.4040723,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429619,
+    "pswpout": 10202368,
+    "available_kib": 108024376,
+    "swap_free_kib": 13726832
+  },
+  {
+    "time": 1789744084.4046915,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429622,
+    "pswpout": 10202368,
+    "available_kib": 108021604,
+    "swap_free_kib": 13726848
+  },
+  {
+    "time": 1789744085.4052806,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429622,
+    "pswpout": 10202368,
+    "available_kib": 108021760,
+    "swap_free_kib": 13726848
+  },
+  {
+    "time": 1789744086.4062665,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429624,
+    "pswpout": 10202368,
+    "available_kib": 108027532,
+    "swap_free_kib": 13726856
+  },
+  {
+    "time": 1789744087.4067407,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429624,
+    "pswpout": 10202368,
+    "available_kib": 108027988,
+    "swap_free_kib": 13726856
+  },
+  {
+    "time": 1789744088.4074128,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429624,
+    "pswpout": 10202368,
+    "available_kib": 108022504,
+    "swap_free_kib": 13726856
+  },
+  {
+    "time": 1789744089.408051,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429629,
+    "pswpout": 10202368,
+    "available_kib": 108022204,
+    "swap_free_kib": 13726876
+  },
+  {
+    "time": 1789744090.4086423,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429629,
+    "pswpout": 10202368,
+    "available_kib": 108024292,
+    "swap_free_kib": 13726876
+  },
+  {
+    "time": 1789744091.409237,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429629,
+    "pswpout": 10202368,
+    "available_kib": 108024584,
+    "swap_free_kib": 13726876
+  },
+  {
+    "time": 1789744092.4099028,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429629,
+    "pswpout": 10202368,
+    "available_kib": 108022364,
+    "swap_free_kib": 13726876
+  },
+  {
+    "time": 1789744093.4107504,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429629,
+    "pswpout": 10202368,
+    "available_kib": 108023944,
+    "swap_free_kib": 13726876
+  },
+  {
+    "time": 1789744094.4116442,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429629,
+    "pswpout": 10202368,
+    "available_kib": 108023944,
+    "swap_free_kib": 13726876
+  },
+  {
+    "time": 1789744095.4125745,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429629,
+    "pswpout": 10202368,
+    "available_kib": 108022500,
+    "swap_free_kib": 13726876
+  },
+  {
+    "time": 1789744096.4134774,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429629,
+    "pswpout": 10202368,
+    "available_kib": 108023312,
+    "swap_free_kib": 13726876
+  },
+  {
+    "time": 1789744097.414171,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429629,
+    "pswpout": 10202368,
+    "available_kib": 108023316,
+    "swap_free_kib": 13726876
+  },
+  {
+    "time": 1789744098.4150217,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429629,
+    "pswpout": 10202368,
+    "available_kib": 108023112,
+    "swap_free_kib": 13726876
+  },
+  {
+    "time": 1789744099.4156349,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429631,
+    "pswpout": 10202368,
+    "available_kib": 108015940,
+    "swap_free_kib": 13726880
+  },
+  {
+    "time": 1789744100.4162233,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429631,
+    "pswpout": 10202368,
+    "available_kib": 108015940,
+    "swap_free_kib": 13726880
+  },
+  {
+    "time": 1789744101.4175348,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429631,
+    "pswpout": 10202368,
+    "available_kib": 108012060,
+    "swap_free_kib": 13726880
+  },
+  {
+    "time": 1789744102.418119,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429631,
+    "pswpout": 10202368,
+    "available_kib": 108012668,
+    "swap_free_kib": 13726880
+  },
+  {
+    "time": 1789744103.4188359,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429631,
+    "pswpout": 10202368,
+    "available_kib": 108014540,
+    "swap_free_kib": 13726880
+  },
+  {
+    "time": 1789744104.4192712,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429631,
+    "pswpout": 10202368,
+    "available_kib": 108015012,
+    "swap_free_kib": 13726884
+  },
+  {
+    "time": 1789744105.4200604,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429631,
+    "pswpout": 10202368,
+    "available_kib": 108016984,
+    "swap_free_kib": 13726884
+  },
+  {
+    "time": 1789744106.4205353,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429631,
+    "pswpout": 10202368,
+    "available_kib": 108017088,
+    "swap_free_kib": 13726884
+  },
+  {
+    "time": 1789744107.4215548,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429631,
+    "pswpout": 10202368,
+    "available_kib": 108014480,
+    "swap_free_kib": 13726884
+  },
+  {
+    "time": 1789744108.4221673,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429631,
+    "pswpout": 10202368,
+    "available_kib": 108015636,
+    "swap_free_kib": 13726884
+  },
+  {
+    "time": 1789744109.4227862,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429631,
+    "pswpout": 10202368,
+    "available_kib": 108019144,
+    "swap_free_kib": 13726884
+  },
+  {
+    "time": 1789744110.4233322,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429631,
+    "pswpout": 10202368,
+    "available_kib": 108018924,
+    "swap_free_kib": 13726884
+  },
+  {
+    "time": 1789744111.423918,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429631,
+    "pswpout": 10202368,
+    "available_kib": 108020700,
+    "swap_free_kib": 13726884
+  },
+  {
+    "time": 1789744112.4245384,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429631,
+    "pswpout": 10202368,
+    "available_kib": 108020624,
+    "swap_free_kib": 13726884
+  },
+  {
+    "time": 1789744113.4252055,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429631,
+    "pswpout": 10202368,
+    "available_kib": 108027980,
+    "swap_free_kib": 13726884
+  },
+  {
+    "time": 1789744114.4257364,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429631,
+    "pswpout": 10202368,
+    "available_kib": 108027888,
+    "swap_free_kib": 13726884
+  },
+  {
+    "time": 1789744115.426352,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429631,
+    "pswpout": 10202368,
+    "available_kib": 108024780,
+    "swap_free_kib": 13726884
+  },
+  {
+    "time": 1789744116.4269392,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429631,
+    "pswpout": 10202368,
+    "available_kib": 108024516,
+    "swap_free_kib": 13726884
+  },
+  {
+    "time": 1789744117.4275851,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 108024080,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744118.4284682,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 108024216,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744119.4294653,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 108023816,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744120.4304533,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 108024020,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744121.4311936,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 108021916,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744122.4320738,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 108021624,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744123.4325001,
+    "phase": "native-ptq1-isolated-long",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 113174844,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744124.4336195,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 116400084,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744125.4340763,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115414792,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744126.434967,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115362424,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744127.4362516,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115362332,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744128.4372725,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115359304,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744129.4381332,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115359304,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744130.4389565,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115358176,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744131.4400706,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115358176,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744132.4412155,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115823624,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744133.4421797,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115823588,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744134.4433637,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115825232,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744135.4443161,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115825232,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744136.4455419,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115824980,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744137.4467275,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115824980,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744138.447738,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115823704,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744139.4485905,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115824508,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744140.449477,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115825408,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744141.4502776,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115825800,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744142.4511883,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115829068,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744143.4525702,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115828996,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744144.4534428,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115833004,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744145.4548492,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115833572,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744146.4557164,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115830464,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744147.456884,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115830056,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744148.4577043,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115830948,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744149.4584482,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115830568,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744150.4593751,
+    "phase": "prism-ptq1_0-llama-bench",
+    "pswpin": 4429634,
+    "pswpout": 10202368,
+    "available_kib": 115827908,
+    "swap_free_kib": 13726896
+  },
+  {
+    "time": 1789744151.4598825,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4429641,
+    "pswpout": 10202368,
+    "available_kib": 122298332,
+    "swap_free_kib": 13726900
+  },
+  {
+    "time": 1789744152.460747,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4429641,
+    "pswpout": 10202368,
+    "available_kib": 114248392,
+    "swap_free_kib": 13726900
+  },
+  {
+    "time": 1789744153.4613278,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4429641,
+    "pswpout": 10202368,
+    "available_kib": 113734880,
+    "swap_free_kib": 13726900
+  },
+  {
+    "time": 1789744154.4619436,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4430243,
+    "pswpout": 10202368,
+    "available_kib": 113738244,
+    "swap_free_kib": 13727896
+  },
+  {
+    "time": 1789744155.4625633,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4440455,
+    "pswpout": 10202368,
+    "available_kib": 113710232,
+    "swap_free_kib": 13740480
+  },
+  {
+    "time": 1789744156.463401,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114552572,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744157.4643269,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114543544,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744158.4649966,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114543044,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744159.4657145,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114538276,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744160.4666843,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114539120,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744161.4676285,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114544856,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744162.468338,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114545524,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744163.4692075,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114548916,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744164.4700356,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114548916,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744165.471049,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114547828,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744166.471852,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114545812,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744167.472755,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114547588,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744168.4734488,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114547188,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744169.474377,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114544488,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744170.4751909,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114544548,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744171.4760904,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114543364,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744172.476783,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114542856,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744173.477651,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114541520,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744174.4783406,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114541680,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744175.4793227,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114541036,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744176.480153,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114541272,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744177.4810135,
+    "phase": "prism-pq2_0-llama-bench",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 114545148,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744178.4815233,
+    "phase": "prism-load",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 122294356,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744179.482025,
+    "phase": "prism-load",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 116311260,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744180.4834242,
+    "phase": "prism-ptq1-isolated-short",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113793968,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744181.4845536,
+    "phase": "prism-ptq1-isolated-short",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113606748,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744182.4855583,
+    "phase": "prism-ptq1-isolated-short",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113606500,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744183.4864085,
+    "phase": "prism-ptq1-isolated-short",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113601104,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744184.4869606,
+    "phase": "prism-ptq1-isolated-short",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113602264,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744185.487736,
+    "phase": "prism-ptq1-isolated-short",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113603832,
+    "swap_free_kib": 13751836
+  },
+  {
+    "time": 1789744186.4890864,
+    "phase": "prism-ptq1-isolated-short",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113605692,
+    "swap_free_kib": 13751840
+  },
+  {
+    "time": 1789744187.4899302,
+    "phase": "prism-ptq1-isolated-short",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113607780,
+    "swap_free_kib": 13751840
+  },
+  {
+    "time": 1789744188.4909806,
+    "phase": "prism-ptq1-isolated-short",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113607028,
+    "swap_free_kib": 13751840
+  },
+  {
+    "time": 1789744189.4921668,
+    "phase": "prism-ptq1-isolated-short",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113605916,
+    "swap_free_kib": 13751840
+  },
+  {
+    "time": 1789744190.4929838,
+    "phase": "prism-ptq1-isolated-short",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113607596,
+    "swap_free_kib": 13751840
+  },
+  {
+    "time": 1789744191.4938493,
+    "phase": "prism-ptq1-isolated-short",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113608120,
+    "swap_free_kib": 13751840
+  },
+  {
+    "time": 1789744192.4947271,
+    "phase": "prism-ptq1-isolated-short",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113609628,
+    "swap_free_kib": 13751840
+  },
+  {
+    "time": 1789744193.49563,
+    "phase": "prism-ptq1-isolated-short",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113608252,
+    "swap_free_kib": 13751844
+  },
+  {
+    "time": 1789744194.4965072,
+    "phase": "prism-ptq1-isolated-short",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113606572,
+    "swap_free_kib": 13751844
+  },
+  {
+    "time": 1789744195.4973407,
+    "phase": "prism-ptq1-isolated-short",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113606572,
+    "swap_free_kib": 13751844
+  },
+  {
+    "time": 1789744196.4982274,
+    "phase": "prism-ptq1-isolated-short",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113614112,
+    "swap_free_kib": 13751844
+  },
+  {
+    "time": 1789744197.4987204,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113759372,
+    "swap_free_kib": 13751844
+  },
+  {
+    "time": 1789744198.4992526,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113754644,
+    "swap_free_kib": 13751844
+  },
+  {
+    "time": 1789744199.499757,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113755804,
+    "swap_free_kib": 13751844
+  },
+  {
+    "time": 1789744200.5002716,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113755132,
+    "swap_free_kib": 13751844
+  },
+  {
+    "time": 1789744201.5007653,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113755132,
+    "swap_free_kib": 13751844
+  },
+  {
+    "time": 1789744202.5012913,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443002,
+    "pswpout": 10202368,
+    "available_kib": 113754248,
+    "swap_free_kib": 13751844
+  },
+  {
+    "time": 1789744203.5023425,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113752060,
+    "swap_free_kib": 13751844
+  },
+  {
+    "time": 1789744204.5030332,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113749240,
+    "swap_free_kib": 13751844
+  },
+  {
+    "time": 1789744205.503739,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113749480,
+    "swap_free_kib": 13751844
+  },
+  {
+    "time": 1789744206.5044098,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113752064,
+    "swap_free_kib": 13751844
+  },
+  {
+    "time": 1789744207.5056143,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113752220,
+    "swap_free_kib": 13751844
+  },
+  {
+    "time": 1789744208.5068533,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113748208,
+    "swap_free_kib": 13751844
+  },
+  {
+    "time": 1789744209.5082486,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113749792,
+    "swap_free_kib": 13751844
+  },
+  {
+    "time": 1789744210.5089254,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113755648,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744211.5100427,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113757100,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744212.5108397,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113762676,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744213.5113513,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113766264,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744214.511938,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113766164,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744215.5131674,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113756344,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744216.5136662,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113606704,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744217.5150635,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113445580,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744218.5157678,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113445584,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744219.517038,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113446008,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744220.5182178,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113446008,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744221.5194745,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113452440,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744222.5206516,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113452440,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744223.5214517,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113451748,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744224.5224192,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113451004,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744225.523232,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113457392,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744226.5239835,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113762500,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744227.524793,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113763376,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744228.5253344,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113763376,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744229.5262175,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113764680,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744230.5270646,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113764372,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744231.528114,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113769728,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744232.529171,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113769568,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744233.5302403,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113767344,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744234.5310416,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113767044,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744235.5318863,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113766044,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744236.5329413,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113765684,
+    "swap_free_kib": 13752300
+  },
+  {
+    "time": 1789744237.5342438,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113766868,
+    "swap_free_kib": 13752304
+  },
+  {
+    "time": 1789744238.535261,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113767336,
+    "swap_free_kib": 13752304
+  },
+  {
+    "time": 1789744239.5361152,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113766472,
+    "swap_free_kib": 13752304
+  },
+  {
+    "time": 1789744240.536885,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113766744,
+    "swap_free_kib": 13752304
+  },
+  {
+    "time": 1789744241.5377324,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113763204,
+    "swap_free_kib": 13752304
+  },
+  {
+    "time": 1789744242.53875,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113762376,
+    "swap_free_kib": 13752304
+  },
+  {
+    "time": 1789744243.5400026,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113607392,
+    "swap_free_kib": 13752304
+  },
+  {
+    "time": 1789744244.540672,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113445948,
+    "swap_free_kib": 13752304
+  },
+  {
+    "time": 1789744245.5418608,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113444312,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744246.5425854,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113444148,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744247.5435288,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113446812,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744248.5446494,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113445816,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744249.5454109,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113445824,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744250.5463355,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113447500,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744251.5476465,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113450148,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744252.5488176,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113454184,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744253.5499337,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113765612,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744254.5508878,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113760964,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744255.5519385,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113761876,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744256.5525146,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113758208,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744257.5533555,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113758208,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744258.5539196,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113758344,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744259.5549762,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113758344,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744260.5562723,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113755680,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744261.556833,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113755472,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744262.557663,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113759024,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744263.5581582,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113759372,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744264.5587401,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113759372,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744265.5594988,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113759856,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744266.5603678,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113760584,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744267.560939,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113760332,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744268.5621686,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113761664,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744269.5632997,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113761616,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744270.564284,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113758952,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744271.5651305,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113758848,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744272.5661948,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113610552,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744273.567202,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113457740,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744274.5679364,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113462180,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744275.5689623,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113462244,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744276.5704465,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113459532,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744277.571206,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113459776,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744278.5727012,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113453560,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744279.5736346,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113452468,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744280.57458,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113452024,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744281.5756876,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113453340,
+    "swap_free_kib": 13752308
+  },
+  {
+    "time": 1789744282.5762203,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113757932,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744283.5774267,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113756756,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744284.5779033,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113756756,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744285.5785053,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113763544,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744286.579125,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113759440,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744287.5799105,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113750628,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744288.5809116,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113750628,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744289.5821629,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113759072,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744290.5828948,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113759072,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744291.5837264,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113758484,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744292.5846202,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113758236,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744293.585468,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113753064,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744294.5862336,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113752692,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744295.5872133,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113747808,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744296.5881927,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113747148,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744297.588862,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113752556,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744298.5898407,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113599800,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744299.590685,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113598884,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744300.5917976,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113437280,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744301.5927784,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113436864,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744302.5938995,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113436712,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744303.5949934,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113435112,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744304.5962532,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113435244,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744305.5976298,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113438352,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744306.5988111,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113438484,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744307.5996327,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113446224,
+    "swap_free_kib": 13752312
+  },
+  {
+    "time": 1789744308.60082,
+    "phase": "prism-ptq1-isolated-long",
+    "pswpin": 4443007,
+    "pswpout": 10202368,
+    "available_kib": 113446488,
+    "swap_free_kib": 13752312
+  }
+]

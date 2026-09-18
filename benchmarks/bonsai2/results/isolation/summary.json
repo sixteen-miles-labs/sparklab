@@ -1,0 +1,196 @@
+{
+  "date": "2026-09-18",
+  "hardware": "NVIDIA GB10 DGX Spark",
+  "model_revision": "6ed5e12bf84b7a63069882c91dd9e9218647d17b",
+  "reference_commit": "1a07bfa5f4144274c8f1c9963821dd9d9a51854b",
+  "short_before_after": [
+    {
+      "engine": "native",
+      "vllm_resident_tok_s": 19.729253833920644,
+      "isolated_tok_s": 19.74882657060709,
+      "change_percent": 0.09920667477445466,
+      "resident_ttft_s": 0.5734103261493146,
+      "isolated_ttft_s": 0.5736341041047126,
+      "identical_before_after_output": true
+    },
+    {
+      "engine": "prism",
+      "vllm_resident_tok_s": 34.46793263534334,
+      "isolated_tok_s": 33.420078533201455,
+      "change_percent": -3.040083991191911,
+      "resident_ttft_s": 0.4001283079851419,
+      "isolated_ttft_s": 0.40416177501901984,
+      "identical_before_after_output": true
+    }
+  ],
+  "long_comparison": [
+    {
+      "engine": "native",
+      "earlier_co_resident_tok_s": 18.953485114823224,
+      "isolated_tok_s": 18.725326650387252,
+      "earlier_ttft_s": 9.115642147837207,
+      "isolated_ttft_s": 8.798273075837642
+    },
+    {
+      "engine": "prism",
+      "earlier_co_resident_tok_s": 30.926956860879233,
+      "isolated_tok_s": 30.417163876474063,
+      "earlier_ttft_s": 19.19309158017859,
+      "isolated_ttft_s": 19.061794279841706
+    }
+  ],
+  "official_style_benchmarks": [
+    {
+      "packing": "ptq1_0",
+      "test": "pp512",
+      "tokens_per_second_mean": 451.532017,
+      "stddev": 2.884543,
+      "repetitions": 5
+    },
+    {
+      "packing": "ptq1_0",
+      "test": "tg128",
+      "tokens_per_second_mean": 34.021313,
+      "stddev": 0.049005,
+      "repetitions": 5
+    },
+    {
+      "packing": "pq2_0",
+      "test": "pp512",
+      "tokens_per_second_mean": 1019.996475,
+      "stddev": 14.616158,
+      "repetitions": 5
+    },
+    {
+      "packing": "pq2_0",
+      "test": "tg128",
+      "tokens_per_second_mean": 29.19309,
+      "stddev": 0.062688,
+      "repetitions": 5
+    }
+  ],
+  "memory_by_phase": [
+    {
+      "phase": "prism-load",
+      "segment": 0,
+      "samples": 4,
+      "swap_in_bytes": 8192,
+      "swap_out_bytes": 0,
+      "available_gib_min": 68.4124641418457,
+      "available_gib_max": 76.72099685668945
+    },
+    {
+      "phase": "prism-ptq1-vllm-resident-short",
+      "segment": 1,
+      "samples": 17,
+      "swap_in_bytes": 0,
+      "swap_out_bytes": 0,
+      "available_gib_min": 68.04517364501953,
+      "available_gib_max": 76.32455062866211
+    },
+    {
+      "phase": "native-load",
+      "segment": 2,
+      "samples": 23,
+      "swap_in_bytes": 0,
+      "swap_out_bytes": 0,
+      "available_gib_min": 62.343353271484375,
+      "available_gib_max": 76.28682708740234
+    },
+    {
+      "phase": "native-ptq1-vllm-resident-short",
+      "segment": 3,
+      "samples": 29,
+      "swap_in_bytes": 8192,
+      "swap_out_bytes": 0,
+      "available_gib_min": 62.06023025512695,
+      "available_gib_max": 62.43324661254883
+    },
+    {
+      "phase": "stop-vllm",
+      "segment": 4,
+      "samples": 30,
+      "swap_in_bytes": 790224896,
+      "swap_out_bytes": 0,
+      "available_gib_min": 63.596702575683594,
+      "available_gib_max": 102.7080307006836
+    },
+    {
+      "phase": "native-ptq1-isolated-short",
+      "segment": 5,
+      "samples": 28,
+      "swap_in_bytes": 16384,
+      "swap_out_bytes": 0,
+      "available_gib_min": 103.18129348754883,
+      "available_gib_max": 103.20345306396484
+    },
+    {
+      "phase": "native-ptq1-isolated-long",
+      "segment": 6,
+      "samples": 91,
+      "swap_in_bytes": 172032,
+      "swap_out_bytes": 0,
+      "available_gib_min": 103.00832748413086,
+      "available_gib_max": 107.93194198608398
+    },
+    {
+      "phase": "prism-ptq1_0-llama-bench",
+      "segment": 7,
+      "samples": 27,
+      "swap_in_bytes": 0,
+      "swap_out_bytes": 0,
+      "available_gib_min": 110.01412963867188,
+      "available_gib_max": 111.00777053833008
+    },
+    {
+      "phase": "prism-pq2_0-llama-bench",
+      "segment": 8,
+      "samples": 27,
+      "swap_in_bytes": 54726656,
+      "swap_out_bytes": 0,
+      "available_gib_min": 108.4425277709961,
+      "available_gib_max": 116.63277816772461
+    },
+    {
+      "phase": "prism-load",
+      "segment": 9,
+      "samples": 2,
+      "swap_in_bytes": 0,
+      "swap_out_bytes": 0,
+      "available_gib_min": 110.92306137084961,
+      "available_gib_max": 116.62898635864258
+    },
+    {
+      "phase": "prism-ptq1-isolated-short",
+      "segment": 10,
+      "samples": 17,
+      "swap_in_bytes": 0,
+      "swap_out_bytes": 0,
+      "available_gib_min": 108.33845520019531,
+      "available_gib_max": 108.52238464355469
+    },
+    {
+      "phase": "prism-ptq1-isolated-long",
+      "segment": 11,
+      "samples": 112,
+      "swap_in_bytes": 20480,
+      "swap_out_bytes": 0,
+      "available_gib_min": 108.1801528930664,
+      "available_gib_max": 108.499267578125
+    }
+  ],
+  "vllm_container": "4a033a4e89d4",
+  "vllm_final_state": "stopped",
+  "test_servers_final_state": "stopped",
+  "method": [
+    "Exactly one Bonsai backend resident at a time. VLLM resident baselines preceded docker stop.",
+    "Native short before/after kept the same server process; one warmup and three measured trials each.",
+    "Prism short used separate server instances with identical flags and a warmup each.",
+    "Both chat servers loaded Q8 vision, used 12288 context, and disabled prompt caching.",
+    "Long comparison reuses the previous three-record subset; earlier long runs also had the other Bonsai backend resident, so it is not a vLLM-only intervention.",
+    "llama-bench: five repetitions, depth 0, no vision, all layers on GPU, flash attention; default other flags.",
+    "Global swap counters sampled once per second. Per-phase deltas omit boundary intervals and cannot attribute activity to a process."
+  ],
+  "conclusion": "No observed decoding speed benefit from stopping idle vLLM. Native implementation gap remains.",
+  "source_files_changed_since_previous_provenance": []
+}

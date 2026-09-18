@@ -219,8 +219,8 @@ def acquire_recipe(
         raise AcquisitionError(f"{recipe.slug} is not pinned to an immutable revision")
     if from_source and not prepare:
         raise AcquisitionError("from_source requires prepare=True")
-    if prepare and recipe.deployment.runtime_format == "safetensors":
-        raise AcquisitionError(f"{recipe.slug} loads source safetensors directly; omit --prepare")
+    if prepare and recipe.deployment.runtime_format in {"safetensors", "gguf"}:
+        raise AcquisitionError(f"{recipe.slug} loads source weights directly; omit --prepare")
     use_prebuilt = prepare and not from_source and recipe.runtime_artifact is not None
     plan = plan_artifacts(
         recipe,
@@ -337,12 +337,20 @@ def acquire_recipe(
     else:
         source = source_path(recipe, root)
         source.mkdir(parents=True, exist_ok=True)
+        download_options = {}
+        if recipe.deployment.source_format == "gguf":
+            from sparklab.backends.gguf_artifacts import filenames
+
+            download_options["allow_patterns"] = [
+                *filenames(recipe.deployment).values(), "README.md", "LICENSE", "NOTICE.txt"
+            ]
         try:
             resolved = Path(
                 downloader(
                     repo_id=recipe.model,
                     revision=recipe.revision,
                     local_dir=str(source),
+                    **download_options,
                 )
             ).resolve()
         except Exception as exc:
@@ -350,12 +358,20 @@ def acquire_recipe(
                 f"cannot acquire source artifact "
                 f"{recipe.model}@{recipe.revision}: {exc}"
             ) from exc
-        config = resolved / "config.json"
-        if not config.is_file():
-            raise AcquisitionError(
-                f"pinned snapshot completed without config.json: {resolved}"
-            )
-        source_validation = validate_safetensors_snapshot(resolved)
+        if recipe.deployment.source_format == "gguf":
+            try:
+                source_validation = dict(
+                    backend.validate_artifact(resolved, recipe.deployment).details
+                )
+            except BackendError as exc:
+                raise AcquisitionError(str(exc)) from exc
+        else:
+            config = resolved / "config.json"
+            if not config.is_file():
+                raise AcquisitionError(
+                    f"pinned snapshot completed without config.json: {resolved}"
+                )
+            source_validation = validate_safetensors_snapshot(resolved)
         source_artifact = {
             "role": "source",
             "path": str(resolved),

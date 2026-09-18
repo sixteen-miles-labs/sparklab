@@ -17,9 +17,13 @@ def has_images(messages):
 class QwenImageProcessor:
     def __init__(self, source, tokenizer):
         from transformers import AutoImageProcessor
-        self.config = json.loads((Path(source) / 'config.json').read_text())
         self.tokenizer = tokenizer
-        self.processor = AutoImageProcessor.from_pretrained(source, local_files_only=True)
+        if Path(source).suffix == '.gguf':
+            from sparklab.models.bonsai2.vision import image_processor
+            self.config, self.processor = image_processor(source, tokenizer)
+        else:
+            self.config = json.loads((Path(source) / 'config.json').read_text())
+            self.processor = AutoImageProcessor.from_pretrained(source, local_files_only=True)
         self.processor.size = {'shortest_edge': 65536, 'longest_edge': 1048576}
 
     def prepare(self, messages, tools, kwargs):

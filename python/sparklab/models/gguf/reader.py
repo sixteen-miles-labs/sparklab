@@ -67,7 +67,7 @@ def write_metadata_gguf(source_gguf: str, dest_path: str) -> None:
     """
     import gguf
 
-    reader = gguf.GGUFReader(source_gguf)
+    reader = _reader(source_gguf)
     assert reader.tensors, f"{source_gguf}: no tensors to bound the KV section"
     # The first tensor-info record starts exactly where the KV section ends (GGUF places no
     # padding between KV and tensor infos; padding is only before the tensor *data*).
@@ -121,9 +121,9 @@ def _field_value(reader, name: str) -> Any:
 
 @functools.cache
 def _reader(model_path: str):
-    import gguf
+    from .prism_reader import PrismGGUFReader
 
-    return gguf.GGUFReader(model_path)
+    return PrismGGUFReader(model_path)
 
 
 @functools.cache
@@ -148,7 +148,10 @@ def iter_gguf_tensors(model_path: str) -> Iterator[GgufTensor]:
     for t in reader.tensors:
         ne = [int(s) for s in t.shape]  # ggml order, fastest dim first
         torch_shape = tuple(reversed(ne))
-        block, type_size = gguf.GGML_QUANT_SIZES[t.tensor_type]
+        from .prism_reader import PRISM_QUANT_SIZES
+        block, type_size = (PRISM_QUANT_SIZES[int(t.tensor_type)]
+                            if int(t.tensor_type) in PRISM_QUANT_SIZES
+                            else gguf.GGML_QUANT_SIZES[t.tensor_type])
         n_fast = ne[0]
         if n_fast % block != 0:
             raise ValueError(

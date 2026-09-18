@@ -1,0 +1,132 @@
+[
+  {
+    "case": "two_images",
+    "passed": true,
+    "response": {
+      "choices": [
+        {
+          "finish_reason": "stop",
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "Red, Blue"
+          }
+        }
+      ],
+      "created": 1789742617,
+      "model": "/tmp/bonsai2-models/Ternary-Bonsai-2-27B-PTQ1_0.gguf",
+      "system_fingerprint": "b1-1a07bfa",
+      "object": "chat.completion",
+      "usage": {
+        "completion_tokens": 4,
+        "prompt_tokens": 518,
+        "total_tokens": 522,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "id": "chatcmpl-8I1bwcjiGsNbMgPuqsKZlfxaFQGEZPBm",
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 518,
+        "prompt_ms": 1588.721,
+        "prompt_per_token_ms": 3.0670289575289575,
+        "prompt_per_second": 326.04843770555055,
+        "predicted_n": 4,
+        "predicted_ms": 97.172,
+        "predicted_per_token_ms": 32.39066666666667,
+        "predicted_per_second": 30.873091013872312
+      }
+    }
+  },
+  {
+    "case": "tool_call",
+    "passed": true,
+    "response": {
+      "choices": [
+        {
+          "finish_reason": "tool_calls",
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+              {
+                "type": "function",
+                "function": {
+                  "name": "multiply",
+                  "arguments": "{\"a\":6,\"b\":7}"
+                },
+                "id": "dZrkgTFGLYFUCPE6mKo9mplj1F4LhdDy"
+              }
+            ]
+          }
+        }
+      ],
+      "created": 1789742619,
+      "model": "/tmp/bonsai2-models/Ternary-Bonsai-2-27B-PTQ1_0.gguf",
+      "system_fingerprint": "b1-1a07bfa",
+      "object": "chat.completion",
+      "usage": {
+        "completion_tokens": 36,
+        "prompt_tokens": 296,
+        "total_tokens": 332,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "id": "chatcmpl-3uN2hqJgsrf8wi4LsXu54UiwiYWN8d4T",
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 296,
+        "prompt_ms": 899.219,
+        "prompt_per_token_ms": 3.037902027027027,
+        "prompt_per_second": 329.1745392390507,
+        "predicted_n": 36,
+        "predicted_ms": 1042.094,
+        "predicted_per_token_ms": 29.774114285714287,
+        "predicted_per_second": 33.58622158845555
+      }
+    }
+  },
+  {
+    "case": "tool_roundtrip",
+    "passed": true,
+    "response": {
+      "choices": [
+        {
+          "finish_reason": "stop",
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "42"
+          }
+        }
+      ],
+      "created": 1789742620,
+      "model": "/tmp/bonsai2-models/Ternary-Bonsai-2-27B-PTQ1_0.gguf",
+      "system_fingerprint": "b1-1a07bfa",
+      "object": "chat.completion",
+      "usage": {
+        "completion_tokens": 3,
+        "prompt_tokens": 363,
+        "total_tokens": 366,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "id": "chatcmpl-CRVlnLJhJslbzbtKlwiZU2oFTxapHXCK",
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 363,
+        "prompt_ms": 1050.867,
+        "prompt_per_token_ms": 2.8949504132231403,
+        "prompt_per_second": 345.429060004739,
+        "predicted_n": 3,
+        "predicted_ms": 66.082,
+        "predicted_per_token_ms": 33.041,
+        "predicted_per_second": 30.265427801821982
+      }
+    }
+  }
+]

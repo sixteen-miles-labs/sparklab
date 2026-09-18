@@ -62,6 +62,7 @@ jobs:
       - name: Run CPU tests
         run: |
           .venv/bin/python -m pytest -q \
+            tests/bonsai2/test_format.py \
             tests/checkpoint \
             tests/daemon \
             tests/models \

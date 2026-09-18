@@ -1,0 +1,13 @@
+{
+  "wheel": "sparklab-0.1.3-cp311-cp311-linux_aarch64.whl",
+  "required_files_present": [
+    "sparklab/models/bonsai2/model.py",
+    "sparklab/models/bonsai2/vision.py",
+    "sparklab/kernels/triton/bonsai.py",
+    "sparklab/models/gguf/prism_reader.py",
+    "sparklab/backends/gguf_artifacts.py",
+    "sparklab/recipes/bonsai2-27b.json"
+  ],
+  "imports_from_extracted_wheel": true,
+  "final_recipe_present": true
+}

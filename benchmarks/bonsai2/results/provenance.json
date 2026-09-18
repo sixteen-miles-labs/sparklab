@@ -1,0 +1,85 @@
+{
+  "date": "2026-09-18",
+  "source_base_commit": "92d03c0aa177c9f32352417dfbf83367f32f86f4",
+  "source_branch": "feat/bonsai2",
+  "implementation_file_sha256": {
+    "benchmarks/bonsai2/capture_server.py": "35f55016b42c1063dd16850a6b3ba213a6461d58f367a19f24a55f14a70e93be",
+    "benchmarks/bonsai2/check_packing.py": "89b434f555be3f32413488c6e7bd38b882e02d465d12d07f7b19397d26afa649",
+    "benchmarks/bonsai2/compare.py": "ac9471425e32b66d2983e15deebb97fe5d3d68a42912665130e126cbf2592199",
+    "benchmarks/bonsai2/extra_checks.py": "923bb66744a5aa69608bf8072756c34771347a210c8f1e9386e9b4637b024101",
+    "benchmarks/bonsai2/latency.py": "8b97c8fa89c5a1948d16c7ede37541c5f66a899e254c1e3aa8b60136643d4f03",
+    "benchmarks/bonsai2/logit_check.py": "f6f3f2d0bf9eb1c36ec175c47fc45f8a1344924f323d4ff2b8a8241acbfbd7ca",
+    "python/sparklab/acquire.py": "934a2be0581c499dffeb306a8c009f7edf9941a3672d4514ba48321d40941640",
+    "python/sparklab/backends/gguf_artifacts.py": "9a2860d2979565f1e8755a3a0194bc8419eb912d4843f17716e80584d06dd38b",
+    "python/sparklab/backends/native.py": "7bab926343b3cb053bd7ad8d230a1fcf07ae22ef55bf73de7c71210b38b03c25",
+    "python/sparklab/kernels/triton/bonsai.py": "95829c392b84120437eb0bc9e683d2cfc917a9ec503e10880ef2ae94a423eb78",
+    "python/sparklab/models/bonsai2/__init__.py": "166f8785e8c103eb20d57bdf9d1ba57298f020b872a75dd90e9e005160a97e1e",
+    "python/sparklab/models/bonsai2/model.py": "2f14b11e719eb965ed18d0c0f4cda25c05f6e5906d08726057c6598157106ccb",
+    "python/sparklab/models/bonsai2/vision.py": "7ae9a4901ea3ad422d8c1bdc351f05e3c15c7da645430470ca276c2c02b73bad",
+    "python/sparklab/models/bonsai2/weights.py": "55aa4f84794397926e40f0cb4bc80fde69e2950952025e55aa560051563515b7",
+    "python/sparklab/models/gguf/config.py": "b744695db3b81d82bc343febb71abb7358d10fa8df5da8856cfc99a7ff0adc38",
+    "python/sparklab/models/gguf/prism_reader.py": "6bbcb29f3eb09c1d6f9676889e71b11c1ae12e4dc305f8e7629fdfecda9829fd",
+    "python/sparklab/models/gguf/reader.py": "b742d737803f87850f6b96ed60e62de2e36a5298bf0ee0fa8921d8da01638fcf",
+    "python/sparklab/models/gguf/tokenizer.py": "044a08cbe5e66923429bab32fd8d1253a868b7b0d7f238cba1d51bc08f5b8090",
+    "python/sparklab/models/qwen3_5_moe/vision.py": "7319d720e091d5a3890c2c8d5a3e2adb57c2151f19a9d45bb9a2ae36cf821361",
+    "python/sparklab/models/register.py": "5348a52cfe0b5132e3b10eaa5411fff649996e48dfa6ffd09575efbe0c315d35",
+    "python/sparklab/multimodal/qwen.py": "e7b7722ff0d606a3d6be37248e5d6634a3f386c658a31ef8e515d5d52721dfcb",
+    "python/sparklab/recipes/bonsai2-27b.json": "35eaaf9368c0b9860a39ac7cbf6b23ff1f39692c5cbc0f5c8fd9b56439f30d1a",
+    "tests/bonsai2/test_format.py": "3ff332866a59c8e28e65a9d450fafd09e018343463774ac3d80b4d63dedf0ecd",
+    "tests/bonsai2/test_kernels.py": "b43e7c91c9b0a441ca22e3cf0f938b305067b7a950d0a02e1188e75539679807",
+    "tests/sparklab/test_catalog.py": "6dd2ca5450b40e6b58cc1447d28cf50998078a3d9a3da43a385835749c3b90ad"
+  },
+  "model_files": [
+    {
+      "file": "Ternary-Bonsai-2-27B-mmproj-Q8_0.gguf",
+      "bytes": 629246976,
+      "revision": "6ed5e12bf84b7a63069882c91dd9e9218647d17b",
+      "huggingface_etag": "6807ede61d570bb86ba34b756a0fa109edc33668604de867c6ea6d8f1d631903"
+    },
+    {
+      "file": "Ternary-Bonsai-2-27B-PTQ1_0.gguf",
+      "bytes": 5946648928,
+      "revision": "6ed5e12bf84b7a63069882c91dd9e9218647d17b",
+      "huggingface_etag": "53107f530aa52eb00912263ab1ee29bd199261c87cd7b4ad4ca1318c1fe33ee3"
+    },
+    {
+      "file": "Ternary-Bonsai-2-27B-PQ2_0.gguf",
+      "bytes": 7206168928,
+      "revision": "6ed5e12bf84b7a63069882c91dd9e9218647d17b",
+      "huggingface_etag": "3907dc1658db1f78a9826bf8d5bcb8dc65db0d466388937af57f2294fae62ec1"
+    }
+  ],
+  "reference_commit": "1a07bfa5f4144274c8f1c9963821dd9d9a51854b",
+  "environment": {
+    "gpu": "NVIDIA GB10",
+    "driver": "580.126.09",
+    "machine": "aarch64",
+    "python": "3.11.15",
+    "packages": {
+      "torch": "2.11.0+cu130",
+      "triton": "3.6.0",
+      "transformers": "5.16.1",
+      "gguf": "0.19.0"
+    },
+    "co_resident_processes": "Idle pre-existing vLLM server and the idle comparison backend; requests serialized",
+    "host_swap": "Pre-existing swap in use; no isolated memory/endurance qualification",
+    "kernel_cache": "Installed 0.1.0 cache rejected by source 0.1.3; current-source JIT fallback used"
+  },
+  "validation": {
+    "cpu_command": "CUDA_VISIBLE_DEVICES='' PYTHONPATH=python python -m pytest tests/bonsai2/test_format.py tests/sparklab tests/models/test_models_registry.py tests/models/test_gemma4_gguf_rope.py tests/multimodal -q",
+    "cpu_passed": 118,
+    "cpu_skipped": 1,
+    "skip_reason": "Optional Gemma4 local GGUF fixture not configured",
+    "gpu_command": "PYTHONPATH=python python -m pytest tests/bonsai2/test_kernels.py -q",
+    "gpu_passed": 9,
+    "lint": "ruff on new Python files and git diff --check passed",
+    "wheel": "Built with uv build --wheel --no-build-isolation; extracted-wheel imports and recipe contents checked",
+    "recipe": "Selective acquisition, launch plan, actual high-level run, OCR request, and two queued clients passed",
+    "quality_limits": "Small integration screens and five logit probes per packing; not general quality equivalence"
+  },
+  "default": {
+    "packing": "PTQ1_0",
+    "projector": "Q8_0",
+    "reason": "Smaller and faster native decoding than PQ2_0 in both measured prompt profiles"
+  }
+}

@@ -17,6 +17,7 @@ class ModelSpec:
 
 
 _MODEL_REGISTRY: dict[str, ModelSpec] = {
+    "Qwen3_5BonsaiForCausalLM": ModelSpec("sparklab.models.bonsai2", "Qwen3_5BonsaiForCausalLM"),
     "LlamaForCausalLM": ModelSpec(
         "sparklab.models.llama",
         "LlamaForCausalLM",

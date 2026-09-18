@@ -1,0 +1,20 @@
+{
+  "short": {
+    "baseline_decode": 19.74882657060709,
+    "optimized_decode": 26.954231380302044,
+    "prism_decode": 33.420078533201455,
+    "gain_percent": 36.485230066372786,
+    "remaining_gap_percent": 19.34719317453387,
+    "baseline_ttft": 0.5736341041047126,
+    "optimized_ttft": 0.55399672803469
+  },
+  "long": {
+    "baseline_decode": 18.725326650387252,
+    "optimized_decode": 25.21968045259863,
+    "prism_decode": 30.417163876474063,
+    "gain_percent": 34.68219232414336,
+    "remaining_gap_percent": 17.08733741575226,
+    "baseline_ttft": 8.798273075837642,
+    "optimized_ttft": 9.029883275041357
+  }
+}

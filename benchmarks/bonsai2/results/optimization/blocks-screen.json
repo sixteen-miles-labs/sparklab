@@ -1,0 +1,213 @@
+{
+  "url": "http://127.0.0.1:8093",
+  "cases": [
+    {
+      "case": "arithmetic",
+      "passed": true,
+      "elapsed_seconds": 1.0379951340146363,
+      "response": {
+        "id": "chatcmpl-4",
+        "object": "chat.completion",
+        "created": 1789745290,
+        "model": "bonsai2",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "391"
+            },
+            "finish_reason": "stop"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 28,
+          "completion_tokens": 4,
+          "total_tokens": 32
+        }
+      }
+    },
+    {
+      "case": "capital",
+      "passed": true,
+      "elapsed_seconds": 1.0087698299903423,
+      "response": {
+        "id": "chatcmpl-5",
+        "object": "chat.completion",
+        "created": 1789745291,
+        "model": "bonsai2",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "Paris"
+            },
+            "finish_reason": "stop"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 25,
+          "completion_tokens": 2,
+          "total_tokens": 27
+        }
+      }
+    },
+    {
+      "case": "json",
+      "passed": true,
+      "elapsed_seconds": 0.35542294196784496,
+      "response": {
+        "id": "chatcmpl-6",
+        "object": "chat.completion",
+        "created": 1789745291,
+        "model": "bonsai2",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "{\"ok\": true}"
+            },
+            "finish_reason": "stop"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 25,
+          "completion_tokens": 6,
+          "total_tokens": 31
+        }
+      }
+    },
+    {
+      "case": "coding",
+      "passed": true,
+      "elapsed_seconds": 1.5501838149502873,
+      "response": {
+        "id": "chatcmpl-7",
+        "object": "chat.completion",
+        "created": 1789745293,
+        "model": "bonsai2",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "```python\ndef square(x):\n    return x * x\n```"
+            },
+            "finish_reason": "stop"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 24,
+          "completion_tokens": 16,
+          "total_tokens": 40
+        }
+      }
+    },
+    {
+      "case": "reasoning",
+      "passed": true,
+      "elapsed_seconds": 4.745235929032788,
+      "response": {
+        "id": "chatcmpl-8",
+        "object": "chat.completion",
+        "created": 1789745298,
+        "model": "bonsai2",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "No.\n\n**Reasoning:**\n1.  **Premise 1:** All dax are wugs. (If something is a dax, it is a wug).\n2.  **Premise 2:** No wugs are zibs. (If something is a wug, it is not a zib).\n3.  **Deduction:** Since a dax is a wug, and no wugs are zibs, a dax cannot be a zib."
+            },
+            "finish_reason": "stop"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 39,
+          "completion_tokens": 102,
+          "total_tokens": 141
+        }
+      }
+    },
+    {
+      "case": "ocr",
+      "passed": true,
+      "elapsed_seconds": 1.2159620739985257,
+      "response": {
+        "id": "chatcmpl-9",
+        "object": "chat.completion",
+        "created": 1789745299,
+        "model": "bonsai2",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "SPARK 427"
+            },
+            "finish_reason": "stop"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 271,
+          "completion_tokens": 7,
+          "total_tokens": 278
+        }
+      }
+    },
+    {
+      "case": "color",
+      "passed": true,
+      "elapsed_seconds": 0.7398473098874092,
+      "response": {
+        "id": "chatcmpl-10",
+        "object": "chat.completion",
+        "created": 1789745300,
+        "model": "bonsai2",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "Red"
+            },
+            "finish_reason": "stop"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 265,
+          "completion_tokens": 2,
+          "total_tokens": 267
+        }
+      }
+    },
+    {
+      "case": "changed_image",
+      "passed": true,
+      "elapsed_seconds": 0.997553511057049,
+      "response": {
+        "id": "chatcmpl-11",
+        "object": "chat.completion",
+        "created": 1789745301,
+        "model": "bonsai2",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "BIRCH 918"
+            },
+            "finish_reason": "stop"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 271,
+          "completion_tokens": 8,
+          "total_tokens": 279
+        }
+      }
+    }
+  ]
+}
