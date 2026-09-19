@@ -111,15 +111,6 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
       <td><a href="docs/models/qwen3.8-27b.md">Instructions</a></td>
     </tr>
     <tr>
-      <td><a href="https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf">Ternary Bonsai 2 27B</a></td>
-      <td>27B dense</td>
-      <td>Ternary PTQ1 · GGUF + Q8 vision</td>
-      <td>Experimental</td>
-      <td align="right">26.95</td>
-      <td align="right">0.554</td>
-      <td><a href="docs/models/bonsai2-27b.md">Instructions</a></td>
-    </tr>
-    <tr>
       <th colspan="7" align="left">Frontier — quality-first coding, reasoning, and long agent work</th>
     </tr>
     <tr>
