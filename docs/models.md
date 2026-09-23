@@ -91,6 +91,11 @@ to the current NVIDIA checkpoint. Its selected MTP3 metric is batch-one.
 
 ## Running a recipe
 
+For structured yes/no, choice, and score decisions, the experimental
+[`djev` recipe](models/djev.md) runs DiffusionGemma through a pinned vLLM container.
+Its decision latency and request throughput are separate from the chat portfolio
+metrics above.
+
 Use the recipe workflow for a validated checkpoint and configuration:
 
 ```bash

@@ -28,8 +28,10 @@ def _load_builtins() -> None:
     if _BUILTINS_LOADED:
         return
     from .native import NativeBackend
+    from .djev import DjevBackend
 
     register_backend(NativeBackend())
+    register_backend(DjevBackend())
     _BUILTINS_LOADED = True
 
 

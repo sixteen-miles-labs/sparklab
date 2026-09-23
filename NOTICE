@@ -63,3 +63,12 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+vLLM structured DiffusionGemma example
+-----------------------------------
+python/sparklab/external/djev/upstream.py is derived from
+vllm-project/vllm, examples/features/structured_diffusion/structured_server.py,
+at commit 1b3b88ec2b7457aa030db4d0e7d8aaf04f6d0fb8.
+Copyright contributors to the vLLM project. Licensed under Apache-2.0.
+SparkLab replaces the optional pybase64 import with Python's base64 module;
+the lifecycle and HTTP integration live in separate modules.

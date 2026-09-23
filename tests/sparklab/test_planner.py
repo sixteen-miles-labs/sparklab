@@ -173,3 +173,11 @@ def test_container_swap_is_isolated_but_memory_capacity_is_still_enforced():
     assert plan.swap_used_bytes == GIB
     oversized = replace(recipe, runtime_memory={"total_bytes": 200 * GIB})
     assert not plan_runtime(oversized, _snapshot(swap_used=GIB)).ready
+
+
+def test_djev_container_has_no_swap_but_requires_physical_headroom():
+    recipe = get_recipe("djev")
+    plan = plan_runtime(recipe, _snapshot(swap_used=GIB))
+    assert plan.ready and not plan.warnings
+    assert plan.swap_used_bytes == GIB
+    assert not plan_runtime(recipe, _snapshot(available=32 * GIB)).ready
