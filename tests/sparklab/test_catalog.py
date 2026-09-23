@@ -42,6 +42,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
         "qwen3.6-35b-a3b": "35B total / 3B active",
         "qwen3.8-27b": "27B dense",
         "bonsai2-27b": "27B dense",
+        "djev": "26B total / 4B active",
         "deepseek-v4": "284B total / 13B active",
         "deepseek-v4.1-flash": "552B total / 8-16B active",
         "glm-5.3-flash": "320B total / 18B active",
@@ -56,6 +57,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
         "qwen3.6-35b-a3b",
         "qwen3.8-27b",
         "bonsai2-27b",
+        "djev",
     }
     qwen = get_recipe("qwen3.8-flash-next")
     assert qwen.recipe_version == "0.9.0"
@@ -153,7 +155,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
     }
     assert {
         item.slug for item in select_recipes(load_catalog(), portfolio_role="fallback")
-    } == {"glm-5.2", "glm-5.3", "bonsai2-27b"}
+    } == {"glm-5.2", "glm-5.3", "bonsai2-27b", "djev"}
 
 
 def test_next_model_recipes_are_immutable_and_capacity_plannable():

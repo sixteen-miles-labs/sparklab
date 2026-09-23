@@ -1,0 +1,19 @@
+{
+  "time_utc": "2026-09-23T18:03:48.052327+00:00",
+  "machine": "aarch64",
+  "base_commit": "d2979323b922a11407c94049dc43c79e94eb4172",
+  "model": "nvidia/diffusiongemma-26B-A4B-it-NVFP4",
+  "model_revision": "ec4ff3df205028f4e81c954c2227f9312b3ec2ea",
+  "vllm_commit": "e9757321527ca1ecd514c07c1418dd2c53da3d19",
+  "gateway_commit": "1b3b88ec2b7457aa030db4d0e7d8aaf04f6d0fb8",
+  "container_image": "sha256:4fdc007ce415baaed92ed76c4ad0359e6781b6dd2d37a9e5a6ade5b86c965bd0",
+  "final_image_after_startup_timeout_change": "sha256:e805d6ae27ea943fe8962319c885301e17ef0bac650b8735ba03ed7bac1a0722",
+  "gpu": "NVIDIA GB10, 580.126.09",
+  "other_model_servers": "fct-qwen36-vllm and fct-qwen38-vllm stopped with user authorization",
+  "container_memory_limit_gib": 64,
+  "container_memory_peak_bytes": 14665199616,
+  "container_oom_kills": 0,
+  "observed_engine_gpu_memory_mib": 27836,
+  "benchmark_file": "gb10.json",
+  "additional_live_checks": "staged depends_on/ask_if, schema chat, metrics, red and blue image answers"
+}

@@ -151,7 +151,9 @@ def plan_runtime(recipe: ModelRecipe, snapshot: GB10Snapshot) -> RuntimePlan:
     # swap usage is still reported and never counted as usable capacity.
     from sparklab.backends.container import settings as container_settings
 
-    isolated_swap = recipe.backend == "native" and container_settings(recipe.deployment) is not None
+    isolated_swap = recipe.backend == "djev" or (
+        recipe.backend == "native" and container_settings(recipe.deployment) is not None
+    )
     warnings: list[str] = []
     if swap_used and not isolated_swap:
         if recipe.status == "experimental":

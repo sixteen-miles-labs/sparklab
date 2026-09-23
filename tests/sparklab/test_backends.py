@@ -344,7 +344,7 @@ def test_schema_one_recipe_migrates_to_native_deployment():
 
 
 def test_only_explicit_builtin_backend_is_registered():
-    assert [backend.backend_id for backend in list_backends()] == ["native"]
+    assert [backend.backend_id for backend in list_backends()] == ["djev", "native"]
 
 
 def test_fake_backend_satisfies_prepare_plan_launch_and_health_contract(tmp_path):

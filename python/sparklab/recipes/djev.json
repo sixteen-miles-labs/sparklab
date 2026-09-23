@@ -1,0 +1,44 @@
+{
+  "schema_version": "2.0",
+  "recipe_version": "0.1.0",
+  "slug": "djev",
+  "name": "DiffusionGemma structured decisions",
+  "model": "nvidia/diffusiongemma-26B-A4B-it-NVFP4",
+  "parameters": "26B total / 4B active",
+  "revision": "ec4ff3df205028f4e81c954c2227f9312b3ec2ea",
+  "source_bytes": 18864432762,
+  "prepared_bytes": 0,
+  "minimum_free_bytes": 20864432762,
+  "intended_tier": "fast",
+  "status": "experimental",
+  "implementation": "available",
+  "portfolio_role": "fallback",
+  "profile": "experimental",
+  "runtime_memory": {
+    "total_bytes": 85899345920
+  },
+  "description": "Experimental vLLM-backed DiffusionGemma structured decisions through the Jev API.",
+  "deployment": {
+    "backend": "djev",
+    "backend_api": "1.0",
+    "source_format": "safetensors",
+    "runtime_format": "safetensors",
+    "quantization": "nvfp4",
+    "execution_policy": "resident",
+    "backend_options": {
+      "image": "sparklab-djev:gb10-v1",
+      "memory_gib": 64,
+      "canvas_length": 32,
+      "max_num_seqs": 32,
+      "max_model_len": 8192,
+      "kv_cache_memory_bytes": 2147483648
+    }
+  },
+  "limitations": [
+    "Source-only container integration; build containers/djev/Dockerfile before launch.",
+    "Jev structured decisions and schema-based chat only; no Responses or Anthropic endpoints.",
+    "Loopback-only gateway; confidence and standard errors are not calibrated accuracy.",
+    "Uses the pinned vLLM runtime, not native SparkLab diffusion kernels."
+  ],
+  "evidence": []
+}

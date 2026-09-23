@@ -1,0 +1,11 @@
+**
+!python
+!python/sparklab
+!python/sparklab/__init__.py
+!python/sparklab/version.py
+!python/sparklab/external
+!python/sparklab/external/**
+**/__pycache__
+!containers
+!containers/djev
+!containers/djev/normalize_sbsa.py
