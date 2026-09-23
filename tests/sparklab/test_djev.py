@@ -140,7 +140,9 @@ def test_upstream_source_is_exactly_pinned():
     from sparklab.external.djev import upstream
     assert hashlib.sha256(Path(upstream.__file__).read_text().replace(
         'import base64  # SparkLab: standard library; no optional pybase64 dependency.',
-        'import pybase64 as base64').encode()).hexdigest() == (
+        'import pybase64 as base64').replace(
+        '    ctx.minimum_version = ssl.TLSVersion.TLSv1_2  # SparkLab: disable legacy TLS.\n',
+        '').encode()).hexdigest() == (
         "7cd9aa0081090c064eaac28db0f54f812749eeb3ae787d7f7653d2e35d8a938f")
 
 

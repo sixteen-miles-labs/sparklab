@@ -1476,6 +1476,7 @@ def self_signed(cert_dir):
 def serve_tls(host, port, cert_dir):
     cert, key = self_signed(cert_dir)
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_2  # SparkLab: disable legacy TLS.
     ctx.load_cert_chain(cert, key)
     srv = ThreadingHTTPServer((host, port), Handler)
     srv.socket = ctx.wrap_socket(srv.socket, server_side=True)

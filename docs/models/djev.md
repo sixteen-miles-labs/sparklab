@@ -87,8 +87,8 @@ contains the state. There are no Responses or Anthropic endpoints in this recipe
   `1204dfb590c9fbefab368b6878516629bada48693157bb46f4f15cf20b8813e0`.
   The build upgrades the base runtime and verifies dependency consistency.
 - Structured gateway: vLLM commit `1b3b88ec2b7457aa030db4d0e7d8aaf04f6d0fb8`;
-  only the base64 import is changed. Lifecycle and request handling are wrapped
-  separately by SparkLab.
+  the base64 import and unused TLS helper's minimum version are changed.
+  Lifecycle and request handling are wrapped separately by SparkLab.
 - Default canvas: 32 tokens; up to 32 active vLLM sequences; maximum context
   8,192 tokens; KV cache budget 2 GiB using the checkpoint's FP8 cache scheme. Larger schemas may be split into reads.
 - Returned probabilities are normalized over the provided alternatives. Confidence

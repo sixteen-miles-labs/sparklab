@@ -70,5 +70,6 @@ python/sparklab/external/djev/upstream.py is derived from
 vllm-project/vllm, examples/features/structured_diffusion/structured_server.py,
 at commit 1b3b88ec2b7457aa030db4d0e7d8aaf04f6d0fb8.
 Copyright contributors to the vLLM project. Licensed under Apache-2.0.
-SparkLab replaces the optional pybase64 import with Python's base64 module;
+SparkLab replaces the optional pybase64 import with Python's base64 module and
+sets the unused upstream TLS helper's minimum protocol to TLS 1.2;
 the lifecycle and HTTP integration live in separate modules.
