@@ -50,6 +50,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
         "glm-5.2": "753B total / 40B active",
         "glm-5.3": "753B total / 40B active",
         "kimi-k3": "2.8T total / 16 of 896 experts",
+        "diffusiongemma-26b-a4b": "26B total / 4B active",
     }
     assert get_recipe("deepseek-v4").status == "preview"
     assert get_recipe("kimi-k3").status == "experimental"
@@ -152,6 +153,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
         ("frontier", "qwen3.8-flash-next"),
         ("research", "kimi-k3"),
         ("research", "deepseek-v4.1-flash"),
+        ("research", "diffusiongemma-26b-a4b"),
     }
     assert {
         item.slug for item in select_recipes(load_catalog(), portfolio_role="fallback")

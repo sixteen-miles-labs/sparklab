@@ -1,0 +1,303 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-DIFFUSIONGEMMA-001",
+  "status": "measured",
+  "recipe": {
+    "slug": "diffusiongemma-26b-a4b",
+    "recipe_version": "0.1.0",
+    "revision": "ec4ff3df205028f4e81c954c2227f9312b3ec2ea",
+    "backend": "vllm"
+  },
+  "deployment": {
+    "backend": "vllm",
+    "backend_api": "1.0",
+    "source_format": "safetensors-nvfp4",
+    "runtime_format": "safetensors",
+    "quantization": "nvfp4",
+    "execution_policy": "resident",
+    "backend_options": {
+      "image": "vllm/vllm-openai@sha256:61fc8a896b0a4fbbbdc063bc4b0dbc25ce98e02b5050c24aeb7830ac02039b14",
+      "memory_gib": 72,
+      "arguments": [
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18080",
+        "--max-model-len",
+        "32768",
+        "--max-num-seqs",
+        "1",
+        "--gpu-memory-utilization",
+        "0.4",
+        "--load-format",
+        "safetensors",
+        "--safetensors-load-strategy",
+        "lazy",
+        "--attention-backend",
+        "TRITON_ATTN",
+        "--enable-prefix-caching",
+        "--diffusion-config",
+        "{\"canvas_length\":256}",
+        "--override-generation-config",
+        "{\"max_new_tokens\":null}",
+        "--reasoning-parser",
+        "gemma4",
+        "--enable-auto-tool-choice",
+        "--tool-call-parser",
+        "gemma4",
+        "--default-chat-template-kwargs",
+        "{\"enable_thinking\":true}"
+      ]
+    }
+  },
+  "platform": {
+    "device": "NVIDIA GB10",
+    "memory_gib": 121.6899528503418,
+    "machine": "aarch64",
+    "cuda": "13.0",
+    "driver": "580.126.09"
+  },
+  "engine": {
+    "name": "SparkLab/vLLM",
+    "version": "0.28.0",
+    "revision": "9c3b2965df9b07bfcbcafad826aea28856b3665a",
+    "git_revision": "9c3b2965df9b07bfcbcafad826aea28856b3665a",
+    "working_tree_dirty": true,
+    "image": "vllm/vllm-openai@sha256:61fc8a896b0a4fbbbdc063bc4b0dbc25ce98e02b5050c24aeb7830ac02039b14",
+    "moe_backend": "FLASHINFER_CUTLASS",
+    "attention_backend": "TRITON_ATTN",
+    "kv_cache_dtype": "fp8_e4m3"
+  },
+  "model": {
+    "repository": "nvidia/diffusiongemma-26B-A4B-it-NVFP4",
+    "revision": "ec4ff3df205028f4e81c954c2227f9312b3ec2ea",
+    "checkpoint_format": "safetensors-nvfp4",
+    "fingerprint": "b4f650bd55f6c6ccd55656e27a7967c72ac28f1f3e315edaa29d6f5eebd05fde",
+    "fingerprint_kind": "config_sha256"
+  },
+  "checkpoint": {
+    "full_model": true,
+    "fingerprint": "b4f650bd55f6c6ccd55656e27a7967c72ac28f1f3e315edaa29d6f5eebd05fde",
+    "validation": {
+      "index": "model.safetensors.index.json",
+      "shards": 2,
+      "tensors": 47067,
+      "logical_bytes": 18818050776,
+      "physical_bytes": 18823855888
+    }
+  },
+  "workload": {
+    "concurrency": 1,
+    "prompt": "Explain how a hash table works, including collisions, resizing, and its time complexity. Use a concrete example and give a detailed, self-contained explanation.",
+    "sampling": "checkpoint entropy-bound sampler; ordinary temperature and seed are unsupported by vLLM 0.28 diffusion",
+    "warmup_requests_per_case": 1,
+    "measured_requests_per_case": 3,
+    "ttft": "request start to first nonempty content or reasoning SSE delta",
+    "throughput": "exact completion_tokens / full request elapsed seconds, including TTFT",
+    "decode_tokens_per_second": null,
+    "note": "SSE delta count is not a token count. Block emission invalidates autoregressive decode timing.",
+    "cases": {
+      "thinking_off_256": {
+        "thinking": false,
+        "max_tokens": 256,
+        "completion_tokens": [
+          256,
+          256,
+          256
+        ],
+        "warm_ttft_seconds_median": 2.541367548983544,
+        "request_seconds_median": 2.541542763938196,
+        "completion_tokens_per_second_median": 100.72622173916145,
+        "completion_tokens_per_second_aggregate": 84.29759225310858
+      },
+      "thinking_off_512": {
+        "thinking": false,
+        "max_tokens": 512,
+        "completion_tokens": [
+          512,
+          512,
+          512
+        ],
+        "warm_ttft_seconds_median": 4.385904546012171,
+        "request_seconds_median": 7.334440613980405,
+        "completion_tokens_per_second_median": 69.8076413658679,
+        "completion_tokens_per_second_aggregate": 68.4668238115827
+      },
+      "thinking_off_1024": {
+        "thinking": false,
+        "max_tokens": 1024,
+        "completion_tokens": [
+          1024,
+          1024,
+          1024
+        ],
+        "warm_ttft_seconds_median": 3.9547021909384057,
+        "request_seconds_median": 16.089222979033366,
+        "completion_tokens_per_second_median": 63.64508723226866,
+        "completion_tokens_per_second_aggregate": 65.07782672389163
+      },
+      "thinking_on_256": {
+        "thinking": true,
+        "max_tokens": 256,
+        "completion_tokens": [
+          256,
+          256,
+          256
+        ],
+        "warm_ttft_seconds_median": 3.932973416056484,
+        "request_seconds_median": 3.9331258629681543,
+        "completion_tokens_per_second_median": 65.08817894955648,
+        "completion_tokens_per_second_aggregate": 64.9240783656735
+      },
+      "thinking_on_512": {
+        "thinking": true,
+        "max_tokens": 512,
+        "completion_tokens": [
+          512,
+          512,
+          512
+        ],
+        "warm_ttft_seconds_median": 3.529884597985074,
+        "request_seconds_median": 8.654681563028134,
+        "completion_tokens_per_second_median": 59.15873348676498,
+        "completion_tokens_per_second_aggregate": 61.70541816269153
+      },
+      "thinking_on_1024": {
+        "thinking": true,
+        "max_tokens": 1024,
+        "completion_tokens": [
+          1024,
+          1024,
+          1024
+        ],
+        "warm_ttft_seconds_median": 4.1717200769344345,
+        "request_seconds_median": 15.446381798014045,
+        "completion_tokens_per_second_median": 66.29384236324242,
+        "completion_tokens_per_second_aggregate": 66.80490236886934
+      }
+    },
+    "measured_requests": 18,
+    "warmup_requests": 6,
+    "all_outputs_hit_requested_token_cap": true
+  },
+  "metrics": {
+    "selected_case": "thinking_on_1024",
+    "completion_tokens_per_second": 66.29384236324242,
+    "warm_ttft_seconds": 4.1717200769344345,
+    "decode_tokens_per_second": null,
+    "cases": {
+      "thinking_off_256": {
+        "thinking": false,
+        "max_tokens": 256,
+        "completion_tokens": [
+          256,
+          256,
+          256
+        ],
+        "warm_ttft_seconds_median": 2.541367548983544,
+        "request_seconds_median": 2.541542763938196,
+        "completion_tokens_per_second_median": 100.72622173916145,
+        "completion_tokens_per_second_aggregate": 84.29759225310858
+      },
+      "thinking_off_512": {
+        "thinking": false,
+        "max_tokens": 512,
+        "completion_tokens": [
+          512,
+          512,
+          512
+        ],
+        "warm_ttft_seconds_median": 4.385904546012171,
+        "request_seconds_median": 7.334440613980405,
+        "completion_tokens_per_second_median": 69.8076413658679,
+        "completion_tokens_per_second_aggregate": 68.4668238115827
+      },
+      "thinking_off_1024": {
+        "thinking": false,
+        "max_tokens": 1024,
+        "completion_tokens": [
+          1024,
+          1024,
+          1024
+        ],
+        "warm_ttft_seconds_median": 3.9547021909384057,
+        "request_seconds_median": 16.089222979033366,
+        "completion_tokens_per_second_median": 63.64508723226866,
+        "completion_tokens_per_second_aggregate": 65.07782672389163
+      },
+      "thinking_on_256": {
+        "thinking": true,
+        "max_tokens": 256,
+        "completion_tokens": [
+          256,
+          256,
+          256
+        ],
+        "warm_ttft_seconds_median": 3.932973416056484,
+        "request_seconds_median": 3.9331258629681543,
+        "completion_tokens_per_second_median": 65.08817894955648,
+        "completion_tokens_per_second_aggregate": 64.9240783656735
+      },
+      "thinking_on_512": {
+        "thinking": true,
+        "max_tokens": 512,
+        "completion_tokens": [
+          512,
+          512,
+          512
+        ],
+        "warm_ttft_seconds_median": 3.529884597985074,
+        "request_seconds_median": 8.654681563028134,
+        "completion_tokens_per_second_median": 59.15873348676498,
+        "completion_tokens_per_second_aggregate": 61.70541816269153
+      },
+      "thinking_on_1024": {
+        "thinking": true,
+        "max_tokens": 1024,
+        "completion_tokens": [
+          1024,
+          1024,
+          1024
+        ],
+        "warm_ttft_seconds_median": 4.1717200769344345,
+        "request_seconds_median": 15.446381798014045,
+        "completion_tokens_per_second_median": 66.29384236324242,
+        "completion_tokens_per_second_aggregate": 66.80490236886934
+      }
+    }
+  },
+  "validation": {
+    "output_correctness": false,
+    "reasoning_parser": true,
+    "tool_parser": true,
+    "coding_agent_task": false,
+    "memory_bounded": true,
+    "quality_gate_run": false,
+    "context_gate_run": false,
+    "configured_context_tokens": 32768,
+    "smoke_passed": 3,
+    "smoke_total": 3,
+    "note": "Three basic smoke checks passed. The arithmetic thinking response hit its token cap; broad quality, image, coding, long-context, and endurance gates were not run."
+  },
+  "stability": {
+    "duration_minutes": 13.098108883698782,
+    "host_swap_used_bytes_at_start": 1092689920,
+    "host_swap_growth_bytes_max": 0,
+    "container_swap_peak_bytes": 0,
+    "host_available_bytes_min": 64729423872,
+    "container_memory_peak_bytes": 13706698752,
+    "admission_reservation_bytes": 77309411328,
+    "oom_count": 0,
+    "parser_failures": 0,
+    "note": "Container swap is disabled. Host had pre-existing swap; this is not a zero-host-swap endurance qualification.",
+    "swap_growth_bytes": 0
+  },
+  "source": {
+    "summary": "docs/models/diffusiongemma-26b-a4b.md",
+    "raw_artifact": "benchmarks/frameworks/results/diffusiongemma-26b-a4b/benchmark.json",
+    "smoke_artifact": "benchmarks/frameworks/results/diffusiongemma-26b-a4b/smoke.json",
+    "memory_artifact": "benchmarks/frameworks/results/diffusiongemma-26b-a4b/memory.jsonl",
+    "server_log": "benchmarks/frameworks/results/diffusiongemma-26b-a4b/runtime.txt",
+    "recipe_url": "https://recipes.vllm.ai/Google/diffusiongemma-26B-A4B-it?variant=nvidia_nvfp4"
+  }
+}

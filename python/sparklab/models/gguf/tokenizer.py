@@ -16,9 +16,30 @@ from .reader import gguf_architecture, load_gguf_metadata
 _TOKENIZER_ARCH = {"gemma4": "gemma4_text", "qwen35": "qwen2"}
 
 
+def _convert_gguf_tokenizer(architecture: str, metadata: dict[str, Any]):
+    # Transformers 5.18 moved the converter into the GGUF integration package.
+    # Keep the earlier import for the rest of our supported Transformers range.
+    try:
+        from transformers.integrations.gguf import convert_gguf_tokenizer
+    except ImportError:
+        from transformers.integrations.ggml import convert_gguf_tokenizer
+    else:
+        # The new converter selects its builder from canonical metadata keys.
+        # Our direct reader retains llama.cpp's original key suffixes.
+        metadata = dict(metadata)
+        for source, target in (
+            ("model", "tokenizer_type"),
+            ("pre", "pre_tokenizer_type"),
+            ("unknown_token_id", "unk_token_id"),
+            ("add_space_prefix", "add_prefix_space"),
+        ):
+            if source in metadata and target not in metadata:
+                metadata[target] = metadata[source]
+    return convert_gguf_tokenizer(architecture, metadata)
+
+
 def load_gguf_tokenizer(model_path: str):
     from transformers import PreTrainedTokenizerFast
-    from transformers.integrations.ggml import convert_gguf_tokenizer
 
     meta = load_gguf_metadata(model_path)
     arch = gguf_architecture(model_path)
@@ -28,7 +49,7 @@ def load_gguf_tokenizer(model_path: str):
         for k, v in meta.items()
         if k.startswith("tokenizer.ggml.")
     }
-    fast, _extra = convert_gguf_tokenizer(conv_arch, tok_dict)
+    fast, _extra = _convert_gguf_tokenizer(conv_arch, tok_dict)
 
     tokens = tok_dict["tokens"]
     if arch == "qwen35":

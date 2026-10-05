@@ -33,7 +33,6 @@ def test_prism_reader_extensions_and_truncation(tmp_path):
 def test_qwen_gguf_control_and_user_defined_tokens(monkeypatch):
     import sparklab.models.gguf.tokenizer as mod
     from tokenizers import Tokenizer, models
-    from transformers.integrations import ggml
 
     tokens = ["a", "<|im_start|>", "<|im_end|>", "<|image_pad|>", "<think>", "</think>"]
     meta = {
@@ -46,8 +45,8 @@ def test_qwen_gguf_control_and_user_defined_tokens(monkeypatch):
     monkeypatch.setattr(mod, "load_gguf_metadata", lambda _: meta)
     monkeypatch.setattr(mod, "gguf_architecture", lambda _: "qwen35")
     monkeypatch.setattr(
-        ggml,
-        "convert_gguf_tokenizer",
+        mod,
+        "_convert_gguf_tokenizer",
         lambda *_: (
             Tokenizer(models.BPE({s: i for i, s in enumerate(tokens)}, [])),
             {},
@@ -64,6 +63,58 @@ def test_qwen_gguf_control_and_user_defined_tokens(monkeypatch):
         == "<think></think>"
     )
     assert len(tok) == len(tokens)
+
+
+@pytest.mark.parametrize("layout", ["gguf", "ggml"])
+def test_gguf_converter_supports_transformers_import_layouts(monkeypatch, layout):
+    import sys
+    from sparklab.models.gguf.tokenizer import _convert_gguf_tokenizer
+
+    calls = []
+    expected = (object(), {})
+
+    def convert(architecture, metadata):
+        calls.append((architecture, metadata))
+        return expected
+
+    for name in ("gguf", "ggml"):
+        module = SimpleNamespace(convert_gguf_tokenizer=convert) if name == layout else None
+        monkeypatch.setitem(sys.modules, f"transformers.integrations.{name}", module)
+    metadata = {"tokens": ["a"], "model": "gpt2", "pre": "qwen35", "add_space_prefix": False}
+    assert _convert_gguf_tokenizer("qwen2", metadata) is expected
+    received = calls[0]
+    assert received[0] == "qwen2"
+    assert received[1]["tokens"] == metadata["tokens"]
+    if layout == "gguf":
+        assert received[1]["tokenizer_type"] == "gpt2"
+        assert received[1]["pre_tokenizer_type"] == "qwen35"
+        assert received[1]["add_prefix_space"] is False
+        assert "tokenizer_type" not in metadata
+    else:
+        assert received[1] is metadata
+
+
+def test_qwen_gguf_tokenizer_conversion_from_real_metadata(monkeypatch):
+    import sparklab.models.gguf.tokenizer as mod
+
+    tokens = ["a", "aa", "<|im_start|>", "<|im_end|>", "<|image_pad|>", "<think>", "</think>", "<|endoftext|>"]
+    metadata = {
+        "tokenizer.ggml.tokens": tokens,
+        "tokenizer.ggml.token_type": [1, 1, 3, 3, 3, 4, 4, 3],
+        "tokenizer.ggml.model": "gpt2",
+        "tokenizer.ggml.pre": "qwen35",
+        "tokenizer.ggml.merges": ["a a"],
+        "tokenizer.ggml.eos_token_id": 3,
+        "tokenizer.ggml.padding_token_id": 3,
+        "tokenizer.ggml.bos_token_id": 2,
+    }
+    monkeypatch.setattr(mod, "load_gguf_metadata", lambda _: metadata)
+    monkeypatch.setattr(mod, "gguf_architecture", lambda _: "qwen35")
+    tokenizer = mod.load_gguf_tokenizer("unused")
+    assert tokenizer.encode("<think></think><|image_pad|>", add_special_tokens=False) == [5, 6, 4]
+    assert tokenizer.decode([5, 6, 4], skip_special_tokens=True).replace(" ", "") == "<think></think>"
+    assert tokenizer.encode("aa", add_special_tokens=False) == [1]
+    assert len(tokenizer) == len(tokens)
 
 
 def test_gdn_tiled_rows_restore_grouped_order():

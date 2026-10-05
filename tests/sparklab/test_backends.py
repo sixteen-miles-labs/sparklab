@@ -343,8 +343,8 @@ def test_schema_one_recipe_migrates_to_native_deployment():
     assert migrated.parameters == "Unknown"
 
 
-def test_only_explicit_builtin_backend_is_registered():
-    assert [backend.backend_id for backend in list_backends()] == ["djev", "native"]
+def test_only_explicit_builtin_backends_are_registered():
+    assert [backend.backend_id for backend in list_backends()] == ["djev", "native", "vllm"]
 
 
 def test_fake_backend_satisfies_prepare_plan_launch_and_health_contract(tmp_path):

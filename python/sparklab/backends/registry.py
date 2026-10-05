@@ -29,9 +29,11 @@ def _load_builtins() -> None:
         return
     from .native import NativeBackend
     from .djev import DjevBackend
+    from .vllm import VLLMBackend
 
     register_backend(NativeBackend())
     register_backend(DjevBackend())
+    register_backend(VLLMBackend())
     _BUILTINS_LOADED = True
 
 

@@ -341,16 +341,20 @@ def _run_recipe(argv: list[str]) -> int:
             print(shlex.join(invocation.plan.command or ("sparklab", "serve", *invocation.arguments)))
         return 0
 
-    from sparklab.backends import get_backend
+    from sparklab.backends import BackendError, get_backend
 
     if args.recipe.status != "certified":
         print(
             f"WARNING: {args.recipe.slug} is {args.recipe.status}, not certified.",
             file=sys.stderr,
         )
-    get_backend(invocation.backend).launch(
-        invocation.plan, prog=f"sparklab run {args.recipe.slug}"
-    )
+    try:
+        get_backend(invocation.backend).launch(
+            invocation.plan, prog=f"sparklab run {args.recipe.slug}"
+        )
+    except BackendError as exc:
+        print(f"sparklab run: {exc}", file=sys.stderr)
+        return 1
     return 0
 
 
