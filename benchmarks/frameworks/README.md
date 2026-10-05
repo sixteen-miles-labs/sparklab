@@ -1,5 +1,10 @@
 # Qwen3.6 cross-framework benchmark
 
+DiffusionGemma uses a separate [block-diffusion benchmark](../../docs/models/diffusiongemma-26b-a4b.md).
+Its GB10 NVIDIA NVFP4 recipe measured 59.16–100.73 end-to-end completion tok/s across
+thinking modes and 256/512/1024-token outputs; these include TTFT and cannot be compared
+directly to the autoregressive decode metric below.
+
 This benchmark compares batch-one, OpenAI-compatible serving of Qwen3.6-35B-A3B
 on one NVIDIA DGX Spark. FreeToken and SparkLab share the exact FTW NVFP4 artifact;
 vLLM and SGLang share NVIDIA's ModelOpt NVFP4 checkpoint; llama.cpp and Ollama share

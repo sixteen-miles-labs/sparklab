@@ -3,6 +3,10 @@
 Run from the repo root with `PYTHONPATH=python:.`, pinned to one GPU
 (`CUDA_VISIBLE_DEVICES=0`). Each script's `--help` / docstring has the details.
 
+**`frameworks/bench_diffusion.py`** — batch-one DiffusionGemma benchmark over its
+OpenAI API, with thinking on/off, exact completion usage, TTFT, and end-to-end
+completion tok/s. See [the recipe and reproduction instructions](../docs/models/diffusiongemma-26b-a4b.md).
+
 **`bench_decode_moe.py`** — bs=1 decode tok/s of a served MoE model. Spawns `sparklab serve`
 per backend and times token arrivals over streamed `/v1/chat/completions`, so numbers
 include the full serving path. AIME-25 prompt, checkpoint-recommended sampling.

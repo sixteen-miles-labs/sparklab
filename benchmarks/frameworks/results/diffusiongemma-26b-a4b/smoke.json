@@ -1,0 +1,60 @@
+[
+  {
+    "name": "arithmetic",
+    "passed": true,
+    "request_seconds": 0.6078580180183053,
+    "usage": {
+      "prompt_tokens": 26,
+      "total_tokens": 34,
+      "completion_tokens": 8,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": {
+        "reasoning_tokens": 2
+      }
+    },
+    "finish_reason": "stop",
+    "reasoning_present": false,
+    "answer": "323"
+  },
+  {
+    "name": "reasoning",
+    "passed": true,
+    "request_seconds": 5.13454838108737,
+    "usage": {
+      "prompt_tokens": 34,
+      "total_tokens": 546,
+      "completion_tokens": 512,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": {
+        "reasoning_tokens": 362
+      }
+    },
+    "finish_reason": "length",
+    "reasoning_present": true,
+    "expected_answer_present": true
+  },
+  {
+    "name": "tool_call",
+    "passed": true,
+    "request_seconds": 2.141218013013713,
+    "usage": {
+      "prompt_tokens": 76,
+      "total_tokens": 141,
+      "completion_tokens": 65,
+      "prompt_tokens_details": null,
+      "completion_tokens_details": {
+        "reasoning_tokens": 48
+      }
+    },
+    "finish_reason": "tool_calls",
+    "reasoning_present": true,
+    "function_calls": [
+      {
+        "name": "get_weather",
+        "arguments": {
+          "city": "Toronto"
+        }
+      }
+    ]
+  }
+]

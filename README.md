@@ -144,6 +144,15 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
       <th colspan="7" align="left">Research — bounded execution outside the interactive envelope</th>
     </tr>
     <tr>
+      <td><a href="https://huggingface.co/nvidia/diffusiongemma-26B-A4B-it-NVFP4">DiffusionGemma 26B A4B</a></td>
+      <td>26B total / 4B active</td>
+      <td>NVFP4 · vLLM block diffusion</td>
+      <td>Experimental</td>
+      <td align="right">—</td>
+      <td align="right">—</td>
+      <td><a href="docs/models/diffusiongemma-26b-a4b.md">Instructions and benchmark</a></td>
+    </tr>
+    <tr>
       <td><a href="https://huggingface.co/oakmindai/DeepSeek-V4.1-Flash-FTW">DeepSeek V4.1 Flash</a></td>
       <td>552B total / 8–16B active</td>
       <td>MXFP4 / MXFP8 · disk streaming + optional DSpark5</td>
@@ -172,6 +181,9 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
     </tr>
   </tbody>
 </table>
+
+DiffusionGemma uses an isolated vLLM backend. Its benchmark reports end-to-end
+completion throughput, including TTFT, separately from the table's autoregressive decode metric.
 
 Status meanings:
 

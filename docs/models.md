@@ -38,6 +38,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | [DeepSeek V4 Flash](https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731) | 284B total / 13B active | DS-FP4 · FTW + optional DSpark5 | `deepseek-v4` | Preview | 14.02 | 0.515 |
 | [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 + KDA FP8 · FTW + optional MTP3 | `glm-5.3-flash` | Experimental | 7.77 | 6.395 |
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
+| [DiffusionGemma 26B A4B](models/diffusiongemma-26b-a4b.md) | 26B total / 4B active | NVFP4 · vLLM block diffusion | `diffusiongemma-26b-a4b` | Experimental | — | — |
 | [DeepSeek V4.1 Flash](https://huggingface.co/oakmindai/DeepSeek-V4.1-Flash-FTW) | 552B total / 8–16B active | MXFP4 / MXFP8 · disk streaming + optional DSpark5 | `deepseek-v4.1-flash` | Experimental | 1.05 | 76.329 |
 | [GLM-5.3](https://huggingface.co/oakmindai/GLM-5.3-NVFP4-FTW) | 753B total / 40B active | NVFP4 + resident FP8 · FTW + optional DFlash2-4 | `glm-5.3` | Experimental fallback | 1.29 | 2.085 |
 | [Kimi K3](https://huggingface.co/oakmindai/Kimi-K3-NVFP4-FTW) | 2.8T total / 16 of 896 experts | ModelOpt NVFP4/FP8 · FTW | `kimi-k3` | Experimental | 0.16 | 395.405 |
@@ -76,10 +77,15 @@ The previous Inferact Qwen3.8-Flash-Next checkpoint measured 85.72 aggregate tok
 with native target-only batch-eight serving. That concurrency result does not transfer
 to the current NVIDIA checkpoint. Its selected MTP3 metric is batch-one.
 
+DiffusionGemma uses an isolated vLLM backend and reports completion throughput including
+TTFT in its [benchmark notes](models/diffusiongemma-26b-a4b.md); its block emission does
+not supply a comparable autoregressive decode metric for this table.
+
 ## Evidence and caveats
 
 | Model | Current result | Evidence |
 |---|---|---|
+| DiffusionGemma 26B A4B | Isolated vLLM NVFP4: thinking-on 1024-token probe measured 66.29 end-to-end completion tok/s and 4.172 s TTFT. Six cases, 18 measured requests, three API smoke checks; broad quality, context, and endurance gates remain unrun. | [GB10-DIFFUSIONGEMMA-001](../benchmarks/gb10/results/GB10-DIFFUSIONGEMMA-001.json), [run instructions and method](models/diffusiongemma-26b-a4b.md) |
 | Qwen3.6-35B-A3B | Default Marlin/MTP4 container: 112.08 tok/s, 28 serving checks and 1,411 requests over one zero-swap hour. Preview with documented quality differences; previous native artifact remains available. | [GB10-QWEN36-MARLIN-001](../benchmarks/gb10/results/GB10-QWEN36-MARLIN-001.json), [qualification](../benchmarks/qwen36_marlin/QUALIFICATION.md) |
 | Qwen3.8-27B | Default RadixArk + FP4 prefill + greedy DFlash2-12: 49.52 tok/s and 0.125 s warm TTFT on the original short probe. Three trials produced identical output, which differs from the previous Inferact profile. The broader screen passed 70/74 quality and 29/29 serving checks; full Fast certification remains pending. | [short portfolio probe](../benchmarks/gb10/results/GB10-QWEN38-27B-PORTFOLIO-001.json), [8K comparison and verification](../benchmarks/gb10/QWEN38_27B_FAST.md) |
 | Qwen3.8-Flash-Next | NVIDIA MTP3 with accepted-prefix state commits measured 31.97 tok/s and 0.260 s warm TTFT, 13.9% above its baseline with zero rejection replay. Output differs from target-only; prior Inferact certification evidence does not transfer. | [NVIDIA baseline](../benchmarks/gb10/results/GB10-QWENNVIDIA-001.json), [accepted-prefix commits](../benchmarks/gb10/results/GB10-QWENNVIDIA-002.json) |
