@@ -1,7 +1,8 @@
 """Native V4.1 text decoder with bounded disk weights and request-local state.
 
 Math follows DeepSeek's MIT-licensed inference/model.py at
-df42c109f1defefcbfcedbe7d905718a12266e40 (see LICENSE.deepseek).
+df42c109f1defefcbfcedbe7d905718a12266e40 and the 1017 update at
+1bae0e1088993b9b82de08f59de5be5a34e42170 (see LICENSE.deepseek).
 This research path batches prompt work layer-by-layer and evaluates decode
 eagerly. It prioritizes bounded complete-model execution over prefix reuse.
 """
@@ -215,7 +216,10 @@ class Decoder:
         if name + ".wo_a.scale" in store.metadata:
             weight = dequant(weight, store.get(name + ".wo_a.scale")).to(torch.bfloat16)
         weight = weight.view(a.o_groups, a.o_lora_rank, -1)
-        output = torch.einsum("bsgd,grd->bsgr", output.view(1, 1, a.o_groups, -1), weight.to(output.dtype))
+        output = output.view(1, 1, a.o_groups, -1)
+        if a.quantize_attention_output:
+            output = fp8_roundtrip(output)
+        output = torch.einsum("bsgd,grd->bsgr", output, weight.to(output.dtype))
         return self._linear(name + ".wo_b", output.flatten(2))
 
     def _expert(self, name, x, routing_weight=None):

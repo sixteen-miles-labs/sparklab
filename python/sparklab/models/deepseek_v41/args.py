@@ -13,6 +13,8 @@ class ModelArgs:
     max_seq_len: int = 4096
     temperature: float = 1
     dtype: Literal["bf16", "fp8"] = "fp8"
+    # Runtime compatibility switch inferred from the checkpoint's reference code.
+    quantize_attention_output: bool = False
     expert_dtype: Literal["fp4"] | None = "fp4"
     vocab_size: int = 129280
     dim: int = 1024

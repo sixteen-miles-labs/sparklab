@@ -40,6 +40,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
 | [DiffusionGemma 26B A4B](models/diffusiongemma-26b-a4b.md) | 26B total / 4B active | NVFP4 · vLLM block diffusion | `diffusiongemma-26b-a4b` | Experimental | — | — |
 | [DeepSeek V4.1 Flash](https://huggingface.co/oakmindai/DeepSeek-V4.1-Flash-FTW) | 552B total / 8–16B active | MXFP4 / MXFP8 · disk streaming + optional DSpark5 | `deepseek-v4.1-flash` | Experimental | 1.05 | 76.329 |
+| [DeepSeek V4.1 Flash 1017](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017) | 552B total / 8–16B active | MXFP4 / MXFP8 · native disk streaming | `deepseek-v4.1-flash-1017` | Experimental | — | — |
 | [GLM-5.3](https://huggingface.co/oakmindai/GLM-5.3-NVFP4-FTW) | 753B total / 40B active | NVFP4 + resident FP8 · FTW + optional DFlash2-4 | `glm-5.3` | Experimental fallback | 1.29 | 2.085 |
 | [Kimi K3](https://huggingface.co/oakmindai/Kimi-K3-NVFP4-FTW) | 2.8T total / 16 of 896 experts | ModelOpt NVFP4/FP8 · FTW | `kimi-k3` | Experimental | 0.16 | 395.405 |
 
@@ -49,6 +50,9 @@ Qwen3.6 converts its pinned NVIDIA source into a separate Marlin FTW inside its 
 DeepSeek V4.1 Flash uses a byte-preserving Oakmind mirror of the original mixed
 MXFP4/MXFP8 checkpoint; its model-owned safetensors path does not use the generic FTW
 container. See its [run instructions](models/deepseek-v4.1-flash.md).
+The [1017 update](models/deepseek-v4.1-flash-1017.md) has a separately pinned recipe
+and uses its updated prompt encoder and grouped attention activation quantization.
+Full-checkpoint inference and performance for 1017 are unverified; dashes mean unmeasured.
 SparkLab 0.1.3 includes the current Qwen3.8-Flash-Next runtime and checkpoint
 support.
 

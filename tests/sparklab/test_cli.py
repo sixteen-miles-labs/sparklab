@@ -24,6 +24,7 @@ def test_models_json_exposes_tier_and_admission_status(capsys):
     assert payload["product"] == "SparkLab" and payload["platform"] == "gb10"
     assert [recipe["slug"] for recipe in payload["recipes"]] == [
         "deepseek-v4.1-flash",
+        "deepseek-v4.1-flash-1017",
         "diffusiongemma-26b-a4b",
         "glm-5.2",
         "glm-5.3",
@@ -43,6 +44,7 @@ def test_models_can_select_primary_portfolio(capsys):
         "glm-5.3-flash",
         "qwen3.8-flash-next",
         "deepseek-v4.1-flash",
+        "deepseek-v4.1-flash-1017",
         "diffusiongemma-26b-a4b",
         "kimi-k3",
     ]

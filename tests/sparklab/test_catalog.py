@@ -45,6 +45,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
         "djev": "26B total / 4B active",
         "deepseek-v4": "284B total / 13B active",
         "deepseek-v4.1-flash": "552B total / 8-16B active",
+        "deepseek-v4.1-flash-1017": "552B total / 8-16B active",
         "glm-5.3-flash": "320B total / 18B active",
         "qwen3.8-flash-next": "125B LM + 55B aux / 6B active",
         "glm-5.2": "753B total / 40B active",
@@ -153,6 +154,7 @@ def test_catalog_contains_requested_portfolio_without_overclaiming_status():
         ("frontier", "qwen3.8-flash-next"),
         ("research", "kimi-k3"),
         ("research", "deepseek-v4.1-flash"),
+        ("research", "deepseek-v4.1-flash-1017"),
         ("research", "diffusiongemma-26b-a4b"),
     }
     assert {

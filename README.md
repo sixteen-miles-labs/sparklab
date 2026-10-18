@@ -162,6 +162,15 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
       <td><a href="docs/models/deepseek-v4.1-flash.md">Instructions</a></td>
     </tr>
     <tr>
+      <td><a href="https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017">DeepSeek V4.1 Flash 1017</a></td>
+      <td>552B total / 8–16B active</td>
+      <td>MXFP4 / MXFP8 · native disk streaming</td>
+      <td>Experimental</td>
+      <td align="right">—</td>
+      <td align="right">—</td>
+      <td><a href="docs/models/deepseek-v4.1-flash-1017.md">Instructions</a></td>
+    </tr>
+    <tr>
       <td><a href="https://huggingface.co/oakmindai/GLM-5.3-NVFP4-FTW">GLM-5.3</a></td>
       <td>753B total / 40B active</td>
       <td>NVFP4 + resident FP8 · FTW + optional DFlash2-4</td>
