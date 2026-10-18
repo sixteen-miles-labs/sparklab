@@ -233,17 +233,68 @@ def test_engine_adapter_handles_chunk_continuation_and_new_requests(decoder, mon
     torch.testing.assert_close(model.forward(), golden[:1], atol=1e-6, rtol=1e-6)
 
 
-def test_native_recipe_is_experimental_and_skips_ftw(tmp_path):
+@pytest.mark.parametrize("slug,version", [
+    ("deepseek-v4.1-flash", "0.3.0"),
+    ("deepseek-v4.1-flash-1017", "0.1.0"),
+])
+def test_native_recipe_is_experimental_and_skips_ftw(tmp_path, slug, version):
     from sparklab.acquire import AcquisitionError, acquire_recipe
     from sparklab.catalog import get_recipe
 
-    recipe = get_recipe("deepseek-v4.1-flash")
+    recipe = get_recipe(slug)
     assert recipe.backend == "native" and recipe.intended_tier == "research"
     assert recipe.status == "experimental" and recipe.performance is None
-    assert recipe.evidence == ("GB10-DSV41-DSPARK-003",)
+    assert recipe.evidence == (() if slug.endswith("-1017") else ("GB10-DSV41-DSPARK-003",))
     assert recipe.runtime_artifact is None
     assert recipe.deployment.runtime_format == "safetensors"
-    assert recipe.recipe_version == "0.3.0"
+    assert recipe.recipe_version == version
     assert recipe.runtime_memory == {"total_bytes": 96 * 2**30}
+    if slug.endswith("-1017"):
+        assert recipe.model == "deepseek-ai/DeepSeek-V4.1-Flash-1017"
+        assert recipe.revision == "1bae0e1088993b9b82de08f59de5be5a34e42170"
+        assert recipe.source_bytes == 510311045295
     with pytest.raises(AcquisitionError, match="omit --prepare"):
         acquire_recipe(recipe, root=str(tmp_path), prepare=True)
+
+
+@pytest.mark.parametrize("quantize", [False, True])
+def test_checkpoint_reference_selects_attention_rounding_without_execution(tmp_path, quantize):
+    import shutil
+    from sparklab.models.deepseek_v41.config import load_args
+
+    (tmp_path / "inference").mkdir()
+    shutil.copyfile(FIXTURE / "inference/config.json", tmp_path / "inference/config.json")
+    (tmp_path / "inference/model.py").write_text(
+        'raise RuntimeError("reference code must never execute")\n'
+        'class Attention:\n'
+        '    def forward(self, o):\n'
+        + ('        act_quant(o, fp8_block_size, scale_fmt, scale_dtype, True)\n'
+           if quantize else '')
+        + '        return o\n'
+    )
+    args = load_args(tmp_path)
+    assert args.quantize_attention_output is quantize
+    assert args.max_seq_len == 2048 and args.vision_n_layers == args.dspark_block_size == 0
+
+
+def test_1017_decoder_matches_explicit_grouped_projection_rounding(decoder, monkeypatch):
+    tokens = json.loads((FIXTURE / "expected.json").read_text())["tokens"]
+    baseline = torch.cat([decoder.step(token) for token in tokens])
+    decoder.reset()
+    einsum = torch.einsum
+
+    def reference(equation, *operands):
+        if equation == "bsgd,grd->bsgr":
+            operands = (fp8_roundtrip(operands[0]), operands[1])
+        return einsum(equation, *operands)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(torch, "einsum", reference)
+        expected = torch.cat([decoder.step(token) for token in tokens])
+    assert not torch.equal(expected, baseline)
+    decoder.reset()
+    decoder.args.quantize_attention_output = True
+    actual = torch.cat([decoder.step(token) for token in tokens])
+    torch.testing.assert_close(actual, expected, atol=1e-6, rtol=1e-6)
+    decoder.reset()
+    torch.testing.assert_close(decoder.prefill(tokens), expected[-1:], atol=1e-6, rtol=1e-6)

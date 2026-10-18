@@ -1,4 +1,5 @@
 """Native, single-request DeepSeek V4.1 research configuration."""
+import ast
 import json
 from dataclasses import fields
 from pathlib import Path
@@ -8,6 +9,29 @@ from .args import ModelArgs
 
 MAX_CONTEXT = 2048
 CACHE_BYTES = 24 << 30
+
+
+def _quantizes_attention_output(path):
+    # 1017 adds act_quant(o, ...) before the grouped wo_a projection, but
+    # publishes the same config.json as the original release. Inspect its
+    # reference source without executing it, including for renamed snapshots.
+    source = Path(path) / "inference/model.py"
+    if not source.is_file():
+        return False
+    tree = ast.parse(source.read_text())
+    for cls in tree.body:
+        if not isinstance(cls, ast.ClassDef) or cls.name != "Attention":
+            continue
+        for method in cls.body:
+            if isinstance(method, ast.FunctionDef) and method.name == "forward":
+                return any(
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Name) and node.func.id == "act_quant"
+                    and node.args and isinstance(node.args[0], ast.Name)
+                    and node.args[0].id == "o"
+                    for node in ast.walk(method)
+                )
+    return False
 
 
 def load_args(path):
@@ -21,6 +45,7 @@ def load_args(path):
     args.max_seq_len = MAX_CONTEXT
     args.max_batch_size = 1
     args.vision_n_layers = 0
+    args.quantize_attention_output = _quantizes_attention_output(path)
     if len(args.compress_ratios) < args.n_layers or any(
         ratio not in (0, 1, 2) for ratio in args.compress_ratios[:args.n_layers]
     ):

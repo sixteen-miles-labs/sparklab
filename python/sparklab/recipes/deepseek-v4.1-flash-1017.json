@@ -1,0 +1,45 @@
+{
+  "schema_version": "2.0",
+  "recipe_version": "0.1.0",
+  "slug": "deepseek-v4.1-flash-1017",
+  "name": "DeepSeek V4.1 Flash 1017",
+  "model": "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+  "parameters": "552B total / 8-16B active",
+  "revision": "1bae0e1088993b9b82de08f59de5be5a34e42170",
+  "source_bytes": 510311045295,
+  "intended_tier": "research",
+  "status": "experimental",
+  "implementation": "text-architecture",
+  "portfolio_role": "primary",
+  "deployment": {
+    "backend": "native",
+    "backend_api": "1.0",
+    "source_format": "safetensors",
+    "runtime_format": "safetensors",
+    "quantization": "ds-fp4",
+    "execution_policy": "nvme-moe",
+    "backend_options": {
+      "moe_backend": "fused",
+      "cuda_graph_max_bs": 0,
+      "cache_type": "naive",
+      "max_running_req": 1,
+      "max_seq_len_override": 2048,
+      "num_tokens": 2048,
+      "attention_backend": "triton",
+      "disable_startup_prefill_warmup": true
+    }
+  },
+  "profile": "research",
+  "description": "Native text-only Research decoder for the 1017 update, with checkpoint-specific grouped attention activation quantization, packed experts and bounded safetensors reads. Source: https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017",
+  "evidence": [],
+  "limitations": [
+    "Experimental native text implementation. Full-checkpoint inference, quality, performance, parser, agent and endurance gates for 1017 remain unverified. No performance evidence transfers from earlier V4 or V4.1 checkpoints.",
+    "Eager TP=1, one request and 2048 total tokens with a naive cache and no prefix reuse. Vision is not implemented. DSpark is unvalidated for 1017 and disabled in this recipe.",
+    "Reads original safetensors directly. The model owns a dedicated packed expert LRU; the fused engine setting avoids generic MoE bank allocation. Generic FTW conversion and offload-cache controls do not apply.",
+    "The 96 GiB runtime budget reuses the earlier V4.1 cache allocation for identical model geometry; it has not been measured on 1017 and is not a certification result.",
+    "Requires roughly 510 GB of local storage. Engram tables are read by row and never loaded whole. First-token and decode latency may be high."
+  ],
+  "runtime_memory": {
+    "total_bytes": 103079215104
+  }
+}
