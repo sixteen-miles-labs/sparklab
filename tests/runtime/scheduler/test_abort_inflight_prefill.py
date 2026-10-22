@@ -35,19 +35,19 @@ from sparklab.runtime.scheduler.utils import PendingReq
 UID = 2
 
 
-def _pool(num_slots=16):
+def _pool(num_slots=16, device="cpu"):
     g = LinearGatedDeltaGroupConfig(
         name="linear", layer_ids=(0,), num_key_heads=2, num_value_heads=4,
         key_head_dim=16, value_head_dim=16, conv_kernel_dim=4, output_gate=True,
     )
     return LinearStatePool(group=g, num_slots=num_slots, dtype=torch.bfloat16,
-                           device=torch.device("cpu"), tp_size=1)
+                           device=torch.device(device), tp_size=1)
 
 
-def _setup(page_size=1):
+def _setup(page_size=1, device="cpu"):
     """Hybrid managers + a stub Scheduler `self` for the real unbound methods."""
-    pool = _pool()
-    pt = torch.zeros(4, 64, dtype=torch.int32)
+    pool = _pool(device=device)
+    pt = torch.zeros(4, 64, dtype=torch.int32, device=device)
     cm = CacheManager(64, page_size, pt, "hybrid_radix", linear_state_pool=pool)
     tm = TableManager(max_running_reqs=4, page_table=pt)
     dm = DecodeManager(page_size=page_size)

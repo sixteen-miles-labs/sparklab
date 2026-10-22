@@ -78,7 +78,31 @@ class TokenizeManager:
                     prompt, return_tensors="pt", add_special_tokens=not templated
                 )
             )
-            results.append(input_ids.view(-1).to(torch.int32))
+            ids = input_ids.view(-1).to(torch.int32)
+            if os.getenv("SPARKLAB_EXACT_PREFIX", "0") == "1":
+                from sparklab.runtime.checkpoint.state import eligible_endpoints
+                candidates = []
+                if isinstance(msg.text, list):
+                    # Bound quadratic rendering work. The final prompt and safe
+                    # suffix endpoints remain available even for longer histories.
+                    for end in range(1, min(len(msg.text), 64)):
+                        # Optional message boundaries need not themselves form
+                        # a valid conversation (e.g. Qwen rejects system-only
+                        # histories). The complete request was already rendered
+                        # above; keep its errors authoritative and omit only an
+                        # unsupported partial boundary.
+                        from jinja2.exceptions import TemplateError
+
+                        try:
+                            partial = self._render(
+                                msg.text[:end], msg.tools,
+                                self._sanitize_effort(msg.chat_template_kwargs or {}),
+                            )
+                        except (TemplateError, ValueError):
+                            continue
+                        candidates.append(self.tokenizer.encode(partial, add_special_tokens=not templated))
+                msg.checkpoint_endpoints = eligible_endpoints(ids.tolist(), candidates)
+            results.append(ids)
         return results
 
     def _prepare_images(self, msg):

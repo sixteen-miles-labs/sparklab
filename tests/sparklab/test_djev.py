@@ -184,7 +184,9 @@ def test_images_preserve_order_and_missing_state_is_rejected():
 
 def test_djev_acquisition_uses_pinned_source_and_rejects_prepare(tmp_path):
     from sparklab.acquire import AcquisitionError, acquire_recipe
-    recipe = get_recipe("djev")
+    # The fake download below writes two bytes; this pin/backend test does not
+    # require a full model's free space. Capacity guards have planner coverage.
+    recipe = replace(get_recipe("djev"), source_bytes=2, prepared_bytes=0, minimum_free_bytes=4)
     calls = []
     def download(**kwargs):
         calls.append(kwargs)

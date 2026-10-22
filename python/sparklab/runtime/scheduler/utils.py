@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import time
 from typing import TYPE_CHECKING, List
 
 import torch
@@ -20,6 +21,11 @@ class PendingReq:
     mm_embeds: torch.Tensor | None = None
     mm_positions: torch.Tensor | None = None
     mm_delta: int = 0
+    checkpoint_endpoints: tuple[int, ...] = ()
+    queued_at: float = field(default_factory=time.monotonic)
+    restore_attempted: bool = False
+    restore_waiting: bool = False
+    timing: dict[str, float] | None = None
 
     @property
     def input_len(self) -> int:

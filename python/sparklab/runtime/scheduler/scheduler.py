@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import time
+from collections import deque
 
 from typing import TYPE_CHECKING, List, NamedTuple, NoReturn, Set, Tuple, TypeAlias
 
@@ -35,6 +37,8 @@ from .io import SchedulerIOMixin
 from .prefill import ChunkedReq, PrefillManager
 from .status import SchedulerStatusReporter
 from .table import TableManager
+from .policy import SchedulingPolicy
+from .telemetry import RuntimeTelemetry, Shape, host_scalars, workspace_snapshot, allocator_snapshot, ExpertCounterSampler, EXPERT_DECODE_FIELDS, EXPERT_DISK_FIELDS
 
 if TYPE_CHECKING:
     from sparklab.runtime.engine import BatchSamplingArgs, ForwardOutput
@@ -64,7 +68,27 @@ class Scheduler(SchedulerIOMixin):
     def __init__(self, config: SchedulerConfig):
         from sparklab.runtime.engine import Engine
 
+        self.scheduling_policy = SchedulingPolicy(
+            os.getenv("SPARKLAB_SCHEDULER_POLICY", "baseline"),
+            delivery_budget=float(os.getenv("SPARKLAB_SCHEDULER_DELIVERY_MS", "100"))/1000,
+            prefill_service_bound=float(os.getenv("SPARKLAB_SCHEDULER_PREFILL_SERVICE_MS", "1000"))/1000,
+        )
+        self.runtime_metrics = RuntimeTelemetry(
+            trace_capacity=int(os.getenv("SPARKLAB_RUNTIME_TRACE_CAPACITY", "0"))
+        )
+        self._runtime_timing = (
+            os.getenv("SPARKLAB_RUNTIME_TIMING", "0") == "1"
+            or self.scheduling_policy.mode == "latency"
+            or bool(os.getenv("SPARKLAB_PREFIX_STORE", ""))
+        )
+        self._runtime_events = deque()
         self.engine = Engine(config)
+        expert_cache = self.engine.moe_offload_cache
+        self._runtime_expert_sampler = (
+            ExpertCounterSampler(expert_cache)
+            if self._runtime_timing and expert_cache is not None and expert_cache.collect_stats
+            else None
+        )
 
         # use another stream to overlap metadata processing with computation
         self.device = self.engine.device
@@ -87,10 +111,35 @@ class Scheduler(SchedulerIOMixin):
                 None,
             ) or getattr(self.engine.kv_cache, "sliding_window_size", None),
         )
+        if os.getenv("SPARKLAB_EXACT_PREFIX", "0") == "1":
+            from sparklab.runtime.checkpoint.exact import ExactEndpointCache
+            if (config.speculative_tokens or config.tp_info.size != 1
+                    or not getattr(self.engine.model, "supports_exact_hybrid_checkpoint", False)):
+                raise ValueError("exact prefix checkpoints require a qualified target-only TP=1 state contract")
+            self.cache_manager.exact_endpoints = ExactEndpointCache(
+                self.cache_manager, self.engine.kv_cache,
+                max_records=int(os.getenv("SPARKLAB_EXACT_PREFIX_RECORDS", "8")),
+            )
         self.decode_manager = DecodeManager(config.page_size)
         self.prefill_manager = PrefillManager(
             self.cache_manager, self.table_manager, self.decode_manager
         )
+        self.prefix_retention = None
+        if os.getenv("SPARKLAB_PREFIX_STORE", ""):
+            from sparklab.runtime.checkpoint.config import DiskSettings
+            from sparklab.runtime.checkpoint.identity import runtime_identity
+            from sparklab.runtime.checkpoint.service import PrefixRetention
+
+            settings = DiskSettings.from_env()
+            exact = self.cache_manager.exact_endpoints
+            compatibility = runtime_identity(
+                config.model_path, exact.adapter, config, scope=settings.scope,
+            )
+            self.prefix_retention = PrefixRetention(
+                exact, compatibility, settings, prefill_cost=self._prefix_prefill_cost,
+                max_waiters=min(128, max(2, config.max_running_req * 2)),
+            )
+            self.prefill_manager.prefix_retention = self.prefix_retention
 
         # some alias for easy access
         self.finished_reqs: Set[Req] = set()
@@ -145,6 +194,24 @@ class Scheduler(SchedulerIOMixin):
         """Called when the scheduler is idle to perform background tasks."""
         logger.info_rank0("Scheduler is idle, waiting for new reqs...")
         self.cache_manager.check_integrity()
+        self._poll_runtime_timings()
+        if os.getenv("SPARKLAB_RUNTIME_LOG", "0") == "1":
+            logger.info_rank0("Runtime measurements: " + json.dumps(self.runtime_metrics.snapshot()))
+            retention = getattr(self, "prefix_retention", None)
+            if retention is not None:
+                logger.info_rank0("Prefix measurements: " + json.dumps(retention.snapshot()))
+
+    def _prefix_prefill_cost(self, tokens):
+        """Observed same-path costs only; unknown shapes never cost zero."""
+        total = 0.
+        while tokens:
+            count = min(tokens, self.prefill_budget)
+            seconds = self.runtime_metrics.estimate(Shape.of("prefill", 1, count), None)
+            if seconds is None:
+                return None
+            total += seconds
+            tokens -= count
+        return total
 
     @torch.inference_mode()
     def rebuild_cache(
@@ -163,6 +230,8 @@ class Scheduler(SchedulerIOMixin):
         """
         assert not self.prefill_manager.runnable, "rebuild requires no pending prefill"
         assert not self.decode_manager.runnable, "rebuild requires no running decode"
+        retention = getattr(self, "prefix_retention", None)
+        assert retention is None or not retention.outstanding, "rebuild requires drained prefix I/O"
         torch.cuda.synchronize(self.device)
         if self.config.tp_info.size > 1:
             self.sync_all_ranks()
@@ -251,10 +320,14 @@ class Scheduler(SchedulerIOMixin):
         return ongoing_data
 
     def normal_loop(self) -> None:
+        retention = getattr(self, "prefix_retention", None)
+        if retention is not None:
+            retention.poll()
         blocking = not (
             self.prefill_manager.runnable
             or self.decode_manager.runnable
             or self._pending_rebuild is not None  # a queued rebuild to execute at idle
+            or (retention is not None and retention.outstanding)
         )
         for msg in self.receive_msg(blocking=blocking):
             self._process_one_msg(msg)
@@ -276,6 +349,12 @@ class Scheduler(SchedulerIOMixin):
 
         self._process_last_data(ongoing_data)
         self._flush_abort_acks()
+        if retention is not None:
+            retention.poll()
+            if forward_input is None and retention.outstanding:
+                # Bounded polling backoff, no filesystem or transfer wait on the
+                # model worker. Incoming messages are checked on the next pass.
+                time.sleep(.001)
 
     @torch.inference_mode()
     def run_forever(self) -> NoReturn:
@@ -288,7 +367,9 @@ class Scheduler(SchedulerIOMixin):
             and getattr(self.engine.model, "supports_mtp_prefix_recovery", False)
             and os.getenv("SPARKLAB_MTP_OVERLAP", "0") == "1"
         )
-        if ENV.DISABLE_OVERLAP_SCHEDULING or (self.config.speculative_tokens and not mtp_overlap):
+        if (ENV.DISABLE_OVERLAP_SCHEDULING
+                or self.cache_manager.exact_endpoints is not None
+                or (self.config.speculative_tokens and not mtp_overlap)):
             with self.engine_stream_ctx:
                 self.engine.stream.wait_stream(self.stream)
                 while True:
@@ -299,10 +380,23 @@ class Scheduler(SchedulerIOMixin):
             while True:
                 data = self.overlap_loop(data)
 
-    def shutdown(self) -> None:
-        torch.cuda.synchronize(self.device)
-        self.sync_all_ranks()
-        self.engine.shutdown()
+    def shutdown(self, *, failed: bool = False) -> None:
+        try:
+            retention = getattr(self, "prefix_retention", None)
+            if retention is not None and not retention.close(timeout=5.):
+                raise RuntimeError("prefix transfers still own runtime pools at shutdown")
+            if failed:
+                # Preserve pools through the transfer drain. A failed rank cannot
+                # require healthy peers to join a shutdown barrier, or assume a
+                # usable CUDA context for graph/engine teardown. Process exit
+                # owns final device cleanup after this local I/O drain.
+                return
+            torch.cuda.synchronize(self.device)
+            self._poll_runtime_timings()
+            self.sync_all_ranks()
+            self.engine.shutdown()
+        finally:
+            SchedulerIOMixin.close_io(self)
 
     def _process_last_data(self, last_data: ForwardData | None) -> None:
         if last_data is None:
@@ -319,6 +413,7 @@ class Scheduler(SchedulerIOMixin):
             _, next_tokens_cpu, copy_done = output
             token_counts = tuple(1 for _ in batch.reqs)
         copy_done.synchronize()
+        generated_at = time.monotonic()
         reply: List[DetokenizeMsg] = []
         new_finished_reqs: Set[Req] = set()
         with self.cache_manager.lazy_free_region():
@@ -336,6 +431,10 @@ class Scheduler(SchedulerIOMixin):
                         # popped the pending continuation (no next chunk launches), and this
                         # drain point frees the chunk's pages/slots exactly once.
                         self._free_req_resources(req)
+                    elif (self.cache_manager.exact_endpoints is not None
+                          and req.cached_len in req.checkpoint_endpoints):
+                        self.cache_manager.release_exact_source(req)
+                        self.cache_manager.exact_endpoints.publish(req)
                     continue
                 if req.aborted:
                     # Aborted while this final-chunk prefill / decode step was in flight: free
@@ -380,6 +479,10 @@ class Scheduler(SchedulerIOMixin):
                         and not finished
                     ):
                         req.toolcall_anchor_len = req.input_ids.numel()
+                    request_timing = None
+                    if req.timing is not None:
+                        request_timing = dict(req.timing, first_generated=generated_at)
+                        req.timing = None  # one first-output observation, including bursts
                     reply.append(DetokenizeMsg(
                         uid=req.uid,
                         next_token=next_token,
@@ -387,6 +490,7 @@ class Scheduler(SchedulerIOMixin):
                         finish_reason=finish_reason,
                         matched_stop=matched_stop,
                         stop_strs=req.sampling_params.stop_strs or None,
+                        timing=request_timing,
                     ))
                     if finished:
                         # A following speculative block may already have run
@@ -414,6 +518,17 @@ class Scheduler(SchedulerIOMixin):
                     # None'd GDN ping-pong slots).
                     self.cache_manager.cache_req(req, finished=False)
 
+        metrics = getattr(self, "runtime_metrics", None)
+        if metrics is not None:
+            now = time.monotonic()
+            delivered = {m.uid for m in reply}
+            for req in batch.reqs:
+                if req.uid in delivered:
+                    if req.last_output_ready_at is not None:
+                        metrics.observe("output_ready_gap", max(0., now-req.last_output_ready_at))
+                    req.last_output_ready_at = now
+            metrics.counters["committed_output_tokens"] += len(reply)
+            Scheduler._poll_runtime_timings(self)
         self.finished_reqs = new_finished_reqs
         speculative_tokens = int(getattr(self.config, "speculative_tokens", 0) or 0)
         if new_finished_reqs and speculative_tokens:
@@ -469,6 +584,16 @@ class Scheduler(SchedulerIOMixin):
                 m.gpu_mem_bytes = mem
                 if m.finished:
                     m.moe_stats = moe_stats
+            snapshot = Scheduler._runtime_snapshot(self, time.monotonic(), {
+                "kv_used_pages": used, "kv_total_pages": total,
+                "mamba_used_slots": mamba_used, "mamba_total_slots": mamba_total,
+                "swa_used_tokens": swa_used, "swa_total_tokens": swa_total,
+                "gpu_reserved_bytes": mem,
+                "running_requests": len(self.decode_manager.running_reqs),
+                "pending_requests": len(self.prefill_manager.pending_list),
+            }, moe_stats)
+            if snapshot is not None:
+                reply[0].runtime_snapshot = snapshot
         self.status_reporter.report_batch(
             batch,
             running_reqs=len(self.decode_manager.running_reqs),
@@ -480,17 +605,93 @@ class Scheduler(SchedulerIOMixin):
             swa_tokens=swa_tokens,
         )
         self.send_result(reply)
+        # Feedback belongs to the completed forward, after its output fence and
+        # host handoff. It must run even when runtime telemetry is disabled.
+        for req in batch.reqs:
+            round_data = getattr(req, "adaptive_round", None)
+            if round_data is not None:
+                req.adaptive_round = None
+                if not req.aborted:
+                    seconds = round_data.finish()
+                    gpu_timings = round_data.gpu_timings()
+                    if metrics is not None:
+                        if gpu_timings is not None:
+                            metrics.observe("speculative_round_gpu", gpu_timings["round_gpu_seconds"])
+                            for phase in ("proposal", "verification", "commit", "handoff"):
+                                value = gpu_timings.get(phase + "_gpu_seconds")
+                                if value is not None:
+                                    metrics.observe("speculative_" + phase + "_gpu", value)
+                        metrics.speculative_round(round_data.depth, round_data.accepted)
+                        if metrics.trace.maxlen:
+                            metrics.trace.append({"time": time.monotonic(), "phase": "adaptive",
+                                                  "depth": round_data.depth,
+                                                  "accepted": round_data.accepted,
+                                                  "round_seconds": seconds,
+                                                  **(gpu_timings or {})})
+
+    def _runtime_snapshot(self, now, resources, expert_terminal=None):
+        """At most one bounded piggyback per second; no file I/O or device wait.
+
+        Idle snapshots deliberately remain last-observed, with an explicit age.
+        Detailed rings stay in their existing diagnostic owners, outside IPC.
+        """
+        if not getattr(self, "_runtime_timing", False):
+            return None
+        cache = getattr(getattr(self, "engine", None), "moe_offload_cache", None)
+        sampler = getattr(self, "_runtime_expert_sampler", None)
+        if sampler is not None:
+            observed = sampler.poll(cache, self.engine.stream, now)
+            previous_expert = getattr(self, "_runtime_expert_decode", None)
+            if observed is not None and (
+                previous_expert is None or observed["observed_at"] > previous_expert["observed_at"]
+            ):
+                self._runtime_expert_decode = observed
+        if expert_terminal is not None:
+            self._runtime_expert_decode = {
+                "observed_at": now,
+                "counters": host_scalars(expert_terminal, EXPERT_DECODE_FIELDS),
+            }
+        previous = getattr(self, "_runtime_last_export", None)
+        if previous is not None and now - previous < 1.:
+            return None
+        self._runtime_last_export = now
+        # Query host allocator metadata once per exported observation, not once
+        # per token. A single read keeps allocated/reserved from the same sample.
+        resources = {**resources, **allocator_snapshot(getattr(self, "device", None))}
+        retention = getattr(self, "prefix_retention", None)
+        exact = self.cache_manager.exact_endpoints
+        source = getattr(cache, "disk_source", None)
+        return {
+            "schema_version": 1,
+            "observed_at": now,
+            "scheduler": self.runtime_metrics.snapshot(include_trace=False),
+            "resources": resources,
+            "retained_workspaces": workspace_snapshot(getattr(self, "engine", None), sampler),
+            "exact_prefix": ({
+                "records": len(exact.entries), "metadata_bytes": exact.metadata_bytes,
+                "published": exact.published, "skipped": exact.skipped, "hits": exact.hits,
+                "readers": sum(entry.readers for entry in exact.entries.values()),
+                "private_restore_pages": exact.restoring_pages,
+                "private_restore_slots": exact.restoring_states,
+            } if exact is not None else None),
+            "prefix_store": retention.snapshot() if retention is not None else None,
+            "expert_disk": ({"observed_at": now,
+                             "counters": host_scalars(source.stats(), EXPERT_DISK_FIELDS)}
+                            if source is not None else None),
+            "expert_decode": getattr(self, "_runtime_expert_decode", None),
+        }
 
     def _match_stop_str(self, req: Req) -> str | None:
         """First stop string present in this request's generated tail, else None. Decodes
-        only a short suffix (bounded by the longest stop string's char length, so a stop of
-        N chars spans at most N tokens) to keep the per-step cost small."""
+        only a short suffix. Byte-fallback tokens can split one Unicode character
+        across multiple tokens, so bound lookback by UTF-8 bytes plus one context
+        token, rather than by character count."""
         stop_strs = req.sampling_params.stop_strs
         prompt_len = req.max_device_len - req.output_len
         if len(req.input_ids) <= prompt_len:
             return None
-        max_chars = max(len(s) for s in stop_strs)
-        tail_start = max(prompt_len, len(req.input_ids) - (max_chars + 1))
+        max_bytes = max(len(s.encode("utf-8", errors="surrogatepass")) for s in stop_strs)
+        tail_start = max(prompt_len, len(req.input_ids) - (max_bytes + 1))
         tail = self.tokenizer.decode(req.input_ids[tail_start:].tolist())
         for s in stop_strs:
             if s in tail:
@@ -545,6 +746,8 @@ class Scheduler(SchedulerIOMixin):
         elif isinstance(msg, ExitMsg):
             raise KeyboardInterrupt
         elif isinstance(msg, UserMsg):
+            if msg.timing is not None:
+                msg.timing["scheduler_received"] = time.monotonic()
             logger.debug_rank0("Received user msg: %s", msg)
             tombstones = getattr(self, "_abort_tombstones", None)
             if tombstones is not None and msg.uid in tombstones:
@@ -653,7 +856,9 @@ class Scheduler(SchedulerIOMixin):
                 self._reply_rebuild(
                     msg.request_id, "unsupported", "runtime rebuild unsupported under TP > 1"
                 )
-            elif self.prefill_manager.runnable or self.decode_manager.runnable:
+            elif (self.prefill_manager.runnable or self.decode_manager.runnable
+                  or (getattr(self, "prefix_retention", None) is not None
+                      and self.prefix_retention.outstanding)):
                 # if_idle: refuse rather than wait. (finished_reqs hold no resources — they
                 # are already freed — so they do not block a rebuild.)
                 self._reply_rebuild(msg.request_id, "busy")
@@ -948,12 +1153,58 @@ class Scheduler(SchedulerIOMixin):
         if parts:
             batch.mm_embeds = torch.cat(parts, dim=0)
 
+    def _schedule_decode_batch(self, service_budget=None):
+        engine = getattr(self, "engine", None)
+        if getattr(engine, "adaptive_dflash", None) is not None:
+            running = self.decode_manager.running_reqs
+            if len(running) > 1:
+                raise AssertionError("adaptive DFlash is qualified only for batch one")
+            if running:
+                req = next(iter(running))
+                anchor = self.token_pool[req.table_idx, req.cached_len].reshape(1)
+                engine.prepare_adaptive_round(req, anchor, service_budget=service_budget,
+                                              phase_timing=getattr(self, "_runtime_timing", False))
+        return self.decode_manager.schedule_next_batch()
+
     def _schedule_next_batch(self) -> ForwardInput | None:
-        # TODO: support other policies: e.g. DECODE first
-        batch = (
-            self.prefill_manager.schedule_next_batch(self.prefill_budget)
-            or self.decode_manager.schedule_next_batch()
-        )
+        policy = getattr(self, "scheduling_policy", None)
+        decision = None
+        service_budget = None
+        queued_before, selection_at = 0, None
+        observed_output_age, observed_queue_age = None, None
+        prefill_unavailable = False
+        if policy is not None:
+            self._poll_runtime_timings()
+            now = time.monotonic()
+            pending = self.prefill_manager.pending_list
+            running = self.decode_manager.running_reqs
+            queued_before, selection_at = len(pending), now
+            observed_output_age = max((max(0., now-(r.last_output_ready_at
+                if r.last_output_ready_at is not None else r.first_dispatch_at))
+                for r in running if r.last_output_ready_at is not None or r.first_dispatch_at is not None), default=None)
+            observed_queue_age = max((max(0., now-r.queued_at) for r in pending), default=None)
+            output_age = observed_output_age if observed_output_age is not None else 0.
+            alignment = max(self.config.page_size, 64 if self.cache_manager.is_hybrid else 1)
+            shape = Shape.of("prefill", min(len(pending), self.config.max_running_req), self.prefill_budget)
+            decode_shape = Shape.of("decode", len(running), len(running))
+            decision, service_budget = policy.choose_coordinated(
+                tp_info=getattr(self.config, "tp_info", None),
+                cpu_group=getattr(self, "tp_cpu_group", None),
+                now=now, pending=bool(pending), decoders=bool(running),
+                oldest_queue_age=observed_queue_age if observed_queue_age is not None else 0.,
+                output_age=output_age, prefill_budget=self.prefill_budget, alignment=alignment,
+                prefill_seconds=self.runtime_metrics.estimate(shape, .25),
+                decode_seconds=self.runtime_metrics.estimate(decode_shape, .05),
+                atomic_prompt=any(r.mm_embeds is not None for r in pending),
+            )
+        if decision is not None and decision.phase == "decode":
+            batch = self._schedule_decode_batch(service_budget)
+        else:
+            budget = decision.token_budget if decision is not None else self.prefill_budget
+            batch = self.prefill_manager.schedule_next_batch(budget)
+            if batch is None:
+                prefill_unavailable = queued_before > 0
+                batch = self._schedule_decode_batch(service_budget)
         if batch is None:
             return None
         if getattr(batch, "phase", None) == "decode" and batch.size == 1:
@@ -974,6 +1225,23 @@ class Scheduler(SchedulerIOMixin):
                     batch.disable_state_tracking = True
         forward_input = self._prepare_batch(batch)
         self._report_prompt_admissions(batch)
+        if policy is not None:
+            now = time.monotonic()
+            policy.dispatched(batch.phase, now)
+            for req in batch.reqs:
+                if req.first_dispatch_at is None:
+                    req.first_dispatch_at = now
+                    if req.queued_at is not None:
+                        self.runtime_metrics.observe("queue_wait", max(0.,now-req.queued_at))
+            self.runtime_metrics.dispatch(
+                phase=batch.phase, requests=batch.padded_size,
+                tokens=sum(r.extend_len for r in batch.reqs),
+                cached_tokens=batch.log_cached_tokens, queued=len(self.prefill_manager.pending_list),
+                reason="prefill_unavailable" if prefill_unavailable else decision.reason,
+                policy_reason=decision.reason, queued_before=queued_before,
+                selection_at=selection_at, output_age=observed_output_age, queue_age=observed_queue_age,
+                token_budget=decision.token_budget, active_requests=batch.size,
+            )
         return forward_input
 
     def _report_prompt_admissions(self, batch: Batch) -> None:
@@ -984,9 +1252,15 @@ class Scheduler(SchedulerIOMixin):
         """
         if not batch.is_prefill or not batch.prompt_admissions:
             return
+        timings = {}
+        for req in getattr(batch, "reqs", ()):
+            if req.timing is not None and "admitted" not in req.timing:
+                req.timing["admitted"] = time.monotonic()
+                timings[req.uid] = dict(req.timing)
         self.send_result(
             [
-                PromptAdmittedMsg(uid=uid, prompt_tokens=prompt_tokens, cached_tokens=cached_tokens)
+                PromptAdmittedMsg(uid=uid, prompt_tokens=prompt_tokens, cached_tokens=cached_tokens,
+                                  timing=timings.get(uid))
                 for uid, prompt_tokens, cached_tokens in batch.prompt_admissions
             ]
         )
@@ -999,18 +1273,51 @@ class Scheduler(SchedulerIOMixin):
         pending.clear()
         self.send_result([ErrorReplyMsg(uid=uid, error="request aborted") for uid in uids])
 
+    def _poll_runtime_timings(self) -> None:
+        events = getattr(self, "_runtime_events", ())
+        while events and events[0][2].query():
+            shape, start, end = events.popleft()
+            self.runtime_metrics.gpu_completed(shape, start.elapsed_time(end)/1000.)
+
     def _forward(self, forward_input: ForwardInput) -> ForwardOutput:
+        started = time.monotonic()
         batch, sample_args, input_mapping, output_mapping = forward_input
+        for req in batch.reqs:
+            if req.timing is not None:
+                req.timing.setdefault("first_dispatch", started)
         batch.input_ids = self.token_pool[input_mapping]
         if self.toolcall_anchor_id is not None and not batch.is_prefill:
             self.cache_manager.snapshot_toolcall_anchor(batch.reqs)
+        timing = None
+        if getattr(self, "_runtime_timing", False):
+            if len(self._runtime_events) < 64:
+                timing = (Shape.of(batch.phase, batch.padded_size, sum(r.extend_len for r in batch.reqs)),
+                          torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True))
+                timing[1].record(self.engine.stream)
+            else:
+                self.runtime_metrics.counters["timing_skipped"] += 1
         forward_output = self.engine.forward_batch(batch, sample_args)
         if forward_output.managed_writes:
             table_idx, position, token = batch.speculative_write
             self.token_pool[table_idx, position] = token
         else:
             self.token_pool[output_mapping] = forward_output.next_tokens_gpu
+        adaptive_events = [req.adaptive_round.gpu_end for req in batch.reqs
+                           if getattr(req, "adaptive_round", None) is not None
+                           and req.adaptive_round.gpu_end is not None]
+        if adaptive_events:
+            for end in adaptive_events:
+                end.record(self.engine.stream)
+            # Reuse the existing drain fence after the scheduler-owned token
+            # write. No extra wait; the round covers every committed GPU write.
+            forward_output.copy_done_event.record(self.engine.stream)
         self.decode_manager.filter_reqs(forward_input.batch.reqs)
+        metrics = getattr(self, "runtime_metrics", None)
+        if metrics is not None:
+            metrics.observe("host_submit", time.monotonic()-started)
+            if timing is not None:
+                timing[2].record(self.engine.stream)
+                self._runtime_events.append(timing)
         return forward_output
 
 

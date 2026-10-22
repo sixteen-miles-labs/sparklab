@@ -40,6 +40,8 @@ class UserMsg(BaseBackendMsg):
     mm_inputs: dict | None = None
     mm_positions: torch.Tensor | None = None
     mm_delta: int = 0
+    checkpoint_endpoints: tuple[int, ...] = ()
+    timing: dict[str, float] | None = None
 
 
 @dataclass

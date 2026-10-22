@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import ExitStack
 from typing import TYPE_CHECKING, Final, List
 
 import torch
@@ -23,6 +24,12 @@ class SchedulerIOMixin:
         send_result: Function to send results back to the tokenizer.
         sync_all_ranks: Function to synchronize all ranks on CPU side.
     """
+
+    def close_io(self) -> None:
+        with ExitStack() as cleanup:
+            for name in ("_recv_from_tokenizer", "_send_into_tokenizer", "_send_into_ranks", "_recv_from_rank0"):
+                if (link := getattr(self, name, None)) is not None:
+                    cleanup.callback(link.stop, linger=0)
 
     def __init__(self, config: SchedulerConfig, tp_cpu_group: torch.distributed.ProcessGroup):
         tp_info = config.tp_info

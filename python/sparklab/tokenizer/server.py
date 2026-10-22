@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from contextlib import ExitStack
 import multiprocessing as mp
+import time
 from typing import Any, List
 
 import torch
@@ -47,6 +49,7 @@ def _prompt_admitted_reply(msg: PromptAdmittedMsg) -> UserReply:
         finished=False,
         prompt_tokens_delta=msg.prompt_tokens,
         cached_tokens=msg.cached_tokens,
+        timing=msg.timing,
     )
 
 
@@ -54,6 +57,35 @@ def _error_reply(msg: ErrorReplyMsg) -> UserReply:
     return UserReply(
         uid=msg.uid, incremental_output="", finished=True, error=msg.error, error_code=msg.code,
     )
+
+
+def _detokenized_replies(detokenize_manager: Any, messages: List[DetokenizeMsg]) -> List[UserReply]:
+    """Preserve sampled usage, stages and one bounded scheduler snapshot."""
+    started = time.monotonic()
+    replies = detokenize_manager.detokenize(messages)
+    ended = time.monotonic()
+    return [
+        UserReply(
+            uid=msg.uid,
+            incremental_output=reply,
+            finished=msg.finished,
+            finish_reason=msg.finish_reason,
+            matched_stop=msg.matched_stop,
+            completion_tokens_delta=1,
+            kv_used_pages=msg.kv_used_pages,
+            kv_total_pages=msg.kv_total_pages,
+            mamba_used_slots=msg.mamba_used_slots,
+            mamba_total_slots=msg.mamba_total_slots,
+            swa_used_tokens=msg.swa_used_tokens,
+            swa_total_tokens=msg.swa_total_tokens,
+            gpu_mem_bytes=msg.gpu_mem_bytes,
+            moe_stats=msg.moe_stats,
+            runtime_snapshot=msg.runtime_snapshot,
+            timing=(dict(msg.timing, detokenize_start=started,
+                         detokenize_end=ended) if msg.timing is not None else None),
+        )
+        for msg, reply in zip(messages, replies, strict=True)
+    ]
 
 
 def _put_user_replies(send_frontend: Any, replies: List[UserReply]) -> None:
@@ -94,6 +126,8 @@ def _tokenize_requests(
     ok_tensors: List[torch.Tensor] = []
     errors: List[UserReply] = []
     for msg in messages:
+        if msg.timing is not None:
+            msg.timing["tokenize_start"] = time.monotonic()
         try:
             tokens = tokenize_manager.tokenize([msg])[0]
         except Exception as exc:  # noqa: BLE001 — isolate, never crash the worker
@@ -107,6 +141,9 @@ def _tokenize_requests(
                 )
             )
             continue
+        finally:
+            if msg.timing is not None:
+                msg.timing["tokenize_end"] = time.monotonic()
         # A zero-token prompt would trip the scheduler's input_len > 0 invariant and
         # crash the worker; reject it here as a terminal error instead.
         if tokens.numel() == 0:
@@ -208,26 +245,7 @@ def tokenize_worker(
             )
             sampled_replies: List[UserReply] = []
             if len(detokenize_msg) > 0:
-                replies = detokenize_manager.detokenize(detokenize_msg)
-                sampled_replies = [
-                    UserReply(
-                        uid=msg.uid,
-                        incremental_output=reply,
-                        finished=msg.finished,
-                        finish_reason=msg.finish_reason,
-                        matched_stop=msg.matched_stop,
-                        completion_tokens_delta=1,
-                        kv_used_pages=msg.kv_used_pages,
-                        kv_total_pages=msg.kv_total_pages,
-                        mamba_used_slots=msg.mamba_used_slots,
-                        mamba_total_slots=msg.mamba_total_slots,
-                        swa_used_tokens=msg.swa_used_tokens,
-                        swa_total_tokens=msg.swa_total_tokens,
-                        gpu_mem_bytes=msg.gpu_mem_bytes,
-                        moe_stats=msg.moe_stats,
-                    )
-                    for msg, reply in zip(detokenize_msg, replies, strict=True)
-                ]
+                sampled_replies = _detokenized_replies(detokenize_manager, detokenize_msg)
 
             # An error reply and a client abort are both terminal for their uid, and neither
             # produces the finished DetokenizeMsg that would release the decode state.
@@ -256,7 +274,7 @@ def tokenize_worker(
                     )
                 if ok_msgs:
                     backend = [
-                        UserMsg(uid=msg.uid, input_ids=t, sampling_params=msg.sampling_params, mm_inputs=msg.mm_inputs)
+                        UserMsg(uid=msg.uid, input_ids=t, sampling_params=msg.sampling_params, mm_inputs=msg.mm_inputs, checkpoint_endpoints=msg.checkpoint_endpoints, timing=msg.timing)
                         for msg, t in zip(ok_msgs, ok_tensors, strict=True)
                     ]
                     send_backend.put(backend[0] if len(backend) == 1 else BatchBackendMsg(data=backend))
@@ -269,3 +287,7 @@ def tokenize_worker(
                 send_backend.put(batch_output)
     except KeyboardInterrupt:
         pass
+    finally:
+        with ExitStack() as cleanup:
+            for link in (recv_listener, send_backend, send_frontend):
+                cleanup.callback(link.stop, linger=0)

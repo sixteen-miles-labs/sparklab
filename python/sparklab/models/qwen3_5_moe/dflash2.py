@@ -378,7 +378,11 @@ class Qwen38DFlash2(BaseOP):
         if batch.size != 1 or not batch.reqs[0].sampling_params.is_greedy:
             return None
         req = batch.reqs[0]
-        block_size = min(self.block_size, max(1, req.max_device_len - req.device_len))
+        requested = getattr(req, "dflash_depth", None)
+        block_limit = self.block_size if requested is None else requested + 1
+        if not 1 <= block_limit <= self.block_size:
+            raise ValueError("DFlash proposal exceeds prepared block envelope")
+        block_size = min(block_limit, max(1, req.max_device_len - req.device_len))
         if block_size <= 1:
             return None
         ids = torch.full(

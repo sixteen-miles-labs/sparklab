@@ -145,7 +145,9 @@ def test_gguf_acquisition_is_selective_and_needs_no_conversion(tmp_path, monkeyp
     from sparklab.backends import gguf_artifacts
     from sparklab.catalog import get_recipe
 
-    r = get_recipe("bonsai2-27b")
+    # The downloader and validator below replace model I/O; this fixture should
+    # not require the real checkpoint's storage capacity on the test host.
+    r = replace(get_recipe("bonsai2-27b"), source_bytes=1, prepared_bytes=0, minimum_free_bytes=2)
     calls = []
 
     def download(**kwargs):

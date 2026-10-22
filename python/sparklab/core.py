@@ -49,6 +49,13 @@ class Req:
     mm_positions: torch.Tensor | None = None
     mm_delta: int = 0
 
+    checkpoint_endpoints: tuple[int, ...] = ()
+    exact_source: object | None = None
+    queued_at: float | None = None
+    timing: dict[str, float] | None = None
+    first_dispatch_at: float | None = None
+    last_output_ready_at: float | None = None
+
     # --- hybrid-radix (GDN linear-state) per-request slots; None for non-hybrid models or
     # until allocated from LinearStatePool. Set by the scheduler (P2). ---
     linear_slot_idx: int | None = None              # live GDN state slot (sglang mamba_pool_idx)
@@ -75,6 +82,9 @@ class Req:
     # Full-vocabulary draft distributions for exact stochastic rejection
     # sampling. None for deterministic/greedy speculative decoding.
     speculative_draft_probs: torch.Tensor | None = None
+    adaptive_policy: object | None = None
+    adaptive_round: object | None = None
+    dflash_depth: int | None = None
     # A terminal token can occur before the end of a verified multi-token result.
     # In that case recurrent state ran past the client-visible sequence and must
     # not be donated to the radix tree at finish.
@@ -88,6 +98,7 @@ class Req:
         # one page beyond the final accepted boundary and must still return it.
         self.allocated_len = self.cached_len
         self.max_device_len = len(self.input_ids) + self.output_len
+        self.kv_reservation_end = self.max_device_len
         assert 0 <= self.cached_len < self.device_len <= self.max_device_len
         self._alloc_ids_buf()
 

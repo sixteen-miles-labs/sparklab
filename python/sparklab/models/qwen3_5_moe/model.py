@@ -104,6 +104,9 @@ class Qwen3_5Model(BaseOP):
 
 
 class Qwen3_5MoEForCausalLM(BaseLLMModel):
+    # Target-only complete state is MHA KV plus all LinearStatePool components.
+    # Speculative draft continuation is a separate qualification contract.
+    supports_exact_hybrid_checkpoint = True
     def __init__(self, config: ModelConfig):
         self.model = Qwen3_5Model(config)
         if getattr(config, "lm_head_quant", "none") == "nvfp4":

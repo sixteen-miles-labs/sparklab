@@ -17,6 +17,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from sparklab import __version__
 from sparklab.core import SamplingParams
+from sparklab.request_timing import CURRENT_HTTP, RequestTimingMiddleware, semantic_ready
 from sparklab.message import (
     AbortMsg,
     BaseFrontendMsg,
@@ -59,6 +60,36 @@ _SHUTTING_DOWN = threading.Event()
 BACKEND_DEATH_EXIT_GRACE_S = 10.0
 
 
+@contextlib.contextmanager
+def _python_exit_on_default_sigterm():
+    """Let Uvicorn replay SIGTERM through Python finalizers, not SIG_DFL.
+
+    The shell status remains 143; Popen sees +143 instead of -SIGTERM. Explicit
+    embedding handlers remain authoritative. The scope includes partial startup.
+    """
+    if threading.current_thread() is not threading.main_thread():
+        yield
+        return
+    previous = signal.getsignal(signal.SIGTERM)
+    if previous != signal.SIG_DFL:
+        yield
+        return
+
+    exiting = False
+
+    def exit_normally(signum, frame):
+        nonlocal exiting
+        if not exiting:
+            exiting = True
+            raise SystemExit(128 + signum)
+
+    signal.signal(signal.SIGTERM, exit_normally)
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGTERM, previous)
+
+
 def get_global_state() -> FrontendManager:
     global _GLOBAL_STATE
     assert _GLOBAL_STATE is not None, "Global state is not initialized"
@@ -79,7 +110,12 @@ def _terminate_backend_workers(processes: List[Any]) -> None:
     for p in processes or []:
         try:
             if p.is_alive():
-                p.terminate()
+                # Python already handles SIGINT during spawn-time imports,
+                # before our worker-specific SIGTERM handler is installed.
+                if os.name == "posix" and getattr(p, "pid", None) is not None:
+                    os.kill(p.pid, signal.SIGINT)
+                else:
+                    p.terminate()
         except Exception:  # noqa: BLE001 -- already-gone / unqueryable handle: nothing to do
             continue
 
@@ -97,17 +133,24 @@ def _exit_after_backend_death(grace_s: float) -> threading.Timer:
     return timer
 
 
-def _reap_backend_workers(processes: List[Any], timeout: float = 5.0) -> None:
-    """Wait out a preceding ``_terminate_backend_workers`` and SIGKILL whatever is still
-    standing. Only the shell path needs this: it owns the process lifetime end to end (no
-    outer signal takes the process down for it), and a worker that ignored SIGTERM would keep
-    the GPU and the IPC sockets after the shell has already returned to the user's terminal."""
+def _reap_backend_workers(processes: List[Any], timeout: float = 10.0) -> None:
+    """One shared grace deadline, then kill and join only owned survivors."""
+    deadline = time.monotonic() + timeout
     for p in processes or []:
         try:
-            p.join(timeout=timeout)
+            p.join(timeout=max(0., deadline - time.monotonic()))
             if p.is_alive():
+                logger.warning("Backend worker %s exceeded shutdown grace; killing it", getattr(p, "name", "?"))
                 p.kill()
         except Exception:  # noqa: BLE001 -- already-gone / unqueryable handle: nothing to do
+            continue
+    deadline = time.monotonic() + 1.
+    for p in processes or []:
+        try:
+            p.join(timeout=max(0., deadline - time.monotonic()))
+            if p.is_alive():
+                logger.error("Backend worker %s did not exit after SIGKILL", getattr(p, "name", "?"))
+        except Exception:
             continue
 
 
@@ -179,6 +222,8 @@ class FrontendManager:
     # handler) tears these down itself, AFTER setting _SHUTTING_DOWN, so the supervisor observes
     # the shutdown flag before the ensuing deaths. See _terminate_backend_workers.
     backend_processes: List[Any] = field(default_factory=list)
+    _shutdown_started: bool = False
+    _generations_failed: bool = False
     # Event loop the listener runs on, captured when the listener starts (_create_listener_once).
     # Lets a cross-thread caller — the supervisor thread's failure callback — marshal rebuild
     # future resolution back onto the loop (asyncio Futures are not thread-safe). None until the
@@ -228,7 +273,7 @@ class FrontendManager:
         threading.Thread(target=_warm, daemon=True, name="frontend-tokenizer-warm").start()
 
     def new_user(self) -> int:
-        if self.maintenance_state != "serving":
+        if self.maintenance_state != "serving" or self.fatal_error is not None:
             raise AdmissionClosedError(
                 f"server unavailable: engine is {self.maintenance_state}"
             )
@@ -250,7 +295,7 @@ class FrontendManager:
                 # client disconnects and abort_user removes its ack queue. Delivery to a live
                 # request remains gated below, but observation must happen first.
                 self.stats.observe(msg)
-                if msg.uid not in self.ack_map:
+                if self._generations_failed or msg.uid not in self.ack_map:
                     continue
                 self.ack_map[msg.uid].append(msg)
                 self.event_map[msg.uid].set()
@@ -311,6 +356,25 @@ class FrontendManager:
             # Loop already closed (shutdown racing the crash): nothing left to wake.
             pass
 
+    def fail_pending_generations(self) -> None:
+        """Wake HTTP waiters, without inventing scheduler accounting acknowledgements."""
+        loop = self._loop
+        if loop is None:
+            return  # send_one checks a failure racing the first listener setup
+
+        def fail_all() -> None:
+            self._generations_failed = True
+            for uid, pending in self.ack_map.items():
+                if not any(reply.finished for reply in pending):
+                    pending.append(UserReply(uid, "", True,
+                        error="the inference backend is unavailable", error_code="backend_unavailable"))
+                    self.event_map[uid].set()
+
+        try:
+            loop.call_soon_threadsafe(fail_all)
+        except RuntimeError:
+            pass  # the owner loop already closed during shutdown
+
     def _create_listener_once(self):
         if not self.initialized:
             self._loop = asyncio.get_running_loop()
@@ -319,6 +383,14 @@ class FrontendManager:
 
     async def send_one(self, msg: BaseTokenizerMsg):
         self._create_listener_once()
+        if self.fatal_error is not None:
+            self.fail_pending_generations()
+            self.fail_pending_rebuilds(self.fatal_error)
+            return  # a dead peer cannot acknowledge generation, abort or rebuild
+        context = CURRENT_HTTP.get()
+        if isinstance(msg, TokenizeMsg) and context is not None:
+            msg.timing = {"http_ingress": context[1]["http_ingress"],
+                          "frontend_submit": context[0].clock()}
         await self.send_tokenizer.put(msg)
 
     async def wait_for_ack(self, uid: int):
@@ -345,7 +417,14 @@ class FrontendManager:
 
     async def stream_generate(self, uid: int):
         async for ack in self.wait_for_ack(uid):
+            if ack.error:
+                from .generation import GenerationError, public_generation_error
+
+                error = GenerationError(ack.error, ack.error_code)
+                yield f"data: {json.dumps({'error': {'message': public_generation_error(error), 'type': error.error_type, 'code': error.code}})}\n\n".encode()
+                break
             if ack.incremental_output:
+                semantic_ready()
                 # SSE: JSON-encode (so a newline inside a token can't break the frame)
                 # and terminate every event with a blank line.
                 yield f"data: {json.dumps({'text': ack.incremental_output}, ensure_ascii=False)}\n\n".encode()
@@ -377,23 +456,45 @@ class FrontendManager:
         await self.send_one(AbortMsg(uid=uid))
 
     def shutdown(self):
-        self.send_tokenizer.stop()
-        self.recv_tokenizer.stop()
+        if self._shutdown_started:
+            return
+        _SHUTTING_DOWN.set()
+        self.maintenance_state = "stopping"
+        loop = self._loop
+        if loop is not None and loop.is_running():
+            try:
+                current = asyncio.get_running_loop()
+            except RuntimeError:
+                current = None
+            if current is not loop:
+                try:
+                    loop.call_soon_threadsafe(self.shutdown)
+                    return
+                except RuntimeError:  # the owner loop closed during the stop race
+                    pass
+        self._shutdown_started = True
         # Tear the workers down ourselves (best-effort). _SHUTTING_DOWN is already set by the
         # time shutdown() runs, so the supervisor attributes the ensuing deaths to the stop.
         _terminate_backend_workers(self.backend_processes)
+        for link in (self.send_tokenizer, self.recv_tokenizer):
+            try:
+                link.stop(linger=0)
+            except Exception:
+                logger.exception("Could not close frontend IPC transport during shutdown")
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    yield
-    # Orderly shutdown (uvicorn traps SIGINT/SIGTERM and runs this on the way out). Flag it
-    # BEFORE tearing anything down so the backend supervisor treats the workers' ensuing
-    # exit as expected rather than a crash — no spurious ERROR / "failed" latch during stop.
-    _SHUTTING_DOWN.set()
     global _GLOBAL_STATE
     if _GLOBAL_STATE is not None:
-        _GLOBAL_STATE.shutdown()
+        _GLOBAL_STATE._loop = asyncio.get_running_loop()
+    try:
+        yield
+    finally:
+        # Set the gate before worker exit, including cancellation/error unwind.
+        _SHUTTING_DOWN.set()
+        if _GLOBAL_STATE is not None:
+            _GLOBAL_STATE.shutdown()
 
 
 def install_cors(app: FastAPI, origins_csv: str) -> None:
@@ -474,6 +575,14 @@ async def _record_request_middleware(request: Request, call_next):
         )
     )
     return response
+
+
+# Wrap the buffering BaseHTTPMiddleware above, so send timing includes the
+# downstream ASGI transport rather than only its internal memory channel.
+app.add_middleware(
+    RequestTimingMiddleware,
+    get_collector=lambda: getattr(getattr(_GLOBAL_STATE, "stats", None), "timing", None),
+)
 
 
 class CacheRebuildRequest(BaseModel):
@@ -859,14 +968,15 @@ def _install_shell_stop_handlers() -> None:
     previous = {sig: signal.getsignal(sig) for sig in (signal.SIGTERM, signal.SIGHUP)}
 
     def _flag_shutdown(signum, frame) -> None:
+        prev = previous.get(signum)
+        if prev == signal.SIG_IGN:
+            return
         _SHUTTING_DOWN.set()
         _terminate_backend_workers(_GLOBAL_STATE.backend_processes)
-        prev = previous.get(signum)
         if callable(prev):
             prev(signum, frame)
         else:
-            signal.signal(signum, prev if prev is not None else signal.SIG_DFL)
-            os.kill(os.getpid(), signum)
+            raise SystemExit(128 + signum)
 
     for sig in previous:
         signal.signal(sig, _flag_shutdown)
@@ -916,6 +1026,7 @@ def _serve_and_run_shell(host: str, port: int) -> None:
         _reap_backend_workers(_GLOBAL_STATE.backend_processes)
 
 
+@_python_exit_on_default_sigterm()
 def run_api_server(config: ServerArgs, start_backend: Callable[[], "Any"], run_shell: bool) -> None:
     """
     Run the frontend API server (FastAPI + uvicorn) and wire it to the tokenizer process via ZMQ.
@@ -974,65 +1085,83 @@ def run_api_server(config: ServerArgs, start_backend: Callable[[], "Any"], run_s
     from .supervisor import LoadProgress, run_backend_supervisor
 
     _GLOBAL_STATE.load_progress = LoadProgress()
-    handle = start_backend()
-    # Hold the worker handles so the orderly-shutdown path can tear them down itself (after
-    # setting _SHUTTING_DOWN) rather than relying on OS signal-delivery order.
-    _GLOBAL_STATE.backend_processes = list(getattr(handle, "processes", None) or [])
+    handle = None
+    supervisor_thread = None
+    try:
+        handle = start_backend()
+        # Hold the worker handles so the orderly-shutdown path can tear them down itself (after
+        # setting _SHUTTING_DOWN) rather than relying on OS signal-delivery order.
+        _GLOBAL_STATE.backend_processes = list(getattr(handle, "processes", None) or [])
 
-    def _on_ready() -> None:
-        # A stop requested while weights were loading has already sealed admission.  The backend
-        # may finish its ready handshake before SIGTERM arrives; never reopen that gate after the
-        # daemon has received a final accounting snapshot.
-        if _GLOBAL_STATE.maintenance_state == "loading":
-            _GLOBAL_STATE.maintenance_state = "serving"
-            _GLOBAL_STATE.ready_at = time.monotonic()
-            logger.info(f"API server is ready to serve on {host}:{port}")
+        def _on_ready() -> None:
+            # A stop requested while weights were loading has already sealed admission.  The backend
+            # may finish its ready handshake before SIGTERM arrives; never reopen that gate after the
+            # daemon has received a final accounting snapshot.
+            if not _SHUTTING_DOWN.is_set() and _GLOBAL_STATE.maintenance_state == "loading":
+                _GLOBAL_STATE.maintenance_state = "serving"
+                _GLOBAL_STATE.ready_at = time.monotonic()
+                logger.info(f"API server is ready to serve on {host}:{port}")
 
-    def _on_failure(message: str) -> None:
-        _GLOBAL_STATE.fatal_error = message
-        _GLOBAL_STATE.maintenance_state = "failed"
-        logger.error("Backend supervisor: %s", message)
-        # No CacheRebuildReply will ever arrive from a dead backend, so wake any caller blocked
-        # in dispatch_rebuild's await now — otherwise it strands until the full rebuild timeout.
-        _GLOBAL_STATE.fail_pending_rebuilds(message)
-        # Then take the whole serve down (see _exit_after_backend_death). Shell mode is excluded:
-        # a person is sitting at that TUI, the API is theirs alone, and its stop path is ^C.
-        if not run_shell:
-            _exit_after_backend_death(BACKEND_DEATH_EXIT_GRACE_S)
+        def _on_failure(message: str) -> None:
+            _GLOBAL_STATE.fatal_error = message
+            _GLOBAL_STATE.maintenance_state = "failed"
+            logger.error("Backend supervisor: %s", message)
+            # No CacheRebuildReply will ever arrive from a dead backend, so wake any caller blocked
+            # in dispatch_rebuild's await now — otherwise it strands until the full rebuild timeout.
+            _GLOBAL_STATE.fail_pending_rebuilds(message)
+            _GLOBAL_STATE.fail_pending_generations()
+            # Then take the whole serve down (see _exit_after_backend_death). Shell mode is excluded:
+            # a person is sitting at that TUI, the API is theirs alone, and its stop path is ^C.
+            if not run_shell:
+                _exit_after_backend_death(BACKEND_DEATH_EXIT_GRACE_S)
 
-    def _on_meta(meta: dict) -> None:
-        # Per-unit cache VRAM costs + the free-VRAM seed + per-pool floors + the actual pool
-        # sizes allocated at load, delivered once on the ack path; surfaced by cache_geometry
-        # (unit_bytes + the limits block + the pre-first-chat pool seed). Unpack the extras
-        # aside so unit_bytes keeps its original three-key shape; unknown keys, if any, are inert.
-        meta = dict(meta or {})
-        _GLOBAL_STATE.free_vram_bytes = int(meta.pop("free_vram_bytes", 0) or 0)
-        _GLOBAL_STATE.cache_floors = meta.pop("floors", None)
-        _GLOBAL_STATE.cache_pools = meta.pop("pools", None)
-        _GLOBAL_STATE.swa_full_tokens_ratio = float(meta.pop("swa_full_tokens_ratio", 0.0) or 0.0)
-        _GLOBAL_STATE.cache_budget_bytes = int(meta.pop("cache_budget_bytes", 0) or 0)
-        _GLOBAL_STATE.unit_bytes = meta
+        def _on_meta(meta: dict) -> None:
+            # Per-unit cache VRAM costs + the free-VRAM seed + per-pool floors + the actual pool
+            # sizes allocated at load, delivered once on the ack path; surfaced by cache_geometry
+            # (unit_bytes + the limits block + the pre-first-chat pool seed). Unpack the extras
+            # aside so unit_bytes keeps its original three-key shape; unknown keys, if any, are inert.
+            meta = dict(meta or {})
+            _GLOBAL_STATE.free_vram_bytes = int(meta.pop("free_vram_bytes", 0) or 0)
+            _GLOBAL_STATE.cache_floors = meta.pop("floors", None)
+            _GLOBAL_STATE.cache_pools = meta.pop("pools", None)
+            _GLOBAL_STATE.swa_full_tokens_ratio = float(meta.pop("swa_full_tokens_ratio", 0.0) or 0.0)
+            _GLOBAL_STATE.cache_budget_bytes = int(meta.pop("cache_budget_bytes", 0) or 0)
+            _GLOBAL_STATE.unit_bytes = meta
 
-    # Early-bind: supervise the backend on a daemon thread so uvicorn can bind
-    # immediately and /health can report loading progress. Shell mode wants exactly the same
-    # thing -- its client waits on /health and renders that progress -- so both paths share
-    # this supervisor; only who runs uvicorn differs.
-    threading.Thread(
-        target=run_backend_supervisor,
-        args=(handle, _GLOBAL_STATE.load_progress, _on_ready),
-        kwargs={
-            "on_failure": _on_failure,
-            "on_meta": _on_meta,
-            # uvicorn's lifespan shutdown sets this on SIGINT/SIGTERM, so the workers'
-            # expected exit during stop is not reported as a crash.
-            "is_shutting_down": _SHUTTING_DOWN.is_set,
-        },
-        name="sparklab-backend-supervisor",
-        daemon=True,
-    ).start()
+        # Early-bind: supervise the backend on a daemon thread so uvicorn can bind
+        # immediately and /health can report loading progress. Shell mode wants exactly the same
+        # thing -- its client waits on /health and renders that progress -- so both paths share
+        # this supervisor; only who runs uvicorn differs.
+        supervisor_thread = threading.Thread(
+            target=run_backend_supervisor,
+            args=(handle, _GLOBAL_STATE.load_progress, _on_ready),
+            kwargs={
+                "on_failure": _on_failure,
+                "on_meta": _on_meta,
+                # uvicorn's lifespan shutdown sets this on SIGINT/SIGTERM, so the workers'
+                # expected exit during stop is not reported as a crash.
+                "is_shutting_down": _SHUTTING_DOWN.is_set,
+            },
+            name="sparklab-backend-supervisor",
+            daemon=True,
+        )
+        supervisor_thread.start()
 
-    if run_shell:
-        _serve_and_run_shell(host, port)
-        return
-    # uvicorn stays on the main thread (signal handling unchanged); ^C reaches the worker group.
-    uvicorn.run(app, host=host, port=port)
+        if run_shell:
+            _serve_and_run_shell(host, port)
+            return
+        # Uvicorn owns terminal signals. Workers are detached so active HTTP
+        # drains before lifespan explicitly stops them.
+        uvicorn.run(app, host=host, port=port)
+
+    finally:
+        _SHUTTING_DOWN.set()
+        _GLOBAL_STATE.shutdown()
+        _reap_backend_workers(_GLOBAL_STATE.backend_processes)
+        if supervisor_thread is not None:
+            supervisor_thread.join(timeout=1.5)
+        if handle is not None and (supervisor_thread is None or not supervisor_thread.is_alive()):
+            queue = getattr(handle, "ack_queue", None)
+            if queue is not None and hasattr(queue, "close"):
+                queue.close()
+                queue.join_thread()

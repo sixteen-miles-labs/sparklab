@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from sparklab.runtime.checkpoint.config import runtime_reserve_bytes
+
 import gc
 import math
 import os
+import time
 from dataclasses import replace
 from datetime import timedelta
 from typing import Any, Dict, Iterable, NamedTuple, Tuple
@@ -713,9 +716,17 @@ class ForwardOutput(NamedTuple):
 class Engine:
     def __init__(self, config: EngineConfig):
         assert not torch.cuda.is_initialized()
+        self._prefix_reserved_bytes = runtime_reserve_bytes()
         set_tp_info(rank=config.tp_info.rank, size=config.tp_info.size)
         _ensure_expandable_segments()  # before the first CUDA allocation below
         _adjust_config(config)
+        from .adaptive_dflash import AdaptiveDFlash
+        self.adaptive_dflash = AdaptiveDFlash.from_env(config)
+        if self.adaptive_dflash is not None:
+            # Depth zero is an explicitly prepared target-only round, including
+            # the draft-context feature writes needed by a later positive depth.
+            object.__setattr__(config, "cuda_graph_bs", [1])
+            object.__setattr__(config, "cuda_graph_max_bs", 1)
 
         self.device = torch.device(f"cuda:{config.tp_info.rank}")
         torch.cuda.set_device(self.device)
@@ -795,7 +806,7 @@ class Engine:
         # The engine measures the budget and settles the sibling GDN state pool's bytes
         # off it; the KV pool family owns every geometry-specific formula behind the rest.
         available_memory = _startup_kv_budget(config.memory_ratio, init_free_memory, new_free)
-        available_memory -= state_pool_bytes(config)
+        available_memory -= state_pool_bytes(config) + getattr(self, "_prefix_reserved_bytes", 0)
         self.num_pages = self._pool_cls.solve_num_pages(config, available_memory)
         num_tokens = self.num_pages * config.page_size
         self.ctx.kv_cache = self.kv_cache = create_kv_pool(
@@ -870,6 +881,10 @@ class Engine:
         if self.linear_state_pool is not None:
             self.dummy_req.linear_slot_idx = self.linear_state_pool.padding_slot
         self.page_table[self.dummy_req.table_idx].fill_(num_tokens)  # point to dummy page
+        if self.adaptive_dflash is not None:
+            torch.cuda.synchronize(self.device)
+            torch.cuda.empty_cache()
+            self._adaptive_graph_before = torch.cuda.memory_reserved(self.device)
         self.graph_runner = GraphRunner(
             stream=self.stream,
             device=self.device,
@@ -883,20 +898,7 @@ class Engine:
             dummy_req=self.dummy_req,
             moe_offload_cache=self.moe_offload_cache,
         )
-        self.mtp_graph_runner = (
-            MTPVerificationGraphRunner(
-                stream=self.stream,
-                device=self.device,
-                model=self.model,
-                attn_backend=self.attn_backend,
-                speculative_tokens=config.speculative_tokens,
-                max_seq_len=aligned_max_seq_len,
-                vocab_size=config.model_config.vocab_size,
-                dummy_req=self.dummy_req,
-            )
-            if getattr(config.model_config, "mtp_cuda_graph", False)
-            else None
-        )
+        self.mtp_graph_runner = self._prepare_verification_graphs(aligned_max_seq_len)
         if (
             config.attention_backend.split(",")[0] in {"triton", "dsa"}
             and os.getenv("SPARKLAB_DISABLE_STARTUP_PREFILL_WARMUP", "0") != "1"
@@ -994,7 +996,7 @@ class Engine:
         from sparklab.runtime.engine.cache_budget import expert_bytes_per_slot, resolve_moe_cache_auto
 
         cache_per_page, fixed_cache_size, page_tokens, min_reserve = self._pool_cls.kv_cost(config)
-        fixed_cache_size += state_pool_bytes(config)  # sibling GDN state pool, engine-summed
+        fixed_cache_size += state_pool_bytes(config) + getattr(self, "_prefix_reserved_bytes", 0)  # sibling pools and bounded prefix metadata
         host_reserved = 0
         integrated = False
         if disk_source is not None:
@@ -1401,7 +1403,8 @@ class Engine:
             per_expert_bytes=per_expert_bytes, baseline_free=self._baseline_free,
             weights_bytes=self._weights_bytes, current_num_pages=self.num_pages,
             extra_fixed_bytes=(
-                state_pool_bytes(config, target_mamba) if target_mamba is not None else 0
+                (state_pool_bytes(config, target_mamba) if target_mamba is not None else 0)
+                + getattr(self, "_prefix_reserved_bytes", 0)
             ),
             extra_note=(
                 f", mamba={target_mamba - 1} slots" if target_mamba is not None else ""
@@ -1457,6 +1460,10 @@ class Engine:
         #    the backend; _sync_get_memory empties the cache so freed memory is reclaimed).
         gc.collect()
         free_min = self._sync_get_memory()[0]
+        if self.adaptive_dflash is not None:
+            torch.cuda.synchronize(self.device)
+            torch.cuda.empty_cache()
+            self._adaptive_graph_before = torch.cuda.memory_reserved(self.device)
         self.graph_runner = GraphRunner(
             stream=self.stream,
             device=self.device,
@@ -1470,23 +1477,83 @@ class Engine:
             dummy_req=self.dummy_req,
             moe_offload_cache=self.moe_offload_cache,
         )
-        self.mtp_graph_runner = (
-            MTPVerificationGraphRunner(
-                stream=self.stream,
-                device=self.device,
-                model=self.model,
-                attn_backend=self.attn_backend,
-                speculative_tokens=config.speculative_tokens,
-                max_seq_len=aligned_max_seq_len,
-                vocab_size=config.model_config.vocab_size,
-                dummy_req=self.dummy_req,
-            )
-            if getattr(config.model_config, "mtp_cuda_graph", False)
-            else None
+        self.mtp_graph_runner = self._prepare_verification_graphs(aligned_max_seq_len)
+
+    def _prepare_verification_graphs(self, max_seq_len):
+        config = self.config
+        if not getattr(config.model_config, "mtp_cuda_graph", False):
+            return None
+        kwargs = dict(
+            stream=self.stream, device=self.device, model=self.model,
+            attn_backend=self.attn_backend, max_seq_len=max_seq_len,
+            vocab_size=config.model_config.vocab_size, dummy_req=self.dummy_req,
         )
+        adaptive = getattr(self, "adaptive_dflash", None)
+        if adaptive is None:
+            return MTPVerificationGraphRunner(speculative_tokens=config.speculative_tokens, **kwargs)
+        from .adaptive_dflash import GRAPH_RESERVE_BYTES
+        from .graph import DFlashVerificationGraphs
+        before = self._adaptive_graph_before
+        runner = DFlashVerificationGraphs(depths=adaptive.depths, **kwargs)
+        torch.cuda.synchronize(self.device)
+        torch.cuda.empty_cache()
+        retained = torch.cuda.memory_reserved(self.device) - before
+        if retained > GRAPH_RESERVE_BYTES:
+            runner.destroy_cuda_graphs()
+            raise RuntimeError("prepared adaptive verification graphs exceed reserved memory")
+        self.adaptive_graph_bytes = retained
+        return runner
+
+    def prepare_adaptive_round(self, req, anchor, *, service_budget=None, phase_timing=False):
+        """One selected decode round: propose before target, after the prior drain.
+
+        DFlash target features are already stored at consumed positions. Its
+        append-only draft context is rebuilt from those features, including after
+        target-only rounds. Rejected suffix rows are excluded by the prefix.
+        """
+        adaptive = getattr(self, "adaptive_dflash", None)
+        if adaptive is None:
+            return None
+        from .adaptive_dflash import AdaptiveRound
+        policy = getattr(req, "adaptive_policy", None)
+        if policy is None:
+            req.adaptive_policy = policy = adaptive.policy()
+        if getattr(req, "adaptive_round", None) is not None:
+            raise AssertionError("previous adaptive round has not drained")
+        if req.speculative_drafts is not None:
+            raise AssertionError("adaptive proposal would overwrite pending drafts")
+        remaining = req.max_device_len - req.cached_len - 1
+        context = self.max_seq_len - req.cached_len - 1
+        greedy = req.sampling_params.is_greedy and req.mm_embeds is None
+        if adaptive.override is not None:
+            depth = max(d for d in adaptive.depths if d <= max(0, min(remaining, context)-1) and d <= adaptive.override)
+            if not greedy:
+                depth = 0
+        else:
+            depth = policy.choose(output_remaining=max(0, remaining), context_remaining=max(0, context),
+                                  allow_speculation=greedy, service_budget=service_budget)
+        round_data = AdaptiveRound(policy, depth, time.monotonic())
+        req.adaptive_round = round_data
+        round_data.begin_gpu(getattr(self, "device", torch.device("cpu")), phase_timing=phase_timing)
+        if depth:
+            original = req.device_len
+            req.device_len = req.cached_len
+            req.dflash_depth = depth
+            try:
+                proposal = self.model.propose_mtp(Batch(reqs=[req], phase="decode"), anchor)
+            finally:
+                req.device_len = original
+            if proposal is None or proposal.numel() != depth:
+                raise RuntimeError("adaptive proposal did not produce its prepared depth")
+            req.speculative_drafts = proposal
+        round_data.proposal_ready(getattr(self, "device", torch.device("cpu")))
+        return round_data
 
     def forward_batch(self, batch: Batch, args: BatchSamplingArgs) -> ForwardOutput:
         assert torch.cuda.current_stream() == self.stream
+        if (batch.is_verify and getattr(self, "adaptive_dflash", None) is not None
+                and not self.mtp_graph_runner.can_use_cuda_graph(batch)):
+            raise RuntimeError("adaptive verification escaped its prepared graph envelope")
         pool = self.linear_state_pool
         if pool is not None and getattr(pool, "cached_initial_state_step", None) is not None:
             if batch.is_verify and batch.size == 1:
@@ -1601,6 +1668,12 @@ class Engine:
                 req.speculative_draft_probs,
                 req.sampling_params,
             )
+            adaptive_round = getattr(req, "adaptive_round", None)
+            if adaptive_round is not None:
+                if adaptive_round.depth != drafts.numel():
+                    raise AssertionError("adaptive verifier changed the prepared depth")
+                adaptive_round.accepted = accepted
+                adaptive_round.verification_ready(self.device)
             self.mtp_stats["drafted"] += int(drafts.numel())
             self.mtp_stats["accepted"] += accepted
             if batch.cache_verify_states:
@@ -1660,6 +1733,7 @@ class Engine:
                     req.speculative_drafts = prefix_proposer(batch, chosen[-1:], accepted + 1)
                 if (
                     self.config.speculative_method == "dflash2"
+                    and getattr(self, "adaptive_dflash", None) is None
                     and (batch.cache_verify_states or append_only_speculation)
                     and os.getenv("SPARKLAB_DFLASH2_REJECT_DRAFT", "1") == "1"
                 ):
@@ -1692,6 +1766,10 @@ class Engine:
         else:
             batch_logits = logits[: batch.size]
             next_tokens_gpu = self.sampler.sample(batch_logits, args).to(torch.int32)
+            if getattr(self, "adaptive_dflash", None) is not None and batch.size == 1:
+                current_round = getattr(batch.reqs[0], "adaptive_round", None)
+                if current_round is not None:
+                    current_round.verification_ready(self.device)
             proposals = self._propose_speculative(batch, next_tokens_gpu)
             take_probs = getattr(self.model, "take_speculative_probs", None)
             proposal_probs = take_probs() if take_probs is not None else None
@@ -1709,6 +1787,10 @@ class Engine:
             batch.speculative_stats_snapshot = dict(self.mtp_stats)
 
         batch.can_decode_after_forward = tuple(req.can_decode for req in batch.reqs)
+        if getattr(self, "adaptive_dflash", None) is not None and batch.size == 1:
+            current_round = getattr(batch.reqs[0], "adaptive_round", None)
+            if current_round is not None:
+                current_round.commit_ready(self.device)
         next_tokens_cpu = next_tokens_gpu.to("cpu", non_blocking=True)
         copy_done_event = torch.cuda.Event()
         copy_done_event.record(self.stream)
@@ -1748,6 +1830,8 @@ class Engine:
         manager has already exited.  Their MoE layers still need ``ctx.batch`` to
         select the multi-token prefill/decode dispatch and collect cache telemetry.
         """
+        if getattr(self, "adaptive_dflash", None) is not None:
+            return None  # scheduled at the start of its own complete round
         proposer = getattr(self.model, "propose_mtp", None)
         if proposer is None:
             return None

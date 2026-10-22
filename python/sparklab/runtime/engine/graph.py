@@ -408,3 +408,28 @@ class MTPVerificationGraphRunner:
         if self.dflash:
             self.verify_metadata = None
         gc.collect()
+
+
+class DFlashVerificationGraphs:
+    """A finite prepared-width set; no adaptive round silently falls to eager."""
+
+    def __init__(self, *, depths, **kwargs):
+        self.runners = {
+            depth + 1: MTPVerificationGraphRunner(speculative_tokens=depth + 1, **kwargs)
+            for depth in sorted(depths, reverse=True) if depth
+        }
+
+    def can_use_cuda_graph(self, batch):
+        runner = self.runners.get(batch.input_ids.numel())
+        return runner is not None and runner.can_use_cuda_graph(batch)
+
+    def replay(self, batch):
+        runner = self.runners.get(batch.input_ids.numel())
+        if runner is None or not runner.can_use_cuda_graph(batch):
+            raise RuntimeError('unprepared adaptive DFlash verification shape')
+        return runner.replay(batch)
+
+    def destroy_cuda_graphs(self):
+        for runner in self.runners.values():
+            runner.destroy_cuda_graphs()
+        self.runners.clear()
