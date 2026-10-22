@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, List, Tuple
 
 import torch
 from sparklab.core import Batch, Req
-from sparklab.utils import align_down, div_ceil, init_logger
+from sparklab.utils import align_ceil, align_down, div_ceil, init_logger
 
 from .utils import PendingReq
 
@@ -47,8 +47,30 @@ class PrefillAdder:
     # allocated only in allocate_paged (after the pass), so swa_available_size does not decrement
     # across the admission loop -- without this, successive admits all see the full pool.
     reserved_swa: int = 0
+    _initial_token_budget: int = field(init=False, repr=False)
 
-    def _try_allocate_one(self, req: PendingReq):
+    def __post_init__(self):
+        self._initial_token_budget = self.token_budget
+
+    def _reservation(self, req: PendingReq, cached_len: int, handle) -> int:
+        tokens = req.input_len - cached_len + req.output_len
+        if self.cache_manager.exact_endpoints is not None:
+            # An immutable partial tail cannot become the branch's live page.
+            # Charge its consumed rows as well, then reserve whole private pages
+            # for each admitted request instead of pooling fractional leftovers.
+            ps = self.cache_manager.page_size
+            if req.chunked_req is not None:
+                # Continuations already own all pages through allocated_len,
+                # including a partly consumed page. Only pages beyond that
+                # physical frontier remain to be reserved for the full prompt.
+                return max(0, align_ceil(req.input_len + req.output_len, ps)
+                           - align_ceil(req.chunked_req.allocated_len, ps))
+            if getattr(handle, "endpoint", None) is not None:
+                tokens += cached_len % ps
+            tokens = align_ceil(tokens, ps)
+        return tokens
+
+    def _try_allocate_one(self, req: PendingReq, *, retry_exact=True):
         if self.table_manager.available_size == 0:
             return None
 
@@ -58,13 +80,34 @@ class PrefillAdder:
         cached_len = handle.cached_len
         # TODO: better estimate policy
         extend_len = req.input_len - cached_len
-        estimated_len = extend_len + req.output_len
+        estimated_len = self._reservation(req, cached_len, handle)
 
-        if estimated_len + self.reserved_size > self.cache_manager.available_size:
+        needed = estimated_len + self.reserved_size
+        exact = self.cache_manager.exact_endpoints
+        if needed > self.cache_manager.available_size and exact is not None:
+            # Protect the selected source before evicting other exact records.
+            # Releasing their full-page pins exposes pages to ordinary radix
+            # eviction; shared ancestors are counted only by the existing tree.
+            self.cache_manager.lock(handle)
+            while needed > self.cache_manager.available_size and exact.evict_one():
+                pass
+        else:
+            if needed > self.cache_manager.available_size:
+                return None
+            self.cache_manager.lock(handle)
+        if needed > self.cache_manager.available_size:
+            self.cache_manager.unlock(handle)
+            if retry_exact and getattr(handle, "endpoint", None) is not None:
+                # Private tail duplication can cost more than cold execution.
+                # After dropping this lookup's pin, discard only ready/unread
+                # exact snapshots and retry once. Live readers/I/O users remain
+                # protected by the ordinary eviction contract.
+                evicted = False
+                while exact.evict_one():
+                    evicted = True
+                if evicted:
+                    return self._try_allocate_one(req, retry_exact=False)
             return None
-        self.cache_manager.lock(handle)
-        if estimated_len + self.reserved_size > self.cache_manager.available_size:
-            return self.cache_manager.unlock(handle)
 
         # Second currency (hybrid GDN): reserve 1 live + 2 ping-pong state slots; evict tree
         # snapshots if the pool is short, fail admission if still short (mirrors the KV gate).
@@ -90,6 +133,9 @@ class PrefillAdder:
                 return self.cache_manager.unlock(handle)
 
         table_idx = self.table_manager.allocate()
+        exact = getattr(handle, "endpoint", None)
+        if exact is not None:
+            self.cache_manager.exact_endpoints.restore_tail(handle, table_idx)
         if cached_len > 0:  # NOTE: set the cached part
             device_ids = self.table_manager.token_pool[table_idx][:cached_len]
             device_ids.copy_(_maybe_pinned(req.input_ids[:cached_len]), non_blocking=True)
@@ -98,9 +144,10 @@ class PrefillAdder:
             # known-live. Today both the generic radix and the SWA radix match a prefix whose
             # full-loc row is entirely live (n == cached_len), so the tail IS the whole prefix.
             # (DSV4 reads this table too: its pool's full_loc_map is attached to it.)
-            matched = handle.get_matched_indices()
-            n = int(matched.numel())
-            self.table_manager.page_table[table_idx][cached_len - n : cached_len].copy_(matched)
+            if exact is None:
+                matched = handle.get_matched_indices()
+                n = int(matched.numel())
+                self.table_manager.page_table[table_idx][cached_len - n : cached_len].copy_(matched)
 
         linear_slot_idx = ping_pong = None
         if self.cache_manager.is_hybrid:
@@ -124,7 +171,21 @@ class PrefillAdder:
         allocated_len: int | None = None,
     ) -> Req | None:
         remain_len = pending_req.input_len - cached_len
+        if pending_req.mm_embeds is not None and remain_len > self.token_budget:
+            if self.token_budget < self._initial_token_budget:
+                # Earlier admissions used this pass's budget. Retry the whole
+                # image prompt next pass; try_add_one returns its tentative
+                # table/cache/state ownership when this returns None.
+                return None
+            raise NotImplementedError(
+                "Multimodal prompts must fit in a single prefill chunk; increase "
+                "--max-extend-tokens or shrink the prompt."
+            )
         chunk_size = min(self.token_budget, remain_len)
+        if pending_req.checkpoint_endpoints and pending_req.mm_embeds is None:
+            boundary = next((n for n in pending_req.checkpoint_endpoints if n > cached_len), None)
+            if boundary is not None:
+                chunk_size = min(chunk_size, boundary-cached_len)
         if self.cache_manager.swa_paged:
             # Cap this chunk by the swa the pool can back this pass. swa is allocated per token in
             # allocate_paged, and token_budget (max_extend_tokens, default 8192) won't chunk a
@@ -160,7 +221,13 @@ class PrefillAdder:
         is_chunked = chunk_size < remain_len
         CLS = ChunkedReq if is_chunked else Req
         self.token_budget -= chunk_size
-        self.reserved_size += remain_len + pending_req.output_len
+        reservation = self._reservation(pending_req, cached_len, cache_handle)
+        if getattr(cache_handle, "endpoint", None) is not None and cached_len % self.cache_manager.page_size:
+            # restore_tail already allocated this branch's private page during
+            # admission. The free list includes that debit; reserve only the
+            # future pages here, rather than charging the copied page twice.
+            reservation -= self.cache_manager.page_size
+        self.reserved_size += reservation
         # NOTE: update the tokens ids only; new pages will be allocated in the scheduler
         _slice = slice(cached_len, cached_len + chunk_size)
         device_ids = self.table_manager.token_pool[table_idx, _slice]
@@ -182,6 +249,19 @@ class PrefillAdder:
             mm_positions=pending_req.mm_positions,
             mm_delta=pending_req.mm_delta,
         )
+        req.checkpoint_endpoints = pending_req.checkpoint_endpoints
+        # Chunk-local max_device_len is not the full pending prompt's budget.
+        req.kv_reservation_end = pending_req.input_len + pending_req.output_len
+        if getattr(cache_handle, "endpoint", None) is not None:
+            req.cache_handle = cache_handle.endpoint.anchor
+            req.exact_source = cache_handle.endpoint
+        elif pending_req.chunked_req is not None:
+            req.exact_source = pending_req.chunked_req.exact_source
+            pending_req.chunked_req.exact_source = None
+        req.queued_at = pending_req.queued_at
+        req.timing = pending_req.timing
+        if pending_req.chunked_req is not None:
+            req.first_dispatch_at = pending_req.chunked_req.first_dispatch_at
         # Hybrid GDN per-request state slots (None for non-hybrid). On a fresh admit these are
         # freshly allocated; on a chunked continuation they are inherited from the prior chunk.
         req.linear_slot_idx = linear_slot_idx
@@ -244,11 +324,19 @@ class PrefillManager:
     table_manager: TableManager
     decode_manager: DecodeManager
     pending_list: List[PendingReq] = field(default_factory=list)
+    prefix_retention: object | None = None
 
     def add_one_req(self, req: UserMsg) -> None:
+        endpoints = ()
+        if self.cache_manager.exact_endpoints is not None and req.mm_embeds is None:
+            n = len(req.input_ids)
+            endpoints = tuple(sorted({n, n-1, *req.checkpoint_endpoints} - {0}))
+            if any(type(e) is not int or not 0 < e <= n for e in endpoints):
+                raise ValueError("checkpoint endpoint outside the tokenized prompt")
         self.pending_list.append(
             PendingReq(req.uid, req.input_ids, req.sampling_params, mm_embeds=req.mm_embeds,
-                       mm_positions=req.mm_positions, mm_delta=req.mm_delta)
+                       mm_positions=req.mm_positions, mm_delta=req.mm_delta, checkpoint_endpoints=endpoints,
+                       timing=req.timing)
         )
 
     def schedule_next_batch(self, prefill_budget: int) -> Batch | None:
@@ -264,13 +352,20 @@ class PrefillManager:
         )
         reqs: List[Req] = []
         chunked_list: List[PendingReq] = []
+        remaining: List[PendingReq] = []
         prompt_admissions: List[Tuple[int, int, int]] = []
         # Snapshot here, before the forward's complete_one() advances cached_len: the tokens
         # forwarded this batch (extend_len) and the prefix-cache hit. SGLang counts the hit
         # once at admission, so continuation chunks (already-chunked reqs) contribute 0.
         log_new_tokens = 0
         log_cached_tokens = 0
-        for pending_req in self.pending_list:
+        for index, pending_req in enumerate(self.pending_list):
+            if self.prefix_retention is not None and self.prefix_retention.maybe_restore(
+                pending_req, reserved_tokens=adder.reserved_size,
+                busy=self.decode_manager.runnable or bool(reqs),
+            ):
+                remaining.append(pending_req)
+                continue
             is_continuation = pending_req.chunked_req is not None
             if req := adder.try_add_one(pending_req):
                 pending_req.chunked_req = None
@@ -283,16 +378,17 @@ class PrefillManager:
                     # first chunk. The scheduler publishes them only after _prepare_batch
                     # succeeds; continuation chunks must never publish them again.
                     prompt_admissions.append(
-                        (req.uid, pending_req.input_len, req.cache_handle.cached_len)
+                        (req.uid, pending_req.input_len, req.cached_len)
                     )
                 log_new_tokens += req.extend_len
                 if not is_continuation:
-                    log_cached_tokens += req.cache_handle.cached_len
+                    log_cached_tokens += req.cached_len
             else:
+                remaining.extend(self.pending_list[index:])
                 break  # We cannot add more requests
         if len(reqs) == 0:
             return None
-        self.pending_list = chunked_list + self.pending_list[len(reqs) :]
+        self.pending_list = chunked_list + remaining
         batch = Batch(reqs=reqs, phase="prefill")
         batch.log_new_tokens = log_new_tokens
         batch.log_cached_tokens = log_cached_tokens
@@ -302,6 +398,8 @@ class PrefillManager:
     def abort_req(self, uid: int) -> Req | None:
         for i, req in enumerate(self.pending_list):
             if req.uid == uid:
+                if self.prefix_retention is not None:
+                    self.prefix_retention.detach(uid)
                 self.pending_list.pop(i)
                 return req.chunked_req
         return None

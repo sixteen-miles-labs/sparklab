@@ -110,12 +110,20 @@ def register_anthropic_routes(
         return await request_validation_exception_handler(request, exc)
 
 
+_FORCED_TOOL_CHOICE_ERROR = 'forced tool_choice is not supported (no constrained decoding); use auto or none'
+
+def _forced_tool_choice(req) -> bool:
+    return req.tool_choice is not None and req.tool_choice.type in {"any", "tool"}
+
+
 async def handle_anthropic_messages(
     req: AnthropicMessagesRequest,
     request: Request | None,
     state: Any,
     model_sampling: dict[str, Any],
 ):
+    if _forced_tool_choice(req):
+        return _anthropic_error_response(400, "invalid_request_error", _FORCED_TOOL_CHOICE_ERROR)
     try:
         spec = convert_anthropic_to_genspec(
             req, model_sampling,
@@ -139,7 +147,7 @@ async def handle_anthropic_messages(
         result = await generate_full(uid, spec, state, source="/v1/messages")
     except GenerationError as exc:
         return _anthropic_error_response(
-            400, "invalid_request_error", public_generation_error(exc)
+            exc.status_code, "internal_error" if exc.status_code == 503 else "invalid_request_error", public_generation_error(exc)
         )
     response = anthropic_full_response(result, req.model, uid, cache_report=cache_report)
     return JSONResponse(content=response.model_dump(exclude_none=True))
@@ -173,7 +181,7 @@ async def handle_anthropic_count_tokens(req: AnthropicCountTokensRequest, state:
         return _anthropic_error_response(
             400, "invalid_request_error", public_generation_error(exc)
         )
-    except Exception as exc:  # noqa: BLE001 — tokenizer init / other failure -> server error
+    except Exception:  # noqa: BLE001 — tokenizer init / other failure -> server error
         logger.exception("Anthropic token counting failed")
         return _anthropic_error_response(500, "api_error", "token counting failed")
     response = AnthropicCountTokensResponse(input_tokens=n_tokens)
@@ -313,6 +321,8 @@ def convert_anthropic_to_genspec(
     model_sampling: dict[str, Any],
     reasoning_parser: str | None = None,
 ) -> GenSpec:
+    if _forced_tool_choice(req):
+        raise ValueError(_FORCED_TOOL_CHOICE_ERROR)
     messages, template_tools, parser_tools, ctk = convert_anthropic_prompt(
         req, reasoning_parser=reasoning_parser
     )
@@ -566,19 +576,18 @@ async def anthropic_event_stream(
                 # Anthropic streams terminate on message_stop — no OpenAI-style
                 # `data: [DONE]` sentinel (it would be an unknown event to strict clients).
     except GenerationError as exc:
-        # Request-side failure (template rejection / over-length prompt). Match the
-        # non-streaming path's classification so Claude Code treats it as a client error
-        # rather than a server fault to retry.
+        # Match the buffered path: input errors remain client failures; loss of
+        # the backend is a server failure, including after partial output.
         if block_open:
             for f in _stop_block():
                 yield f
         yield _event(AnthropicStreamEvent(
             type="error",
             error=AnthropicError(
-                type="invalid_request_error", message=public_generation_error(exc)
+                type="internal_error" if exc.status_code == 503 else "invalid_request_error", message=public_generation_error(exc)
             ),
         ))
-    except Exception as exc:  # noqa: BLE001 — surface as an Anthropic error event
+    except Exception:  # noqa: BLE001 — surface as an Anthropic error event
         logger.exception("Anthropic message stream failed")
         if block_open:
             for f in _stop_block():

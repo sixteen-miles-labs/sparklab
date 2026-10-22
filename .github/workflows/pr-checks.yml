@@ -71,3 +71,15 @@ jobs:
             tests/tokenizer \
             tests/test_*.py \
             -m "not slow and not needs_weights"
+      - name: Run CPU-safe native runtime tests
+        # The radix reference tests compile one CPU-only C++ helper. They never
+        # require a CUDA device/toolkit and do not download model checkpoints.
+        env:
+          SPARKLAB_DISABLE_JIT: "0"
+        run: |
+          .venv/bin/python -m pytest -q \
+            tests/runtime/scheduler \
+            tests/runtime/kvcache/radix \
+            tests/runtime/engine \
+            tests/runtime/checkpoint \
+            -m "not slow and not needs_weights"

@@ -36,8 +36,8 @@ pytestmark = pytest.mark.needs_weights
 
 # One boot serves every check below, so the pages a rebuild grows into have to fit on top of the
 # model. Small and round: the engine sizes the rest from what is left.
-BOOT_PAGES = 4000
-GROWN_PAGES = 6000
+BOOT_PAGES = int(os.environ.get("SPARKLAB_REBUILD_BOOT_PAGES", "4000"))
+GROWN_PAGES = int(os.environ.get("SPARKLAB_REBUILD_GROWN_PAGES", "6000"))
 
 
 def _model_dir() -> Path | None:
@@ -122,19 +122,27 @@ def test_cache_rebuild_resizes_a_live_engine_and_keeps_serving(tmp_path):
 
     port = _free_port()
     base = f"http://127.0.0.1:{port}"
-    log = (tmp_path / "serve.log").open("w")
+    extra = json.loads(os.environ.get("SPARKLAB_REBUILD_SERVER_ARGS", "[]"))
+    if not isinstance(extra, list) or not all(isinstance(arg, str) for arg in extra):
+        raise ValueError("SPARKLAB_REBUILD_SERVER_ARGS must be a JSON string array")
+    if not 0 < BOOT_PAGES < GROWN_PAGES <= 1_000_000:
+        raise ValueError("invalid rebuild test page envelope")
+    log_path = Path(os.environ.get("SPARKLAB_REBUILD_LOG", str(tmp_path / "serve.log")))
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log = log_path.open("w")
     proc = subprocess.Popen(
         [
-            sys.executable, "-m", "sparklab",
+            sys.executable, "-m", "sparklab", "serve",
             "--model-path", str(model_dir),
             "--served-model-name", "rebuild-test",
             "--host", "127.0.0.1",
             "--port", str(port),
             "--num-pages", str(BOOT_PAGES),
+            *extra,
         ],
         stdout=log,
         stderr=subprocess.STDOUT,
-        env={**os.environ, "PYTHONPATH": "python"},
+        env={**os.environ, "PYTHONPATH": os.environ.get("SPARKLAB_REBUILD_PACKAGE_PATH", "python")},
     )
     try:
         boot_timeout = float(os.environ.get("SPARKLAB_REBUILD_BOOT_TIMEOUT", "300"))

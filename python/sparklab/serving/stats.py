@@ -8,6 +8,7 @@ from __future__ import annotations
 import time
 from collections import deque
 from typing import Any
+from sparklab.request_timing import RequestTiming
 
 
 class StatsTracker:
@@ -38,6 +39,8 @@ class StatsTracker:
         self.swa_total_tokens = 0
         self.vram_bytes = 0
         self.moe: dict | None = None
+        self.timing = RequestTiming.from_env()
+        self.native_runtime = None
 
     @property
     def active(self) -> int:
@@ -58,6 +61,15 @@ class StatsTracker:
 
     def observe(self, reply: Any, now: float | None = None) -> None:
         t = time.monotonic() if now is None else now
+        snapshot = getattr(reply, "runtime_snapshot", None)
+        if snapshot is not None:
+            self.native_runtime = snapshot
+        stamps = getattr(reply, "timing", None)
+        if stamps is not None:
+            if getattr(reply, "prompt_tokens_delta", 0) > 0:
+                self.timing.record("admitted", stamps)
+            if "first_generated" in stamps:
+                self.timing.record("generated", dict(stamps, frontend_received=t))
         if getattr(reply, "completion_tokens_delta", 0) > 0:
             self._decode.append((t, reply.completion_tokens_delta))
             self.completion_tokens_total += reply.completion_tokens_delta
@@ -155,6 +167,10 @@ def build_stats(state: Any, p95_ms: int, ttft_mean_ms: int) -> dict:
     )
     return {
         "instance_id": getattr(state, "instance_id", None),
+        **({"runtime_timing": tr.timing.snapshot()} if tr.timing.enabled else {}),
+        **({"native_runtime": {**tr.native_runtime,
+                              "age_seconds": max(0., time.monotonic() - tr.native_runtime["observed_at"])}}
+           if tr.native_runtime is not None else {}),
         "model": derive_model_card(config),
         "uptime_s": uptime_s,
         "kv": kv,

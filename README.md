@@ -74,6 +74,12 @@ may still work through native runtime fallbacks, but it is not a SparkLab suppor
 - **Evidence-bound claims:** model status and performance point to versioned,
   complete-checkpoint GB10 records rather than inferred capability.
 
+Native serving supports automatic tool use and disabling tools. Forced tool
+selection (`required`/named function, or Anthropic `any`/`tool`) returns HTTP 400
+until constrained decoding is available. Unsupported Responses `text.format`
+constraints also return 400; plain-text output remains supported. See the
+[compatibility decision](https://github.com/sixteen-miles-labs/sparklab/issues/99).
+
 ## Model portfolio
 
 <table>

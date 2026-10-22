@@ -23,6 +23,7 @@ from typing import Any
 from . import request_ring
 from sparklab.core import SamplingParams
 from sparklab.message import TokenizeMsg
+from sparklab.request_timing import semantic_ready
 from sparklab.tokenizer.tokenize import resolve_thinking_mode
 
 try:
@@ -43,8 +44,8 @@ from .reasoning_parser import (
 
 
 class GenerationError(Exception):
-    """A request failed before producing output (surfaced via ``UserReply.error`` — e.g. a
-    chat template the tokenizer cannot render, or a prompt that exceeds the KV budget). Each
+    """A request failed (surfaced via ``UserReply.error`` — e.g. a rejected
+    chat template, a prompt exceeding the KV budget, or a backend lost mid-stream). Each
     adapter turns this into its own wire-level error instead of hanging on a reply that never
     arrives. ``code`` carries the stable class (``UserReply.error_code``) when the failure has
     one, so an adapter can emit it as OpenAI's error ``code`` and clients need not parse prose."""
@@ -53,11 +54,21 @@ class GenerationError(Exception):
         super().__init__(message)
         self.code = code
 
+    @property
+    def status_code(self) -> int:
+        return 503 if self.code == "backend_unavailable" else 400
+
+    @property
+    def error_type(self) -> str:
+        return "server_error" if self.status_code == 503 else "invalid_request_error"
+
 
 def public_generation_error(exc: GenerationError) -> str:
     """Return a stable client-safe message without exposing backend exception text."""
     if exc.code == "context_length_exceeded":
         return "the request exceeds the available model context"
+    if exc.code == "backend_unavailable":
+        return "the inference backend is unavailable"
     return "the generation request failed"
 
 
@@ -518,6 +529,11 @@ async def generate_events(
                 completion_tokens = ev.completion_tokens
             elif first_token_at is None:
                 first_token_at = time.monotonic()
+            if ((isinstance(ev, (ContentDelta, ReasoningDelta)) and ev.text)
+                    or (isinstance(ev, ToolCallStart) and ev.name)
+                    or (isinstance(ev, ToolCallArgsDelta) and ev.fragment)
+                    or (isinstance(ev, ToolCallsDelta) and ev.calls)):
+                semantic_ready()
             yield ev
     except GenerationError as exc:
         error = str(exc)
@@ -540,6 +556,8 @@ async def generate_full(
     error: str | None = None
     try:
         result = await _generate_full_impl(uid, spec, state)
+        if result.content or result.reasoning or result.tool_calls:
+            semantic_ready()
         return result
     except GenerationError as exc:
         error = str(exc)

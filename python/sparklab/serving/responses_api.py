@@ -144,12 +144,38 @@ def register_responses_routes(
         return _error_response(404, f"response {response_id!r} not found (stateless server)")
 
 
+def _text_format_error(req: ResponsesRequest) -> str | None:
+    text = getattr(req, "text", None)
+    if text is None:
+        return None
+    if not isinstance(text, dict):
+        return "text must be an object"
+    output_format = text.get("format")
+    if output_format is None:
+        return None
+    if not isinstance(output_format, dict):
+        return "text.format must be an object"
+    if output_format.get("type") != "text" or set(output_format) != {"type"}:
+        return "text.format constraints are not supported (no constrained decoding); use type=text"
+    return None
+
+
+_FORCED_TOOL_CHOICE_ERROR = 'forced tool_choice is not supported (no constrained decoding); use auto or none'
+
+def _forced_tool_choice(req) -> bool:
+    return req.tool_choice == "required" or (isinstance(req.tool_choice, dict) and (req.tool_choice.get("type") == "function" or (req.tool_choice.get("type") == "allowed_tools" and req.tool_choice.get("mode") == "required")))
+
+
 async def handle_responses(
     req: ResponsesRequest,
     request: Request | None,
     state: Any,
     model_sampling: dict[str, Any],
 ):
+    if _forced_tool_choice(req):
+        return _error_response(400, _FORCED_TOOL_CHOICE_ERROR)
+    if (error := _text_format_error(req)) is not None:
+        return _error_response(400, error)
     response_id = f"resp_{uuid.uuid4().hex}"
     created = int(time.time())
     if req.max_output_tokens is not None and req.max_output_tokens < 1:
@@ -177,7 +203,7 @@ async def handle_responses(
     try:
         result = await generate_full(uid, spec, state, source="/v1/responses")
     except GenerationError as exc:
-        return _error_response(400, public_generation_error(exc), exc.code)
+        return _error_response(exc.status_code, public_generation_error(exc), exc.code)
     response = build_responses_response(result, req, response_id, created, cache_report=cache_report)
     return JSONResponse(content=response.model_dump(mode="json"))
 
@@ -193,6 +219,10 @@ def convert_responses_to_genspec(
     default_max_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS,
     reasoning_parser: str | None = None,
 ) -> GenSpec:
+    if _forced_tool_choice(req):
+        raise ValueError(_FORCED_TOOL_CHOICE_ERROR)
+    if (error := _text_format_error(req)) is not None:
+        raise ValueError(error)
     # Collect every system/developer text — the top-level `instructions` PLUS any
     # system/developer-role input items (codex sends both: a system prompt as `instructions`
     # and a `developer` permissions message) — into ONE leading system message. Strict chat
@@ -714,7 +744,7 @@ async def responses_stream_generator(
             type="response.failed", sequence_number=seq.next(),
             response=_response_obj(
                 response_id, created, req.model, output_items, status="failed",
-                usage=_usage(usage_pt, usage_ct, usage_cached),
+                usage=None if exc.code == "backend_unavailable" else _usage(usage_pt, usage_ct, usage_cached),
                 # codex reads this code to tell a blown context window from a generic failure.
                 # model_construct because ResponseError.code is a closed Literal in the SDK.
                 error=ResponseError.model_construct(
@@ -722,7 +752,7 @@ async def responses_stream_generator(
                 ),
             ),
         ))
-    except Exception as exc:  # noqa: BLE001 — never leave the client without a terminal event
+    except Exception:  # noqa: BLE001 — never leave the client without a terminal event
         logger.exception("Responses stream failed")
         for f in close_current():
             yield f
@@ -755,5 +785,5 @@ def _sse(event) -> str:
 def _error_response(status_code: int, message: str, code: str | None = None) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,
-        content={"error": {"message": message, "type": "invalid_request_error", "code": code}},
+        content={"error": {"message": message, "type": "server_error" if code == "backend_unavailable" else "invalid_request_error", "code": code}},
     )

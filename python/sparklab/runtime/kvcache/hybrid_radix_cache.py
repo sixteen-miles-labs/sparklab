@@ -111,7 +111,44 @@ class HybridRadixCache:
             self.mamba_evictable += 1
         return prefix_len, False
 
+    def insert_kv_only(self, input_ids: torch.Tensor, kv_indices: torch.Tensor):
+        """Publish immutable full pages without mislabeling an exact tail's state.
+
+        The exact-endpoint owner must pin the returned node before allocating
+        again. No recurrent snapshot is attached to the rounded boundary.
+        """
+        size = align_down(len(input_ids), self.page_size)
+        ids = input_ids[:size]
+        node, duplicate = self._walk(ids)
+        if duplicate != size:
+            child = RadixTreeNode(self.key_fn)
+            child.set_key_value(ids[duplicate:], kv_indices[duplicate:size].clone())
+            child.set_parent(node)
+            self.full_evictable += child.length
+            node = child
+        return duplicate, node
+
     # ---------------------------------------------------------------- locking (dual)
+    def inc_lock_full(self, node: RadixTreeNode) -> None:
+        """Pin only immutable full pages; exact endpoint state has a separate owner."""
+        cur = node
+        while not cur.is_root():
+            if cur.ref_count == 0:
+                self.full_evictable -= cur.length
+                self.full_protected += cur.length
+            cur.ref_count += 1
+            cur = cur.parent
+
+    def dec_lock_full(self, node: RadixTreeNode) -> None:
+        cur = node
+        while not cur.is_root():
+            cur.ref_count -= 1
+            assert cur.ref_count >= 0
+            if cur.ref_count == 0:
+                self.full_evictable += cur.length
+                self.full_protected -= cur.length
+            cur = cur.parent
+
     def inc_lock(self, node: RadixTreeNode) -> None:
         """Protect a matched node's snapshot (mamba ref on the node) and its KV path
         (full ref node..root). Enforces full_ref >= mamba_ref: using a snapshot at N pins the

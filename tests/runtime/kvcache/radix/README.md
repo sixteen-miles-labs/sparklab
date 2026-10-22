@@ -71,3 +71,38 @@ arithmetic that a live run of exactly W covers a window of W.
 Three further mutations were classified as equivalent while the suite was being built: `inc_lock`'s
 `not cur.swa_tombstone`, `evict_swa`'s leaf `ref_count == 0`, and `_free_node_mamba`'s
 `mamba_ref_count == 0` all guard states unreachable through the public API.
+
+## Exact endpoint ownership sequences
+
+`test_exact_anchor.py` extends the same `Session`, page-trie reference model and
+slot ledger for KV-only exact owners alongside ordinary aligned snapshot readers.
+`Session.do_lock_full`/`do_unlock_full` use the reference model's KV-only lease;
+they do not borrow the hybrid model's snapshot lease. Splits must preserve both
+currencies independently, including when a snapshot is attached after a KV pin.
+
+Four recorded seeds (7, 73, 319, 901) run 256 action attempts at page sizes
+1/4/16/64. Every step checks model agreement, recomputed counters, tree structure
+and slot conservation. Pin lists are capped at eight per kind; the final drain
+releases all pins, evicts both currencies and requires both slot ledgers empty.
+Failures write the seed, geometry and action prefix under the pytest temporary
+directory; rerunning the parameterized node reproduces its deterministic sequence.
+
+A process-local negative control replaces KV-only unlock with ordinary snapshot
+unlock. All 16 seeded cases reject the stolen snapshot lease. A saved seed-73
+failure was reduced from 74 actions to ten under recorded lock-index constraints;
+its four-operation semantic core is retained as
+`test_existing_snapshot_reader_survives_later_exact_owner_unlock`: attach state,
+acquire its reader, acquire an independent KV pin, then release only that pin.
+This complements the existing attach-after-pin scenario. Neither control changes
+production source. These are CPU structural/ownership checks, not complete-model
+continuation, CUDA fence, disk lifecycle, performance or soak qualification.
+
+Run the complete shared battery, or reproduce one recorded geometry/seed:
+
+```bash
+CUDA_VISIBLE_DEVICES="" SPARKLAB_DISABLE_JIT=0 PYTHONPATH=python \
+  python -m pytest -q tests/runtime/kvcache/radix
+
+CUDA_VISIBLE_DEVICES="" SPARKLAB_DISABLE_JIT=0 PYTHONPATH=python \
+  python -m pytest -q 'tests/runtime/kvcache/radix/test_exact_anchor.py::test_seeded_exact_and_snapshot_owners_share_splits_and_eviction[73-4]'
+```

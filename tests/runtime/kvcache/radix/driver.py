@@ -153,11 +153,35 @@ class Session:
             self.second.release([kw["mamba"]])
         return got, exp
 
+    def do_insert_kv_only(self, ids: Sequence[int]):
+        """Exact endpoint full pages: no rounded recurrent snapshot is attached."""
+        assert self.spec.kind == "hybrid"
+        from .adapters import ids_tensor, slots_tensor
+        slots = self.kv.take(len(ids))
+        group, exp = self.model._commit(ids, slots, 0)
+        duplicate, node = self.ad.cache.insert_kv_only(ids_tensor(ids), slots_tensor(slots))
+        self._same("insert_kv_only.duplicate", "duplicate full pages", duplicate, exp.matched_len)
+        self._same("insert_kv_only.path", "immutable full-page chain", node_path_slots(node),
+                   self.model.trie.path_slots(group))
+        self.kv.release(list(exp.dups) + list(slots[(len(ids)//self.P)*self.P:]))
+        return node, group
+
     def _lock(self, got, exp) -> Optional[Tuple[LockToken, ExpLock]]:
         if exp.group is None:                  # cold match: nothing to lock
             return None
         tok = self.ad.inc_lock(got.node)
         return tok, self.model.inc_lock(exp.group, tok.uuid)
+
+    def do_lock_full(self, ids: Sequence[int]):
+        """Exact endpoint ownership pins KV independently of aligned GDN snapshots."""
+        node, group = self.do_insert_kv_only(ids)
+        self.ad.cache.inc_lock_full(node)
+        return node, RefModel.inc_lock(self.model, group)
+
+    def do_unlock_full(self, held) -> None:
+        node, expected = held
+        self.ad.cache.dec_lock_full(node)
+        RefModel.dec_lock(self.model, expected)
 
     def do_lock(self, ids: Sequence[int]) -> Optional[Tuple[LockToken, ExpLock]]:
         return self._lock(*self.do_match(ids))

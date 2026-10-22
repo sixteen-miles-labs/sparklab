@@ -50,6 +50,8 @@ class DetokenizeMsg(BaseTokenizerMsg):
     gpu_mem_bytes: int = 0
     # Cumulative expert-cache counters, attached to terminal replies when enabled.
     moe_stats: dict | None = None
+    timing: dict[str, float] | None = None
+    runtime_snapshot: dict | None = None
 
 
 @dataclass
@@ -65,6 +67,7 @@ class PromptAdmittedMsg(BaseTokenizerMsg):
     uid: int
     prompt_tokens: int
     cached_tokens: int = 0
+    timing: dict[str, float] | None = None
 
 
 @dataclass
@@ -75,6 +78,8 @@ class TokenizeMsg(BaseTokenizerMsg):
     chat_template_kwargs: Dict[str, Any] | None = None
     tools: List[Dict[str, Any]] | None = None
     mm_inputs: dict | None = None
+    checkpoint_endpoints: tuple[int, ...] = ()
+    timing: dict[str, float] | None = None
 
 
 @dataclass

@@ -11,6 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from sparklab.core import SamplingParams
 from sparklab.message import TokenizeMsg
+from sparklab.request_timing import semantic_ready
 from sparklab.tokenizer.effort import EFFORT_SCALE, KNOWN_REASONING_EFFORTS
 
 from .api_models import (
@@ -61,6 +62,8 @@ def chat_request_to_genspec(
     model_sampling: dict[str, Any],
     *, allow_images: bool = False,
 ) -> GenSpec:
+    if _forced_tool_choice(req):
+        raise ValueError(_FORCED_TOOL_CHOICE_ERROR)
     """OpenAI ChatCompletionRequest -> GenSpec (the OpenAI 'to_sampling_params')."""
     from .model_meta import effort_toggle_kwargs
 
@@ -146,12 +149,20 @@ def register_openai_routes(
         )])
 
 
+_FORCED_TOOL_CHOICE_ERROR = 'forced tool_choice is not supported (no constrained decoding); use auto or none'
+
+def _forced_tool_choice(req) -> bool:
+    return req.tool_choice == "required" or isinstance(req.tool_choice, ToolChoiceObject)
+
+
 async def handle_chat_completion(
     req: ChatCompletionRequest,
     request: Request | None,
     state: Any,
     model_sampling: dict[str, Any],
 ):
+    if _forced_tool_choice(req):
+        return create_error_response(_FORCED_TOOL_CHOICE_ERROR, param="tool_choice")
     if req.function_call is not None:
         return create_error_response("function_call is not supported; use tools/tool_choice instead")
     if req.logit_bias is not None:
@@ -203,7 +214,8 @@ async def handle_chat_completion(
     try:
         result = await generate_full(uid, spec, state, source="/v1/chat/completions")
     except GenerationError as exc:
-        return create_error_response(public_generation_error(exc), code=exc.code)
+        return create_error_response(public_generation_error(exc), status_code=exc.status_code,
+                                     err_type=exc.error_type, code=exc.code)
     message: dict[str, Any] = {"role": "assistant", "content": result.content}
     if result.reasoning:
         message["reasoning_content"] = result.reasoning
@@ -253,19 +265,21 @@ async def stream_chat_completion_chunks(
     tool_calls_sent = 0
     open_tool: dict[str, Any] | None = None
     events = generate_events(uid, spec, state, source="/v1/chat/completions")
+    failed = False
     while True:
         try:
             ev = await events.__anext__()
         except StopAsyncIteration:
             break
         except GenerationError as exc:
+            failed = True
             # Request failed before producing output — emit an error chunk + [DONE] so the
             # client gets a terminal signal instead of a stalled stream.
             yield _sse(
                 {
                     "error": {
                         "message": public_generation_error(exc),
-                        "type": "invalid_request_error",
+                        "type": exc.error_type,
                         "code": exc.code,
                     }
                 }
@@ -367,7 +381,7 @@ async def stream_chat_completion_chunks(
             cached_tokens = ev.cached_tokens
             yield _sse(_chat_chunk(req, uid, [{"delta": {}, "index": 0, "finish_reason": ev.finish_reason}]))
 
-    if req.stream_options and req.stream_options.include_usage:
+    if not failed and req.stream_options and req.stream_options.include_usage:
         yield _sse(
             {
                 "id": f"chatcmpl-{uid}",
@@ -423,7 +437,9 @@ async def handle_completion(
         finish_reason = "stop"
         async for ack in state.wait_for_ack(uid):
             if getattr(ack, "error", None):
-                return create_error_response("the generation request failed")
+                error = GenerationError(ack.error, ack.error_code)
+                return create_error_response(public_generation_error(error), status_code=error.status_code,
+                                             err_type=error.error_type, code=error.code)
             prompt_tokens += ack.prompt_tokens_delta
             completion_tokens += ack.completion_tokens_delta
             cached_tokens += ack.cached_tokens
@@ -432,6 +448,8 @@ async def handle_completion(
                 finish_reason = getattr(ack, "finish_reason", None) or "stop"
                 break
         choices.append({"index": index, "text": text, "finish_reason": finish_reason, "logprobs": None})
+    if any(choice["text"] for choice in choices):
+        semantic_ready()
 
     return {
         "id": f"cmpl-{uuid.uuid4().hex}",
@@ -450,11 +468,12 @@ async def stream_completion_chunks(uid: int, req: CompletionRequest, state: Any)
     finish_reason = "stop"
     async for ack in state.wait_for_ack(uid):
         if getattr(ack, "error", None):
+            error = GenerationError(ack.error, ack.error_code)
             yield _sse({
                 "error": {
-                    "message": "the generation request failed",
-                    "type": "invalid_request_error",
-                    "code": None,
+                    "message": public_generation_error(error),
+                    "type": error.error_type,
+                    "code": error.code,
                 }
             })
             yield b"data: [DONE]\n\n"
@@ -463,6 +482,7 @@ async def stream_completion_chunks(uid: int, req: CompletionRequest, state: Any)
         completion_tokens += ack.completion_tokens_delta
         cached_tokens += ack.cached_tokens
         if ack.incremental_output:
+            semantic_ready()
             yield _sse(
                 {
                     "id": f"cmpl-{uid}",

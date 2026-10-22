@@ -102,8 +102,10 @@ def test_an_explicit_choice_beats_inference():
 
 
 def test_kimi_gb10_flags_publish_compatibility_environment(monkeypatch):
-    monkeypatch.delenv("SPARKLAB_KIMI_MLP_FP8", raising=False)
-    monkeypatch.delenv("SPARKLAB_DISABLE_STARTUP_PREFILL_WARMUP", raising=False)
+    # Record even an originally absent key for teardown: parse_args assigns
+    # these directly, whereas delenv(absent) would register no undo action.
+    monkeypatch.setenv("SPARKLAB_KIMI_MLP_FP8", "0")
+    monkeypatch.setenv("SPARKLAB_DISABLE_STARTUP_PREFILL_WARMUP", "0")
 
     with patch(
         "sparklab.utils.cached_load_hf_config",

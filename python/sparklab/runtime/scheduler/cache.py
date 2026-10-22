@@ -61,6 +61,12 @@ class CacheManager:
         self.page_table = page_table
         self.page_size = page_size
         self.cache_type = type
+        self.exact_endpoints = None
+        self._exact_future_pages: dict[int, int] = {}
+
+    @property
+    def exact_future_pages(self) -> int:
+        return sum(self._exact_future_pages.values())
 
     # ----- capability hooks (defaults; plugged-in pools may narrow them) -----
     supports_runtime_rebuild = True
@@ -96,6 +102,10 @@ class CacheManager:
             return MatchResult(SWACacheHandle(m.cached_len, m.node, m.kv_indices))
         if self.is_hybrid:
             from sparklab.runtime.kvcache.hybrid_radix_cache import HybridCacheHandle
+            if self.exact_endpoints is not None and req.mm_embeds is None:
+                exact = self.exact_endpoints.match(ids[:self.exact_endpoints.max_consumed].tolist())
+                if exact is not None:
+                    return MatchResult(exact, mamba_value=exact.endpoint.state_slot)
             m = self.prefix_cache.match_prefix(ids)
             return MatchResult(
                 HybridCacheHandle(m.cached_len, m.node, m.kv_indices), mamba_value=m.mamba_value)
@@ -137,6 +147,8 @@ class CacheManager:
         while self.linear_state_pool.num_free_slots < n:
             er = self.prefix_cache.evict_mamba(n - self.linear_state_pool.num_free_slots)
             if not er.mamba_slots:
+                if self.exact_endpoints is not None and self.exact_endpoints.evict_one():
+                    continue
                 break
             self.linear_state_pool.free(er.mamba_slots)
             self._free(er.kv_indices)
@@ -231,19 +243,29 @@ class CacheManager:
                 req.swa_evicted_seqlen = new_evicted
 
     def lock(self, handle: BaseCacheHandle) -> None:
+        if getattr(handle, "endpoint", None) is not None:
+            self.exact_endpoints.lock(handle)
         if self.is_swa:
             # records the window boundary on the (frozen) handle for unlock/dec_lock.
             object.__setattr__(handle, "swa_uuid", self.prefix_cache.inc_lock(handle.node))
         elif self.is_hybrid:
-            self.prefix_cache.inc_lock(handle.node)
+            if getattr(handle, "full_only", False):
+                self.prefix_cache.inc_lock_full(handle.node)
+            else:
+                self.prefix_cache.inc_lock(handle.node)
         else:
             self.prefix_cache.lock_handle(handle, unlock=False)
 
     def unlock(self, handle: BaseCacheHandle) -> None:
+        if getattr(handle, "endpoint", None) is not None:
+            self.exact_endpoints.release(handle.endpoint)
         if self.is_swa:
             self.prefix_cache.dec_lock(handle.node, handle.swa_uuid)
         elif self.is_hybrid:
-            self.prefix_cache.dec_lock(handle.node)
+            if getattr(handle, "full_only", False):
+                self.prefix_cache.dec_lock_full(handle.node)
+            else:
+                self.prefix_cache.dec_lock(handle.node)
         else:
             self.prefix_cache.lock_handle(handle, unlock=True)
 
@@ -277,8 +299,33 @@ class CacheManager:
                     self.ensure_swa_slots(len(allocated))
                 self.swa_pool.alloc_swa(allocated)
             _write_page_table(self.page_table, allocated, allocation_info, self.page_size)
+        if self.exact_endpoints is not None:
+            for req in reqs:
+                if req.table_idx >= 0:
+                    self._exact_future_pages[req.table_idx] = max(
+                        0, div_ceil(req.kv_reservation_end, self.page_size)
+                        - div_ceil(req.allocated_len, self.page_size),
+                    )
+
+    def release_exact_source(self, req: Req) -> None:
+        if req.exact_source is not None:
+            self.exact_endpoints.release(req.exact_source)
+            req.exact_source = None
 
     def cache_req(self, req: Req, *, finished: bool) -> None:
+        if self.exact_endpoints is not None:
+            if finished:
+                self._exact_future_pages.pop(req.table_idx, None)
+            self.release_exact_source(req)
+            if req.aborted:
+                self.unlock(req.cache_handle)
+                self._free(self._padded_tail(req, req.cache_handle.cached_len))
+                self._free_req_slots(req)
+                return
+            if finished or req.cached_len in req.checkpoint_endpoints:
+                self.exact_endpoints.publish(req)
+            if not finished:
+                return
         if self.is_swa:
             return self._cache_req_swa(req, finished=finished)
         if self.is_hybrid:
@@ -548,10 +595,14 @@ class CacheManager:
             pc = self.prefix_cache
             pc.check_integrity()  # structural: every snapshot node owns a slot, refs >= 0
             cache_pages = (pc.full_evictable + pc.full_protected) // self.page_size
+            if self.exact_endpoints is not None:
+                cache_pages += self.exact_endpoints.tail_pages + self.exact_endpoints.restoring_pages
             # GDN-slot conservation upper bound: free slots + tree-held snapshots can never
             # exceed the (non-padding) pool capacity; the remainder is held by running requests.
             pool = self.linear_state_pool
             tree_slots = pc.mamba_evictable_size + pc.mamba_protected
+            if self.exact_endpoints is not None:
+                tree_slots += len(self.exact_endpoints.entries) + self.exact_endpoints.restoring_states
             assert pool.num_free_slots + tree_slots <= pool.num_slots - 1, (
                 f"GDN-slot leak: free({pool.num_free_slots}) + tree({tree_slots}) > "
                 f"capacity({pool.num_slots - 1})"
@@ -590,6 +641,9 @@ class CacheManager:
         cache (RadixPrefixCache.reset() is an unimplemented stub) rather than mutating
         the old one.
         """
+        if self.exact_endpoints is not None:
+            assert not self._exact_future_pages, "cache rebuild has live exact request reservations"
+            self.exact_endpoints.invalidate_rebuild()
         device = page_table.device
         self.device = device
         self.num_pages = num_pages
@@ -619,6 +673,9 @@ class CacheManager:
             self.free_slots = torch.cat([self.free_slots] + lazy_free_list)
 
     def _allocate(self, needed_pages: int) -> torch.Tensor:
+        if self.exact_endpoints is not None:
+            while needed_pages > len(self.free_slots) and self.exact_endpoints.evict_one():
+                pass  # ready unread tails, then unpinned ordinary radix pages
         if needed_pages > (free_pages := len(self.free_slots)):
             need = (needed_pages - free_pages) * self.page_size
             if self.is_swa:
