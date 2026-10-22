@@ -92,7 +92,11 @@ def _probe(root, stop_signal):
                     }
                 )
             )
-            assert code == (143 if stop_signal == signal.SIGTERM else 1), (
+            # CPython can surface an uncaught KeyboardInterrupt as either an
+            # exception exit or a SIGINT exit (including on 3.11 patch releases).
+            # Both must still satisfy every worker/semaphore ownership check.
+            expected_codes = (143,) if stop_signal == signal.SIGTERM else (1, -signal.SIGINT)
+            assert code in expected_codes, (
                 code,
                 (directory / "stderr.log").read_text(),
             )
