@@ -39,6 +39,7 @@ coding-agent task, and versioned benchmark evidence. Status means:
 | [GLM-5.3 Flash](https://huggingface.co/oakmindai/GLM-5.3-Flash-NVFP4-FTW) | 320B total / 18B active | NVFP4 + KDA FP8 · FTW + optional MTP3 | `glm-5.3-flash` | Experimental | 7.77 | 6.395 |
 | **Research — complete or novel models outside the interactive envelope** |  |  |  |  |  |  |
 | [DiffusionGemma 26B A4B](models/diffusiongemma-26b-a4b.md) | 26B total / 4B active | NVFP4 · vLLM block diffusion | `diffusiongemma-26b-a4b` | Experimental | — | — |
+| [Inkling 2 Mini](models/inkling-2-mini.md) | 26.4B total / 5.4B effective active | NVFP4 / MXFP8 · vLLM looped MoE | `inkling-2-mini` | Experimental | — | — |
 | [DeepSeek V4.1 Flash](https://huggingface.co/oakmindai/DeepSeek-V4.1-Flash-FTW) | 552B total / 8–16B active | MXFP4 / MXFP8 · disk streaming + optional DSpark5 | `deepseek-v4.1-flash` | Experimental | 1.05 | 76.329 |
 | [DeepSeek V4.1 Flash 1017](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash-1017) | 552B total / 8–16B active | MXFP4 / MXFP8 · native disk streaming | `deepseek-v4.1-flash-1017` | Experimental | — | — |
 | [GLM-5.3](https://huggingface.co/oakmindai/GLM-5.3-NVFP4-FTW) | 753B total / 40B active | NVFP4 + resident FP8 · FTW + optional DFlash2-4 | `glm-5.3` | Experimental fallback | 1.29 | 2.085 |

@@ -1,4 +1,4 @@
-"""Isolated vLLM serving for the DiffusionGemma block-diffusion recipe.
+"""Isolated vLLM serving for explicitly supported ModelOpt recipes.
 
 vLLM's torch dependency differs from the native engine's. Keep it in Docker;
 never import vLLM into SparkLab's Python environment.
@@ -19,6 +19,13 @@ from .base import (
 
 class VLLMBackend(RuntimeBackend):
     backend_id = "vllm"
+    _architectures = {
+        "DiffusionGemmaForBlockDiffusion": "diffusion_gemma",
+        "Inkling2LoopForConditionalGeneration": "inkling2_loop",
+    }
+
+    def _architecture(self, deployment):
+        return deployment.backend_options.get("architecture", "DiffusionGemmaForBlockDiffusion")
 
     @property
     def backend_version(self):
@@ -39,8 +46,11 @@ class VLLMBackend(RuntimeBackend):
                 "safetensors-nvfp4", "safetensors", "nvfp4", "resident"):
             raise BackendError("vLLM adapter requires resident ModelOpt NVFP4 safetensors")
         options = deployment.backend_options
-        if set(options) != {"image", "memory_gib", "arguments"}:
+        if set(options) - {"architecture"} != {"image", "memory_gib", "arguments"}:
             raise BackendError("vLLM options require image, memory_gib and arguments")
+        architecture = self._architecture(deployment)
+        if not isinstance(architecture, str) or architecture not in self._architectures:
+            raise BackendError("unsupported vLLM recipe architecture")
         if not isinstance(options["image"], str) or not re.fullmatch(
                 r"[A-Za-z0-9][A-Za-z0-9._/-]*@sha256:[0-9a-f]{64}", options["image"]):
             raise BackendError("vLLM image must be pinned to a SHA256 digest")
@@ -63,8 +73,8 @@ class VLLMBackend(RuntimeBackend):
             weights = index["weight_map"]
             shards = set(weights.values())
             return (
-                config.get("architectures") == ["DiffusionGemmaForBlockDiffusion"]
-                and config.get("model_type") == "diffusion_gemma"
+                config.get("architectures") == [self._architecture(deployment)]
+                and config.get("model_type") == self._architectures[self._architecture(deployment)]
                 and config.get("quantization_config", {}).get("quant_algo") == "NVFP4"
                 and config.get("quantization_config", {}).get("quant_method") == "modelopt"
                 and bool(weights)
@@ -77,7 +87,7 @@ class VLLMBackend(RuntimeBackend):
     def validate_artifact(self, path, deployment):
         self.validate_deployment(deployment)
         if not self.accepts_artifact(path, deployment):
-            raise BackendError(f"{path} is not a DiffusionGemma ModelOpt NVFP4 checkpoint")
+            raise BackendError(f"{path} is not a {self._architecture(deployment)} ModelOpt NVFP4 checkpoint")
         from sparklab.acquire import AcquisitionError, validate_safetensors_snapshot
         try:
             details = validate_safetensors_snapshot(path)
@@ -94,7 +104,7 @@ class VLLMBackend(RuntimeBackend):
     def build_launch_plan(self, request: RuntimeRequest):
         self.validate_deployment(request.deployment)
         if not self.accepts_artifact(request.checkpoint, request.deployment):
-            raise BackendError("vLLM requires a DiffusionGemma NVFP4 checkpoint")
+            raise BackendError(f"vLLM requires a {self._architecture(request.deployment)} NVFP4 checkpoint")
         if any(arg.split("=", 1)[0] in {"--model", "--served-model-name"}
                for arg in request.extra_args):
             raise BackendError("vLLM model identity cannot be overridden")
@@ -111,7 +121,9 @@ class VLLMBackend(RuntimeBackend):
             options["image"], *arguments,
         )
         return BackendLaunchPlan(
-            backend=self.backend_id, backend_version=self.backend_version,
+            backend=self.backend_id,
+            backend_version=(options["image"] if self._architecture(request.deployment)
+                             == "Inkling2LoopForConditionalGeneration" else self.backend_version),
             recipe=request.recipe, checkpoint=str(request.checkpoint),
             served_model=request.model, arguments=arguments, command=command,
             capabilities=self.capabilities().api_protocols, metrics_path="/metrics",

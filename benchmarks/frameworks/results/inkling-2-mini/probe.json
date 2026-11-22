@@ -1,0 +1,472 @@
+{
+  "model": "thinkingmachines/Inkling-2-Mini",
+  "created_at": "2026-11-22T15:06:19.966710+00:00",
+  "status": "passed",
+  "checks": {
+    "text": {
+      "passed": true,
+      "response": {
+        "id": "chatcmpl-a23ae7f36e32b5e8",
+        "object": "chat.completion",
+        "created": 1795359979,
+        "model": "thinkingmachines/Inkling-2-Mini",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "323",
+              "refusal": null,
+              "audio": null,
+              "function_call": null,
+              "reasoning": "The user wants only the integer. Compute 17*19 = 17*20 -17 = 340-17=323. Need final only integer. Ensure no extra text."
+            },
+            "logprobs": null,
+            "finish_reason": "stop",
+            "stop_reason": null,
+            "token_ids": null,
+            "routed_experts": null,
+            "weight_versions": null
+          }
+        ],
+        "service_tier": null,
+        "system_fingerprint": "vllm-0.1.dev25855+g7cb5dae22-bf404035",
+        "usage": {
+          "prompt_tokens": 27,
+          "total_tokens": 72,
+          "completion_tokens": 45,
+          "completion_tokens_details": {
+            "reasoning_tokens": 37
+          }
+        },
+        "prompt_logprobs": null,
+        "prompt_token_ids": null,
+        "prompt_text": null,
+        "kv_transfer_params": null,
+        "ec_transfer_params": null,
+        "metrics": null
+      }
+    },
+    "json": {
+      "passed": true,
+      "response": {
+        "id": "chatcmpl-aa9240cbef6e8813",
+        "object": "chat.completion",
+        "created": 1795359981,
+        "model": "thinkingmachines/Inkling-2-Mini",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "{\"answer\":323,\"ok\":true}",
+              "refusal": null,
+              "audio": null,
+              "function_call": null,
+              "reasoning": "The user asks: Return JSON with exactly the keys \"answer\" (323) and \"ok\" (true). Need output JSON only likely. Need ensure exactly keys answer and ok. Values: answer 323, ok true. No extra text. Need final only JSON. Consider if this is a request to output specific JSON; no safety issue. Need exact keys. JSON booleans lowercase true. Final should be just {\"answer\":323,\"ok\":true}. Ensure no markdown."
+            },
+            "logprobs": null,
+            "finish_reason": "stop",
+            "stop_reason": null,
+            "token_ids": null,
+            "routed_experts": null,
+            "weight_versions": null
+          }
+        ],
+        "service_tier": null,
+        "system_fingerprint": "vllm-0.1.dev25855+g7cb5dae22-bf404035",
+        "usage": {
+          "prompt_tokens": 33,
+          "total_tokens": 158,
+          "completion_tokens": 125,
+          "completion_tokens_details": {
+            "reasoning_tokens": 105
+          }
+        },
+        "prompt_logprobs": null,
+        "prompt_token_ids": null,
+        "prompt_text": null,
+        "kv_transfer_params": null,
+        "ec_transfer_params": null,
+        "metrics": null
+      }
+    },
+    "tool": {
+      "passed": true,
+      "response": {
+        "id": "chatcmpl-bae303643e771a8d",
+        "object": "chat.completion",
+        "created": 1795359984,
+        "model": "thinkingmachines/Inkling-2-Mini",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": null,
+              "refusal": null,
+              "audio": null,
+              "function_call": null,
+              "tool_calls": [
+                {
+                  "id": "chatcmpl-tool-979052c50999cc7e",
+                  "type": "function",
+                  "function": {
+                    "name": "get_weather",
+                    "arguments": "{\"city\":\"Toronto\"}"
+                  }
+                }
+              ],
+              "reasoning": "The user wants me to use get_weather to check current weather in Toronto. I should call the tool."
+            },
+            "logprobs": null,
+            "finish_reason": "tool_calls",
+            "stop_reason": null,
+            "token_ids": null,
+            "routed_experts": null,
+            "weight_versions": null
+          }
+        ],
+        "service_tier": null,
+        "system_fingerprint": "vllm-0.1.dev25855+g7cb5dae22-bf404035",
+        "usage": {
+          "prompt_tokens": 110,
+          "total_tokens": 167,
+          "completion_tokens": 57,
+          "completion_tokens_details": {
+            "reasoning_tokens": 22
+          }
+        },
+        "prompt_logprobs": null,
+        "prompt_token_ids": null,
+        "prompt_text": null,
+        "kv_transfer_params": null,
+        "ec_transfer_params": null,
+        "metrics": null
+      }
+    },
+    "tool_roundtrip": {
+      "passed": true,
+      "response": {
+        "id": "chatcmpl-89f80533eb91d84c",
+        "object": "chat.completion",
+        "created": 1795359986,
+        "model": "thinkingmachines/Inkling-2-Mini",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "Current weather in Toronto: 17\u00b0C, sunny.",
+              "refusal": null,
+              "audio": null,
+              "function_call": null,
+              "reasoning": "The tool returned temperature 17C sunny. Need answer concise. Mention current weather in Toronto. No extra unsupported details."
+            },
+            "logprobs": null,
+            "finish_reason": "stop",
+            "stop_reason": null,
+            "token_ids": null,
+            "routed_experts": null,
+            "weight_versions": null
+          }
+        ],
+        "service_tier": null,
+        "system_fingerprint": "vllm-0.1.dev25855+g7cb5dae22-bf404035",
+        "usage": {
+          "prompt_tokens": 106,
+          "total_tokens": 154,
+          "completion_tokens": 48,
+          "completion_tokens_details": {
+            "reasoning_tokens": 28
+          }
+        },
+        "prompt_logprobs": null,
+        "prompt_token_ids": null,
+        "prompt_text": null,
+        "kv_transfer_params": null,
+        "ec_transfer_params": null,
+        "metrics": null
+      }
+    },
+    "image": {
+      "passed": true,
+      "response": {
+        "id": "chatcmpl-a4692147348a2e8e",
+        "object": "chat.completion",
+        "created": 1795359989,
+        "model": "thinkingmachines/Inkling-2-Mini",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "Red",
+              "refusal": null,
+              "audio": null,
+              "function_call": null,
+              "reasoning": "The user is asking about the color of the large square in the image. The image shows a large red square on a white background. I need to reply with one word. The answer is red."
+            },
+            "logprobs": null,
+            "finish_reason": "stop",
+            "stop_reason": null,
+            "token_ids": null,
+            "routed_experts": null,
+            "weight_versions": null
+          }
+        ],
+        "service_tier": null,
+        "system_fingerprint": "vllm-0.1.dev25855+g7cb5dae22-bf404035",
+        "usage": {
+          "prompt_tokens": 128,
+          "total_tokens": 176,
+          "completion_tokens": 48,
+          "completion_tokens_details": {
+            "reasoning_tokens": 40
+          }
+        },
+        "prompt_logprobs": null,
+        "prompt_token_ids": null,
+        "prompt_text": null,
+        "kv_transfer_params": null,
+        "ec_transfer_params": null,
+        "metrics": null
+      }
+    }
+  },
+  "trials": [
+    {
+      "ttft_seconds": 0.16470756707713008,
+      "request_seconds": 28.059287315234542,
+      "usage": {
+        "prompt_tokens": 47,
+        "total_tokens": 1071,
+        "completion_tokens": 1024,
+        "completion_tokens_details": {
+          "reasoning_tokens": 795
+        }
+      },
+      "decode_tokens_per_second": 36.67394906145465,
+      "completion_tokens_per_second": 36.49415569596553,
+      "content": "A **hash table** is a data structure that stores key\u2013value pairs so that lookup, insertion, and deletion are usually very fast. It combines an array with a **hash function**.\n\n## Core idea\n\nGiven a key, the hash function computes an integer index into an array:\n\n```text\nindex = hash(key) mod table_size\n```\n\nThe array slot at that index stores the value associated with the key.\n\nExample: suppose we have a table with 7 slots and use this simple hash function:\n\n```text\nhash(key) = sum of ASCII codes of characters in key\nindex = hash(key) mod 7\n```\n\nLet\u2019s insert a few keys:\n\n| Key | ASCII sum | index = sum mod 7 |\n|---|---:|---:|\n| `apple` | 530 | 5 |\n| `banana` | 609 | 0 |\n| `cherry` | 653 | 2 |\n| `date` | 414 | 1 |\n| `",
+      "reasoning": "The user asks for an explanation of hash tables: collisions, resizing, time complexity, with a concrete example and detailed self-contained explanation. Need produce final answer. Need ensure accuracy.\n\nLet's craft a clear explanation. Include:\n- Definition: array + hash function maps keys to indices.\n- Example: small table size 7, keys: \"apple\", \"banana\", \"cherry\", \"date\", \"elderberry\" maybe use simple hash h(key)=sum of char codes mod 7. Compute indices concretely. Need ensure collisions. Let's compute carefully.\n\nUse ASCII codes:\napple: a=97,p=112,p=112,l=108,e=101 sum=97+112+112+108+101=530? 97+112=209, +112=321, +108=429, +101=530. mod7: 7*75=525 remainder5. index5.\nbanana: b=98,a=97,n=110,a=97,n=110,a=97 sum=98+97=195,+110=305,+97=402,+110=512,+97=609. mod7: 7*87=609 exactly? 7*87=609, remainder0. index0.\ncherry: c=99,h=104,e=101,r=114,r=114,y=121 sum=99+104=203,+101=304,+114=418,+114=532,+121=653. mod7: 7*93=651 rem2. index2.\ndate: d=100,a=97,t=116,e=101 sum=414? 100+97=197,+116=313,+101=414. mod7: 7*59=413 rem1. index1.\nelderberry: e=101,l=108,d=100,e=101,r=114,b=98,e=101,r=114,r=114,y=121 sum: 101+108=209,+100=309,+101=410,+114=524,+98=622,+101=723,+114=837,+114=951,+121=1072. mod7: 7*153=1071 rem1. index1. Collision with date at index1. Good.\nMaybe add \"fig\": f=102,i=105,g=103 sum=310 mod7: 7*44=308 rem2. Collision with cherry at index2. Good.\nNeed explain collision resolution: chaining (linked list at each slot) and open addressing (linear probing). Use chaining in example.\nResizing: load factor alpha = n/m. When alpha exceeds threshold (e.g. 0.75), create larger table (often double), rehash all keys. Amortized O(1). Mention why: keep chains short, maintain performance.\nTime complexity: average O(1) insert/delete/lookup; worst O(n) if all collide (or adversarial hash); with good hash and resizing expected/amortized O(1). Space O(n). Mention worst-case with perfect hashing? Keep simple.\nNeed self-contained. Include pseudo-code maybe.\nNeed be careful: hash table average time complexity depends on hash function quality and load factor. Mention expected O(1), amortized for resizing.\nNeed final only. Ensure no chain-of-thought. Provide detailed but not too long. Use headings.",
+      "finish_reason": "length"
+    },
+    {
+      "ttft_seconds": 0.16528576519340277,
+      "request_seconds": 28.152001678943634,
+      "usage": {
+        "prompt_tokens": 47,
+        "total_tokens": 1071,
+        "completion_tokens": 1024,
+        "completion_tokens_details": {
+          "reasoning_tokens": 795
+        }
+      },
+      "decode_tokens_per_second": 36.55316335469286,
+      "completion_tokens_per_second": 36.37396770851657,
+      "content": "A **hash table** is a data structure that stores key\u2013value pairs so that lookup, insertion, and deletion are usually very fast. It combines an array with a **hash function**.\n\n## Core idea\n\nGiven a key, the hash function computes an integer index into an array:\n\n```text\nindex = hash(key) mod table_size\n```\n\nThe array slot at that index stores the value associated with the key.\n\nExample: suppose we have a table with 7 slots and use this simple hash function:\n\n```text\nhash(key) = sum of ASCII codes of characters in key\nindex = hash(key) mod 7\n```\n\nLet\u2019s insert a few keys:\n\n| Key | ASCII sum | index = sum mod 7 |\n|---|---:|---:|\n| `apple` | 530 | 5 |\n| `banana` | 609 | 0 |\n| `cherry` | 653 | 2 |\n| `date` | 414 | 1 |\n| `",
+      "reasoning": "The user asks for an explanation of hash tables: collisions, resizing, time complexity, with a concrete example and detailed self-contained explanation. Need produce final answer. Need ensure accuracy.\n\nLet's craft a clear explanation. Include:\n- Definition: array + hash function maps keys to indices.\n- Example: small table size 7, keys: \"apple\", \"banana\", \"cherry\", \"date\", \"elderberry\" maybe use simple hash h(key)=sum of char codes mod 7. Compute indices concretely. Need ensure collisions. Let's compute carefully.\n\nUse ASCII codes:\napple: a=97,p=112,p=112,l=108,e=101 sum=97+112+112+108+101=530? 97+112=209, +112=321, +108=429, +101=530. mod7: 7*75=525 remainder5. index5.\nbanana: b=98,a=97,n=110,a=97,n=110,a=97 sum=98+97=195,+110=305,+97=402,+110=512,+97=609. mod7: 7*87=609 exactly? 7*87=609, remainder0. index0.\ncherry: c=99,h=104,e=101,r=114,r=114,y=121 sum=99+104=203,+101=304,+114=418,+114=532,+121=653. mod7: 7*93=651 rem2. index2.\ndate: d=100,a=97,t=116,e=101 sum=414? 100+97=197,+116=313,+101=414. mod7: 7*59=413 rem1. index1.\nelderberry: e=101,l=108,d=100,e=101,r=114,b=98,e=101,r=114,r=114,y=121 sum: 101+108=209,+100=309,+101=410,+114=524,+98=622,+101=723,+114=837,+114=951,+121=1072. mod7: 7*153=1071 rem1. index1. Collision with date at index1. Good.\nMaybe add \"fig\": f=102,i=105,g=103 sum=310 mod7: 7*44=308 rem2. Collision with cherry at index2. Good.\nNeed explain collision resolution: chaining (linked list at each slot) and open addressing (linear probing). Use chaining in example.\nResizing: load factor alpha = n/m. When alpha exceeds threshold (e.g. 0.75), create larger table (often double), rehash all keys. Amortized O(1). Mention why: keep chains short, maintain performance.\nTime complexity: average O(1) insert/delete/lookup; worst O(n) if all collide (or adversarial hash); with good hash and resizing expected/amortized O(1). Space O(n). Mention worst-case with perfect hashing? Keep simple.\nNeed self-contained. Include pseudo-code maybe.\nNeed be careful: hash table average time complexity depends on hash function quality and load factor. Mention expected O(1), amortized for resizing.\nNeed final only. Ensure no chain-of-thought. Provide detailed but not too long. Use headings.",
+      "finish_reason": "length"
+    },
+    {
+      "ttft_seconds": 0.1687191678211093,
+      "request_seconds": 28.08492742618546,
+      "usage": {
+        "prompt_tokens": 47,
+        "total_tokens": 1071,
+        "completion_tokens": 1024,
+        "completion_tokens_details": {
+          "reasoning_tokens": 795
+        }
+      },
+      "decode_tokens_per_second": 36.64576946760882,
+      "completion_tokens_per_second": 36.46083838711494,
+      "content": "A **hash table** is a data structure that stores key\u2013value pairs so that lookup, insertion, and deletion are usually very fast. It combines an array with a **hash function**.\n\n## Core idea\n\nGiven a key, the hash function computes an integer index into an array:\n\n```text\nindex = hash(key) mod table_size\n```\n\nThe array slot at that index stores the value associated with the key.\n\nExample: suppose we have a table with 7 slots and use this simple hash function:\n\n```text\nhash(key) = sum of ASCII codes of characters in key\nindex = hash(key) mod 7\n```\n\nLet\u2019s insert a few keys:\n\n| Key | ASCII sum | index = sum mod 7 |\n|---|---:|---:|\n| `apple` | 530 | 5 |\n| `banana` | 609 | 0 |\n| `cherry` | 653 | 2 |\n| `date` | 414 | 1 |\n| `",
+      "reasoning": "The user asks for an explanation of hash tables: collisions, resizing, time complexity, with a concrete example and detailed self-contained explanation. Need produce final answer. Need ensure accuracy.\n\nLet's craft a clear explanation. Include:\n- Definition: array + hash function maps keys to indices.\n- Example: small table size 7, keys: \"apple\", \"banana\", \"cherry\", \"date\", \"elderberry\" maybe use simple hash h(key)=sum of char codes mod 7. Compute indices concretely. Need ensure collisions. Let's compute carefully.\n\nUse ASCII codes:\napple: a=97,p=112,p=112,l=108,e=101 sum=97+112+112+108+101=530? 97+112=209, +112=321, +108=429, +101=530. mod7: 7*75=525 remainder5. index5.\nbanana: b=98,a=97,n=110,a=97,n=110,a=97 sum=98+97=195,+110=305,+97=402,+110=512,+97=609. mod7: 7*87=609 exactly? 7*87=609, remainder0. index0.\ncherry: c=99,h=104,e=101,r=114,r=114,y=121 sum=99+104=203,+101=304,+114=418,+114=532,+121=653. mod7: 7*93=651 rem2. index2.\ndate: d=100,a=97,t=116,e=101 sum=414? 100+97=197,+116=313,+101=414. mod7: 7*59=413 rem1. index1.\nelderberry: e=101,l=108,d=100,e=101,r=114,b=98,e=101,r=114,r=114,y=121 sum: 101+108=209,+100=309,+101=410,+114=524,+98=622,+101=723,+114=837,+114=951,+121=1072. mod7: 7*153=1071 rem1. index1. Collision with date at index1. Good.\nMaybe add \"fig\": f=102,i=105,g=103 sum=310 mod7: 7*44=308 rem2. Collision with cherry at index2. Good.\nNeed explain collision resolution: chaining (linked list at each slot) and open addressing (linear probing). Use chaining in example.\nResizing: load factor alpha = n/m. When alpha exceeds threshold (e.g. 0.75), create larger table (often double), rehash all keys. Amortized O(1). Mention why: keep chains short, maintain performance.\nTime complexity: average O(1) insert/delete/lookup; worst O(n) if all collide (or adversarial hash); with good hash and resizing expected/amortized O(1). Space O(n). Mention worst-case with perfect hashing? Keep simple.\nNeed self-contained. Include pseudo-code maybe.\nNeed be careful: hash table average time complexity depends on hash function quality and load factor. Mention expected O(1), amortized for resizing.\nNeed final only. Ensure no chain-of-thought. Provide detailed but not too long. Use headings.",
+      "finish_reason": "length"
+    }
+  ],
+  "provenance": {
+    "model": "thinkingmachines/Inkling-2-Mini",
+    "revision": "b85c3cfa615fc413cc9af3379f491b963f3b586a",
+    "deployment": {
+      "backend": "vllm",
+      "backend_api": "1.0",
+      "source_format": "safetensors-nvfp4",
+      "runtime_format": "safetensors",
+      "quantization": "nvfp4",
+      "execution_policy": "resident",
+      "backend_options": {
+        "architecture": "Inkling2LoopForConditionalGeneration",
+        "image": "vllm/vllm-openai@sha256:ecdf0ccc663d86332459f5a50a38c30861a5079bc3924aa08fdc657ef10dd648",
+        "memory_gib": 56,
+        "arguments": [
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "18082",
+          "--max-model-len",
+          "8192",
+          "--max-num-seqs",
+          "1",
+          "--gpu-memory-utilization",
+          "0.3",
+          "--max-cudagraph-capture-size",
+          "1",
+          "--load-format",
+          "safetensors",
+          "--safetensors-load-strategy",
+          "lazy",
+          "--reasoning-parser",
+          "inkling",
+          "--enable-auto-tool-choice",
+          "--tool-call-parser",
+          "inkling",
+          "--limit-mm-per-prompt",
+          "{\"image\":1}"
+        ]
+      }
+    },
+    "artifact_validation": {
+      "format": "safetensors",
+      "fingerprint": "a7a349601f0984c4abf999c480ef775d8567d21f5f84b4e8a3e035b44f288dc2",
+      "details": {
+        "index": "model.safetensors.index.json",
+        "shards": 1,
+        "tensors": 1244,
+        "logical_bytes": 19525870752,
+        "physical_bytes": 19526019168
+      }
+    },
+    "launch_plan": {
+      "backend": "vllm",
+      "backend_version": "vllm/vllm-openai@sha256:ecdf0ccc663d86332459f5a50a38c30861a5079bc3924aa08fdc657ef10dd648",
+      "recipe": "inkling-2-mini",
+      "checkpoint": "$HOME/models/frameworks/inkling-2-mini/hf",
+      "served_model": "thinkingmachines/Inkling-2-Mini",
+      "arguments": [
+        "--model",
+        "/artifact",
+        "--served-model-name",
+        "thinkingmachines/Inkling-2-Mini",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18082",
+        "--max-model-len",
+        "8192",
+        "--max-num-seqs",
+        "1",
+        "--gpu-memory-utilization",
+        "0.3",
+        "--max-cudagraph-capture-size",
+        "1",
+        "--load-format",
+        "safetensors",
+        "--safetensors-load-strategy",
+        "lazy",
+        "--reasoning-parser",
+        "inkling",
+        "--enable-auto-tool-choice",
+        "--tool-call-parser",
+        "inkling",
+        "--limit-mm-per-prompt",
+        "{\"image\":1}"
+      ],
+      "environment": {},
+      "capabilities": [
+        "openai-chat"
+      ],
+      "command": [
+        "docker",
+        "run",
+        "--rm",
+        "--gpus",
+        "all",
+        "--network",
+        "host",
+        "--shm-size",
+        "4g",
+        "--memory",
+        "56g",
+        "--memory-swap",
+        "56g",
+        "-v",
+        "$HOME/models/frameworks/inkling-2-mini/hf:/artifact:ro",
+        "vllm/vllm-openai@sha256:ecdf0ccc663d86332459f5a50a38c30861a5079bc3924aa08fdc657ef10dd648",
+        "--model",
+        "/artifact",
+        "--served-model-name",
+        "thinkingmachines/Inkling-2-Mini",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18082",
+        "--max-model-len",
+        "8192",
+        "--max-num-seqs",
+        "1",
+        "--gpu-memory-utilization",
+        "0.3",
+        "--max-cudagraph-capture-size",
+        "1",
+        "--load-format",
+        "safetensors",
+        "--safetensors-load-strategy",
+        "lazy",
+        "--reasoning-parser",
+        "inkling",
+        "--enable-auto-tool-choice",
+        "--tool-call-parser",
+        "inkling",
+        "--limit-mm-per-prompt",
+        "{\"image\":1}"
+      ],
+      "health_path": "/health",
+      "metrics_path": "/metrics"
+    },
+    "hardware": {
+      "device": "NVIDIA GB10",
+      "machine": "aarch64",
+      "driver": "580.126.09"
+    },
+    "native_compatibility": "ValueError: Model architecture Inkling2LoopForConditionalGeneration not supported",
+    "shared_gpu": true,
+    "speculative_decoding": false,
+    "runtime_version": "0.1.dev25855+g7cb5dae22",
+    "runtime_revision": "7cb5dae22",
+    "gpu_processes_before_probe": "3245901, $HOME/.local/share/fct-runtime/retrieval/venv-20261021/bin/python, 1909 MiB\n3250768, $HOME/.local/share/fct-runtime/retrieval/venv-20261021/bin/python, 2455 MiB\n3878322, VLLM::EngineCore, 33715 MiB\n"
+  },
+  "method": {
+    "concurrency": 1,
+    "temperature": 0,
+    "reasoning_effort": "none",
+    "max_tokens": 1024,
+    "warmup_requests": 1,
+    "decode_metric": "(exact completion_tokens - 1) / (last nonempty delta - first nonempty delta)",
+    "scope": "Smoke checks only; timing on a shared GPU is not an isolated benchmark."
+  },
+  "warmup": {
+    "ttft_seconds": 0.18226140830665827,
+    "request_seconds": 0.9554646271280944,
+    "usage": {
+      "prompt_tokens": 47,
+      "total_tokens": 79,
+      "completion_tokens": 32,
+      "completion_tokens_details": {
+        "reasoning_tokens": 30
+      }
+    },
+    "decode_tokens_per_second": 40.09966977672751,
+    "completion_tokens_per_second": 33.49155907130188,
+    "content": "",
+    "reasoning": "The user asks for an explanation of hash tables: collisions, resizing, time complexity, with a concrete example and detailed self-contained explanation",
+    "finish_reason": "length"
+  },
+  "summary": {
+    "ttft_seconds_median": 0.16528576519340277,
+    "decode_tokens_per_second_median": 36.64576946760882,
+    "completion_tokens_per_second_median": 36.46083838711494
+  }
+}
