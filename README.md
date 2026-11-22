@@ -117,6 +117,15 @@ constraints also return 400; plain-text output remains supported. See the
       <td><a href="docs/models/qwen3.8-27b.md">Instructions</a></td>
     </tr>
     <tr>
+      <td><a href="https://huggingface.co/thinkingmachines/Inkling-2-Mini">Inkling 2 Mini</a></td>
+      <td>26.4B total / 5.4B effective active</td>
+      <td>NVFP4 / MXFP8 · vLLM container</td>
+      <td>Experimental</td>
+      <td align="right">36.65</td>
+      <td align="right">0.165</td>
+      <td><a href="docs/models/inkling-2-mini.md">Instructions and benchmark</a></td>
+    </tr>
+    <tr>
       <th colspan="7" align="left">Frontier — quality-first coding, reasoning, and long agent work</th>
     </tr>
     <tr>
@@ -199,6 +208,11 @@ constraints also return 400; plain-text output remains supported. See the
 
 DiffusionGemma uses an isolated vLLM backend. Its benchmark reports end-to-end
 completion throughput, including TTFT, separately from the table's autoregressive decode metric.
+
+Inkling 2 Mini's figures come from a short shared-GPU probe and include reasoning
+tokens. The tested profile uses an 8K context with DSpark disabled; its catalog
+recipe remains experimental Research pending context and endurance qualification.
+See the [versioned evidence](benchmarks/gb10/results/GB10-INKLING2-MINI-001.json).
 
 Status meanings:
 
