@@ -81,6 +81,30 @@ def test_vllm_requires_immutable_image_and_owned_model_identity(checkpoint):
         ))
 
 
+def test_inkling_deployment_binds_checkpoint_architecture(checkpoint):
+    recipe = get_recipe("inkling-2-mini")
+    backend = get_backend("vllm")
+    deployment = recipe.deployment
+    assert recipe.status == "experimental"
+    assert len(recipe.revision) == 40
+    backend.validate_deployment(deployment)
+    assert not backend.accepts_artifact(checkpoint, deployment)
+    config = json.loads((checkpoint / "config.json").read_text())
+    config.update(architectures=["Inkling2LoopForConditionalGeneration"], model_type="inkling2_loop")
+    (checkpoint / "config.json").write_text(json.dumps(config))
+    assert backend.validate_artifact(checkpoint, deployment).details["shards"] == 1
+    assert not backend.accepts_artifact(checkpoint, get_recipe("diffusiongemma-26b-a4b").deployment)
+    plan = backend.build_launch_plan(RuntimeRequest(
+        "inkling-2-mini", "0.1.0", "thinkingmachines/Inkling-2-Mini", checkpoint, deployment,
+    ))
+    assert plan.backend_version == deployment.backend_options["image"]
+    assert plan.served_model == "thinkingmachines/Inkling-2-Mini"
+    with pytest.raises(BackendError, match="architecture"):
+        backend.validate_deployment(replace(deployment, backend_options={
+            **deployment.backend_options, "architecture": "unknown",
+        }))
+
+
 def test_diffusion_evidence_does_not_claim_autoregressive_speed_or_certification():
     from pathlib import Path
     from sparklab.certification import evaluate_tier
@@ -98,3 +122,21 @@ def test_diffusion_evidence_does_not_claim_autoregressive_speed_or_certification
     assert raw["status"] == "measured"
     assert len(raw["cases"]) == 6
     assert all(len(case["trials"]) == 3 for case in raw["cases"])
+
+
+def test_inkling_smoke_evidence_does_not_claim_certification():
+    from pathlib import Path
+    from sparklab.certification import evaluate_tier
+
+    recipe = get_recipe("inkling-2-mini")
+    root = Path(__file__).resolve().parents[2]
+    evidence = json.loads((root / "benchmarks/gb10/results/GB10-INKLING2-MINI-001.json").read_text())
+    assert evidence["result_id"] in recipe.evidence
+    assert evidence["recipe"]["revision"] == recipe.revision
+    assert evidence["deployment"] == recipe.deployment.to_dict()
+    assert not evaluate_tier(recipe, evidence, "research").passed
+    assert recipe.performance is None
+    raw = json.loads((root / evidence["source"]["raw_artifact"]).read_text())
+    assert raw["status"] == "passed"
+    assert len(raw["checks"]) == 5 and all(c["passed"] for c in raw["checks"].values())
+    assert len(raw["trials"]) == 3

@@ -1,0 +1,68 @@
+{
+  "schema_version": "2.0",
+  "recipe_version": "0.1.0",
+  "slug": "inkling-2-mini",
+  "name": "Inkling 2 Mini",
+  "model": "thinkingmachines/Inkling-2-Mini",
+  "parameters": "26.4B total / 5.4B active",
+  "revision": "b85c3cfa615fc413cc9af3379f491b963f3b586a",
+  "source_bytes": 20191643333,
+  "minimum_free_bytes": 24000000000,
+  "intended_tier": "research",
+  "status": "experimental",
+  "implementation": "available",
+  "portfolio_role": "primary",
+  "deployment": {
+    "backend": "vllm",
+    "backend_api": "1.0",
+    "source_format": "safetensors-nvfp4",
+    "runtime_format": "safetensors",
+    "quantization": "nvfp4",
+    "execution_policy": "resident",
+    "backend_options": {
+      "architecture": "Inkling2LoopForConditionalGeneration",
+      "image": "vllm/vllm-openai@sha256:ecdf0ccc663d86332459f5a50a38c30861a5079bc3924aa08fdc657ef10dd648",
+      "memory_gib": 56,
+      "arguments": [
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18082",
+        "--max-model-len",
+        "8192",
+        "--max-num-seqs",
+        "1",
+        "--gpu-memory-utilization",
+        "0.3",
+        "--max-cudagraph-capture-size",
+        "1",
+        "--load-format",
+        "safetensors",
+        "--safetensors-load-strategy",
+        "lazy",
+        "--reasoning-parser",
+        "inkling",
+        "--enable-auto-tool-choice",
+        "--tool-call-parser",
+        "inkling",
+        "--limit-mm-per-prompt",
+        "{\"image\":1}"
+      ]
+    }
+  },
+  "profile": "research",
+  "runtime_memory": {
+    "total_bytes": 60129542144
+  },
+  "description": "Experimental Inkling looped multimodal MoE through an isolated, pinned vLLM runtime; concurrency one and 8K serving context on GB10.",
+  "limitations": [
+    "Requires the pinned ARM64 Inkling vLLM image. SparkLab's native engine does not implement this architecture.",
+    "The checkpoint mixes NVFP4 and MXFP8 experts; nvfp4 names the checkpoint's ModelOpt quantization family.",
+    "The 8K context is a conservative local profile, not the checkpoint's advertised 1M maximum. Long-context and endurance qualification remain outstanding.",
+    "DSpark speculative decoding is disabled. The bundled mtp.safetensors is downloaded but unused by this profile.",
+    "Short smoke checks do not establish general reasoning, coding, vision, or tool-use quality."
+  ],
+  "evidence": [
+    "GB10-INKLING2-MINI-001"
+  ]
+}

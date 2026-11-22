@@ -1,0 +1,124 @@
+{
+  "schema_version": "1.0",
+  "result_id": "GB10-INKLING2-MINI-001",
+  "status": "measured",
+  "recipe": {
+    "slug": "inkling-2-mini",
+    "recipe_version": "0.1.0",
+    "revision": "b85c3cfa615fc413cc9af3379f491b963f3b586a",
+    "backend": "vllm"
+  },
+  "deployment": {
+    "backend": "vllm",
+    "backend_api": "1.0",
+    "source_format": "safetensors-nvfp4",
+    "runtime_format": "safetensors",
+    "quantization": "nvfp4",
+    "execution_policy": "resident",
+    "backend_options": {
+      "architecture": "Inkling2LoopForConditionalGeneration",
+      "image": "vllm/vllm-openai@sha256:ecdf0ccc663d86332459f5a50a38c30861a5079bc3924aa08fdc657ef10dd648",
+      "memory_gib": 56,
+      "arguments": [
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18082",
+        "--max-model-len",
+        "8192",
+        "--max-num-seqs",
+        "1",
+        "--gpu-memory-utilization",
+        "0.3",
+        "--max-cudagraph-capture-size",
+        "1",
+        "--load-format",
+        "safetensors",
+        "--safetensors-load-strategy",
+        "lazy",
+        "--reasoning-parser",
+        "inkling",
+        "--enable-auto-tool-choice",
+        "--tool-call-parser",
+        "inkling",
+        "--limit-mm-per-prompt",
+        "{\"image\":1}"
+      ]
+    }
+  },
+  "platform": {
+    "device": "NVIDIA GB10",
+    "machine": "aarch64",
+    "driver": "580.126.09"
+  },
+  "engine": {
+    "name": "SparkLab/vLLM",
+    "version": "0.1.dev25855+g7cb5dae22",
+    "git_revision": "7cb5dae22",
+    "image": "vllm/vllm-openai@sha256:ecdf0ccc663d86332459f5a50a38c30861a5079bc3924aa08fdc657ef10dd648"
+  },
+  "checkpoint": {
+    "full_model": true,
+    "fingerprint": "a7a349601f0984c4abf999c480ef775d8567d21f5f84b4e8a3e035b44f288dc2",
+    "fingerprint_kind": "config_sha256",
+    "validation": {
+      "index": "model.safetensors.index.json",
+      "shards": 1,
+      "tensors": 1244,
+      "logical_bytes": 19525870752,
+      "physical_bytes": 19526019168
+    }
+  },
+  "workload": {
+    "concurrency": 1,
+    "temperature": 0,
+    "reasoning_effort": "none",
+    "max_tokens": 1024,
+    "warmup_requests": 1,
+    "decode_metric": "(exact completion_tokens - 1) / (last nonempty delta - first nonempty delta)",
+    "scope": "Smoke checks only; timing on a shared GPU is not an isolated benchmark."
+  },
+  "metrics": {
+    "decode_tokens_per_second": 36.64576946760882,
+    "warm_ttft_seconds": 0.16528576519340277,
+    "completion_tokens_per_second": 36.46083838711494,
+    "includes_reasoning": true,
+    "shared_gpu": true
+  },
+  "smoke_checks": {
+    "text": true,
+    "json": true,
+    "tool": true,
+    "tool_roundtrip": true,
+    "image": true
+  },
+  "validation": {
+    "output_correctness": null,
+    "reasoning_parser": true,
+    "tool_parser": true,
+    "coding_agent_task": null,
+    "memory_bounded": null,
+    "context_tokens": null
+  },
+  "stability": {
+    "swap_growth_bytes": null,
+    "duration_minutes": null,
+    "oom_count": 0,
+    "container_memory_current_bytes": 8077979648,
+    "container_memory_peak_bytes": 22321635328,
+    "container_swap_bytes": 0
+  },
+  "source": {
+    "raw_artifact": "benchmarks/frameworks/results/inkling-2-mini/probe.json",
+    "short_budget_artifact": "benchmarks/frameworks/results/inkling-2-mini/probe-256.json",
+    "complete_answer_artifact": "benchmarks/frameworks/results/inkling-2-mini/complete-answer.json",
+    "log": "benchmarks/frameworks/results/inkling-2-mini/server.log"
+  },
+  "limitations": [
+    "Five synthetic smoke checks; no coding-agent quality gate, long-context qualification, or endurance run.",
+    "All three 1024-token timing trials hit length; each includes 795 reasoning tokens. Separate 2048-token request completed at EOS after 1951 tokens.",
+    "Requested reasoning effort none still emitted reasoning. Token rates include reasoning and answer tokens.",
+    "Two existing retrieval processes shared the GPU. DSpark was disabled.",
+    "Cgroup CPU-memory peak excludes some CUDA allocations; no complete host-memory or swap-growth monitoring was performed."
+  ]
+}

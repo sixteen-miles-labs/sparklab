@@ -1,0 +1,472 @@
+{
+  "model": "thinkingmachines/Inkling-2-Mini",
+  "created_at": "2026-11-22T15:05:00.753219+00:00",
+  "status": "passed",
+  "checks": {
+    "text": {
+      "passed": true,
+      "response": {
+        "id": "chatcmpl-af331868dc28d756",
+        "object": "chat.completion",
+        "created": 1795359900,
+        "model": "thinkingmachines/Inkling-2-Mini",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "323",
+              "refusal": null,
+              "audio": null,
+              "function_call": null,
+              "reasoning": "The user wants only the integer. Compute 17*19 = 17*20 -17 = 340-17=323. Need final only integer. Ensure no extra text."
+            },
+            "logprobs": null,
+            "finish_reason": "stop",
+            "stop_reason": null,
+            "token_ids": null,
+            "routed_experts": null,
+            "weight_versions": null
+          }
+        ],
+        "service_tier": null,
+        "system_fingerprint": "vllm-0.1.dev25855+g7cb5dae22-bf404035",
+        "usage": {
+          "prompt_tokens": 27,
+          "total_tokens": 72,
+          "completion_tokens": 45,
+          "completion_tokens_details": {
+            "reasoning_tokens": 37
+          }
+        },
+        "prompt_logprobs": null,
+        "prompt_token_ids": null,
+        "prompt_text": null,
+        "kv_transfer_params": null,
+        "ec_transfer_params": null,
+        "metrics": null
+      }
+    },
+    "json": {
+      "passed": true,
+      "response": {
+        "id": "chatcmpl-9d4eb1d5e6055632",
+        "object": "chat.completion",
+        "created": 1795359906,
+        "model": "thinkingmachines/Inkling-2-Mini",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "{\"answer\":323,\"ok\":true}",
+              "refusal": null,
+              "audio": null,
+              "function_call": null,
+              "reasoning": "The user asks: Return JSON with exactly the keys \"answer\" (323) and \"ok\" (true). Need output JSON only likely. Need ensure exactly keys answer and ok. Values: answer 323, ok true. No extra text. Need final only JSON. Consider if this is a request to output specific JSON; no safety issue. Need exact keys. JSON booleans lowercase true. Final should be just {\"answer\":323,\"ok\":true}. Ensure no markdown."
+            },
+            "logprobs": null,
+            "finish_reason": "stop",
+            "stop_reason": null,
+            "token_ids": null,
+            "routed_experts": null,
+            "weight_versions": null
+          }
+        ],
+        "service_tier": null,
+        "system_fingerprint": "vllm-0.1.dev25855+g7cb5dae22-bf404035",
+        "usage": {
+          "prompt_tokens": 33,
+          "total_tokens": 158,
+          "completion_tokens": 125,
+          "completion_tokens_details": {
+            "reasoning_tokens": 105
+          }
+        },
+        "prompt_logprobs": null,
+        "prompt_token_ids": null,
+        "prompt_text": null,
+        "kv_transfer_params": null,
+        "ec_transfer_params": null,
+        "metrics": null
+      }
+    },
+    "tool": {
+      "passed": true,
+      "response": {
+        "id": "chatcmpl-9f9c7593f2c83099",
+        "object": "chat.completion",
+        "created": 1795359913,
+        "model": "thinkingmachines/Inkling-2-Mini",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": null,
+              "refusal": null,
+              "audio": null,
+              "function_call": null,
+              "tool_calls": [
+                {
+                  "id": "chatcmpl-tool-bdfa47f7d530f2a5",
+                  "type": "function",
+                  "function": {
+                    "name": "get_weather",
+                    "arguments": "{\"city\":\"Toronto\"}"
+                  }
+                }
+              ],
+              "reasoning": "The user asks to use get_weather to check current weather in Toronto. Need call function. Then answer based on result."
+            },
+            "logprobs": null,
+            "finish_reason": "tool_calls",
+            "stop_reason": null,
+            "token_ids": null,
+            "routed_experts": null,
+            "weight_versions": null
+          }
+        ],
+        "service_tier": null,
+        "system_fingerprint": "vllm-0.1.dev25855+g7cb5dae22-bf404035",
+        "usage": {
+          "prompt_tokens": 110,
+          "total_tokens": 170,
+          "completion_tokens": 60,
+          "completion_tokens_details": {
+            "reasoning_tokens": 25
+          }
+        },
+        "prompt_logprobs": null,
+        "prompt_token_ids": null,
+        "prompt_text": null,
+        "kv_transfer_params": null,
+        "ec_transfer_params": null,
+        "metrics": null
+      }
+    },
+    "tool_roundtrip": {
+      "passed": true,
+      "response": {
+        "id": "chatcmpl-a007ccecea45a837",
+        "object": "chat.completion",
+        "created": 1795359918,
+        "model": "thinkingmachines/Inkling-2-Mini",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "Current weather in Toronto: 17\u00b0C, sunny.",
+              "refusal": null,
+              "audio": null,
+              "function_call": null,
+              "reasoning": "The tool returned temperature 17C sunny. Need answer concise. Mention current weather in Toronto. No extra unsupported details."
+            },
+            "logprobs": null,
+            "finish_reason": "stop",
+            "stop_reason": null,
+            "token_ids": null,
+            "routed_experts": null,
+            "weight_versions": null
+          }
+        ],
+        "service_tier": null,
+        "system_fingerprint": "vllm-0.1.dev25855+g7cb5dae22-bf404035",
+        "usage": {
+          "prompt_tokens": 109,
+          "total_tokens": 157,
+          "completion_tokens": 48,
+          "completion_tokens_details": {
+            "reasoning_tokens": 28
+          }
+        },
+        "prompt_logprobs": null,
+        "prompt_token_ids": null,
+        "prompt_text": null,
+        "kv_transfer_params": null,
+        "ec_transfer_params": null,
+        "metrics": null
+      }
+    },
+    "image": {
+      "passed": true,
+      "response": {
+        "id": "chatcmpl-828fcbcf590ed073",
+        "object": "chat.completion",
+        "created": 1795359921,
+        "model": "thinkingmachines/Inkling-2-Mini",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "Red",
+              "refusal": null,
+              "audio": null,
+              "function_call": null,
+              "reasoning": "The user is asking about the color of the large square in the image. The image shows a large red square on a white background. I need to reply with one word. The answer is red."
+            },
+            "logprobs": null,
+            "finish_reason": "stop",
+            "stop_reason": null,
+            "token_ids": null,
+            "routed_experts": null,
+            "weight_versions": null
+          }
+        ],
+        "service_tier": null,
+        "system_fingerprint": "vllm-0.1.dev25855+g7cb5dae22-bf404035",
+        "usage": {
+          "prompt_tokens": 128,
+          "total_tokens": 176,
+          "completion_tokens": 48,
+          "completion_tokens_details": {
+            "reasoning_tokens": 40
+          }
+        },
+        "prompt_logprobs": null,
+        "prompt_token_ids": null,
+        "prompt_text": null,
+        "kv_transfer_params": null,
+        "ec_transfer_params": null,
+        "metrics": null
+      }
+    }
+  },
+  "trials": [
+    {
+      "ttft_seconds": 0.16353308595716953,
+      "request_seconds": 6.972568809054792,
+      "usage": {
+        "prompt_tokens": 47,
+        "total_tokens": 303,
+        "completion_tokens": 256,
+        "completion_tokens_details": {
+          "reasoning_tokens": 254
+        }
+      },
+      "decode_tokens_per_second": 37.45066050487839,
+      "completion_tokens_per_second": 36.71530636851522,
+      "content": "",
+      "reasoning": "The user asks for an explanation of hash tables: collisions, resizing, time complexity, with a concrete example and detailed self-contained explanation. Need produce final answer. Need ensure accuracy.\n\nLet's craft a clear explanation. Include:\n- Definition: array + hash function maps keys to indices.\n- Example: small table size 7, keys: \"apple\", \"banana\", \"cherry\", \"date\", \"elderberry\" maybe use simple hash h(key)=sum of char codes mod 7. Compute indices concretely. Need ensure collisions. Let's compute carefully.\n\nUse ASCII codes:\napple: a=97,p=112,p=112,l=108,e=101 sum=97+112+112+108+101=530? 97+112=209, +112=321, +108=429, +101=530. mod7: 7*75=525 remainder5. index5.\nbanana: b=98,a=97,n=110,a=97,n=110,a=97 sum=98+97=195,+110=305,+97=402,+110=",
+      "finish_reason": "length"
+    },
+    {
+      "ttft_seconds": 0.16422047512605786,
+      "request_seconds": 6.993992719333619,
+      "usage": {
+        "prompt_tokens": 47,
+        "total_tokens": 303,
+        "completion_tokens": 256,
+        "completion_tokens_details": {
+          "reasoning_tokens": 254
+        }
+      },
+      "decode_tokens_per_second": 37.33750067830352,
+      "completion_tokens_per_second": 36.602840505157324,
+      "content": "",
+      "reasoning": "The user asks for an explanation of hash tables: collisions, resizing, time complexity, with a concrete example and detailed self-contained explanation. Need produce final answer. Need ensure accuracy.\n\nLet's craft a clear explanation. Include:\n- Definition: array + hash function maps keys to indices.\n- Example: small table size 7, keys: \"apple\", \"banana\", \"cherry\", \"date\", \"elderberry\" maybe use simple hash h(key)=sum of char codes mod 7. Compute indices concretely. Need ensure collisions. Let's compute carefully.\n\nUse ASCII codes:\napple: a=97,p=112,p=112,l=108,e=101 sum=97+112+112+108+101=530? 97+112=209, +112=321, +108=429, +101=530. mod7: 7*75=525 remainder5. index5.\nbanana: b=98,a=97,n=110,a=97,n=110,a=97 sum=98+97=195,+110=305,+97=402,+110=",
+      "finish_reason": "length"
+    },
+    {
+      "ttft_seconds": 0.1650705519132316,
+      "request_seconds": 6.975034117698669,
+      "usage": {
+        "prompt_tokens": 47,
+        "total_tokens": 303,
+        "completion_tokens": 256,
+        "completion_tokens_details": {
+          "reasoning_tokens": 254
+        }
+      },
+      "decode_tokens_per_second": 37.44616986932965,
+      "completion_tokens_per_second": 36.702329433832816,
+      "content": "",
+      "reasoning": "The user asks for an explanation of hash tables: collisions, resizing, time complexity, with a concrete example and detailed self-contained explanation. Need produce final answer. Need ensure accuracy.\n\nLet's craft a clear explanation. Include:\n- Definition: array + hash function maps keys to indices.\n- Example: small table size 7, keys: \"apple\", \"banana\", \"cherry\", \"date\", \"elderberry\" maybe use simple hash h(key)=sum of char codes mod 7. Compute indices concretely. Need ensure collisions. Let's compute carefully.\n\nUse ASCII codes:\napple: a=97,p=112,p=112,l=108,e=101 sum=97+112+112+108+101=530? 97+112=209, +112=321, +108=429, +101=530. mod7: 7*75=525 remainder5. index5.\nbanana: b=98,a=97,n=110,a=97,n=110,a=97 sum=98+97=195,+110=305,+97=402,+110=",
+      "finish_reason": "length"
+    }
+  ],
+  "provenance": {
+    "model": "thinkingmachines/Inkling-2-Mini",
+    "revision": "b85c3cfa615fc413cc9af3379f491b963f3b586a",
+    "deployment": {
+      "backend": "vllm",
+      "backend_api": "1.0",
+      "source_format": "safetensors-nvfp4",
+      "runtime_format": "safetensors",
+      "quantization": "nvfp4",
+      "execution_policy": "resident",
+      "backend_options": {
+        "architecture": "Inkling2LoopForConditionalGeneration",
+        "image": "vllm/vllm-openai@sha256:ecdf0ccc663d86332459f5a50a38c30861a5079bc3924aa08fdc657ef10dd648",
+        "memory_gib": 56,
+        "arguments": [
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "18082",
+          "--max-model-len",
+          "8192",
+          "--max-num-seqs",
+          "1",
+          "--gpu-memory-utilization",
+          "0.3",
+          "--max-cudagraph-capture-size",
+          "1",
+          "--load-format",
+          "safetensors",
+          "--safetensors-load-strategy",
+          "lazy",
+          "--reasoning-parser",
+          "inkling",
+          "--enable-auto-tool-choice",
+          "--tool-call-parser",
+          "inkling",
+          "--limit-mm-per-prompt",
+          "{\"image\":1}"
+        ]
+      }
+    },
+    "artifact_validation": {
+      "format": "safetensors",
+      "fingerprint": "a7a349601f0984c4abf999c480ef775d8567d21f5f84b4e8a3e035b44f288dc2",
+      "details": {
+        "index": "model.safetensors.index.json",
+        "shards": 1,
+        "tensors": 1244,
+        "logical_bytes": 19525870752,
+        "physical_bytes": 19526019168
+      }
+    },
+    "launch_plan": {
+      "backend": "vllm",
+      "backend_version": "vllm/vllm-openai@sha256:ecdf0ccc663d86332459f5a50a38c30861a5079bc3924aa08fdc657ef10dd648",
+      "recipe": "inkling-2-mini",
+      "checkpoint": "$HOME/models/frameworks/inkling-2-mini/hf",
+      "served_model": "thinkingmachines/Inkling-2-Mini",
+      "arguments": [
+        "--model",
+        "/artifact",
+        "--served-model-name",
+        "thinkingmachines/Inkling-2-Mini",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18082",
+        "--max-model-len",
+        "8192",
+        "--max-num-seqs",
+        "1",
+        "--gpu-memory-utilization",
+        "0.3",
+        "--max-cudagraph-capture-size",
+        "1",
+        "--load-format",
+        "safetensors",
+        "--safetensors-load-strategy",
+        "lazy",
+        "--reasoning-parser",
+        "inkling",
+        "--enable-auto-tool-choice",
+        "--tool-call-parser",
+        "inkling",
+        "--limit-mm-per-prompt",
+        "{\"image\":1}"
+      ],
+      "environment": {},
+      "capabilities": [
+        "openai-chat"
+      ],
+      "command": [
+        "docker",
+        "run",
+        "--rm",
+        "--gpus",
+        "all",
+        "--network",
+        "host",
+        "--shm-size",
+        "4g",
+        "--memory",
+        "56g",
+        "--memory-swap",
+        "56g",
+        "-v",
+        "$HOME/models/frameworks/inkling-2-mini/hf:/artifact:ro",
+        "vllm/vllm-openai@sha256:ecdf0ccc663d86332459f5a50a38c30861a5079bc3924aa08fdc657ef10dd648",
+        "--model",
+        "/artifact",
+        "--served-model-name",
+        "thinkingmachines/Inkling-2-Mini",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18082",
+        "--max-model-len",
+        "8192",
+        "--max-num-seqs",
+        "1",
+        "--gpu-memory-utilization",
+        "0.3",
+        "--max-cudagraph-capture-size",
+        "1",
+        "--load-format",
+        "safetensors",
+        "--safetensors-load-strategy",
+        "lazy",
+        "--reasoning-parser",
+        "inkling",
+        "--enable-auto-tool-choice",
+        "--tool-call-parser",
+        "inkling",
+        "--limit-mm-per-prompt",
+        "{\"image\":1}"
+      ],
+      "health_path": "/health",
+      "metrics_path": "/metrics"
+    },
+    "hardware": {
+      "device": "NVIDIA GB10",
+      "machine": "aarch64",
+      "driver": "580.126.09"
+    },
+    "native_compatibility": "ValueError: Model architecture Inkling2LoopForConditionalGeneration not supported",
+    "shared_gpu": true,
+    "speculative_decoding": false,
+    "runtime_version": "0.1.dev25855+g7cb5dae22",
+    "runtime_revision": "7cb5dae22",
+    "gpu_processes_before_probe": "3245901, $HOME/.local/share/fct-runtime/retrieval/venv-20261021/bin/python, 1909 MiB\n3250768, $HOME/.local/share/fct-runtime/retrieval/venv-20261021/bin/python, 2455 MiB\n3878322, VLLM::EngineCore, 33715 MiB\n"
+  },
+  "method": {
+    "concurrency": 1,
+    "temperature": 0,
+    "reasoning_effort": "none",
+    "max_tokens": 256,
+    "warmup_requests": 1,
+    "decode_metric": "(exact completion_tokens - 1) / (last nonempty delta - first nonempty delta)",
+    "scope": "Smoke checks only; timing on a shared GPU is not an isolated benchmark."
+  },
+  "warmup": {
+    "ttft_seconds": 1.7956252079457045,
+    "request_seconds": 2.576730198226869,
+    "usage": {
+      "prompt_tokens": 47,
+      "total_tokens": 79,
+      "completion_tokens": 32,
+      "completion_tokens_details": {
+        "reasoning_tokens": 30
+      }
+    },
+    "decode_tokens_per_second": 39.69163089158361,
+    "completion_tokens_per_second": 12.418839978675388,
+    "content": "",
+    "reasoning": "The user asks for an explanation of hash tables: collisions, resizing, time complexity, with a concrete example and detailed self-contained explanation",
+    "finish_reason": "length"
+  },
+  "summary": {
+    "ttft_seconds_median": 0.16422047512605786,
+    "decode_tokens_per_second_median": 37.44616986932965,
+    "completion_tokens_per_second_median": 36.702329433832816
+  }
+}

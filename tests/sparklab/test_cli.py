@@ -28,6 +28,7 @@ def test_models_json_exposes_tier_and_admission_status(capsys):
         "diffusiongemma-26b-a4b",
         "glm-5.2",
         "glm-5.3",
+        "inkling-2-mini",
         "kimi-k3",
     ]
     assert all(recipe["status"] == "experimental" for recipe in payload["recipes"])
@@ -46,6 +47,7 @@ def test_models_can_select_primary_portfolio(capsys):
         "deepseek-v4.1-flash",
         "deepseek-v4.1-flash-1017",
         "diffusiongemma-26b-a4b",
+        "inkling-2-mini",
         "kimi-k3",
     ]
     assert all(recipe["portfolio_role"] == "primary" for recipe in payload["recipes"])
